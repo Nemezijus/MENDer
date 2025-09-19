@@ -10,6 +10,7 @@ from utils.parse.data_read import load_mat_variable
 import matplotlib.pyplot as plt
 
 from utils.permutations.shuffle import shuffle_simple_vector
+from utils.filters.filter_out_uncorrelating_features import filter_out_uncorrelating_features
 
 """
 Ridge regression decoding with label-shuffle validation (permutation baseline).
@@ -96,7 +97,7 @@ Notes
 - If alignment/latency is a concern, consider adding lagged features or sweeping X↔y lags.
 """
 
-def train_and_score(X, y, train_frac=0.8, gap=0, alpha=1.0):
+def train_and_score(X, y, train_frac=0.8, gap=0, alpha=1.0, debug_plot=False):
     """Train Ridge regression on contiguous split and return R^2 score."""
     n = len(y)
     split_idx = int(n * train_frac)
@@ -112,6 +113,25 @@ def train_and_score(X, y, train_frac=0.8, gap=0, alpha=1.0):
     model = Ridge(alpha=alpha)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+
+    # --- Diagnostics ---
+    if debug_plot:
+        plt.figure(figsize=(10, 4))
+        t = np.arange(len(y_test))
+        plt.plot(t, y_test, label="True y_test", color="k")
+        plt.plot(t, y_pred, label="Predicted y_pred", color="red", alpha=0.7)
+        plt.title("Ridge Regression: True vs Predicted on Test Set")
+        plt.xlabel("Time (frames in test set)")
+        plt.ylabel("Velocity")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        print("[DEBUG] Mean of y_test:", np.mean(y_test))
+        print("[DEBUG] Mean of y_pred:", np.mean(y_pred))
+        print("[DEBUG] Var(y_test):", np.var(y_test))
+        print("[DEBUG] Var(y_pred):", np.var(y_pred))
+        print("[DEBUG] MSE:", mean_squared_error(y_test, y_pred))
 
     return r2_score(y_test, y_pred)
 
@@ -189,7 +209,7 @@ def shuffle_labels_return_scores(
         y_shuf = shuffle_simple_vector(y, rng=gen)
         # train & score with the shuffled labels
         scores[i] = train_and_score(
-            X, y_shuf, train_frac=train_frac, gap=gap, alpha=alpha
+            X, y_shuf, train_frac=train_frac, gap=gap, alpha=alpha, debug_plot=False
         )
 
     return scores
@@ -205,14 +225,45 @@ def plot_shuffle_results(real_score, shuffled_scores):
     plt.legend()
     plt.show()
 
-def run_decoding_with_shuffle(x_path="data/test/Fdff.mat",
-                                y_path="data/test/rotationalVelocity.mat", 
-                                n_shuffles=200,
-                                rng=None, 
-                                **kwargs):
+def apply_feature_filtering(X, y, corr_method="pearson", thr=0.0):
+    """
+    Apply correlation-based feature filtering to X given y.
+    """
+    return filter_out_uncorrelating_features(
+        feature_matrix=X,
+        label_vector=y,
+        corr_method=corr_method,
+        thr=thr,
+    )
+
+def run_ridge_decoding(x_path="data/test/Fdff.mat",
+                       y_path="data/test/rotationalVelocity.mat",
+                       n_shuffles=200,
+                       rng=None,
+                       use_filter=True,
+                       corr_method="pearson",
+                       thr=0.0,
+                       **kwargs):
     X = np.asarray(load_mat_variable(x_path))
     y = np.asarray(load_mat_variable(y_path)).ravel()
+    real_score, shuffled_scores = decode_with_shuffle(
+        X, y, n_shuffles=n_shuffles, rng=rng,
+        use_filter=use_filter, corr_method=corr_method, thr=thr,
+        **kwargs
+    )
+    return real_score, shuffled_scores
 
+def decode_with_shuffle(X,
+                        y,
+                        n_shuffles=200,
+                        rng=None,
+                        use_filter=True,
+                        corr_method="pearson",
+                        thr=0.0,
+                        **kwargs):
+    """
+    Decode with Ridge regression + optional feature filtering.
+    """
     # --- Shape handling
     if X.ndim == 1:
         X = X[:, None]
@@ -223,8 +274,36 @@ def run_decoding_with_shuffle(x_path="data/test/Fdff.mat",
     n = min(X.shape[0], y.shape[0])
     X, y = X[:n], y[:n]
 
+    # --- Optional feature filtering
+    if use_filter:
+        X = apply_feature_filtering(X, y, corr_method=corr_method, thr=thr)
+        print(f"Filtered down to {X.shape[1]} features using {corr_method} with thr={thr}")
+
+    # print(f"[DEBUG] Final X shape: {X.shape}, y shape: {y.shape}")
+    # print(f"[DEBUG] X sample (first row, 10 values): {X[0, :10]}")
+    # print(f"[DEBUG] y sample (first 10): {y[:10]}")
+
+    # # --- Quick plot of traces
+    # plt.figure(figsize=(10, 5))
+    # n_neurons_to_plot = min(40, X.shape[1])
+    # t = np.arange(X.shape[0])
+
+    # for i in range(n_neurons_to_plot):
+    #     plt.plot(t, X[:, i] + i*5, lw=0.8, label=f"Neuron {i}")  # offset for clarity
+
+    # plt.plot(t, (y - np.mean(y)) / np.std(y) * 5 - 10, 'k', lw=1.2, label="Velocity (scaled)")  
+    # plt.title("Calcium traces (subset) + velocity")
+    # plt.xlabel("Time (frames)")
+    # plt.ylabel("df/f (offset per neuron)")
+    # plt.legend(loc="upper right")
+    # plt.tight_layout()
+    # plt.show()
+
+    # --- Train real + shuffled
     real_score = train_and_score(X, y, **kwargs)
-    shuffled_scores = shuffle_labels_return_scores(X, y, n_shuffles=n_shuffles, rng=rng, **kwargs)
+    shuffled_scores = shuffle_labels_return_scores(
+        X, y, n_shuffles=n_shuffles, rng=rng, **kwargs
+    )
 
     print("Real R^2:", real_score)
     print("Shuffled mean:", np.mean(shuffled_scores), "±", np.std(shuffled_scores))
@@ -240,38 +319,32 @@ if __name__ == "__main__":
         description="Decode behavior from calcium activity using Ridge regression "
                     "with shuffled-label validation (permutation baseline)."
     )
-    parser.add_argument(
-        "--x_path", type=str, default="data/test/Fdff.mat",
-        help="Path to .mat file containing calcium df/f (neurons x time or time x neurons)."
-    )
-    parser.add_argument(
-        "--y_path", type=str, default="data/test/rotationalVelocity.mat",
-        help="Path to .mat file containing behavioral variable (1D vector)."
-    )
-    parser.add_argument(
-        "--n_shuffles", type=int, default=200,
-        help="Number of label shuffles for permutation baseline (default: 200)."
-    )
-    parser.add_argument(
-        "--train_frac", type=float, default=0.8,
-        help="Fraction of samples to use for training (contiguous from start)."
-    )
-    parser.add_argument(
-        "--gap", type=int, default=0,
-        help="Number of samples skipped between train and test to reduce leakage."
-    )
-    parser.add_argument(
-        "--alpha", type=float, default=1.0,
-        help="Ridge regression regularization strength."
-    )
-    parser.add_argument(
-        "--seed", type=int, default=None,
-        help="Random seed for reproducible label shuffling."
-    )
+    parser.add_argument("--x_path", type=str, default="data/test/Fdff.mat",
+                        help="Path to .mat file with calcium df/f.")
+    parser.add_argument("--y_path", type=str, default="data/test/rotationalVelocity.mat",
+                        help="Path to .mat file with behavioral variable.")
+    parser.add_argument("--n_shuffles", type=int, default=200,
+                        help="Number of label shuffles.")
+    parser.add_argument("--train_frac", type=float, default=0.8,
+                        help="Fraction of samples for training (contiguous).")
+    parser.add_argument("--gap", type=int, default=0,
+                        help="Samples skipped between train and test.")
+    parser.add_argument("--alpha", type=float, default=1.0,
+                        help="Ridge regularization strength.")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Random seed for shuffling.")
+    # NEW:
+    parser.add_argument("--use_filter", action="store_true",
+                        help="Apply correlation-based feature filtering.")
+    parser.add_argument("--corr_method", type=str, default="pearson",
+                        choices=["pearson"],
+                        help="Correlation method for filtering.")
+    parser.add_argument("--thr", type=float, default=0.0,
+                        help="Absolute correlation threshold |r| to keep a feature.")
 
     args = parser.parse_args()
 
-    run_decoding_with_shuffle(
+    run_ridge_decoding(
         x_path=args.x_path,
         y_path=args.y_path,
         n_shuffles=args.n_shuffles,
@@ -279,4 +352,7 @@ if __name__ == "__main__":
         gap=args.gap,
         alpha=args.alpha,
         rng=args.seed,
+        use_filter=args.use_filter,
+        corr_method=args.corr_method,
+        thr=args.thr,
     )
