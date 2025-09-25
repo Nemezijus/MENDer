@@ -279,26 +279,6 @@ def decode_with_shuffle(X,
         X = apply_feature_filtering(X, y, corr_method=corr_method, thr=thr)
         print(f"Filtered down to {X.shape[1]} features using {corr_method} with thr={thr}")
 
-    # print(f"[DEBUG] Final X shape: {X.shape}, y shape: {y.shape}")
-    # print(f"[DEBUG] X sample (first row, 10 values): {X[0, :10]}")
-    # print(f"[DEBUG] y sample (first 10): {y[:10]}")
-
-    # # --- Quick plot of traces
-    # plt.figure(figsize=(10, 5))
-    # n_neurons_to_plot = min(40, X.shape[1])
-    # t = np.arange(X.shape[0])
-
-    # for i in range(n_neurons_to_plot):
-    #     plt.plot(t, X[:, i] + i*5, lw=0.8, label=f"Neuron {i}")  # offset for clarity
-
-    # plt.plot(t, (y - np.mean(y)) / np.std(y) * 5 - 10, 'k', lw=1.2, label="Velocity (scaled)")  
-    # plt.title("Calcium traces (subset) + velocity")
-    # plt.xlabel("Time (frames)")
-    # plt.ylabel("df/f (offset per neuron)")
-    # plt.legend(loc="upper right")
-    # plt.tight_layout()
-    # plt.show()
-
     # --- Train real + shuffled
     real_score = train_and_score(X, y, **kwargs)
     shuffled_scores = shuffle_labels_return_scores(
