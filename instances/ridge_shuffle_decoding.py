@@ -214,8 +214,10 @@ def shuffle_labels_return_scores(
 
     return scores
 
-def plot_shuffle_results(real_score, shuffled_scores):
-    """Plot histogram of shuffled scores with real score overlay."""
+def plot_shuffle_results(real_score, shuffled_scores, *, show=True):
+    if not show:
+        return
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(8, 5))
     plt.hist(shuffled_scores, bins=20, alpha=0.7, color="gray", edgecolor="black")
     plt.axvline(real_score, color="red", linewidth=2, label=f"Real R^2 = {real_score:.3f}")
@@ -243,15 +245,16 @@ def run_ridge_decoding(x_path="data/test/Fdff.mat",
                        use_filter=True,
                        corr_method="pearson",
                        thr=0.0,
+                       plot=True,
                        **kwargs):
     X = np.asarray(load_mat_variable(x_path))
     y = np.asarray(load_mat_variable(y_path)).ravel()
-    real_score, shuffled_scores = decode_with_shuffle(
+    real_score, shuffled_scores, n_features = decode_with_shuffle(
         X, y, n_shuffles=n_shuffles, rng=rng,
-        use_filter=use_filter, corr_method=corr_method, thr=thr,
+        use_filter=use_filter, corr_method=corr_method, thr=thr, plot=plot,
         **kwargs
     )
-    return real_score, shuffled_scores
+    return real_score, shuffled_scores, n_features
 
 def decode_with_shuffle(X,
                         y,
@@ -260,6 +263,7 @@ def decode_with_shuffle(X,
                         use_filter=True,
                         corr_method="pearson",
                         thr=0.0,
+                        plot=True,
                         **kwargs):
     """
     Decode with Ridge regression + optional feature filtering.
@@ -278,6 +282,7 @@ def decode_with_shuffle(X,
     if use_filter:
         X = apply_feature_filtering(X, y, corr_method=corr_method, thr=thr)
         print(f"Filtered down to {X.shape[1]} features using {corr_method} with thr={thr}")
+    n_features = X.shape[1]
 
     # --- Train real + shuffled
     real_score = train_and_score(X, y, **kwargs)
@@ -287,9 +292,9 @@ def decode_with_shuffle(X,
 
     print("Real R^2:", real_score)
     print("Shuffled mean:", np.mean(shuffled_scores), "±", np.std(shuffled_scores))
-    plot_shuffle_results(real_score, shuffled_scores)
+    plot_shuffle_results(real_score, shuffled_scores, show=plot)
 
-    return real_score, shuffled_scores
+    return real_score, shuffled_scores, n_features
 
 
 if __name__ == "__main__":
@@ -313,7 +318,6 @@ if __name__ == "__main__":
                         help="Ridge regularization strength.")
     parser.add_argument("--seed", type=int, default=None,
                         help="Random seed for shuffling.")
-    # NEW:
     parser.add_argument("--use_filter", action="store_true",
                         help="Apply correlation-based feature filtering.")
     parser.add_argument("--corr_method", type=str, default="pearson",
@@ -321,6 +325,8 @@ if __name__ == "__main__":
                         help="Correlation method for filtering.")
     parser.add_argument("--thr", type=float, default=0.0,
                         help="Absolute correlation threshold |r| to keep a feature.")
+    parser.add_argument("--no_plots", action="store_true",
+                    help="Disable plotting (useful for batch runs).")
 
     args = parser.parse_args()
 
@@ -335,4 +341,5 @@ if __name__ == "__main__":
         use_filter=args.use_filter,
         corr_method=args.corr_method,
         thr=args.thr,
+        plot=not args.no_plots,
     )

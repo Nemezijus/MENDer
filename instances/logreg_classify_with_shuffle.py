@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import warnings
+import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -14,10 +15,66 @@ from sklearn.metrics import (
     confusion_matrix,
     classification_report,
 )
+
 from utils.parse.data_read import load_mat_variable
 from utils.permutations.shuffle import shuffle_simple_vector
 
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# ----------------------- I/O helpers -----------------------
+
+def _load_dataset(
+    x_path: Optional[str],
+    y_path: Optional[str],
+    npz_path: Optional[str],
+    x_key: str = "X",
+    y_key: str = "y",
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Load (X, y) from either:
+      - separate .mat files via --x_path/--y_path
+      - a single .npz file via --npz_path (expects keys X/y unless overridden)
+      - (also works if --x_path points to .npz and --y_path is omitted)
+
+    Returns
+    -------
+    X: (n_samples, n_features)
+    y: (n_samples,)
+    """
+    if npz_path:
+        data = np.load(npz_path, allow_pickle=True)
+        if x_key not in data or y_key not in data:
+            raise KeyError(
+                f"Keys '{x_key}' and/or '{y_key}' not found in {npz_path}. "
+                f"Available: {list(data.keys())}"
+            )
+        X = np.asarray(data[x_key])
+        y = np.asarray(data[y_key]).ravel()
+        return X, y
+
+    if x_path and x_path.lower().endswith(".npz") and (not y_path):
+        # convenience: allow --x_path to be a single .npz
+        data = np.load(x_path, allow_pickle=True)
+        if x_key not in data or y_key not in data:
+            raise KeyError(
+                f"Keys '{x_key}' and/or '{y_key}' not found in {x_path}. "
+                f"Available: {list(data.keys())}"
+            )
+        X = np.asarray(data[x_key])
+        y = np.asarray(data[y_key]).ravel()
+        return X, y
+
+    if not (x_path and y_path):
+        raise ValueError(
+            "Provide either (--x_path and --y_path) for .mat files, or --npz_path for a single NPZ."
+        )
+
+    # classic .mat route
+    X = np.asarray(load_mat_variable(x_path))
+    y = np.asarray(load_mat_variable(y_path)).ravel()
+    return X, y
+
+
 # ----------------------- Core helpers -----------------------
 
 def _coerce_shapes(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -93,9 +150,9 @@ def train_and_score_classifier(
     clf = LogisticRegression(
         C=C,
         penalty=penalty,
-        solver=solver,   # 'lbfgs' works well for multinomial when penalty is L2
+        solver=solver,
         max_iter=max_iter,
-        multi_class="auto",
+        multi_class="auto",  # strings labels are fine; sklearn encodes internally
     )
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
@@ -150,25 +207,26 @@ def _plot_confusion(y_true, y_pred, title="Confusion matrix"):
     cm = confusion_matrix(y_true, y_pred)
     with np.errstate(invalid="ignore"):
         cm_norm = cm / cm.sum(axis=1, keepdims=True)
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=(6.5, 5.5))
     im = ax.imshow(cm_norm, aspect="auto")
     plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     ax.set_title(title)
     ax.set_xlabel("Predicted")
     ax.set_ylabel("True")
 
-    # tick labels
+    # tick labels — keep them readable even if strings
     classes = np.unique(np.concatenate([y_true, y_pred]))
     ax.set_xticks(np.arange(len(classes)))
     ax.set_yticks(np.arange(len(classes)))
-    ax.set_xticklabels(classes, rotation=45, ha="right")
-    ax.set_yticklabels(classes)
+    ax.set_xticklabels([str(c)[:18] for c in classes], rotation=45, ha="right")
+    ax.set_yticklabels([str(c)[:18] for c in classes])
 
     # annotate cells
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
             val = cm[i, j]
-            ax.text(j, i, str(val), ha="center", va="center", color="w" if cm_norm[i, j] > 0.5 else "k")
+            ax.text(j, i, str(val), ha="center", va="center",
+                    color="w" if cm_norm[i, j] > 0.5 else "k", fontsize=8)
 
     plt.tight_layout()
     plt.show()
@@ -189,9 +247,12 @@ def plot_shuffle_results(real_score: float, shuffled_scores: np.ndarray, metric:
 # ----------------------- Orchestrator -----------------------
 
 def run_logreg_decoding(
-    x_path: str,
-    y_path: str,
+    x_path: Optional[str] = None,
+    y_path: Optional[str] = None,
     *,
+    npz_path: Optional[str] = None,
+    x_key: str = "X",
+    y_key: str = "y",
     n_shuffles: int = 200,
     train_frac: float = 0.8,
     standardize: bool = True,
@@ -203,13 +264,14 @@ def run_logreg_decoding(
     rng: Union[None, int, np.random.Generator] = None,
 ):
     """
-    Load X, y (.mat); coerce shapes; logistic regression with stratified split; shuffle baseline.
+    Load X, y from either:
+      - .mat files (--x_path, --y_path), or
+      - a single .npz (--npz_path, optionally --x_key/--y_key).
+    Then: logistic regression with stratified split + shuffle baseline.
     """
-    X = np.asarray(load_mat_variable(x_path))
-    y = np.asarray(load_mat_variable(y_path)).ravel()
+    X, y = _load_dataset(x_path, y_path, npz_path, x_key=x_key, y_key=y_key)
     X, y = _coerce_shapes(X, y)
 
-    # sanity: label cardinality vs samples
     n_classes = np.unique(y).size
     if n_classes < 2:
         raise ValueError("y must contain at least two classes.")
@@ -247,13 +309,21 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Trial-level decoding of stimulus contrast via Logistic Regression "
-                    "with label-shuffle baseline."
+        description="Trial-level decoding via Logistic Regression with label-shuffle baseline."
     )
-    parser.add_argument("--x_path", type=str, required=True,
-                        help="Path to .mat with features (trials x features).")
-    parser.add_argument("--y_path", type=str, required=True,
+    # Option A: classic .mat inputs
+    parser.add_argument("--x_path", type=str, default=None,
+                        help="Path to .mat with features (trials x features), or .npz if --y_path omitted.")
+    parser.add_argument("--y_path", type=str, default=None,
                         help="Path to .mat with labels (trials,).")
+    # Option B: single NPZ
+    parser.add_argument("--npz_path", type=str, default=None,
+                        help="Path to a single .npz containing X and y (e.g., Allen fetcher output).")
+    parser.add_argument("--x_key", type=str, default="X",
+                        help="Key name for X inside the .npz (default: 'X').")
+    parser.add_argument("--y_key", type=str, default="y",
+                        help="Key name for y inside the .npz (default: 'y').")
+
     parser.add_argument("--n_shuffles", type=int, default=200,
                         help="Number of label shuffles for permutation baseline.")
     parser.add_argument("--train_frac", type=float, default=0.8,
@@ -279,6 +349,9 @@ if __name__ == "__main__":
     run_logreg_decoding(
         x_path=args.x_path,
         y_path=args.y_path,
+        npz_path=args.npz_path,
+        x_key=args.x_key,
+        y_key=args.y_key,
         n_shuffles=args.n_shuffles,
         train_frac=args.train_frac,
         standardize=args.standardize,
