@@ -3,3 +3,6 @@ __pycache__/
 /data/calcium/
 /data/allen/
 /data/allen_cache/
+/data/allen_vc/
+/data/allen_vc_cache/
+ridge_shuffle_batch_summary.csv
