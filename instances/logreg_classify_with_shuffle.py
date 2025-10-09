@@ -226,7 +226,7 @@ def _plot_confusion(y_true, y_pred, title="Confusion matrix"):
         for j in range(cm.shape[1]):
             val = cm[i, j]
             ax.text(j, i, str(val), ha="center", va="center",
-                    color="w" if cm_norm[i, j] > 0.5 else "k", fontsize=8)
+                    color="k" if cm_norm[i, j] > 0.5 else "w", fontsize=12)
 
     plt.tight_layout()
     plt.show()
