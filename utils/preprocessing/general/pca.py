@@ -109,7 +109,7 @@ def pca_fit_transform_train_test(
     variance_threshold: float = 0.95,
     whiten: bool = False,
     random_state: Optional[int] = None,
-    standardize: bool = True,
+    standardize: bool = False,
 ) -> Tuple[PCA, np.ndarray, np.ndarray, Optional[StandardScaler]]:
     """
     Fit PCA *only on the training set* (with optional auto component selection),
