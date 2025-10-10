@@ -75,8 +75,11 @@ def train_and_score_classifier(
     or (float, dict)
         If return_details=True, includes model, splits, transforms, etc.
     """
+
+    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+    child_for_split = int(gen.integers(1 << 32))
     # 1) Split (stratified)
-    X_train, X_test, y_train, y_test = split(X, y, train_frac=train_frac, custom=False, rng=rng)
+    X_train, X_test, y_train, y_test = split(X, y, train_frac=train_frac, custom=False, rng=child_for_split)
 
     # 2) Optional scaling
     if scale and str(scale).lower() != "none":

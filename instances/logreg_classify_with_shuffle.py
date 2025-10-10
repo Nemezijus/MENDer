@@ -161,11 +161,13 @@ def shuffle_labels_return_scores(
     """
     if n_shuffles < 1:
         raise ValueError("n_shuffles must be >= 1")
-    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+    # gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
 
+    gen = np.random.default_rng(rng)
     scores = np.empty(n_shuffles, dtype=float)
     for i in range(n_shuffles):
         y_shuf = shuffle_simple_vector(y, rng=gen)
+        child_for_train = int(gen.integers(1 << 32))
         scores[i], _ = train_and_score_classifier(
             clone(model),
             X, y_shuf,
@@ -175,7 +177,7 @@ def shuffle_labels_return_scores(
             pca_n_components=pca_n,
             pca_variance_threshold=pca_var,
             pca_whiten=pca_whiten,
-            rng=gen.integers(1 << 32),
+            rng=child_for_train,
             metric=metric,
             debug=False,
             return_details=True,

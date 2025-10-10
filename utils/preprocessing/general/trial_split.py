@@ -5,6 +5,20 @@ from typing import Tuple, Union
 import numpy as np
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 
+def _to_child_seed(rng: Union[None, int, np.random.Generator]) -> Union[int, None]:
+    """
+    Convert rng to a single integer child seed, mirroring pre-refactor behavior.
+    - If rng is a Generator: draw one child int.
+    - If rng is an int: use it directly (do NOT draw again).
+    - If rng is None: return None.
+    """
+    if isinstance(rng, np.random.Generator):
+        return int(rng.integers(1 << 32))
+    if isinstance(rng, (int, np.integer)) or rng is None:
+        return None if rng is None else int(rng)
+    # If someone passed a hashable seed (e.g., tuple/str), mimic old pattern:
+    return int(np.random.default_rng(rng).integers(1 << 32))
+
 
 def _split_trials(
     X: np.ndarray,
@@ -38,10 +52,11 @@ def _split_trials(
         raise ValueError(f"X and y length mismatch: {X.shape[0]} vs {y.shape[0]}.")
 
     # StratifiedShuffleSplit expects an int seed for deterministic behavior
-    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-    seed = int(gen.integers(2**32 - 1))
+    # gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+    # seed = int(gen.integers(2**32 - 1))
+    random_state = _to_child_seed(rng)
 
-    sss = StratifiedShuffleSplit(n_splits=1, train_size=train_frac, random_state=seed)
+    sss = StratifiedShuffleSplit(n_splits=1, train_size=train_frac, random_state=random_state)
     (train_idx, test_idx), = sss.split(X, y)
 
     return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
@@ -92,15 +107,16 @@ def split(
     if X.shape[0] != y.shape[0]:
         raise ValueError(f"X and y length mismatch: {X.shape[0]} vs {y.shape[0]}.")
 
-    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-    seed = int(gen.integers(2**32 - 1))
+    # gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+    # seed = int(gen.integers(2**32 - 1))
+    random_state = _to_child_seed(rng)
 
     if custom:
-        return _split_trials(X, y, train_frac, rng=seed)
+        return _split_trials(X, y, train_frac, rng=random_state)
 
     return train_test_split(
         X, y,
         train_size=train_frac,
         stratify=y,
-        random_state=seed,
+        random_state=random_state,
     )
