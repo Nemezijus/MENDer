@@ -88,6 +88,6 @@ def scale_train_test(
         # No scaling requested
         return X_train.copy(), X_test.copy()
 
-    Xtr = scaler.fit_transform(X_train)
-    Xte = scaler.transform(X_test)
-    return Xtr, Xte
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    return X_train_scaled, X_test_scaled
