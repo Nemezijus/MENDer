@@ -4,20 +4,17 @@ import warnings
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Union, Tuple, Optional
-from sklearn.preprocessing import StandardScaler
+from typing import Union, Tuple, Optional, Any
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import (
-    accuracy_score,
-    balanced_accuracy_score,
-    f1_score,
     confusion_matrix,
-    classification_report,
 )
+from sklearn.base import clone
 
 from utils.parse.data_read import load_mat_variable
 from utils.permutations.shuffle import shuffle_simple_vector
+from utils.pipelines.classification import train_and_score_classifier
+from visualizations.general.plot_decision_regions import plot_decision_regions
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -69,7 +66,7 @@ def _load_dataset(
             "Provide either (--x_path and --y_path) for .mat files, or --npz_path for a single NPZ."
         )
 
-    # classic .mat route
+    # .mat route
     X = np.asarray(load_mat_variable(x_path))
     y = np.asarray(load_mat_variable(y_path)).ravel()
     return X, y
@@ -100,109 +97,7 @@ def _coerce_shapes(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray
     return X, y
 
 
-def _split_trials(X, y, train_frac: float, rng) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Stratified split at the trial level (random, not time-contiguous)."""
-    if not (0.0 < train_frac < 1.0):
-        raise ValueError("train_frac must be in (0,1).")
-    sss = StratifiedShuffleSplit(n_splits=1, train_size=train_frac, random_state=rng)
-    (train_idx, test_idx), = sss.split(X, y)
-    return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
-
-
-def _metric(y_true, y_pred, metric: str = "accuracy") -> float:
-    if metric == "accuracy":
-        return accuracy_score(y_true, y_pred)
-    elif metric == "balanced_accuracy":
-        return balanced_accuracy_score(y_true, y_pred)
-    elif metric == "f1_macro":
-        return f1_score(y_true, y_pred, average="macro")
-    else:
-        raise ValueError(f"Unknown metric '{metric}'")
-
-
-def train_and_score_classifier(
-    X: np.ndarray,
-    y: np.ndarray,
-    *,
-    train_frac: float = 0.8,
-    standardize: bool = True,
-    C: float = 1.0,
-    penalty: str = "l2",
-    solver: str = "lbfgs",
-    max_iter: int = 1000,
-    metric: str = "accuracy",
-    rng: Union[None, int, np.random.Generator] = None,
-    debug: bool = True,
-) -> float:
-    """
-    Stratified trial split -> (optional) StandardScaler -> LogisticRegression -> score.
-    """
-    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-
-    X_train, X_test, y_train, y_test = _split_trials(X, y, train_frac=train_frac, rng=gen.integers(1<<32))
-
-    scaler = None
-    if standardize:
-        scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
-
-    clf = LogisticRegression(
-        C=C,
-        penalty=penalty,
-        solver=solver,
-        max_iter=max_iter,
-        multi_class="auto",  # strings labels are fine; sklearn encodes internally
-    )
-    clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-
-    score = _metric(y_test, y_pred, metric=metric)
-
-    if debug:
-        print(f"[INFO] {metric} = {score:.3f}  (train_frac={train_frac}, C={C}, penalty={penalty}, solver={solver})")
-        print(classification_report(y_test, y_pred, digits=3))
-        _plot_confusion(y_test, y_pred, title=f"Confusion matrix ({metric}={score:.3f})")
-
-    return score
-
-
-def shuffle_labels_return_scores(
-    X: np.ndarray,
-    y: np.ndarray,
-    n_shuffles: int = 200,
-    *,
-    train_frac: float = 0.8,
-    standardize: bool = True,
-    C: float = 1.0,
-    penalty: str = "l2",
-    solver: str = "lbfgs",
-    max_iter: int = 1000,
-    metric: str = "accuracy",
-    rng: Union[None, int, np.random.Generator] = None,
-) -> np.ndarray:
-    """
-    Permutation baseline: shuffle trial labels, refit, and collect scores.
-    """
-    if n_shuffles < 1:
-        raise ValueError("n_shuffles must be >= 1")
-    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-
-    scores = np.empty(n_shuffles, dtype=float)
-    for i in range(n_shuffles):
-        y_shuf = shuffle_simple_vector(y, rng=gen)  # preserves label histogram in expectation
-        scores[i] = train_and_score_classifier(
-            X, y_shuf,
-            train_frac=train_frac,
-            standardize=standardize,
-            C=C, penalty=penalty, solver=solver, max_iter=max_iter,
-            metric=metric,
-            rng=gen.integers(1<<32),
-            debug=False,
-        )
-    return scores
-
-
+# ----------------------- Plotting -----------------------
 def _plot_confusion(y_true, y_pred, title="Confusion matrix"):
     cm = confusion_matrix(y_true, y_pred)
     with np.errstate(invalid="ignore"):
@@ -243,7 +138,49 @@ def plot_shuffle_results(real_score: float, shuffled_scores: np.ndarray, metric:
     plt.tight_layout()
     plt.show()
 
+# ----------------------- Shuffle baseline -----------------------
 
+def shuffle_labels_return_scores(
+    model: Any,
+    X: np.ndarray,
+    y: np.ndarray,
+    n_shuffles: int = 200,
+    *,
+    train_frac: float = 0.8,
+    scale: str = "standard",
+    features: str = "none",           # 'none' | 'pca'
+    pca_n: Optional[int] = None,
+    pca_var: float = 0.95,
+    pca_whiten: bool = False,
+    metric: str = "accuracy",
+    rng: Union[None, int, np.random.Generator] = None,
+) -> np.ndarray:
+    """
+    Permutation baseline: shuffle trial labels, refit, and collect scores.
+    Uses a fresh clone(model) per shuffle.
+    """
+    if n_shuffles < 1:
+        raise ValueError("n_shuffles must be >= 1")
+    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+
+    scores = np.empty(n_shuffles, dtype=float)
+    for i in range(n_shuffles):
+        y_shuf = shuffle_simple_vector(y, rng=gen)
+        scores[i], _ = train_and_score_classifier(
+            clone(model),
+            X, y_shuf,
+            train_frac=train_frac,
+            scale=scale,
+            feature_scaling=features,
+            pca_n_components=pca_n,
+            pca_variance_threshold=pca_var,
+            pca_whiten=pca_whiten,
+            rng=gen.integers(1 << 32),
+            metric=metric,
+            debug=False,
+            return_details=True,
+        )
+    return scores
 # ----------------------- Orchestrator -----------------------
 
 def run_logreg_decoding(
@@ -255,7 +192,11 @@ def run_logreg_decoding(
     y_key: str = "y",
     n_shuffles: int = 200,
     train_frac: float = 0.8,
-    standardize: bool = True,
+    scale: str = "standard",          # 'standard'|'robust'|'minmax'|'maxabs'|'quantile'|'none'
+    features: str = "none",           # 'none'|'pca'
+    pca_n: Optional[int] = None,
+    pca_var: float = 0.95,
+    pca_whiten: bool = False,
     C: float = 1.0,
     penalty: str = "l2",
     solver: str = "lbfgs",
@@ -264,34 +205,55 @@ def run_logreg_decoding(
     rng: Union[None, int, np.random.Generator] = None,
 ):
     """
-    Load X, y from either:
-      - .mat files (--x_path, --y_path), or
-      - a single .npz (--npz_path, optionally --x_key/--y_key).
-    Then: logistic regression with stratified split + shuffle baseline.
+    Load X, y (.mat or .npz) → declare model → fit/score (with optional scaling & PCA) → confusion
+    → shuffle-label baseline.
     """
+    # 1) Load data
     X, y = _load_dataset(x_path, y_path, npz_path, x_key=x_key, y_key=y_key)
     X, y = _coerce_shapes(X, y)
 
+    # 2) Quick sanity on labels
     n_classes = np.unique(y).size
     if n_classes < 2:
         raise ValueError("y must contain at least two classes.")
     if X.shape[0] < 2 * n_classes:
         print("[WARN] Few trials per class; results may be unstable.")
 
-    real_score = train_and_score_classifier(
+    # 3) Declare model (change freely)
+    model = LogisticRegression(
+        C=C, penalty=penalty, solver=solver, max_iter=max_iter, multi_class="auto"
+    )
+
+    # 4) Real fit/score (+ confusion)
+    real_score, details = train_and_score_classifier(
+        model,
         X, y,
         train_frac=train_frac,
-        standardize=standardize,
-        C=C, penalty=penalty, solver=solver, max_iter=max_iter,
-        metric=metric,
+        scale=scale,
+        feature_scaling=features,
+        pca_n_components=pca_n,
+        pca_variance_threshold=pca_var,
+        pca_whiten=pca_whiten,
         rng=rng,
+        metric=metric,
         debug=True,
+        return_details=True,
     )
+    # Confusion matrix for the real run
+    _plot_confusion(details["y_test"], details["y_pred"], title=f"Confusion ({metric}={real_score:.3f})")
+    plot_decision_regions(details["X_train"], details["y_train"], classifier=details["model"], resolution = 0.02, title = 'train (space used by the model)')
+
+    # 5) Shuffle-label baseline
     shuffled_scores = shuffle_labels_return_scores(
-        X, y, n_shuffles=n_shuffles,
+        model,
+        X, y,
+        n_shuffles=n_shuffles,
         train_frac=train_frac,
-        standardize=standardize,
-        C=C, penalty=penalty, solver=solver, max_iter=max_iter,
+        scale=scale,
+        features=features,
+        pca_n=pca_n,
+        pca_var=pca_var,
+        pca_whiten=pca_whiten,
         metric=metric,
         rng=rng,
     )
@@ -311,38 +273,36 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Trial-level decoding via Logistic Regression with label-shuffle baseline."
     )
-    # Option A: classic .mat inputs
+    # Inputs: .mat pair or a single .npz
     parser.add_argument("--x_path", type=str, default=None,
                         help="Path to .mat with features (trials x features), or .npz if --y_path omitted.")
     parser.add_argument("--y_path", type=str, default=None,
                         help="Path to .mat with labels (trials,).")
-    # Option B: single NPZ
     parser.add_argument("--npz_path", type=str, default=None,
-                        help="Path to a single .npz containing X and y (e.g., Allen fetcher output).")
-    parser.add_argument("--x_key", type=str, default="X",
-                        help="Key name for X inside the .npz (default: 'X').")
-    parser.add_argument("--y_key", type=str, default="y",
-                        help="Key name for y inside the .npz (default: 'y').")
+                        help="Path to .npz containing X and y.")
+    parser.add_argument("--x_key", type=str, default="X", help="Key for X inside .npz.")
+    parser.add_argument("--y_key", type=str, default="y", help="Key for y inside .npz.")
 
-    parser.add_argument("--n_shuffles", type=int, default=200,
-                        help="Number of label shuffles for permutation baseline.")
-    parser.add_argument("--train_frac", type=float, default=0.8,
-                        help="Fraction of trials used for training (stratified).")
-    parser.add_argument("--standardize", action="store_true",
-                        help="Standardize features (fit on train, apply to test).")
-    parser.add_argument("--C", type=float, default=1.0,
-                        help="Inverse of regularization strength (larger = less regularization).")
-    parser.add_argument("--penalty", type=str, default="l2", choices=["l2", "none"],
-                        help="Penalty type for LogisticRegression.")
-    parser.add_argument("--solver", type=str, default="lbfgs",
-                        help="Solver (e.g., 'lbfgs', 'saga' for large sparse).")
-    parser.add_argument("--max_iter", type=int, default=1000,
-                        help="Max iterations for solver.")
+    parser.add_argument("--n_shuffles", type=int, default=200, help="Number of label shuffles.")
+    parser.add_argument("--train_frac", type=float, default=0.8, help="Fraction of trials for training.")
+    parser.add_argument("--scale", type=str, default="standard",
+                        choices=["standard", "robust", "minmax", "maxabs", "quantile", "none"],
+                        help="Feature scaling method.")
+    parser.add_argument("--features", type=str, default="none", choices=["none", "pca"],
+                        help="Feature extraction step.")
+    parser.add_argument("--pca_n", type=int, default=None, help="PCA components (None → auto by variance).")
+    parser.add_argument("--pca_var", type=float, default=0.95, help="PCA variance threshold for auto selection.")
+    parser.add_argument("--pca_whiten", action="store_true", help="Whiten PCA components.")
+
+    parser.add_argument("--C", type=float, default=1.0, help="Inverse regularization strength (logreg).")
+    parser.add_argument("--penalty", type=str, default="l2", choices=["l2", "none"], help="Penalty (logreg).")
+    parser.add_argument("--solver", type=str, default="lbfgs", help="Solver (logreg).")
+    parser.add_argument("--max_iter", type=int, default=1000, help="Max iterations (logreg).")
+
     parser.add_argument("--metric", type=str, default="accuracy",
                         choices=["accuracy", "balanced_accuracy", "f1_macro"],
-                        help="Primary metric to score.")
-    parser.add_argument("--seed", type=int, default=None,
-                        help="Random seed for splits and shuffles.")
+                        help="Primary metric.")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed.")
 
     args = parser.parse_args()
 
@@ -354,7 +314,11 @@ if __name__ == "__main__":
         y_key=args.y_key,
         n_shuffles=args.n_shuffles,
         train_frac=args.train_frac,
-        standardize=args.standardize,
+        scale=args.scale,
+        features=args.features,
+        pca_n=args.pca_n,
+        pca_var=args.pca_var,
+        pca_whiten=args.pca_whiten,
         C=args.C,
         penalty=args.penalty,
         solver=args.solver,
