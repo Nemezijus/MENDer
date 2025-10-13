@@ -41,45 +41,19 @@ def train_and_score_classifier(
       5) predict labels
       6) compute a metric (default: accuracy)
 
-    Parameters
-    ----------
-    model : sklearn-like estimator
-        Must expose `.fit(X, y)` and `.predict(X)`.
-    X, y : arrays
-        Data and labels. X shape (n_samples, n_features).
-    train_frac : float
-        Fraction for the train split (stratified).
-    scale : str or None
-        Scaling method (see utils.preprocessing.feature_scaling). None/'none' disables.
-    feature_scaling : {'none','pca'}
-        Feature extraction step after scaling.
-    pca_n_components : int or None
-        If None, auto-pick by `pca_variance_threshold` (train-only).
-    pca_variance_threshold : float
-        Cumulative variance to retain when auto-selecting PCA components.
-    pca_whiten : bool
-        Whether to whiten PCs.
-    rng : int | numpy.random.Generator | None
-        Seed or generator for split reproducibility.
-    metric : str
-        Passed to utils.postprocessing.scoring.score (e.g., 'accuracy').
-    debug : bool
-        Print summary + sklearn classification_report.
-    return_details : bool
-        If True, also return dict with intermediate artifacts.
-
-    Returns
-    -------
-    float
-        The requested metric.
-    or (float, dict)
-        If return_details=True, includes model, splits, transforms, etc.
+    RNG policy:
+      - We DO NOT draw any extra numbers here.
+      - The provided `rng` (int | Generator | None) is passed directly to the splitter.
+      - If PCA is enabled and `rng` is an int, we pass it to sklearn as `random_state`.
+        If `rng` is a Generator, we use `random_state=None` (sklearn will be deterministic
+        for PCA when `svd_solver='full'`; if you later switch to a randomized solver,
+        send an int instead).
     """
 
-    gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-    child_for_split = int(gen.integers(1 << 32))
-    # 1) Split (stratified)
-    X_train, X_test, y_train, y_test = split(X, y, train_frac=train_frac, custom=False, rng=child_for_split)
+    # 1) Split (stratified) — pass rng straight through (no extra draws)
+    X_train, X_test, y_train, y_test = split(
+        X, y, train_frac=train_frac, custom=False, rng=rng
+    )
 
     # 2) Optional scaling
     if scale and str(scale).lower() != "none":
@@ -88,15 +62,19 @@ def train_and_score_classifier(
     # 3) Optional feature extraction (currently PCA)
     pca = None
     if feature_scaling == "pca":
+        # Deterministic when rng is an int; if it's a Generator, keep None to avoid consuming it
+        pca_rs = None if isinstance(rng, np.random.Generator) else rng
         pca, X_train, X_test = pca_fit_transform_train_test(
             X_train, X_test,
             n_components=pca_n_components,
             variance_threshold=pca_variance_threshold,
             whiten=pca_whiten,
-            random_state=None if isinstance(rng, np.random.Generator) else rng,
+            random_state=pca_rs,
         )
     elif feature_scaling != "none":
-        raise ValueError(f"Unknown feature_scaling option '{feature_scaling}'. Use 'none' or 'pca'.")
+        raise ValueError(
+            f"Unknown feature_scaling option '{feature_scaling}'. Use 'none' or 'pca'."
+        )
 
     # 4) Fit
     model = fit_model(model, X_train, y_train)

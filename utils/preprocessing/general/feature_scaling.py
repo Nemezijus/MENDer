@@ -28,11 +28,11 @@ def _make_scaler(
     if method == "minmax":
         return MinMaxScaler()
     if method == "robust":
-        return RobustScaler()  # robust to outliers (uses IQR)
+        return RobustScaler()
     if method == "maxabs":
-        return MaxAbsScaler()  # good for sparse, preserves sparsity
+        return MaxAbsScaler()
     if method == "quantile":
-        # Nonlinear; maps marginals to chosen distribution (can squash outliers)
+        # Deterministic (random_state=0) but no external RNG dependency.
         return QuantileTransformer(
             output_distribution=quantile_output_distribution,
             copy=True,
@@ -53,27 +53,6 @@ def scale_train_test(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Fit a scaler on train, apply to both train and test. Prevents test leakage.
-
-    Parameters
-    ----------
-    X_train : array-like of shape (n_samples_train, n_features)
-    X_test : array-like of shape (n_samples_test, n_features)
-    method : {'standard','minmax','robust','maxabs','quantile','none'}, default='standard'
-        Which scaling strategy to use.
-    quantile_output_distribution : {'uniform','normal'}, default='normal'
-        Only used when method='quantile'.
-
-    Returns
-    -------
-    X_train_scaled, X_test_scaled : ndarray
-        Scaled copies of the inputs (or originals if method='none').
-
-    Notes
-    -----
-    - Always fits the scaler **only on the training data**, then transforms
-      both train and test.
-    - For 'quantile', this is a nonlinear transform that can affect model
-      interpretability; use intentionally.
     """
     X_train = np.asarray(X_train)
     X_test = np.asarray(X_test)
@@ -85,7 +64,6 @@ def scale_train_test(
 
     scaler = _make_scaler(method, quantile_output_distribution=quantile_output_distribution)
     if scaler is None:
-        # No scaling requested
         return X_train.copy(), X_test.copy()
 
     X_train_scaled = scaler.fit_transform(X_train)

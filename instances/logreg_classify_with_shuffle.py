@@ -15,6 +15,7 @@ from utils.parse.data_read import load_mat_variable
 from utils.permutations.shuffle import shuffle_simple_vector
 from utils.pipelines.classification import train_and_score_classifier
 from visualizations.general.plot_decision_regions import plot_decision_regions
+from utils.permutations.rng import RngManager
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -153,21 +154,40 @@ def shuffle_labels_return_scores(
     pca_var: float = 0.95,
     pca_whiten: bool = False,
     metric: str = "accuracy",
-    rng: Union[None, int, np.random.Generator] = None,
+    rng: Union[None, int, np.random.Generator, RngManager] = None,
 ) -> np.ndarray:
     """
     Permutation baseline: shuffle trial labels, refit, and collect scores.
     Uses a fresh clone(model) per shuffle.
+
+    RNG policy:
+    - If rng is an int/None: construct a local RngManager from it.
+    - If rng is a Generator: also construct a local RngManager seeded by drawing a child.
+    - If rng is an RngManager: use it directly to derive per-iteration streams.
     """
     if n_shuffles < 1:
         raise ValueError("n_shuffles must be >= 1")
     # gen = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
 
-    gen = np.random.default_rng(rng)
+        # Normalize to an RngManager
+    if isinstance(rng, RngManager):
+        rngm = rng
+    elif isinstance(rng, np.random.Generator):
+        # derive a stable int seed from the provided generator
+        tmp_seed = int(rng.integers(1 << 32))
+        rngm = RngManager(tmp_seed)
+    else:
+        # rng is int|None
+        rngm = RngManager(None if rng is None else int(rng))
+
+    
     scores = np.empty(n_shuffles, dtype=float)
     for i in range(n_shuffles):
-        y_shuf = shuffle_simple_vector(y, rng=gen)
-        child_for_train = int(gen.integers(1 << 32))
+        lbl_gen = rngm.child_generator(f"shuffle_{i}/labels")
+        pipe_seed = rngm.child_seed(f"shuffle_{i}/pipeline")
+
+        y_shuf = shuffle_simple_vector(y, rng=lbl_gen)
+
         scores[i], _ = train_and_score_classifier(
             clone(model),
             X, y_shuf,
@@ -177,7 +197,7 @@ def shuffle_labels_return_scores(
             pca_n_components=pca_n,
             pca_variance_threshold=pca_var,
             pca_whiten=pca_whiten,
-            rng=child_for_train,
+            rng=pipe_seed,
             metric=metric,
             debug=False,
             return_details=True,
@@ -204,11 +224,11 @@ def run_logreg_decoding(
     solver: str = "lbfgs",
     max_iter: int = 1000,
     metric: str = "accuracy",
-    rng: Union[None, int, np.random.Generator] = None,
+    rng: Union[None, int, np.random.Generator, RngManager] = None,
 ):
     """
-    Load X, y (.mat or .npz) → declare model → fit/score (with optional scaling & PCA) → confusion
-    → shuffle-label baseline.
+    Load X, y → declare model → fit/score (with optional scaling & PCA) → confusion
+    → shuffle-label baseline, with centralized RNG control.
     """
     # 1) Load data
     X, y = _load_dataset(x_path, y_path, npz_path, x_key=x_key, y_key=y_key)
@@ -221,12 +241,21 @@ def run_logreg_decoding(
     if X.shape[0] < 2 * n_classes:
         print("[WARN] Few trials per class; results may be unstable.")
 
-    # 3) Declare model (change freely)
+    # 3) Central RNG manager
+    if isinstance(rng, RngManager):
+        rngm = rng
+    elif isinstance(rng, np.random.Generator):
+        rngm = RngManager(int(rng.integers(1 << 32)))
+    else:
+        rngm = RngManager(None if rng is None else int(rng))
+
+    # 4) Declare model (change freely)
     model = LogisticRegression(
         C=C, penalty=penalty, solver=solver, max_iter=max_iter, multi_class="auto"
     )
 
-    # 4) Real fit/score (+ confusion)
+    # 5) Real fit/score (+ confusion)
+    real_seed = (int(rng) if rng is not None else None)
     real_score, details = train_and_score_classifier(
         model,
         X, y,
@@ -236,16 +265,18 @@ def run_logreg_decoding(
         pca_n_components=pca_n,
         pca_variance_threshold=pca_var,
         pca_whiten=pca_whiten,
-        rng=rng,
+        rng=real_seed,
         metric=metric,
         debug=True,
         return_details=True,
     )
-    # Confusion matrix for the real run
-    _plot_confusion(details["y_test"], details["y_pred"], title=f"Confusion ({metric}={real_score:.3f})")
-    plot_decision_regions(details["X_train"], details["y_train"], classifier=details["model"], resolution = 0.02, title = 'train (space used by the model)')
+    _plot_confusion(details["y_test"], details["y_pred"],
+                    title=f"Confusion ({metric}={real_score:.3f})")
+    plot_decision_regions(details["X_train"], details["y_train"],
+                          classifier=details["model"], resolution=0.02,
+                          title="train (space used by the model)")
 
-    # 5) Shuffle-label baseline
+    # 6) Shuffle-label baseline (independent per-iteration streams)
     shuffled_scores = shuffle_labels_return_scores(
         model,
         X, y,
@@ -257,7 +288,7 @@ def run_logreg_decoding(
         pca_var=pca_var,
         pca_whiten=pca_whiten,
         metric=metric,
-        rng=rng,
+        rng=rngm,  # pass the manager; function derives child streams
     )
 
     print(f"Real {metric}: {real_score:.3f}")
