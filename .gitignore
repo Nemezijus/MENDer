@@ -5,4 +5,5 @@ __pycache__/
 /data/allen_cache/
 /data/allen_vc/
 /data/allen_vc_cache/
+/scripts/
 ridge_shuffle_batch_summary.csv
