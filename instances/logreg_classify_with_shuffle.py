@@ -91,7 +91,7 @@ def run_logreg_decoding(cfg: RunConfig):
 
     splitter   = make_splitter(cfg.split, seed=split_seed)
     scaler     = make_scaler(cfg.scale)
-    features   = make_features(cfg.features, seed=features_seed)
+    features   = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=cfg.eval)
     model_bld  = make_model(cfg.model)
     trainer    = make_trainer()
     predictor  = make_predictor()
@@ -99,6 +99,12 @@ def run_logreg_decoding(cfg: RunConfig):
 
     # 5) Data flow: split → scale → features
     X_train, X_test, y_train, y_test = splitter.split(X, y)
+    print(f"[INFO] Split: train={X_train.shape[0]}, test={X_test.shape[0]} (features={X_train.shape[1]})")
+    import numpy as _np
+    def _counts(arr):
+        u, c = _np.unique(arr, return_counts=True)
+        return dict(zip(u.tolist(), c.tolist()))
+    print(f"[INFO] Split classes: train={_counts(y_train)}, test={_counts(y_test)}")
     X_train, X_test = scaler.fit_transform(X_train, X_test)
     feat_artifact, X_train_fx, X_test_fx = features.fit_transform_train_test(X_train, X_test, y_train)
 
@@ -107,6 +113,17 @@ def run_logreg_decoding(cfg: RunConfig):
     model = trainer.fit(model, X_train_fx, y_train)
     y_pred = predictor.predict(model, X_test_fx)
     real_score = evaluator.score(y_test, y_pred)
+
+    try:
+        from sklearn.feature_selection import SequentialFeatureSelector
+        import numpy as np
+        if isinstance(feat_artifact, SequentialFeatureSelector):
+            support = feat_artifact.get_support()
+            k = int(np.sum(support))
+            p = int(X_train.shape[1])
+            print(f"[INFO] SFS selected {k}/{p} features; test {cfg.eval.metric} = {real_score:.3f}")
+    except Exception:
+        pass  # guard against environments without sklearn feature_selection
 
     # 7) Plots
     _plot_confusion(y_test, y_pred, title=f"Confusion ({cfg.eval.metric}={real_score:.3f})")
@@ -132,9 +149,38 @@ def run_logreg_decoding(cfg: RunConfig):
 
 # ----------------------- CLI -----------------------
 
-
 if __name__ == "__main__":
     import argparse
+
+    # helpers for optional values
+    def parse_optional_int(s: str | None):
+        if s is None:
+            return None
+        s = str(s).strip()
+        if s.lower() in {"none", "null", ""}:
+            return None
+        try:
+            return int(s)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid int or None: {s!r}. Use an integer or the word 'None'."
+            )
+
+    def parse_optional_int_or_auto(s: str | None):
+        if s is None:
+            return "auto"
+        s = str(s).strip()
+        if s.lower() in {"auto"}:
+            return "auto"
+        if s.lower() in {"none", "null", ""}:
+            return "auto"
+        try:
+            return int(s)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid value: {s!r}. Use an integer or 'auto'."
+            )
+
     parser = argparse.ArgumentParser(
         description="Trial-level decoding with label-shuffle baseline (Logistic Regression)."
     )
@@ -154,11 +200,12 @@ if __name__ == "__main__":
     parser.add_argument("--scale", type=str, default="standard",
                         choices=["standard", "robust", "minmax", "maxabs", "quantile", "none"])
 
-    # ---- features (PCA / LDA) ----
-    parser.add_argument("--features", type=str, default="none", choices=["none", "pca", "lda"])
+    # ---- features (PCA / LDA / SFS) ----
+    parser.add_argument("--features", type=str, default="none",
+                        choices=["none", "pca", "lda", "sfs"])
 
     # PCA options
-    parser.add_argument("--pca_n", type=int, default=None,
+    parser.add_argument("--pca_n", type=parse_optional_int, default=None,
                         help="If None, use variance threshold (pca_var).")
     parser.add_argument("--pca_var", type=float, default=0.95,
                         help="Variance threshold for auto n_components when pca_n is None.")
@@ -166,7 +213,7 @@ if __name__ == "__main__":
                         help="Whether to whiten PCA outputs.")
 
     # LDA options
-    parser.add_argument("--lda_n", type=int, default=None,
+    parser.add_argument("--lda_n", type=parse_optional_int, default=None,
                         help="Desired LDA components; if None, use min(n_features, n_classes-1).")
     parser.add_argument("--lda_solver", type=str, default="svd",
                         choices=["svd", "lsqr", "eigen"],
@@ -175,6 +222,17 @@ if __name__ == "__main__":
                         help="None|'auto'|<float>. Only used with solvers 'lsqr' or 'eigen'.")
     parser.add_argument("--lda_tol", type=float, default=1e-4,
                         help="Tolerance for LDA (svd solver).")
+
+    # SFS (Sequential Feature Selection) options
+    parser.add_argument("--sfs_k", type=parse_optional_int_or_auto, default="auto",
+                        help="Number of features to select (int) or 'auto'.")
+    parser.add_argument("--sfs_direction", type=str, default="backward",
+                        choices=["forward", "backward"],
+                        help="'backward' ≈ SBS; 'forward' ≈ SFS.")
+    parser.add_argument("--sfs_cv", type=int, default=5,
+                        help="Number of StratifiedKFold folds during selection.")
+    parser.add_argument("--sfs_n_jobs", type=int, default=None,
+                        help="Parallelism for SFS (e.g., -1 for all cores).")
 
     # ---- model (Logistic Regression) ----
     parser.add_argument("--C", type=float, default=1.0)
@@ -219,7 +277,11 @@ if __name__ == "__main__":
             lda_solver=args.lda_solver,
             lda_shrinkage=lda_shrinkage_val,
             lda_tol=args.lda_tol,
-            # lda_priors left at default None (add a CLI list later if you need it)
+            # SFS
+            sfs_k=args.sfs_k,
+            sfs_direction=args.sfs_direction,
+            sfs_cv=args.sfs_cv,
+            sfs_n_jobs=args.sfs_n_jobs,
         ),
         model=ModelConfig(
             algo="logreg", C=args.C, penalty=args.penalty,

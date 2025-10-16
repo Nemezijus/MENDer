@@ -54,7 +54,7 @@ class LabelShuffleBaseline(BaselineRunner):
             # Fresh pipeline objects for this iteration
             splitter   = make_splitter(self.cfg.split, seed=pipe_seed)
             scaler     = make_scaler(self.cfg.scale)
-            features   = make_features(self.cfg.features, seed=pipe_seed)  # same int as split, as before
+            features   = make_features(self.cfg.features, seed=pipe_seed, model_cfg=self.cfg.model, eval_cfg=self.cfg.eval)
             model_bld  = make_model(self.cfg.model)
             trainer    = make_trainer()
             predictor  = make_predictor()

@@ -3,21 +3,10 @@ from __future__ import annotations
 from typing import Optional, Tuple, Sequence, Union, Literal
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from utils.preprocessing.general.shapes import ensure_xy_aligned as _coerce_xy
 
 
 SolverName = Literal["svd", "lsqr", "eigen"]
-
-
-def _coerce_xy(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    X = np.asarray(X)
-    y = np.asarray(y).ravel()
-    if X.ndim != 2:
-        raise ValueError(f"X must be 2D (n_samples, n_features). Got {X.shape}.")
-    if y.ndim != 1:
-        raise ValueError(f"y must be 1D (n_samples,). Got {y.shape}.")
-    if X.shape[0] != y.shape[0]:
-        raise ValueError(f"X and y length mismatch: {X.shape[0]} vs {y.shape[0]}.")
-    return X, y
 
 
 def _cap_n_components(

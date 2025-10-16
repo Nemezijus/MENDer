@@ -25,20 +25,28 @@ class ScaleConfig:
     method: ScaleName = "standard"
 
 # ---- features ----
-FeatureName = Literal["none", "pca", "lda"]  # later: "pls", etc.
+FeatureName = Literal["none", "pca", "lda", "sfs"]  # later: "pls", etc.
 @dataclass
 class FeatureConfig:
     method: FeatureName = "none"
-    # PCA options
-    pca_n: Optional[int] = None          # None => use variance threshold
+
+    # PCA
+    pca_n: Optional[int] = None
     pca_var: float = 0.95
     pca_whiten: bool = False
-    # LDA options
+
+    # LDA
     lda_n: Optional[int] = None
     lda_solver: Literal["svd", "lsqr", "eigen"] = "svd"
     lda_shrinkage: Optional[Union[float, Literal["auto"]]] = None
     lda_tol: float = 1e-4
     lda_priors: Optional[Sequence[float]] = None
+
+    # SFS
+    sfs_k: Union[int, Literal["auto"]] = "auto"
+    sfs_direction: Literal["forward", "backward"] = "backward"
+    sfs_cv: int = 5
+    sfs_n_jobs: Optional[int] = None
 
 
 # ---- model ----
