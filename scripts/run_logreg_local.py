@@ -18,26 +18,33 @@ from instances.logreg_classify_with_shuffle import run_logreg_decoding
 
 # Example B: MAT pair (comment A out and uncomment this if you prefer)
 DATA = DataConfig(
-    x_path=r"./data/calcium/m67/2025_10_07/data_ensemble_mean.mat",
-    y_path=r"./data/calcium/m67/2025_10_07/labels_simple.mat",
-    npz_path=None, x_key="X", y_key="y",
+    x_path=r"./data/calcium/m67/2025_10_07/data_mean.mat",
+    y_path=r"./data/calcium/m67/2025_10_07/labels.mat",
 )
 
 SPLIT   = SplitConfig(train_frac=0.75, stratified=True)
 SCALE   = ScaleConfig(method="standard")   # "standard","robust","minmax","maxabs","quantile","none"
 
-# Choose one of: method="none" | "pca" | "lda"
+# Choose one of: method="none" | "pca" | "lda" | "sfs"
 FEATURE = FeatureConfig(
-    method="lda",
+    method="sfs",
+
     # PCA knobs (used when method="pca")
-    pca_n=10,            # None => use variance threshold below
+    pca_n=None,            # None => use variance threshold below
     pca_var=0.95,
     pca_whiten=False,
+
     # LDA knobs (used when method="lda")
     lda_n=None,
     lda_solver="svd",   # "svd"|"lsqr"|"eigen"
     lda_shrinkage=None, # None|"auto"|float (lsqr/eigen only)
     lda_tol=1e-4,
+
+    # SFS knobs
+    sfs_k="auto",                  # integer or "auto"
+    sfs_direction="backward",  # "backward" = SBS; "forward" also possible
+    sfs_cv=5,
+    sfs_n_jobs=None,           # or -1 for parallel if environment allows
 )
 
 MODEL   = ModelConfig(
@@ -51,7 +58,7 @@ MODEL   = ModelConfig(
 
 EVAL    = EvalConfig(
     metric="accuracy",   # "accuracy"|"balanced_accuracy"|"f1_macro"
-    n_shuffles=200,
+    n_shuffles=1,
     seed=42,
 )
 # ============================================================================
