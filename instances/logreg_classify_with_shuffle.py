@@ -136,39 +136,72 @@ def run_logreg_decoding(cfg: RunConfig):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
-        description="Trial-level decoding via Logistic Regression with label-shuffle baseline."
+        description="Trial-level decoding with label-shuffle baseline (Logistic Regression)."
     )
 
-    # data
+    # ---- data ----
     parser.add_argument("--x_path", type=str, default=None)
     parser.add_argument("--y_path", type=str, default=None)
     parser.add_argument("--npz_path", type=str, default=None)
     parser.add_argument("--x_key", type=str, default="X")
     parser.add_argument("--y_key", type=str, default="y")
 
-    # eval + split + scale + features
+    # ---- eval + split ----
     parser.add_argument("--n_shuffles", type=int, default=200)
     parser.add_argument("--train_frac", type=float, default=0.8)
+
+    # ---- scaling ----
     parser.add_argument("--scale", type=str, default="standard",
                         choices=["standard", "robust", "minmax", "maxabs", "quantile", "none"])
-    parser.add_argument("--features", type=str, default="none", choices=["none", "pca"])
-    parser.add_argument("--pca_n", type=int, default=None)
-    parser.add_argument("--pca_var", type=float, default=0.95)
-    parser.add_argument("--pca_whiten", action="store_true")
 
-    # model
+    # ---- features (PCA / LDA) ----
+    parser.add_argument("--features", type=str, default="none", choices=["none", "pca", "lda"])
+
+    # PCA options
+    parser.add_argument("--pca_n", type=int, default=None,
+                        help="If None, use variance threshold (pca_var).")
+    parser.add_argument("--pca_var", type=float, default=0.95,
+                        help="Variance threshold for auto n_components when pca_n is None.")
+    parser.add_argument("--pca_whiten", action="store_true",
+                        help="Whether to whiten PCA outputs.")
+
+    # LDA options
+    parser.add_argument("--lda_n", type=int, default=None,
+                        help="Desired LDA components; if None, use min(n_features, n_classes-1).")
+    parser.add_argument("--lda_solver", type=str, default="svd",
+                        choices=["svd", "lsqr", "eigen"],
+                        help="LDA solver. Use 'lsqr' or 'eigen' to enable shrinkage.")
+    parser.add_argument("--lda_shrinkage", type=str, default=None,
+                        help="None|'auto'|<float>. Only used with solvers 'lsqr' or 'eigen'.")
+    parser.add_argument("--lda_tol", type=float, default=1e-4,
+                        help="Tolerance for LDA (svd solver).")
+
+    # ---- model (Logistic Regression) ----
     parser.add_argument("--C", type=float, default=1.0)
     parser.add_argument("--penalty", type=str, default="l2", choices=["l2", "none"])
     parser.add_argument("--solver", type=str, default="lbfgs")
     parser.add_argument("--max_iter", type=int, default=1000)
     parser.add_argument("--class_weight", type=str, default=None, choices=[None, "balanced"])
 
-    # metric + seed
+    # ---- metric + seed ----
     parser.add_argument("--metric", type=str, default="accuracy",
                         choices=["accuracy", "balanced_accuracy", "f1_macro"])
     parser.add_argument("--seed", type=int, default=None)
 
     args = parser.parse_args()
+
+    # Convert lda_shrinkage: None | 'auto' | float
+    lda_shrinkage_val = None
+    if args.lda_shrinkage is not None and str(args.lda_shrinkage).lower() != "none":
+        if str(args.lda_shrinkage).lower() == "auto":
+            lda_shrinkage_val = "auto"
+        else:
+            try:
+                lda_shrinkage_val = float(args.lda_shrinkage)
+            except ValueError:
+                raise SystemExit(
+                    "Invalid --lda_shrinkage. Use 'auto' or a float (e.g., 0.1), or omit for None."
+                )
 
     cfg = RunConfig(
         data=DataConfig(
@@ -179,7 +212,14 @@ if __name__ == "__main__":
         scale=ScaleConfig(method=args.scale),
         features=FeatureConfig(
             method=args.features,
-            pca_n=args.pca_n, pca_var=args.pca_var, pca_whiten=args.pca_whiten
+            # PCA
+            pca_n=args.pca_n, pca_var=args.pca_var, pca_whiten=args.pca_whiten,
+            # LDA
+            lda_n=args.lda_n,
+            lda_solver=args.lda_solver,
+            lda_shrinkage=lda_shrinkage_val,
+            lda_tol=args.lda_tol,
+            # lda_priors left at default None (add a CLI list later if you need it)
         ),
         model=ModelConfig(
             algo="logreg", C=args.C, penalty=args.penalty,

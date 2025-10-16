@@ -1,7 +1,7 @@
 # utils/configs.py
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, Literal
+from typing import Optional, Literal, Union, Sequence
 
 # ---- data I/O ----
 @dataclass
@@ -25,7 +25,7 @@ class ScaleConfig:
     method: ScaleName = "standard"
 
 # ---- features ----
-FeatureName = Literal["none", "pca"]  # later: add "lda", "pls", etc.
+FeatureName = Literal["none", "pca", "lda"]  # later: "pls", etc.
 @dataclass
 class FeatureConfig:
     method: FeatureName = "none"
@@ -33,7 +33,13 @@ class FeatureConfig:
     pca_n: Optional[int] = None          # None => use variance threshold
     pca_var: float = 0.95
     pca_whiten: bool = False
-    # future: lda_n, pls_n, etc.
+    # LDA options
+    lda_n: Optional[int] = None
+    lda_solver: Literal["svd", "lsqr", "eigen"] = "svd"
+    lda_shrinkage: Optional[Union[float, Literal["auto"]]] = None
+    lda_tol: float = 1e-4
+    lda_priors: Optional[Sequence[float]] = None
+
 
 # ---- model ----
 PenaltyName = Literal["l2", "none"]  # later: add "elasticnet"
