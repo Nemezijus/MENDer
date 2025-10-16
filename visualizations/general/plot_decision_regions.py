@@ -200,6 +200,13 @@ def plot_decision_regions(
         plt.tight_layout(rect=[0, 0, 0.92, 1])
         plt.show()
         return
-
     # === Case 3: > 5 features -> skip (assumed no dimensionality reduction) ===
-    print("[INFO] plot_decision_regions: X has > 5 features and no reduction was applied; skipping plots.")
+    if d > max_features_for_pairwise:
+        print("[INFO] plot_decision_regions: X has > 5 features and no reduction was applied; skipping plots.")
+        return
+
+    # === Case 4: < 2 features -> cannot draw decision regions ===
+    if d < 2:
+        print("[INFO] plot_decision_regions: X has < 2 features; cannot draw decision regions.")
+        # optional: fall back to a simple 1D scatter/histogram or do nothing.
+        return
