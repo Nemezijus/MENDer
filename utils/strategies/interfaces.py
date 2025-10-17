@@ -31,6 +31,9 @@ class Scaler(Protocol):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Fit on train, transform both; return (X_train_scaled, X_test_scaled)."""
         ...
+    # expose the configured sklearn transformer so a Pipeline can use it directly
+    def make_transformer(self) -> Any:
+        ...
 
 class FeatureExtractor(Protocol):
     def fit_transform_train_test(
@@ -44,10 +47,16 @@ class FeatureExtractor(Protocol):
         Return (artifact, X_train_fx, X_test_fx), where artifact can be a PCA/LDA object or None.
         """
         ...
+    # expose the configured sklearn transformer so a Pipeline can use it directly
+    def make_transformer(self) -> Any:
+        ...
 
 class ModelBuilder(Protocol):
     def build(self) -> Any:
         """Return a configured, unfitted estimator (e.g., LogisticRegression)."""
+        ...
+    # expose the configured sklearn transformer so a Pipeline can use it directly
+    def make_transformer(self) -> Any:
         ...
 
 class Trainer(Protocol):

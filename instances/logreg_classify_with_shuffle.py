@@ -3,29 +3,26 @@ from __future__ import annotations
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import (
-    confusion_matrix,
-)
+from sklearn.metrics import confusion_matrix
+from sklearn.feature_selection import SequentialFeatureSelector
 
 from visualizations.general.plot_decision_regions import plot_decision_regions
 from utils.permutations.rng import RngManager
-from utils.configs.configs import RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig, ModelConfig, EvalConfig
+from utils.configs.configs import (
+    RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig, ModelConfig, EvalConfig
+)
 
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter
-from utils.factories.scale_factory import make_scaler
-from utils.factories.feature_factory import make_features
-from utils.factories.model_factory import make_model
-from utils.factories.training_factory import make_trainer
-from utils.factories.predict_factory import make_predictor
 from utils.factories.eval_factory import make_evaluator
 from utils.factories.baseline_factory import make_baseline
+from utils.factories.pipeline_factory import make_pipeline, make_preproc_pipeline
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-# ----------------------- Plotting -----------------------
+# ----------------------- Plotting helpers -----------------------
 def _plot_confusion(y_true, y_pred, title="Confusion matrix"):
     cm = confusion_matrix(y_true, y_pred)
     with np.errstate(invalid="ignore"):
@@ -37,19 +34,19 @@ def _plot_confusion(y_true, y_pred, title="Confusion matrix"):
     ax.set_xlabel("Predicted")
     ax.set_ylabel("True")
 
-    # tick labels — keep them readable even if strings
     classes = np.unique(np.concatenate([y_true, y_pred]))
     ax.set_xticks(np.arange(len(classes)))
     ax.set_yticks(np.arange(len(classes)))
     ax.set_xticklabels([str(c)[:18] for c in classes], rotation=45, ha="right")
     ax.set_yticklabels([str(c)[:18] for c in classes])
 
-    # annotate cells
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
             val = cm[i, j]
-            ax.text(j, i, str(val), ha="center", va="center",
-                    color="k" if cm_norm[i, j] > 0.5 else "w", fontsize=12)
+            ax.text(
+                j, i, str(val), ha="center", va="center",
+                color="k" if cm_norm[i, j] > 0.5 else "w", fontsize=12
+            )
 
     plt.tight_layout()
     plt.show()
@@ -66,12 +63,12 @@ def plot_shuffle_results(real_score: float, shuffled_scores: np.ndarray, metric:
     plt.tight_layout()
     plt.show()
 
-# ----------------------- Orchestrator -----------------------
 
+# ----------------------- Orchestrator -----------------------
 def run_logreg_decoding(cfg: RunConfig):
     """
-    Orchestrates: load → sanity → split → scale → features → model → train → predict → score → baseline → plots.
-    Uses strategy/factory adapters so steps are swappable and configs stay small.
+    Orchestrates: load → sanity → split → pipeline.fit → predict/score → baseline → plots.
+    Uses factories for data, split, eval, baseline, and pipeline assembly.
     """
 
     # 1) Load data
@@ -85,56 +82,50 @@ def run_logreg_decoding(cfg: RunConfig):
     # 3) Central RNG
     rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
 
-    # 4) Build strategies for the REAL run
-    split_seed    = rngm.child_seed("real/split")
-    features_seed = rngm.child_seed("real/features")
-
-    splitter   = make_splitter(cfg.split, seed=split_seed)
-    scaler     = make_scaler(cfg.scale)
-    features   = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=cfg.eval)
-    model_bld  = make_model(cfg.model)
-    trainer    = make_trainer()
-    predictor  = make_predictor()
-    evaluator  = make_evaluator(cfg.eval, kind="classification")
-
-    # 5) Data flow: split → scale → features
+    # 4) Split
+    split_seed = rngm.child_seed("real/split")
+    splitter = make_splitter(cfg.split, seed=split_seed)
     X_train, X_test, y_train, y_test = splitter.split(X, y)
     print(f"[INFO] Split: train={X_train.shape[0]}, test={X_test.shape[0]} (features={X_train.shape[1]})")
-    import numpy as _np
-    def _counts(arr):
-        u, c = _np.unique(arr, return_counts=True)
-        return dict(zip(u.tolist(), c.tolist()))
-    print(f"[INFO] Split classes: train={_counts(y_train)}, test={_counts(y_test)}")
-    X_train, X_test = scaler.fit_transform(X_train, X_test)
-    feat_artifact, X_train_fx, X_test_fx = features.fit_transform_train_test(X_train, X_test, y_train)
 
-    # 6) Model: build, train, predict, score
-    model = model_bld.build()
-    model = trainer.fit(model, X_train_fx, y_train)
-    y_pred = predictor.predict(model, X_test_fx)
+    # Optional class counts (keep quiet by default)
+    # import numpy as _np
+    # def _counts(arr):
+    #     u, c = _np.unique(arr, return_counts=True)
+    #     return dict(zip(u.tolist(), c.tolist()))
+    # print(f"[INFO] Split classes: train={_counts(y_train)}, test={_counts(y_test)}")
+
+    # 5) Build + fit pipeline
+    pipeline = make_pipeline(cfg, rngm, stream="real")
+    pipeline.fit(X_train, y_train)
+
+    # 6) Predict + score
+    evaluator = make_evaluator(cfg.eval, kind="classification")
+    y_pred = pipeline.predict(X_test)
     real_score = evaluator.score(y_test, y_pred)
 
-    try:
-        from sklearn.feature_selection import SequentialFeatureSelector
-        import numpy as np
-        if isinstance(feat_artifact, SequentialFeatureSelector):
-            support = feat_artifact.get_support()
-            k = int(np.sum(support))
-            p = int(X_train.shape[1])
-            print(f"[INFO] SFS selected {k}/{p} features; test {cfg.eval.metric} = {real_score:.3f}")
-    except Exception:
-        pass  # guard against environments without sklearn feature_selection
+    # 6.1) If the feature step is SFS, print selection summary
+    feat_step = pipeline.named_steps.get("feat", None)
+    if isinstance(feat_step, SequentialFeatureSelector):
+        support = feat_step.get_support()
+        k = int(support.sum())
+        p = int(X_train.shape[1])
+        print(f"[INFO] SFS selected {k}/{p} features; test {cfg.eval.metric} = {real_score:.3f}")
 
     # 7) Plots
     _plot_confusion(y_test, y_pred, title=f"Confusion ({cfg.eval.metric}={real_score:.3f})")
+
+    # Decision regions in feature space (scale+feat only)
+    preproc = make_preproc_pipeline(cfg, rngm, stream="real")
+    preproc.fit(X_train, y_train)
+    X_train_fx = preproc.transform(X_train)
     plot_decision_regions(
         X_train_fx, y_train,
-        classifier=model,
-        resolution=0.02,
-        title="train (space used by the model)"
+        classifier=pipeline.named_steps["clf"],
+        resolution=0.02
     )
 
-    # 8) Shuffle-label baseline (pluggable)
+    # 8) Shuffle-label baseline
     baseline = make_baseline(cfg, rngm)
     shuffled_scores = baseline.run(X, y)
 
@@ -146,9 +137,7 @@ def run_logreg_decoding(cfg: RunConfig):
     return real_score, shuffled_scores
 
 
-
 # ----------------------- CLI -----------------------
-
 if __name__ == "__main__":
     import argparse
 
@@ -223,7 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--lda_tol", type=float, default=1e-4,
                         help="Tolerance for LDA (svd solver).")
 
-    # SFS (Sequential Feature Selection) options
+    # SFS options
     parser.add_argument("--sfs_k", type=parse_optional_int_or_auto, default="auto",
                         help="Number of features to select (int) or 'auto'.")
     parser.add_argument("--sfs_direction", type=str, default="backward",

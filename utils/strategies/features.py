@@ -1,8 +1,12 @@
-# utils/strategies/features.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple, Any
 import numpy as np
+
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.feature_selection import SequentialFeatureSelector
+from sklearn.model_selection import StratifiedKFold
 
 from utils.configs.configs import FeatureConfig, ModelConfig, EvalConfig
 from utils.strategies.interfaces import FeatureExtractor
@@ -29,13 +33,16 @@ class NoOpFeatures(FeatureExtractor):
         y_train: Optional[np.ndarray] = None,
     ) -> Tuple[Any, np.ndarray, np.ndarray]:
         return None, X_train, X_test
+    
+    def make_transformer(self) -> Any:
+        return "passthrough"
 
 
 @dataclass
 class PCAFeatures(FeatureExtractor):
     """PCA-based feature extractor wrapping the existing helper."""
     cfg: FeatureConfig
-    seed: Optional[int] = None  # int seed (derived earlier via RngManager)
+    seed: Optional[int] = None  # int seed (derived via RngManager)
 
     def fit_transform_train_test(
         self,
@@ -52,6 +59,16 @@ class PCAFeatures(FeatureExtractor):
             random_state=self.seed,  # <- deterministic int or None
         )
         return pca, Xtr_pca, Xte_pca
+    
+    def make_transformer(self) -> Any:
+        # If pca_n is None, use variance threshold; else explicit k
+        ncomp = self.cfg.pca_n if self.cfg.pca_n is not None else self.cfg.pca_var
+        return PCA(
+            n_components=ncomp,
+            whiten=self.cfg.pca_whiten,
+            svd_solver="auto",
+            random_state=None if self.seed is None else int(self.seed),
+        )
 
 @dataclass
 class LDAFeatures(FeatureExtractor):
@@ -79,6 +96,16 @@ class LDAFeatures(FeatureExtractor):
             tol=self.cfg.lda_tol
         )
         return lda, Xtr_lda, Xte_lda
+    
+    def make_transformer(self) -> Any:
+        return LinearDiscriminantAnalysis(
+            n_components=self.cfg.lda_n,
+            solver=self.cfg.lda_solver,
+            shrinkage=self.cfg.lda_shrinkage,
+            priors=None if self.cfg.lda_priors is None else np.asarray(self.cfg.lda_priors, dtype=float),
+            tol=self.cfg.lda_tol,
+            store_covariance=False,
+        )
 
 
 @dataclass
@@ -105,11 +132,8 @@ class SFSFeatures(FeatureExtractor):
         y_train = np.asarray(y_train).ravel()
 
         # Build the estimator used inside SFS to evaluate subsets.
-        # Option A (recommended): use your model factory so selection matches the downstream model
+        # use the model factory so selection matches the downstream model
         sel_model = make_model(self.model_cfg).build()
-
-        # Option B (simple): uncomment to always use vanilla LR during selection
-        # sel_model = LogisticRegression(C=1.0, penalty="l2", solver="lbfgs", max_iter=1000)
 
         selector, Xtr_sel, Xte_sel = sfs_fit_transform_train_test(
             X_train,
@@ -118,10 +142,26 @@ class SFSFeatures(FeatureExtractor):
             estimator=sel_model,
             n_features_to_select=self.cfg.sfs_k,
             direction=self.cfg.sfs_direction,
-            scoring=self.eval_cfg.metric,   # keep consistent with your EvalConfig
+            scoring=self.eval_cfg.metric,
             cv=self.cfg.sfs_cv,
             shuffle=True,
             random_state=self.seed,
             n_jobs=self.cfg.sfs_n_jobs,
         )
         return selector, Xtr_sel, Xte_sel
+    
+    def make_transformer(self) -> Any:
+        sel_model = make_model(self.model_cfg).build()
+        skf = StratifiedKFold(
+            n_splits=int(self.cfg.sfs_cv),
+            shuffle=True,
+            random_state=None if self.seed is None else int(self.seed),
+        )
+        return SequentialFeatureSelector(
+            sel_model,
+            n_features_to_select=self.cfg.sfs_k,
+            direction=self.cfg.sfs_direction,
+            scoring=self.eval_cfg.metric,
+            cv=skf,
+            n_jobs=self.cfg.sfs_n_jobs,
+        )
