@@ -18,7 +18,7 @@ from instances.logreg_classify_with_shuffle import run_logreg_decoding
 
 # Example B: MAT pair (comment A out and uncomment this if you prefer)
 DATA = DataConfig(
-    x_path=r"./data/calcium/m67/2025_10_07/data_mean.mat",
+    x_path=r"./data/calcium/m67/2025_10_07/data_ensemble_mean.mat",
     y_path=r"./data/calcium/m67/2025_10_07/labels.mat",
 )
 
@@ -27,7 +27,7 @@ SCALE   = ScaleConfig(method="standard")   # "standard","robust","minmax","maxab
 
 # Choose one of: method="none" | "pca" | "lda" | "sfs"
 FEATURE = FeatureConfig(
-    method="sfs",
+    method="pca",
 
     # PCA knobs (used when method="pca")
     pca_n=None,            # None => use variance threshold below
@@ -41,8 +41,8 @@ FEATURE = FeatureConfig(
     lda_tol=1e-4,
 
     # SFS knobs
-    sfs_k="auto",                  # integer or "auto"
-    sfs_direction="backward",  # "backward" = SBS; "forward" also possible
+    sfs_k=10,                  # integer or "auto"
+    sfs_direction="forward",  # "backward" = SBS; "forward" also possible
     sfs_cv=5,
     sfs_n_jobs=None,           # or -1 for parallel if environment allows
 )
@@ -58,7 +58,7 @@ MODEL   = ModelConfig(
 
 EVAL    = EvalConfig(
     metric="accuracy",   # "accuracy"|"balanced_accuracy"|"f1_macro"
-    n_shuffles=1,
+    n_shuffles=100,
     seed=42,
 )
 # ============================================================================

@@ -1,6 +1,6 @@
 # utils/strategies/interfaces.py
 from __future__ import annotations
-from typing import Protocol, Tuple, Any, Optional, Literal, Sequence
+from typing import Protocol, Tuple, Any, Optional, Literal, Sequence, Iterator, Union
 
 import numpy as np
 
@@ -19,8 +19,11 @@ class Splitter(Protocol):
         self,
         X: np.ndarray,
         y: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Return X_train, X_test, y_train, y_test."""
+    ) -> Union[
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+        Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]
+    ]:
+        """Return a single (X_train, X_test, y_train, y_test) OR an iterator of such tuples."""
         ...
 
 class Scaler(Protocol):

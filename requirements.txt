@@ -7,3 +7,8 @@ h5py==3.8.0
 joblib==1.2.0
 threadpoolctl==3.1.0
 allensdk>=2.16,<3
+
+fastapi==0.115.*
+uvicorn[standard]==0.30.*
+pydantic==2.7.*
+python-multipart==0.0.9

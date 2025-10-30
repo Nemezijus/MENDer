@@ -5,6 +5,8 @@ import numpy as np
 
 from utils.configs.configs import SplitConfig
 from utils.preprocessing.general.trial_split import split as split_trials
+from utils.preprocessing.general.cv_split import generate_folds
+from .interfaces import Splitter
 
 @dataclass
 class StratifiedSplitter:
@@ -20,4 +22,18 @@ class StratifiedSplitter:
             train_frac=self.cfg.train_frac,
             custom=self.use_custom,
             rng=self.seed,
+        )
+    
+@dataclass
+class KFoldSplitter(Splitter):
+    cfg: SplitConfig
+    seed: Optional[int] = None
+
+    def split(self, X, y):
+        return generate_folds(
+            X, y,
+            n_splits=self.cfg.n_splits,
+            stratified=self.cfg.stratified,
+            shuffle=self.cfg.shuffle,
+            random_state=(self.seed if self.cfg.shuffle else None),  # <-- here
         )

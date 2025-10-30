@@ -17,6 +17,10 @@ class DataConfig:
 class SplitConfig:
     train_frac: float = 0.8
     stratified: bool = True
+    # ---- for cross-validation ----
+    mode: Literal["holdout", "kfold"] = "holdout"   # new
+    n_splits: int = 5
+    shuffle: bool = True
 
 # ---- scaling ----
 ScaleName = Literal["standard", "robust", "minmax", "maxabs", "quantile", "none"]

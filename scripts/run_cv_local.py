@@ -1,0 +1,78 @@
+# scripts/run_cv_local.py
+from __future__ import annotations
+
+from utils.configs.configs import (
+    RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig,
+    ModelConfig, EvalConfig
+)
+from instances.cv_classify_with_shuffle import run_cv_decoding
+
+# ==== EDIT THESE AS YOU LIKE ==================================================
+# Example A: NPZ bundle
+# DATA = DataConfig(
+#     npz_path=r"./data/allen_vc/vc512326618_dg_orientation_mean.npz",
+#     x_key="X", y_key="y", x_path=None, y_path=None,
+# )
+
+# Example B: MAT pair
+DATA = DataConfig(
+    x_path=r"./data/calcium/m67/2025_10_07/data_ensemble_mean.mat",
+    y_path=r"./data/calcium/m67/2025_10_07/labels.mat",
+)
+
+SPLIT = SplitConfig(
+    mode="kfold",         # <- important
+    n_splits=10,
+    stratified=True,
+    shuffle=True,         # set False for deterministic, seed ignored by sklearn in that case
+    train_frac=0.75,      # unused in kfold, kept for compatibility with your dataclass
+)
+
+SCALE = ScaleConfig(method="standard")
+
+FEATURE = FeatureConfig(
+    method="none",
+    pca_n=None,
+    pca_var=0.95,
+    pca_whiten=False,
+
+    # LDA controls (ignored unless method="lda")
+    lda_n=None,
+    lda_solver="svd",
+    lda_shrinkage=None,
+    lda_tol=1e-4,
+
+    # SFS controls (ignored unless method="sfs")
+    sfs_k="auto",
+    sfs_direction="backward",
+    sfs_cv=5,
+    sfs_n_jobs=None,
+)
+
+MODEL = ModelConfig(
+    algo="logreg",
+    C=1.0,
+    penalty="l2",
+    solver="lbfgs",
+    max_iter=1000,
+    class_weight=None,
+)
+
+EVAL = EvalConfig(
+    metric="accuracy",
+    n_shuffles=200,   # number of label permutations; set 0 to skip baseline
+    seed=42,
+)
+# ============================================================================
+
+
+def main():
+    cfg = RunConfig(
+        data=DATA, split=SPLIT, scale=SCALE,
+        features=FEATURE, model=MODEL, eval=EVAL,
+    )
+    run_cv_decoding(cfg)
+
+
+if __name__ == "__main__":
+    main()
