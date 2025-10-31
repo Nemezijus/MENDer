@@ -1,5 +1,6 @@
 from typing import Optional, Literal, List, Dict, Any, Union
 from pydantic import BaseModel, Field
+from .shared import FeaturesModel
 
 # These should mirror what you already expose in configs
 
@@ -9,23 +10,6 @@ class ScaleTrain(BaseModel):
     method: ScaleName = "standard"
 
 FeatureName = Literal["none", "pca", "lda", "sfs"]
-
-class FeatureTrain(BaseModel):
-    method: FeatureName = "none"
-    # PCA
-    pca_n: Optional[int] = None
-    pca_var: float = 0.95
-    pca_whiten: bool = False
-    # LDA
-    lda_n: Optional[int] = None
-    lda_solver: Literal["svd", "lsqr", "eigen"] = "svd"
-    lda_shrinkage: Optional[Union[float, Literal["auto"]]] = None
-    lda_tol: float = 1e-4
-    # SFS
-    sfs_k: Union[int, Literal["auto"]] = "auto"
-    sfs_direction: Literal["forward", "backward"] = "backward"
-    sfs_cv: int = 5
-    sfs_n_jobs: Optional[int] = None
 
 PenaltyName = Literal["l2", "none"]
 
@@ -60,7 +44,7 @@ class TrainRequest(BaseModel):
     data: DataSpec
     split: SplitTrain
     scale: ScaleTrain
-    features: FeatureTrain
+    features: FeaturesModel
     model: ModelTrain
     eval: EvalTrain
 

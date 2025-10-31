@@ -7,10 +7,18 @@ import {
 import { useDataCtx } from '../state/DataContext.jsx';
 import { runTrainRequest } from '../api/train';
 import ConfusionTable from './ConfusionTable.jsx';
+import FeatureCard from './FeatureCard.jsx';
+import { useFeatureCtx } from '../state/FeatureContext.jsx';
 
 export default function TrainPanel() {
   // Shared data (from sidebar)
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
+  const {
+    method,
+    pca_n, pca_var, pca_whiten,
+    lda_n, lda_solver, lda_shrinkage, lda_tol,
+    sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
+  } = useFeatureCtx();
 
   // Hold-out split + pipeline params (same as before)
   const [trainFrac, setTrainFrac] = useState(0.75);
@@ -20,7 +28,6 @@ export default function TrainPanel() {
   const [seed, setSeed] = useState(42);
 
   const [scaleMethod, setScaleMethod] = useState('standard');
-  const [featureMethod, setFeatureMethod] = useState('pca');
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -44,10 +51,21 @@ export default function TrainPanel() {
         split: { mode: 'holdout', train_frac: trainFrac, stratified, shuffle },
         scale: { method: scaleMethod },
         features: {
-          method: featureMethod,
-          pca_n: null, pca_var: 0.95, pca_whiten: false,
-          lda_n: null, lda_solver: 'svd', lda_shrinkage: null, lda_tol: 1e-4,
-          sfs_k: 'auto', sfs_direction: 'backward', sfs_cv: 5, sfs_n_jobs: null,
+          method,
+          // PCA
+          pca_n,
+          pca_var,
+          pca_whiten,
+          // LDA
+          lda_n,
+          lda_solver,
+          lda_shrinkage,
+          lda_tol,
+          // SFS
+          sfs_k,
+          sfs_direction,
+          sfs_cv,
+          sfs_n_jobs,
         },
         model: { algo: 'logreg', C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null },
         eval: { metric, seed: seed === '' ? null : parseInt(seed, 10) },
@@ -108,17 +126,7 @@ export default function TrainPanel() {
                 value={scaleMethod}
                 onChange={setScaleMethod}
               />
-              <Select
-                label="Feature method"
-                data={[
-                  { value: 'none', label: 'none' },
-                  { value: 'pca', label: 'pca' },
-                  { value: 'lda', label: 'lda' },
-                  { value: 'sfs', label: 'sfs' },
-                ]}
-                value={featureMethod}
-                onChange={setFeatureMethod}
-              />
+              <FeatureCard title="Features" />
             </Stack>
           </Box>
         </Stack>

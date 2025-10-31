@@ -98,11 +98,15 @@ class LDAFeatures(FeatureExtractor):
         return lda, Xtr_lda, Xte_lda
     
     def make_transformer(self) -> Any:
+        # compute priors once, tolerate missing attribute
+        priors_val = getattr(self.cfg, "lda_priors", None)
+        priors = None if priors_val is None else np.asarray(priors_val, dtype=float)
+
         return LinearDiscriminantAnalysis(
             n_components=self.cfg.lda_n,
             solver=self.cfg.lda_solver,
-            shrinkage=self.cfg.lda_shrinkage,
-            priors=None if self.cfg.lda_priors is None else np.asarray(self.cfg.lda_priors, dtype=float),
+            shrinkage=self.cfg.lda_shrinkage,   # ok (float or "auto" for lsqr/eigen)
+            priors=priors,                      # <-- pass computed priors
             tol=self.cfg.lda_tol,
             store_covariance=False,
         )

@@ -1,6 +1,7 @@
 # backend/app/models/v1/cv_models.py
 from pydantic import BaseModel
 from typing import Optional, List, Literal
+from .shared import FeaturesModel
 
 # Reuse the same shapes you used for TrainRequest to avoid duplication,
 # only Split is different for CV.
@@ -19,20 +20,6 @@ class SplitCVModel(BaseModel):
 
 class ScaleModel(BaseModel):
     method: Literal["standard","robust","minmax","maxabs","quantile","none"] = "standard"
-
-class FeaturesModel(BaseModel):
-    method: Literal["none","pca","lda","sfs"] = "none"
-    pca_n: Optional[int] = None
-    pca_var: Optional[float] = 0.95
-    pca_whiten: bool = False
-    lda_n: Optional[int] = None
-    lda_solver: Literal["svd","lsqr","eigen"] = "svd"
-    lda_shrinkage: Optional[float] = None
-    lda_tol: float = 1e-4
-    sfs_k: Optional[str] = "auto"
-    sfs_direction: Literal["forward","backward"] = "backward"
-    sfs_cv: int = 5
-    sfs_n_jobs: Optional[int] = None
 
 class ModelModel(BaseModel):
     algo: Literal["logreg"] = "logreg"

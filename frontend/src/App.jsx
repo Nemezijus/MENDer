@@ -2,6 +2,7 @@
 import React from 'react';
 import { Container, Grid, Tabs } from '@mantine/core';
 import { DataProvider } from './state/DataContext.jsx';
+import { FeatureProvider } from './state/FeatureContext.jsx';
 import DataSidebar from './components/DataSidebar.jsx';
 import TrainPanel from './components/TrainPanel.jsx';
 import CrossValPanel from './components/CrossValPanel.jsx';
@@ -30,6 +31,7 @@ function TabsWithGuard() {
 export default function App() {
   return (
     <DataProvider>
+      <FeatureProvider>
       <Container size="xl" my="lg">
         <Grid gutter="lg">
           <Grid.Col span={{ base: 12, md: 4, lg: 3 }}>
@@ -40,6 +42,7 @@ export default function App() {
           </Grid.Col>
         </Grid>
       </Container>
+      </FeatureProvider>
     </DataProvider>
   );
 }
