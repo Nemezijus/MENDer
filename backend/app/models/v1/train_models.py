@@ -1,6 +1,6 @@
 from typing import Optional, Literal, List, Dict, Any, Union
 from pydantic import BaseModel, Field
-from .shared import FeaturesModel
+from .shared import FeaturesModel, ModelModel
 
 # These should mirror what you already expose in configs
 
@@ -8,18 +8,6 @@ ScaleName = Literal["standard", "robust", "minmax", "maxabs", "quantile", "none"
 
 class ScaleTrain(BaseModel):
     method: ScaleName = "standard"
-
-FeatureName = Literal["none", "pca", "lda", "sfs"]
-
-PenaltyName = Literal["l2", "none"]
-
-class ModelTrain(BaseModel):
-    algo: Literal["logreg"] = "logreg"
-    C: float = 1.0
-    penalty: PenaltyName = "l2"
-    solver: str = "lbfgs"
-    max_iter: int = 1000
-    class_weight: Optional[Literal["balanced"]] = None
 
 MetricName = Literal["accuracy", "balanced_accuracy", "f1_macro"]
 
@@ -45,7 +33,7 @@ class TrainRequest(BaseModel):
     split: SplitTrain
     scale: ScaleTrain
     features: FeaturesModel
-    model: ModelTrain
+    model: ModelModel
     eval: EvalTrain
 
 class ConfusionMatrix(BaseModel):
