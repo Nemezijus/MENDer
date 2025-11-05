@@ -1,0 +1,60 @@
+services:
+  backend:
+    image: mender-backend:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: mender-backend
+    env_file:
+      - ../.env
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      UVICORN_HOST: 0.0.0.0
+      UVICORN_PORT: 8000
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+      # OPTIONAL: io_adapter uses this if present; defaults to /data anyway
+      DATA_ROOT: /data
+      UPLOAD_DIR: /uploads
+    volumes:
+      # Read-only mount with any preexisting datasets
+      - ${DATA_HOST_DIR:-../data}:/data:ro
+      # Persist artifacts (models/reports) between runs
+      - mender_artifacts:/app/backend/app/artifacts
+      # NEW: writable uploads dir inside /data
+      - mender_uploads:/uploads
+    ports:
+      - "${HOST_PORT_BACKEND:-8000}:8000"
+    networks: [mender]
+    # NEW: healthcheck so frontend waits
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python - <<'PY'\nimport urllib.request,sys\ntry:\n  r=urllib.request.urlopen('http://localhost:8000/healthz',timeout=3)\n  sys.exit(0 if r.status==200 else 1)\nexcept Exception:\n  sys.exit(1)\nPY"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    image: mender-frontend:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        BACKEND_INTERNAL_URL: http://backend:8000
+    container_name: mender-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${HOST_PORT_FRONTEND:-8080}:80"
+    networks: [mender]
+
+volumes:
+  mender_artifacts:
+  mender_uploads:
+
+networks:
+  mender:
+    driver: bridge

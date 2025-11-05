@@ -31,7 +31,7 @@ class FeaturesModel(BaseModel):
     sfs_n_jobs: Optional[int] = None
 
 class ModelModel(BaseModel):
-    algo: Literal["logreg", "svm", "tree", "forest"] = "logreg"
+    algo: Literal["logreg", "svm", "tree", "forest", "knn"] = "logreg"
 
     # Logistic Regression
     C: float = 1.0
@@ -85,3 +85,12 @@ class ModelModel(BaseModel):
     rf_class_weight: Optional[Union[Literal["balanced", "balanced_subsample"], Dict[str, float]]] = None
     rf_ccp_alpha: float = 0.0
     rf_warm_start: bool = False
+
+    # KNeighborsClassifier
+    knn_n_neighbors: int = 5
+    knn_weights: Literal["uniform", "distance"] = "uniform"
+    knn_algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
+    knn_leaf_size: int = 30
+    knn_p: int = 2
+    knn_metric: str = "minkowski"
+    knn_n_jobs: Optional[int] = None

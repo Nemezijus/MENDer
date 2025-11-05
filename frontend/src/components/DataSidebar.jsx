@@ -1,8 +1,9 @@
 // src/components/DataSidebar.jsx
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, Stack, Text, TextInput, Button, Divider, Alert, Group, Badge, FileInput } from '@mantine/core';
 import { useDataCtx } from '../state/DataContext.jsx';
-import { inspectData, uploadData } from '../api/data';
+import { inspectData } from '../api/data';
+import { uploadFile } from '../api/files'; // NEW
 
 export default function DataSidebar() {
   const {
@@ -18,7 +19,7 @@ export default function DataSidebar() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // file inputs
+  // local file selections for upload
   const [xLocalFile, setXLocalFile] = useState(null);
   const [yLocalFile, setYLocalFile] = useState(null);
 
@@ -44,42 +45,53 @@ export default function DataSidebar() {
     }
   }
 
-async function handleUpload() {
-  setErr(null);
-  setLoading(true);
-  try {
-    const form = new FormData();
-    if (xLocalFile) form.append('x_file', xLocalFile);
-    if (yLocalFile) form.append('y_file', yLocalFile);
+  async function handleUploadAndInspect() {
+    setErr(null);
+    setLoading(true);
+    try {
+      // Upload X if provided
+      let newXPath = xPath;
+      if (xLocalFile) {
+        const up = await uploadFile(xLocalFile);  // { path, original_name }
+        newXPath = up.path;
+        setXPath(newXPath);
+        setNPZPath(null); // if we upload X/Y separately, clear npz
+      }
 
-    const data = await uploadData(form);
-    const saved = data?.saved || {};
+      // Upload y if provided
+      let newYPath = yPath;
+      if (yLocalFile) {
+        const up = await uploadFile(yLocalFile);
+        newYPath = up.path;
+        setYPath(newYPath);
+        setNPZPath(null);
+      }
 
-    // update paths/keys from server
-    setXPath(saved.x_path || '');
-    setYPath(saved.y_path || '');
-    setNPZPath(saved.npz_path || null);
-    setXKey(saved.x_key || 'X');
-    setYKey(saved.y_key || 'y');
+      // Build inspect payload from whatever we have now
+      const inspectPayload = {
+        x_path: npzPath ? null : newXPath,
+        y_path: npzPath ? null : newYPath,
+        npz_path: npzPath || null,
+        x_key: xKey || 'X',
+        y_key: yKey || 'y',
+      };
 
-    // now immediately inspect using those values
-    const inspectPayload = {
-      x_path: saved.npz_path ? null : (saved.x_path || ''),
-      y_path: saved.npz_path ? null : (saved.y_path || ''),
-      npz_path: saved.npz_path || null,
-      x_key: saved.x_key || 'X',
-      y_key: saved.y_key || 'y',
-    };
-    const report = await inspectData(inspectPayload);
-    setInspectReport(report);
-  } catch (e) {
-    const msg = e?.response?.data?.detail || e.message || String(e);
+      const report = await inspectData(inspectPayload);
+      setInspectReport(report);
+    } catch (e) {
+  const status = e?.response?.status;
+  const msg = e?.response?.data?.detail || e.message || String(e);
+  if (status === 404 && /files\/upload/.test(e?.config?.url || '')) {
+    // Upload router not found — tell the user they can use manual paths in dev
+    setErr("Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.");
+  } else {
     setErr(msg);
-    setInspectReport(null);
-  } finally {
-    setLoading(false);
   }
-}
+      setInspectReport(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <Stack gap="md" w={320}>
@@ -90,9 +102,9 @@ async function handleUpload() {
             {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
           </Group>
 
-          {/* Local filesystem paths (defaults kept) */}
-          <TextInput label="X path (.mat or .npz)" value={xPath} onChange={(e) => setXPath(e.currentTarget.value)} disabled={!!npzPath} />
-          <TextInput label="y path (.mat or .npz)" value={yPath} onChange={(e) => setYPath(e.currentTarget.value)} disabled={!!npzPath} />
+          {/* Manual container paths (if not uploading) */}
+          <TextInput label="X path (.mat / .npz)" value={xPath} onChange={(e) => setXPath(e.currentTarget.value)} disabled={!!npzPath} />
+          <TextInput label="y path (.mat / .npz)" value={yPath} onChange={(e) => setYPath(e.currentTarget.value)} disabled={!!npzPath} />
           <TextInput label="npz path (X,y)" value={npzPath || ''} onChange={(e) => setNPZPath(e.currentTarget.value || null)} />
 
           <Group grow>
@@ -107,10 +119,10 @@ async function handleUpload() {
           <Divider my="xs" label="or upload files" labelPosition="center" />
 
           {/* Upload area */}
-          <FileInput label="Upload X (.mat or .npz)" placeholder="Pick file (optional)" value={xLocalFile} onChange={setXLocalFile} clearable />
-          <FileInput label="Upload y (.mat or .npz)" placeholder="Pick file (optional)" value={yLocalFile} onChange={setYLocalFile} clearable />
+          <FileInput label="Upload X (.mat / .npz / .npy)" placeholder="Pick file (optional)" value={xLocalFile} onChange={setXLocalFile} accept=".mat,.npz,.npy" clearable />
+          <FileInput label="Upload y (.mat / .npz / .npy)" placeholder="Pick file (optional)" value={yLocalFile} onChange={setYLocalFile} accept=".mat,.npz,.npy" clearable />
           <Group gap="xs">
-            <Button size="xs" variant="light" onClick={handleUpload} loading={loading}>Upload & Inspect</Button>
+            <Button size="xs" variant="light" onClick={handleUploadAndInspect} loading={loading}>Upload & Inspect</Button>
           </Group>
 
           {err && (

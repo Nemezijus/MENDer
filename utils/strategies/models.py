@@ -7,6 +7,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 from utils.configs.configs import ModelConfig
 from utils.strategies.interfaces import ModelBuilder
@@ -117,6 +118,22 @@ class RandomForestBuilder(ModelBuilder):
             class_weight=self.cfg.rf_class_weight,
             ccp_alpha=self.cfg.rf_ccp_alpha,
             warm_start=self.cfg.rf_warm_start,
+        )
+    def build(self) -> Any:
+        return self.make_estimator()
+
+@dataclass
+class KNNBuilder(ModelBuilder):
+    cfg: ModelConfig
+    def make_estimator(self) -> Any:
+        return KNeighborsClassifier(
+            n_neighbors=self.cfg.knn_n_neighbors,
+            weights=self.cfg.knn_weights,
+            algorithm=self.cfg.knn_algorithm,
+            leaf_size=self.cfg.knn_leaf_size,
+            p=self.cfg.knn_p,
+            metric=self.cfg.knn_metric,
+            n_jobs=self.cfg.knn_n_jobs,
         )
     def build(self) -> Any:
         return self.make_estimator()

@@ -1,28 +1,20 @@
-// src/App.jsx
-import React from 'react';
 import { Container, Grid, Tabs } from '@mantine/core';
 import { DataProvider } from './state/DataContext.jsx';
 import { FeatureProvider } from './state/FeatureContext.jsx';
 import DataSidebar from './components/DataSidebar.jsx';
-import TrainPanel from './components/TrainPanel.jsx';
-import CrossValPanel from './components/CrossValPanel.jsx';
 import { useDataCtx } from './state/DataContext.jsx';
+import RunModelPanel from './components/RunModelPanel.jsx';
 
 function TabsWithGuard() {
   const { dataReady } = useDataCtx();
   return (
     <Tabs defaultValue="holdout" variant="outline">
       <Tabs.List>
-        <Tabs.Tab value="holdout" disabled={!dataReady}>Hold-out</Tabs.Tab>
-        <Tabs.Tab value="cv" disabled={!dataReady}>Cross-Validation</Tabs.Tab>
+        <Tabs.Tab value="runModel" disabled={!dataReady}>Train a model</Tabs.Tab>
       </Tabs.List>
 
-      <Tabs.Panel value="holdout" pt="md">
-        <TrainPanel />
-      </Tabs.Panel>
-
-      <Tabs.Panel value="cv" pt="md">
-        <CrossValPanel />
+      <Tabs.Panel value="runModel" pt="md">
+        <RunModelPanel />
       </Tabs.Panel>
     </Tabs>
   );

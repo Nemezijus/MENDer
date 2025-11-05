@@ -1,0 +1,33 @@
+# ── Backend image: FastAPI + Python deps (matches reqs: Py 3.10) ────────────
+FROM python:3.10-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=on
+
+WORKDIR /app
+
+# Minimal native runtime deps (OpenMP for scikit-learn wheels)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps from repo root (your requirements.txt)
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend and business-logic packages the backend imports
+COPY backend ./backend
+COPY utils ./utils
+COPY instances ./instances
+COPY scripts ./scripts
+# Add additional COPY lines if backend imports other top-level dirs
+
+# Ensure Python can import from repo root
+ENV PYTHONPATH=/app
+
+# Artifacts directory (persisted via compose volume)
+RUN mkdir -p /app/backend/app/artifacts
+
+EXPOSE 8000
+CMD ["sh", "-c", "uvicorn backend.app.main:app --host ${UVICORN_HOST:-0.0.0.0} --port ${UVICORN_PORT:-8000} --workers ${UVICORN_WORKERS:-2}"]

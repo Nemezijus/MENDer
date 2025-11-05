@@ -1,0 +1,29 @@
+# Node
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/.cache
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.egg-info
+.eggs
+
+# Data & big local assets (we mount /data at runtime)
+data
+*.mat
+*.npz
+*.npy
+
+# VCS / OS / build
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+
+# Next / other
+.next

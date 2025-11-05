@@ -7,3 +7,8 @@ __pycache__/
 /data/allen_vc_cache/
 ridge_shuffle_batch_summary.csv
 tree.txt
+
+/uploads/
+.env
+.env*
+/frontend/.vite/

@@ -1,7 +1,7 @@
 # utils/configs.py
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, Literal, Union, Sequence
+from typing import Optional, Literal, Union, Sequence, Dict
 
 # ---- data I/O ----
 @dataclass
@@ -62,14 +62,16 @@ MaxFeaturesName = Literal["sqrt", "log2"]  # None means "all features"
 
 @dataclass
 class ModelConfig:
-    algo: Literal["logreg", "svm"] = "logreg"  # future: "lda", "ridge", etc.
+    algo: Literal["logreg", "svm", "tree", "forest", "knn"] = "logreg"
+
+    # Logistic Regression
     C: float = 1.0
     penalty: PenaltyName = "l2"
     solver: str = "lbfgs"
     max_iter: int = 1000
     class_weight: Optional[Literal["balanced"]] = None
-    l1_ratio: Optional[float] = None
-    
+    l1_ratio: Optional[float] = None  # only for elasticnet
+
     # --- SVM (SVC) ---
     svm_C: float = 1.0
     svm_kernel: Literal["linear", "poly", "rbf", "sigmoid"] = "rbf"
@@ -92,7 +94,7 @@ class ModelConfig:
     tree_min_samples_split: Union[int, float] = 2
     tree_min_samples_leaf: Union[int, float] = 1
     tree_min_weight_fraction_leaf: float = 0.0
-    tree_max_features: Optional[Union[int, float, MaxFeaturesName]] = None  # None|int|float|'sqrt'|'log2'
+    tree_max_features: Optional[Union[int, float, MaxFeaturesName]] = None
     tree_max_leaf_nodes: Optional[int] = None
     tree_min_impurity_decrease: float = 0.0
     tree_class_weight: Optional[Union[Literal["balanced"], Dict[str, float]]] = None
@@ -114,6 +116,15 @@ class ModelConfig:
     rf_class_weight: Optional[Union[Literal["balanced", "balanced_subsample"], Dict[str, float]]] = None
     rf_ccp_alpha: float = 0.0
     rf_warm_start: bool = False
+
+    # --- KNeighborsClassifier ---
+    knn_n_neighbors: int = 5
+    knn_weights: Literal["uniform", "distance"] = "uniform"
+    knn_algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
+    knn_leaf_size: int = 30
+    knn_p: int = 2  # 1=manhattan, 2=euclidean
+    knn_metric: str = "minkowski"  # can be 'minkowski','euclidean','manhattan', etc.
+    knn_n_jobs: Optional[int] = None
 
 # ---- evaluation ----
 MetricName = Literal["accuracy", "balanced_accuracy", "f1_macro"]

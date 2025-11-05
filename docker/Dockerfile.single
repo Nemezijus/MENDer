@@ -1,0 +1,41 @@
+# ── Build frontend ───────────────────────────────────────────────────────────
+FROM node:20-alpine AS fe-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci --no-audit --fund=false
+COPY frontend ./
+RUN npm run build
+
+# ── Backend runtime (Python 3.10 to match your pinned deps) ─────────────────
+FROM python:3.10-slim AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    DATA_ROOT=/data \
+    UPLOAD_DIR=/uploads \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# minimal native runtime (OpenMP for sklearn wheels)
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Python deps from repo root
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend + shared Python code
+COPY backend ./backend
+COPY utils ./utils
+COPY instances ./instances
+COPY scripts ./scripts
+
+# Copy built frontend into a folder the app can serve
+COPY --from=fe-build /app/frontend/dist /app/frontend_dist
+
+# Make uploads dir
+RUN mkdir -p /uploads /app/backend/app/artifacts
+
+EXPOSE 8000
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
