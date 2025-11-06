@@ -4,17 +4,22 @@ import { FeatureProvider } from './state/FeatureContext.jsx';
 import DataSidebar from './components/DataSidebar.jsx';
 import { useDataCtx } from './state/DataContext.jsx';
 import RunModelPanel from './components/RunModelPanel.jsx';
+import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 
 function TabsWithGuard() {
   const { dataReady } = useDataCtx();
   return (
-    <Tabs defaultValue="holdout" variant="outline">
+    <Tabs defaultValue="runModel" variant="outline">
       <Tabs.List>
         <Tabs.Tab value="runModel" disabled={!dataReady}>Train a model</Tabs.Tab>
+        <Tabs.Tab value="learningCurve" disabled={!dataReady}>Learning Curve</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="runModel" pt="md">
         <RunModelPanel />
+      </Tabs.Panel>
+      <Tabs.Panel value="learningCurve" pt="md">
+        <LearningCurvePanel />
       </Tabs.Panel>
     </Tabs>
   );
