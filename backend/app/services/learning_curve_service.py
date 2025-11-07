@@ -1,5 +1,6 @@
 # backend/app/services/learning_curve_service.py
 from typing import Dict, Any
+import math
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, learning_curve
 
@@ -43,7 +44,7 @@ def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
         train_sizes = np.array(req.train_sizes)
     else:
         train_sizes = np.linspace(0.1, 1.0, req.n_steps)
-
+    
     # 5) sklearn.learning_curve
     sizes_abs, train_scores, val_scores = learning_curve(
         estimator=pipe,
@@ -63,10 +64,20 @@ def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
     val_mean   = np.mean(val_scores, axis=1).tolist()
     val_std    = np.std(val_scores, axis=1).tolist()
 
+    def _sanitize_floats(lst):
+        out = []
+        for v in lst:
+            try:
+                fv = float(v)
+                out.append(fv if math.isfinite(fv) else None)
+            except Exception:
+                out.append(None)
+        return out
+
     return LearningCurveResponse(
         train_sizes=sizes_abs.tolist(),
-        train_scores_mean=train_mean,
-        train_scores_std=train_std,
-        val_scores_mean=val_mean,
-        val_scores_std=val_std,
+        train_scores_mean=_sanitize_floats(train_mean),
+        train_scores_std=_sanitize_floats(train_std),
+        val_scores_mean=_sanitize_floats(val_mean),
+        val_scores_std=_sanitize_floats(val_std),
     )

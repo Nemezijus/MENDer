@@ -13,7 +13,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api/v1',   // same for dev & prod
-  timeout: 20000,
+  timeout: 200000,
 });
 
 export default api;

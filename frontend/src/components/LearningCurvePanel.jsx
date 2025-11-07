@@ -510,7 +510,7 @@ const axisColor = isDark ? theme.colors.dark[2] : '#222';
                     linecolor: axisColor,
                     mirror: true,
                     automargin: true,
-                    range: [0, 1],
+                    range: [0, 1.1],
                     },
                     legend: { orientation: 'h', x: 0, y: 1.12, font: { color: textColor } },
                     margin: { l: 70, r: 20, t: 60, b: 80 },

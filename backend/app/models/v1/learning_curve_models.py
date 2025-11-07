@@ -25,8 +25,8 @@ class LearningCurveRequest(BaseModel):
     n_jobs: int = 1                  # passed to sklearn.learning_curve
 
 class LearningCurveResponse(BaseModel):
-    train_sizes: List[int]           # absolute sample counts that sklearn returns
-    train_scores_mean: List[float]
-    train_scores_std: List[float]
-    val_scores_mean: List[float]
-    val_scores_std: List[float]
+    train_sizes: List[Optional[int]]
+    train_scores_mean: List[Optional[float]]
+    train_scores_std: List[Optional[float]]
+    val_scores_mean: List[Optional[float]]
+    val_scores_std: List[Optional[float]]

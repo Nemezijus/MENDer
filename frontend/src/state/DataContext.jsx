@@ -1,12 +1,12 @@
 // src/state/DataContext.jsx
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
   // Shared config used by all tabs
-  const [xPath, setXPath] = useState('data/calcium/m1140/data_ensemble_mean.mat');
-  const [yPath, setYPath] = useState('data/calcium/m1140/labels.mat');
+  const [xPath, setXPath] = useState('data/classical/wine/wine_features.mat');
+  const [yPath, setYPath] = useState('data/classical/wine/wine_labels.mat');
   const [npzPath, setNPZPath] = useState(null);
   const [xKey, setXKey] = useState('X');
   const [yKey, setYKey] = useState('y');
