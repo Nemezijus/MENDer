@@ -5,7 +5,7 @@ const FeatureContext = createContext(null);
 
 export function FeatureProvider({ children }) {
   // default to PCA 0.95 like your examples
-  const [method, setMethod] = useState('pca'); // 'none' | 'pca' | 'lda' | 'sfs'
+  const [method, setMethod] = useState('none'); // 'none' | 'pca' | 'lda' | 'sfs'
 
   // PCA
   const [pca_n, setPcaN] = useState(null);       // null or number

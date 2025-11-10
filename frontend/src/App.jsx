@@ -1,8 +1,7 @@
 import { Container, Grid, Tabs } from '@mantine/core';
-import { DataProvider } from './state/DataContext.jsx';
+import { DataProvider, useDataCtx } from './state/DataContext.jsx';
 import { FeatureProvider } from './state/FeatureContext.jsx';
 import DataSidebar from './components/DataSidebar.jsx';
-import { useDataCtx } from './state/DataContext.jsx';
 import RunModelPanel from './components/RunModelPanel.jsx';
 import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 

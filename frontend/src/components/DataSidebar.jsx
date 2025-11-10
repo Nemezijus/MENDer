@@ -1,5 +1,4 @@
-// src/components/DataSidebar.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, Stack, Text, TextInput, Button, Divider, Alert, Group, Badge, FileInput } from '@mantine/core';
 import { useDataCtx } from '../state/DataContext.jsx';
 import { inspectData } from '../api/data';
@@ -79,14 +78,14 @@ export default function DataSidebar() {
       const report = await inspectData(inspectPayload);
       setInspectReport(report);
     } catch (e) {
-  const status = e?.response?.status;
-  const msg = e?.response?.data?.detail || e.message || String(e);
-  if (status === 404 && /files\/upload/.test(e?.config?.url || '')) {
-    // Upload router not found — tell the user they can use manual paths in dev
-    setErr("Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.");
-  } else {
-    setErr(msg);
-  }
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.detail || e.message || String(e);
+      if (status === 404 && /files\/upload/.test(e?.config?.url || '')) {
+        // Upload router not found — tell the user they can use manual paths in dev
+        setErr("Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.");
+      } else {
+        setErr(msg);
+      }
       setInspectReport(null);
     } finally {
       setLoading(false);

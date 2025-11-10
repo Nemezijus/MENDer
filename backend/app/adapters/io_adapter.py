@@ -23,6 +23,30 @@ def _coerce_dev_relative(p: str) -> str:
         return os.path.join(_repo_root(), norm)
     return p
 
+def _is_running_in_docker() -> bool:
+    """
+    More reliable detection for containerized runs:
+      - check for /.dockerenv
+      - inspect /proc/1/cgroup for docker/container indicators
+    Fallback to existing directory checks on platforms where /proc may not exist (e.g., Windows).
+    """
+    try:
+        if os.path.exists("/.dockerenv"):
+            return True
+        if os.path.exists("/proc/1/cgroup"):
+            try:
+                with open("/proc/1/cgroup", "rt", encoding="utf-8", errors="ignore") as fh:
+                    cgroup = fh.read()
+                if any(tok in cgroup for tok in ("docker", "kubepod", "containerd")):
+                    return True
+            except Exception:
+                # ignore read errors and fall back to directory checks
+                pass
+    except Exception:
+        # ignore platform-specific errors and fall back
+        pass
+
+    return False
 
 def _normalize_and_check(path: Optional[str]) -> Optional[str]:
     """
@@ -39,7 +63,8 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
     if not p:
         return None
 
-    running_in_docker = os.path.isdir(DATA_ROOT) or os.path.isdir(UPLOAD_DIR)
+    # running_in_docker = os.path.isdir(DATA_ROOT) or os.path.isdir(UPLOAD_DIR)
+    running_in_docker = _is_running_in_docker()
 
     if running_in_docker:
         up = p.replace("\\", "/")
