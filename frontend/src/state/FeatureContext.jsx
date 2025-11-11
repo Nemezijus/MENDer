@@ -4,7 +4,7 @@ import React, { createContext, useContext, useMemo, useState } from 'react';
 const FeatureContext = createContext(null);
 
 export function FeatureProvider({ children }) {
-  // default to PCA 0.95 like your examples
+
   const [method, setMethod] = useState('none'); // 'none' | 'pca' | 'lda' | 'sfs'
 
   // PCA

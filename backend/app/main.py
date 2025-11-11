@@ -3,14 +3,35 @@ import time, os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+# NEW: selective access-log filter for uvicorn
+import logging
+
+class _SkipProgressAccessLogs(logging.Filter):
+    """Hide uvicorn access logs for /api/v1/progress/* to prevent console spam."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return True
+        # Keep all logs except progress endpoint polls
+        return "/api/v1/progress/" not in msg
+
+# Attach the filter once
+_access_logger = logging.getLogger("uvicorn.access")
+# Avoid duplicate filters on reload
+if not any(isinstance(f, _SkipProgressAccessLogs) for f in getattr(_access_logger, "filters", [])):
+    _access_logger.addFilter(_SkipProgressAccessLogs())
+
 # Routers
 from .routers.data import router as data_router
 from .routers.pipeline import router as pipeline_router
 from .routers.train import router as train_router
 from .routers.cv import router as cv_router
-from .routers.health import router as health_router            
-from .routers.files import router as files_router              
+from .routers.health import router as health_router
+from .routers.files import router as files_router
 from .routers.learning_curve import router as learning_curve_router
+from .routers.progress import router as progress_router
+
 
 app = FastAPI(
     title="MENDer Local API",
@@ -53,23 +74,25 @@ async def log_requests(request: Request, call_next):
         print(f"{request.method} {request.url.path} -> ERR in {dt:.1f}ms: {type(e).__name__}: {e}")
         raise
     finally:
-        # Only logs successful responses here (exceptions already printed above)
+        # Successful responses are logged by uvicorn.access; we filtered progress calls above.
         pass
 
 # Routers
-app.include_router(health_router, prefix="/api/v1", tags=["health"])   # NEW
-app.include_router(files_router,  prefix="/api/v1", tags=["files"])    # NEW
+app.include_router(health_router, prefix="/api/v1", tags=["health"])
+app.include_router(files_router,  prefix="/api/v1", tags=["files"])
 app.include_router(data_router,   prefix="/api/v1", tags=["data"])
 app.include_router(pipeline_router, prefix="/api/v1", tags=["pipeline"])
 app.include_router(train_router,  prefix="/api/v1", tags=["train"])
 app.include_router(cv_router,     prefix="/api/v1", tags=["cv"])
 app.include_router(learning_curve_router, prefix="/api/v1", tags=["learning-curve"])
+app.include_router(progress_router, prefix="/api/v1", tags=["progress"])
 
 if os.path.isdir("frontend_dist"):
     app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")
 else:
     # Dev mode: no static mount; the frontend runs on Vite.
     pass
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}

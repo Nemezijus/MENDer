@@ -2,7 +2,6 @@ from typing import Optional, Literal, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 from .shared import FeaturesModel, ModelModel
 
-# These should mirror what you already expose in configs
 
 ScaleName = Literal["standard", "robust", "minmax", "maxabs", "quantile", "none"]
 
@@ -15,13 +14,16 @@ class EvalTrain(BaseModel):
     metric: MetricName = "accuracy"
     n_shuffles: int = 0
     seed: Optional[int] = 42
+    n_shuffles: int = 0
+    progress_id: Optional[str] = None
 
 class SplitTrain(BaseModel):
+    mode: Literal["holdout"] = "holdout"
     train_frac: float = 0.75
     stratified: bool = True
+    shuffle: bool = True
 
 class DataSpec(BaseModel):
-    # We allow either npz or x/y pair, same as /data/inspect
     npz_path: Optional[str] = None
     x_key: Optional[str] = "X"
     y_key: Optional[str] = "y"
@@ -47,3 +49,7 @@ class TrainResponse(BaseModel):
     n_train: int
     n_test: int
     notes: List[str] = Field(default_factory=list)
+    # Optional shuffle-baseline outputs
+    shuffled_scores: Optional[List[float]] = None
+    # One-sided p-value: P(null >= real), simple +1 smoothing
+    p_value: Optional[float] = None

@@ -1,6 +1,6 @@
 # backend/app/models/v1/cv_models.py
 from pydantic import BaseModel
-from typing import Optional, List, Literal, Union, Dict
+from typing import Optional, List, Literal
 from .shared import FeaturesModel, ModelModel
 
 # Reuse the same shapes you used for TrainRequest to avoid duplication,
@@ -25,6 +25,8 @@ class ScaleModel(BaseModel):
 class EvalModel(BaseModel):
     metric: Literal["accuracy","balanced_accuracy","f1_macro"] = "accuracy"
     seed: Optional[int] = None
+    n_shuffles: int = 0
+    progress_id: Optional[str] = None
 
 class CVRequest(BaseModel):
     data: DataModel
@@ -40,3 +42,6 @@ class CVResponse(BaseModel):
     mean_score: float
     std_score: float
     n_splits: int
+    notes: List[str] = []
+    shuffled_scores: Optional[List[float]] = None
+    p_value: Optional[float] = None

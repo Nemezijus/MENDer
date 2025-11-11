@@ -1,37 +1,25 @@
 import numpy as np
 from sklearn.metrics import confusion_matrix
-from typing import Dict, Any, List
+from typing import Dict, Any
 
-# === bring in your configs ===
 from utils.configs.configs import (
     RunConfig, DataConfig, SplitConfig,
     ScaleConfig, FeatureConfig, ModelConfig, EvalConfig,
 )
-
-# === bring in your factories/strategies ===
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter
 from utils.factories.pipeline_factory import make_pipeline
 from utils.factories.eval_factory import make_evaluator
 from utils.permutations.rng import RngManager
+from utils.factories.baseline_factory import make_baseline
 
-# we still reuse LoadError from io_adapter to normalize loader-related failures
 from ..adapters.io_adapter import LoadError
+from ..progress.registry import PROGRESS  # inject this into the baseline
+
 
 def train_once(payload) -> Dict[str, Any]:
-    """
-    Reproduce (subset of) run_logreg_decoding:
-    1. Build RunConfig from the request.
-    2. Load + sanity check.
-    3. RNG manager.
-    4. Split using make_splitter().
-    5. Build pipeline via make_pipeline(), fit, predict.
-    6. Score using make_evaluator().
-    7. Build confusion matrix + summary.
-    """
-
-    # 1. Build RunConfig (we mirror how instances/logreg_classify_with_shuffle.py expects cfg)
+    # --- Build config from payload (unchanged names) -------------------------
     data_cfg = DataConfig(
         npz_path=payload.data.npz_path,
         x_path=payload.data.x_path,
@@ -39,16 +27,19 @@ def train_once(payload) -> Dict[str, Any]:
         x_key=payload.data.x_key,
         y_key=payload.data.y_key,
     )
-
     split_cfg = SplitConfig(
-        train_frac=payload.split.train_frac,
+        mode=payload.split.mode,
+        train_frac=getattr(payload.split, "train_frac", None),
+        n_splits=getattr(payload.split, "n_splits", None),
         stratified=payload.split.stratified,
+        shuffle=payload.split.shuffle,
     )
-
     scale_cfg = ScaleConfig(**payload.scale.model_dump())
     feature_cfg = FeatureConfig(**payload.features.model_dump())
     model_cfg = ModelConfig(**payload.model.model_dump())
-    eval_cfg = EvalConfig(**payload.eval.model_dump())
+
+    # IMPORTANT: exclude progress_id from EvalConfig (not part of schema)
+    eval_cfg = EvalConfig(**payload.eval.model_dump(exclude={"progress_id"}))
 
     cfg = RunConfig(
         data=data_cfg,
@@ -59,62 +50,76 @@ def train_once(payload) -> Dict[str, Any]:
         eval=eval_cfg,
     )
 
-    # 2. Load data using your loader factory
-    #    NOTE: this bypasses io_adapter.load_X_y now and talks to your loader directly.
+    # --- Load data -----------------------------------------------------------
     try:
         loader = make_data_loader(cfg.data)
         X, y = loader.load()
     except Exception as e:
-        # normalize to LoadError so router can map it to HTTP 400
         raise LoadError(str(e))
 
-    # 2.1 sanity check (classification)
-    sanity = make_sanity_checker()
-    sanity.check(X, y)
+    # --- Checks --------------------------------------------------------------
+    make_sanity_checker().check(X, y)
 
-    # 3. Central RNG
+    # --- RNG ---------------------------------------------------------------
     rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
 
-    # 4. Split
-    split_seed = rngm.child_seed("real/split")
+    # --- Split (hold-out) ----------------------------------------------------
+    split_seed = rngm.child_seed("train/split")
     splitter = make_splitter(cfg.split, seed=split_seed)
     X_train, X_test, y_train, y_test = splitter.split(X, y)
 
-    # 5. Build + fit pipeline
+    # --- Fit / Predict / Score ----------------------------------------------
     pipeline = make_pipeline(cfg, rngm, stream="real")
     pipeline.fit(X_train, y_train)
-
-    # 6. Predict + score using your evaluator strategy
-    evaluator = make_evaluator(cfg.eval, kind="classification")
     y_pred = pipeline.predict(X_test)
-    real_score = evaluator.score(y_test, y_pred)
 
-    # 7. Confusion matrix
-    # We'll mirror what a confusion matrix gives us in sklearn,
-    # and package labels + matrix for the frontend.
-    labels_unique = np.unique(np.concatenate([y_test, y_pred]))
-    cm = confusion_matrix(y_test, y_pred, labels=labels_unique)
-    cm_list = cm.astype(int).tolist()
-    labels_list = [c.item() if hasattr(c, "item") else c for c in labels_unique]
+    evaluator = make_evaluator(cfg.eval)
+    real_score = float(evaluator.score(y_test, y_pred))
 
-    result = {
+    labels = np.unique(np.concatenate([y_test, y_pred]))
+    cm = confusion_matrix(y_test, y_pred, labels=labels)
+
+    result: Dict[str, Any] = {
         "metric_name": cfg.eval.metric,
-        "metric_value": float(real_score),
+        "metric_value": real_score,
         "confusion": {
-            "labels": labels_list,
-            "matrix": cm_list,
+            "labels": [str(l) if not isinstance(l, (int, float)) else l for l in labels],
+            "matrix": cm.astype(int).tolist(),
         },
         "n_train": int(X_train.shape[0]),
         "n_test": int(X_test.shape[0]),
         "notes": [],
     }
 
-    # Optional interpretive hints, like before
     if cfg.features.method == "pca":
         result["notes"].append("Model trained on PCA-transformed features.")
     if cfg.features.method == "lda":
         result["notes"].append("LDA was fitted on the training labels.")
     if cfg.features.method == "sfs":
         result["notes"].append("SFS performed wrapper-based feature selection on training data.")
+
+    # --- Shuffle baseline ----------------------------------------------------
+    n_shuffles = int(getattr(cfg.eval, "n_shuffles", 0) or 0)
+    progress_id = getattr(payload.eval, "progress_id", None)
+
+    if n_shuffles > 0 and progress_id:
+        # PRE-INIT progress so the first poll doesn't 404
+        PROGRESS.init(progress_id, total=n_shuffles, label=f"Shuffling 0/{n_shuffles}…")
+
+        baseline = make_baseline(cfg, rngm)
+        # Inject progress registry + parameters for the runner
+        setattr(baseline, "progress_id", progress_id)
+        setattr(baseline, "_progress_total", n_shuffles)
+        setattr(baseline, "_progress", PROGRESS)
+
+        scores = np.asarray(baseline.run(X, y), dtype=float).ravel()
+        ge = int(np.sum(scores >= real_score))
+        p_val = (ge + 1.0) / (scores.size + 1.0)
+
+        result["shuffled_scores"] = [float(v) for v in scores.tolist()]
+        result["p_value"] = float(p_val)
+        result["notes"].append(
+            f"Shuffle baseline: mean={float(np.mean(scores)):.4f} ± {float(np.std(scores)):.4f}, p≈{float(p_val):.4f}"
+        )
 
     return result
