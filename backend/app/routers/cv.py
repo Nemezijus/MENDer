@@ -1,4 +1,3 @@
-# backend/app/routers/cv.py
 from fastapi import APIRouter
 from ..models.v1.cv_models import CVRequest, CVResponse
 from ..services.cv_service import run_kfold_cv

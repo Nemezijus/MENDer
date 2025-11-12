@@ -1,4 +1,3 @@
-// src/api/runModel.js
 import { runTrainRequest } from './train';
 import { runCrossvalRequest } from './cv';
 

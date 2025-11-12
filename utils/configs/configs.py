@@ -131,8 +131,9 @@ MetricName = Literal["accuracy", "balanced_accuracy", "f1_macro"]
 @dataclass
 class EvalConfig:
     metric: MetricName = "accuracy"
-    n_shuffles: int = 200
+    n_shuffles: int = 0
     seed: Optional[int] = None
+    progress_id: Optional[str] = None
 
 # ---- top-level run config ----
 @dataclass

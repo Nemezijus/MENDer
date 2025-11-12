@@ -2,10 +2,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 from typing import Dict, Any
 
-from utils.configs.configs import (
-    RunConfig, DataConfig, SplitConfig,
-    ScaleConfig, FeatureConfig, ModelConfig, EvalConfig,
-)
+from utils.configs.configs import RunConfig
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter
@@ -15,41 +12,10 @@ from utils.permutations.rng import RngManager
 from utils.factories.baseline_factory import make_baseline
 
 from ..adapters.io_adapter import LoadError
-from ..progress.registry import PROGRESS  # inject this into the baseline
+from ..progress.registry import PROGRESS
 
 
-def train_once(payload) -> Dict[str, Any]:
-    # --- Build config from payload (unchanged names) -------------------------
-    data_cfg = DataConfig(
-        npz_path=payload.data.npz_path,
-        x_path=payload.data.x_path,
-        y_path=payload.data.y_path,
-        x_key=payload.data.x_key,
-        y_key=payload.data.y_key,
-    )
-    split_cfg = SplitConfig(
-        mode=payload.split.mode,
-        train_frac=getattr(payload.split, "train_frac", None),
-        n_splits=getattr(payload.split, "n_splits", None),
-        stratified=payload.split.stratified,
-        shuffle=payload.split.shuffle,
-    )
-    scale_cfg = ScaleConfig(**payload.scale.model_dump())
-    feature_cfg = FeatureConfig(**payload.features.model_dump())
-    model_cfg = ModelConfig(**payload.model.model_dump())
-
-    # IMPORTANT: exclude progress_id from EvalConfig (not part of schema)
-    eval_cfg = EvalConfig(**payload.eval.model_dump(exclude={"progress_id"}))
-
-    cfg = RunConfig(
-        data=data_cfg,
-        split=split_cfg,
-        scale=scale_cfg,
-        features=feature_cfg,
-        model=model_cfg,
-        eval=eval_cfg,
-    )
-
+def train_once(cfg: RunConfig) -> Dict[str, Any]:
     # --- Load data -----------------------------------------------------------
     try:
         loader = make_data_loader(cfg.data)
@@ -66,6 +32,7 @@ def train_once(payload) -> Dict[str, Any]:
     # --- Split (hold-out) ----------------------------------------------------
     split_seed = rngm.child_seed("train/split")
     splitter = make_splitter(cfg.split, seed=split_seed)
+    
     X_train, X_test, y_train, y_test = splitter.split(X, y)
 
     # --- Fit / Predict / Score ----------------------------------------------
@@ -100,7 +67,7 @@ def train_once(payload) -> Dict[str, Any]:
 
     # --- Shuffle baseline ----------------------------------------------------
     n_shuffles = int(getattr(cfg.eval, "n_shuffles", 0) or 0)
-    progress_id = getattr(payload.eval, "progress_id", None)
+    progress_id = getattr(cfg.eval, "progress_id", None)
 
     if n_shuffles > 0 and progress_id:
         # PRE-INIT progress so the first poll doesn't 404

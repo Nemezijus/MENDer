@@ -6,6 +6,37 @@ PenaltyName = Literal["l2", "l1", "elasticnet", "none"]
 TreeCriterion = Literal["gini", "entropy", "log_loss"]
 TreeSplitter = Literal["best", "random"]
 MaxFeaturesName = Literal["sqrt", "log2"]
+ScaleName = Literal["standard", "robust", "minmax", "maxabs", "quantile", "none"]
+MetricName = Literal["accuracy", "balanced_accuracy", "f1_macro"]
+
+class DataModel(BaseModel):
+    x_path: Optional[str] = None
+    y_path: Optional[str] = None
+    npz_path: Optional[str] = None
+    x_key: str = "X"
+    y_key: str = "y"
+
+class ScaleModel(BaseModel):
+    method: ScaleName = "standard"
+
+class EvalModel(BaseModel):
+    metric: MetricName = "accuracy"
+    seed: Optional[int] = None
+    n_shuffles: int = 0
+    progress_id: Optional[str] = None
+
+#splits have different parameters for holdout vs kfold
+class SplitHoldoutModel(BaseModel):
+    mode: Literal["holdout"] = "holdout"
+    train_frac: float = 0.75
+    stratified: bool = True
+    shuffle: bool = True
+
+class SplitCVModel(BaseModel):
+    mode: Literal["kfold"] = "kfold"
+    n_splits: int = 5
+    stratified: bool = True
+    shuffle: bool = True
 
 class FeaturesModel(BaseModel):
     method: FeatureName = "none"

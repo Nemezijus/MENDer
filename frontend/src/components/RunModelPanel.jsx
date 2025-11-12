@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Card, Button, Select, Checkbox, NumberInput, Text,
+  Card, Button, Text,
   Stack, Group, Divider, Loader, Alert, Title, Box, Table, Progress
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
@@ -62,7 +62,9 @@ export default function RunModelPanel() {
       min_impurity_decrease: 0.0, bootstrap: true, oob_score: false, n_jobs: null, random_state: null,
       warm_start: false, class_weight: null, ccp_alpha: 0.0, max_samples: null,
     },
-    knn: { n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null },
+    knn: { 
+      n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null 
+    },
   });
 
   const [loading, setLoading] = useState(false);
@@ -456,7 +458,7 @@ export default function RunModelPanel() {
 
           <Box w="100%" style={{ maxWidth: 520 }}>
             <Stack gap="sm">
-              
+
               <SplitOptionsCard
                 allowedModes={['holdout', 'kfold']}
                 mode={splitMode}
@@ -499,7 +501,10 @@ export default function RunModelPanel() {
               />
 
               <Divider my="xs" />
-              <ModelCard value={model} onChange={setModel} />
+              <ModelCard 
+                value={model} 
+                onChange={setModel} 
+              />
             </Stack>
           </Box>
         </Stack>

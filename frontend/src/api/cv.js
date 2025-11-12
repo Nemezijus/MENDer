@@ -1,4 +1,3 @@
-// src/api/cv.js
 import api from './client';
 
 export async function runCrossvalRequest(payload) {

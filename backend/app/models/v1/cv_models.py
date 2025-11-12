@@ -1,32 +1,9 @@
-# backend/app/models/v1/cv_models.py
 from pydantic import BaseModel
-from typing import Optional, List, Literal
-from .shared import FeaturesModel, ModelModel
-
-# Reuse the same shapes you used for TrainRequest to avoid duplication,
-# only Split is different for CV.
-class DataModel(BaseModel):
-    x_path: Optional[str] = None
-    y_path: Optional[str] = None
-    npz_path: Optional[str] = None
-    x_key: str = "X"
-    y_key: str = "y"
-
-class SplitCVModel(BaseModel):
-    mode: Literal["kfold"] = "kfold"
-    n_splits: int = 5
-    stratified: bool = True
-    shuffle: bool = True
-
-class ScaleModel(BaseModel):
-    method: Literal["standard","robust","minmax","maxabs","quantile","none"] = "standard"
-
-
-class EvalModel(BaseModel):
-    metric: Literal["accuracy","balanced_accuracy","f1_macro"] = "accuracy"
-    seed: Optional[int] = None
-    n_shuffles: int = 0
-    progress_id: Optional[str] = None
+from typing import Optional, List
+from .shared import (
+    DataModel, ScaleModel, EvalModel,
+    FeaturesModel, ModelModel, SplitCVModel
+)
 
 class CVRequest(BaseModel):
     data: DataModel

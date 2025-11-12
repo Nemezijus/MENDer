@@ -1,5 +1,6 @@
 from ..adapters.io_adapter import load_X_y
 from utils.configs.configs import RunConfig
+from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.split_factory import make_splitter
 from utils.factories.pipeline_factory import make_pipeline
@@ -8,17 +9,28 @@ from utils.permutations.rng import RngManager
 import numpy as np
 
 from utils.factories.baseline_factory import make_baseline
-from ..progress.registry import PROGRESS  # inject into baseline
+from ..adapters.io_adapter import LoadError
+from ..progress.registry import PROGRESS
 
 
 def run_kfold_cv(cfg: RunConfig):
-    loader = make_data_loader(cfg.data)
-    X, y = loader.load()
+    # --- Load data -----------------------------------------------------------
+    try:
+        loader = make_data_loader(cfg.data)
+        X, y = loader.load()
+    except Exception as e:
+        raise LoadError(str(e))
+    
+    # --- Checks --------------------------------------------------------------
+    make_sanity_checker().check(X, y)
 
-    rngm = RngManager(cfg.eval.seed)
-    split_seed = rngm.child_seed("cv/split")
+    # --- RNG ---------------------------------------------------------------
+    rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
 
+    # --- Split (K-fold) ----------------------------------------------------
+    split_seed = rngm.child_seed("train/split")
     splitter = make_splitter(cfg.split, seed=split_seed)
+    
     evaluator = make_evaluator(cfg.eval, kind="classification")
 
     fold_scores = []
