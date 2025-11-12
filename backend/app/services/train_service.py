@@ -32,9 +32,9 @@ def train_once(cfg: RunConfig) -> Dict[str, Any]:
     # --- Split (hold-out) ----------------------------------------------------
     split_seed = rngm.child_seed("train/split")
     splitter = make_splitter(cfg.split, seed=split_seed)
-    
-    X_train, X_test, y_train, y_test = splitter.split(X, y)
-
+    print("Splitting data with splitter:", splitter)
+    X_train, X_test, y_train, y_test = next(splitter.split(X, y))
+    print(f"Train/Test sizes: {X_train.shape[0]}/{X_test.shape[0]} samples")
     # --- Fit / Predict / Score ----------------------------------------------
     pipeline = make_pipeline(cfg, rngm, stream="real")
     pipeline.fit(X_train, y_train)

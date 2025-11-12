@@ -19,11 +19,8 @@ class Splitter(Protocol):
         self,
         X: np.ndarray,
         y: np.ndarray,
-    ) -> Union[
-        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-        Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]
-    ]:
-        """Return a single (X_train, X_test, y_train, y_test) OR an iterator of such tuples."""
+    ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+        """Preferred: always yield an iterator of (Xtr, Xte, ytr, yte)."""
         ...
 
 class Scaler(Protocol):
