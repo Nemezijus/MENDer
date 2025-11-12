@@ -1,5 +1,3 @@
-// src/components/ModelCard.jsx
-import React from 'react';
 import {
   Stack, Select, NumberInput, Checkbox, Divider, Text, Group
 } from '@mantine/core';

@@ -1,7 +1,6 @@
-// src/components/LearningCurvePanel.jsx
 import { useMemo, useState } from 'react';
 import {
-  Card, Button, Select, Checkbox, NumberInput, Text,
+  Card, Button, Checkbox, NumberInput, Text,
   Stack, Group, Divider, Loader, Alert, Title, Box, useMantineTheme
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
@@ -9,7 +8,10 @@ import Plot from 'react-plotly.js';
 import { useDataCtx } from '../state/DataContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
 import FeatureCard from './FeatureCard.jsx';
+import ScalingCard from './ScalingCard.jsx';
 import ModelCard from './ModelCard.jsx';
+import MetricCard from './MetricCard.jsx';
+import SplitOptionsCard from './SplitOptionsCard.jsx';
 import api from '../api/client';
 
 // A tiny helper identical to RunModelPanel's logic to normalize max_features UI → value
@@ -102,7 +104,7 @@ const axisColor = isDark ? theme.colors.dark[2] : '#222';
   });
 
   // Learning-curve specific
-  const [trainSizesCSV, setTrainSizesCSV] = useState(''); // e.g. "0.1,0.3,0.5,0.7,1.0" or "50,100,200"
+  const [trainSizesCSV, setTrainSizesCSV] = useState('');
   const [nSteps, setNSteps] = useState(5);
   const [nJobs, setNJobs] = useState(1);
 
@@ -373,7 +375,7 @@ const axisColor = isDark ? theme.colors.dark[2] : '#222';
       showlegend: true,
     };
 
-    return [trainLower, trainUpper, trainLine, valLower, valUpper, valLine, valLine /* legend duplicate hidden? */];
+    return [trainLower, trainUpper, trainLine, valLower, valUpper, valLine];
   }, [analytics]);
 
   return (
@@ -398,44 +400,35 @@ const axisColor = isDark ? theme.colors.dark[2] : '#222';
 
           <Box w="100%" style={{ maxWidth: 560 }}>
             <Stack gap="sm">
-              {/* K-Fold options (LC is always kfold) */}
-              <NumberInput label="K-Fold (n_splits)" min={2} max={20} step={1} value={nSplits} onChange={setNSplits} />
-
-              {/* common split options */}
-              <Checkbox label="Stratified" checked={stratified} onChange={(e) => setStratified(e.currentTarget.checked)} />
-              <Checkbox label="Shuffle" checked={shuffle} onChange={(e) => setShuffle(e.currentTarget.checked)} />
-              <NumberInput label="Seed" value={seed} onChange={setSeed} allowDecimal={false} disabled={!shuffle} />
+              <SplitOptionsCard
+                allowedModes={['kfold']}
+                nSplits={nSplits}
+                onNSplitsChange={setNSplits}
+                stratified={stratified}
+                onStratifiedChange={setStratified}
+                shuffle={shuffle}
+                onShuffleChange={setShuffle}
+                seed={seed}
+                onSeedChange={setSeed}
+              />
 
               <Divider my="xs" />
 
               {/* Scaling */}
-              <Select
-                label="Scale method"
-                data={[
-                  { value: 'standard', label: 'standard' },
-                  { value: 'robust', label: 'robust' },
-                  { value: 'minmax', label: 'minmax' },
-                  { value: 'maxabs', label: 'maxabs' },
-                  { value: 'quantile', label: 'quantile' },
-                  { value: 'none', label: 'none' },
-                ]}
-                value={scaleMethod}
-                onChange={setScaleMethod}
+              <ScalingCard 
+                value={scaleMethod} 
+                onChange={setScaleMethod} 
               />
 
               {/* Features */}
-              <FeatureCard title="Features" />
+              <FeatureCard 
+                title="Features" 
+              />
 
               <Divider my="xs" />
 
               {/* Metric */}
-              <Select
-                label="Metric"
-                data={[
-                  { value: 'accuracy', label: 'accuracy' },
-                  { value: 'balanced_accuracy', label: 'balanced_accuracy' },
-                  { value: 'f1_macro', label: 'f1_macro' },
-                ]}
+              <MetricCard
                 value={metric}
                 onChange={setMetric}
               />

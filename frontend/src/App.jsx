@@ -8,8 +8,8 @@ import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 function TabsWithGuard() {
   const { dataReady } = useDataCtx();
   return (
-    <Tabs defaultValue="runModel" variant="outline">
-      <Tabs.List>
+    <Tabs defaultValue="runModel" variant="pills">
+      <Tabs.List grow>
         <Tabs.Tab value="runModel" disabled={!dataReady}>Train a model</Tabs.Tab>
         <Tabs.Tab value="learningCurve" disabled={!dataReady}>Learning Curve</Tabs.Tab>
       </Tabs.List>

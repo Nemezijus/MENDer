@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card, Button, Select, Checkbox, NumberInput, Text,
-  Stack, Group, Divider, Loader, Alert, Title, Box, Table, Progress, Tooltip
+  Stack, Group, Divider, Loader, Alert, Title, Box, Table, Progress
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
 import { useDataCtx } from '../state/DataContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
 import FeatureCard from './FeatureCard.jsx';
+import ScalingCard from './ScalingCard.jsx';
 import ModelCard from './ModelCard.jsx';
+import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
+import MetricCard from './MetricCard.jsx';
+import SplitOptionsCard from './SplitOptionsCard.jsx';
 import { runModelRequest } from '../api/runModel';
 import { fetchProgress } from '../api/progress';
 
@@ -452,73 +456,47 @@ export default function RunModelPanel() {
 
           <Box w="100%" style={{ maxWidth: 520 }}>
             <Stack gap="sm">
-              <Select
-                label="Split strategy"
-                data={[
-                  { value: 'holdout', label: 'Hold-out' },
-                  { value: 'kfold', label: 'K-fold cross-validation' },
-                ]}
-                value={splitMode}
-                onChange={(v) => setSplitMode(v || 'holdout')}
+              
+              <SplitOptionsCard
+                allowedModes={['holdout', 'kfold']}
+                mode={splitMode}
+                onModeChange={setSplitMode}
+                trainFrac={trainFrac}
+                onTrainFracChange={setTrainFrac}
+                nSplits={nSplits}
+                onNSplitsChange={setNSplits}
+                stratified={stratified}
+                onStratifiedChange={setStratified}
+                shuffle={shuffle}
+                onShuffleChange={setShuffle}
+                seed={seed}
+                onSeedChange={setSeed}
               />
-
-              {splitMode === 'holdout'
-                ? <NumberInput label="Train fraction" min={0.5} max={0.95} step={0.05} value={trainFrac} onChange={setTrainFrac} />
-                : <NumberInput label="n_splits" min={2} max={20} step={1} value={nSplits} onChange={setNSplits} />
-              }
-
-              <Group grow>
-                <Checkbox label="Stratified" checked={stratified} onChange={(e) => setStratified(e.currentTarget.checked)} />
-                <Checkbox label="Shuffle split" checked={shuffle} onChange={(e) => setShuffle(e.currentTarget.checked)} />
-              </Group>
-              <NumberInput label="Seed (used if shuffle split)" value={seed} onChange={setSeed} />
 
               <Divider my="xs" />
 
-              <Select
-                label="Scaling"
-                data={[
-                  { value: 'none', label: 'None' },
-                  { value: 'standard', label: 'StandardScaler' },
-                  { value: 'robust', label: 'RobustScaler' },
-                  { value: 'minmax', label: 'MinMaxScaler' },
-                  { value: 'maxabs', label: 'MaxAbsScaler' },
-                  { value: 'quantile', label: 'QuantileTransformer' },
-                ]}
-                value={scaleMethod}
-                onChange={setScaleMethod}
+              <ScalingCard 
+                value={scaleMethod} 
+                onChange={setScaleMethod} 
               />
 
-              <FeatureCard title="Features" />
+              <FeatureCard 
+                title="Features" 
+              />
+
               <Divider my="xs" />
 
-              <Select
-                label="Metric"
-                data={[
-                  { value: 'accuracy', label: 'accuracy' },
-                  { value: 'balanced_accuracy', label: 'balanced_accuracy' },
-                  { value: 'f1_macro', label: 'f1_macro' },
-                ]}
+              <MetricCard
                 value={metric}
                 onChange={setMetric}
               />
-              <Tooltip label="Perform label shuffling to create a baseline distribution of scores for comparison. This does not affect the main model training.">
-                <Checkbox
-                  label="Shuffle labels for control"
-                  checked={useShuffleBaseline}
-                  onChange={(e) => setUseShuffleBaseline(e.currentTarget.checked)}
-                />
-              </Tooltip>
-              {useShuffleBaseline && (
-                <NumberInput
-                  label="Number of shuffles"
-                  min={10}
-                  max={5000}
-                  step={10}
-                  value={nShuffles}
-                  onChange={setNShuffles}
-                />
-              )}
+
+              <ShuffleLabelsCard
+                checked={useShuffleBaseline}
+                onCheckedChange={(v) => setUseShuffleBaseline(v)}
+                nShuffles={nShuffles}
+                onNShufflesChange={setNShuffles}
+              />
 
               <Divider my="xs" />
               <ModelCard value={model} onChange={setModel} />

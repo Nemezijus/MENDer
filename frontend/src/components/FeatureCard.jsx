@@ -1,5 +1,3 @@
-// src/components/FeatureCard.jsx
-import React from 'react';
 import { Card, Stack, Group, Text, Select, NumberInput, Checkbox, TextInput, Tooltip } from '@mantine/core';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
 

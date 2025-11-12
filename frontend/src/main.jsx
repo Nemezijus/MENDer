@@ -10,7 +10,7 @@ createRoot(rootEl).render(
   <React.StrictMode>
     <MantineProvider
       defaultColorScheme="light"
-      // you can also pass theme overrides here later if you want
+      // you can pass theme overrides here later if you want
     >
       <App />
     </MantineProvider>
