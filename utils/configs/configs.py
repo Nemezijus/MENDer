@@ -18,7 +18,7 @@ class SplitConfig:
     train_frac: float = 0.8
     stratified: bool = True
     # ---- for cross-validation ----
-    mode: Literal["holdout", "kfold"] = "holdout"   # new
+    mode: Literal["holdout", "kfold"] = "holdout"
     n_splits: int = 5
     shuffle: bool = True
 

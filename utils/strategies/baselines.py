@@ -32,7 +32,7 @@ class LabelShuffleBaseline(BaselineRunner):
         predictor  = make_predictor()
         evaluator  = make_evaluator(self.cfg.eval, kind="classification")
 
-        Xtr, Xte, ytr, yte = splitter.split(X, y)
+        Xtr, Xte, ytr, yte = next(splitter.split(X, y))
         Xtr, Xte = scaler.fit_transform(Xtr, Xte)
         _, Xtr_fx, Xte_fx = features.fit_transform_train_test(Xtr, Xte, ytr)
 

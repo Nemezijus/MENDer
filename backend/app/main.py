@@ -26,7 +26,6 @@ if not any(isinstance(f, _SkipProgressAccessLogs) for f in getattr(_access_logge
 from .routers.data import router as data_router
 from .routers.pipeline import router as pipeline_router
 from .routers.train import router as train_router
-from .routers.cv import router as cv_router
 from .routers.health import router as health_router
 from .routers.files import router as files_router
 from .routers.learning_curve import router as learning_curve_router
@@ -83,7 +82,6 @@ app.include_router(files_router,  prefix="/api/v1", tags=["files"])
 app.include_router(data_router,   prefix="/api/v1", tags=["data"])
 app.include_router(pipeline_router, prefix="/api/v1", tags=["pipeline"])
 app.include_router(train_router,  prefix="/api/v1", tags=["train"])
-app.include_router(cv_router,     prefix="/api/v1", tags=["cv"])
 app.include_router(learning_curve_router, prefix="/api/v1", tags=["learning-curve"])
 app.include_router(progress_router, prefix="/api/v1", tags=["progress"])
 

@@ -2,9 +2,10 @@
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
-# Reuse your existing request sub-models
-from .cv_models import DataModel, SplitCVModel, ScaleModel, EvalModel
-from .shared import FeaturesModel, ModelModel
+from .shared import (
+    DataModel, ScaleModel, EvalModel,
+    FeaturesModel, ModelModel, SplitCVModel
+)
 
 Number = Union[int, float]
 

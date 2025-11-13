@@ -13,7 +13,7 @@ import ModelCard from './ModelCard.jsx';
 import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
 import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
-import { runModelRequest } from '../api/runModel';
+import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
 
 function uuidv4() {
@@ -271,7 +271,7 @@ export default function RunModelPanel() {
           ? { ...base, split: { mode: 'holdout', train_frac: trainFrac, stratified, shuffle } }
           : { ...base, split: { mode: 'kfold', n_splits: nSplits, stratified, shuffle } };
 
-      const data = await runModelRequest(payload);
+      const data = await runTrainRequest(payload);
       setResult(data);
       // Polling stops automatically when the baseline finalizes; no need to force 100%.
     } catch (e) {

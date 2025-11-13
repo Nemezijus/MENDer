@@ -9,7 +9,7 @@ from utils.preprocessing.general.cv_split import generate_folds
 from .interfaces import Splitter
 
 @dataclass
-class StratifiedSplitter:
+class HoldOutSplitter(Splitter):
     cfg: SplitConfig
     seed: Optional[int] = None
     use_custom: bool = False
