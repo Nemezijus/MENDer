@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card, Button, Text,
-  Stack, Group, Divider, Loader, Alert, Title, Box, Table, Progress
+  Stack, Group, Divider, Alert, Title, Box, Progress
 } from '@mantine/core';
-import Plot from 'react-plotly.js';
 
 import { useDataCtx } from '../state/DataContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
-import ModelCard from './ModelCard.jsx';
+import ModelSelectionCard from './ModelSelectionCard.jsx';
 import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
 import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
+import { useRunModelResultsCtx } from '../state/RunModelResultsContext.jsx';
 
 function uuidv4() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -69,16 +69,16 @@ export default function RunModelPanel() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
-  const [result, setResult] = useState(null);
 
   const [useShuffleBaseline, setUseShuffleBaseline] = useState(false);
   const [nShuffles, setNShuffles] = useState(100);
 
-  // Progress polling (self-scheduling; stops immediately on done)
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
   const pollStopRef = useRef(false);
   const lastPercentRef = useRef(0);
+
+  const { setResult } = useRunModelResultsCtx();
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
 
@@ -94,7 +94,6 @@ export default function RunModelPanel() {
         setProgress(pct);
         setProgressLabel(rec.label || '');
 
-        // Adaptive backoff to reduce log noise
         let delay = 250;
         if (pct >= 90 && pct < 98) delay = 500;
         else if (pct >= 98 && !rec.done) delay = 1000;
@@ -107,7 +106,6 @@ export default function RunModelPanel() {
           pollStopRef.current = true;
         }
       } catch {
-        // Progress record might not exist yet—retry soon
         setTimeout(tick, 300);
       }
     }
@@ -273,7 +271,6 @@ export default function RunModelPanel() {
 
       const data = await runTrainRequest(payload);
       setResult(data);
-      // Polling stops automatically when the baseline finalizes; no need to force 100%.
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
@@ -283,147 +280,6 @@ export default function RunModelPanel() {
       stopProgressPolling();
       setLoading(false);
     }
-  }
-
-  function ResultView() {
-    if (!result) return null;
-    const isCV = Array.isArray(result.fold_scores);
-
-    if (!isCV) {
-      return (
-        <Stack gap="xs">
-          <Text size="sm"><Text span fw={500}>Metric:</Text> {result.metric_name}</Text>
-          <Text size="sm"><Text span fw={500}>Score:</Text> {typeof result.metric_value === 'number' ? result.metric_value.toFixed(4) : result.metric_value}</Text>
-          <Text size="sm"><Text span fw={500}>Train/Test:</Text> {result.n_train} / {result.n_test}</Text>
-          {result.confusion?.matrix && result.confusion?.labels && (
-            <>
-              <Text fw={500} size="sm">Confusion matrix</Text>
-              <Table striped withTableBorder withColumnBorders maw={460}>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th></Table.Th>
-                    {result.confusion.labels.map((lbl, j) => (
-                      <Table.Th key={`pred-${j}`}>
-                        <Text size="sm" fw={500}>Pred {String(lbl)}</Text>
-                      </Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {result.confusion.matrix.map((row, i) => (
-                    <Table.Tr key={i}>
-                      <Table.Td>
-                        <Text size="sm" fw={500}>True {String(result.confusion.labels[i])}</Text>
-                      </Table.Td>
-                      {row.map((v, j) => <Table.Td key={j}>{v}</Table.Td>)}
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-
-              {Array.isArray(result.shuffled_scores) && result.shuffled_scores.length > 0 && (
-                <>
-                  <Text fw={500} size="sm" mt="sm">Shuffle-label baseline</Text>
-                  <Plot
-                    data={[ { type: 'histogram', x: result.shuffled_scores, opacity: 0.75, name: 'Shuffled' } ]}
-                    layout={{
-                      bargap: 0.05,
-                      xaxis: { title: result.metric_name },
-                      yaxis: { title: 'Count' },
-                      shapes: [
-                        { type: 'line', x0: result.metric_value, x1: result.metric_value, y0: 0, y1: 1, yref: 'paper', line: { width: 2 } }
-                      ],
-                      annotations: result.p_value != null ? [{
-                        x: result.metric_value, y: 1, yref: 'paper',
-                        text: `real = ${typeof result.metric_value === 'number' ? result.metric_value.toFixed(4) : result.metric_value}${result.p_value != null ? ` · p≈${Number(result.p_value).toFixed(4)}` : ''}`,
-                        showarrow: false, xanchor: 'left', align: 'left'
-                      }] : [],
-                      margin: { t: 20, r: 10, b: 40, l: 50 }, height: 260
-                    }}
-                    config={{ displayModeBar: false }}
-                    style={{ width: '100%', maxWidth: 520 }}
-                  />
-                </>
-              )}
-            </>
-          )}
-          {Array.isArray(result.notes) && result.notes.length > 0 && (
-            <>
-              <Text fw={500} size="sm" mt="sm">Notes</Text>
-              <ul style={{ marginTop: 4 }}>
-                {result.notes.map((n, i) => <li key={i}><Text size="sm">{n}</Text></li>)}
-              </ul>
-            </>
-          )}
-        </Stack>
-      );
-    }
-
-    // CV view
-    const folds = result.fold_scores || [];
-    const idxs = folds.map((_, i) => i + 1);
-
-    return (
-      <Stack gap="xs">
-        <Text size="sm"><Text span fw={500}>Metric:</Text> {result.metric_name}</Text>
-        <Text size="sm">
-          <Text span fw={500}>Score:</Text> mean {typeof result.mean_score === 'number' ? result.mean_score.toFixed(4) : result.mean_score} ± {typeof result.std_score === 'number' ? result.std_score.toFixed(4) : result.std_score}
-        </Text>
-
-        <Table withTableBorder withColumnBorders maw={460} striped>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>#</Table.Th>
-              <Table.Th>score</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {folds.map((s, i) => (
-              <Table.Tr key={i}>
-                <Table.Td>{i + 1}</Table.Td>
-                <Table.Td>{typeof s === 'number' ? s : JSON.stringify(s)}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-
-        <Plot
-          data={[
-            { type: 'bar', x: idxs, y: folds, name: 'Fold score' },
-            { type: 'scatter', mode: 'lines', x: [0, idxs.length + 1], y: [result.mean_score, result.mean_score], name: 'Mean' },
-          ]}
-          layout={{ title: 'Fold scores', margin: { l: 40, r: 10, b: 40, t: 20 }, xaxis: { title: 'Fold' }, yaxis: { title: result.metric_name }, autosize: true }}
-          style={{ width: '100%', height: 300 }}
-          config={{ displayModeBar: false, responsive: true }}
-        />
-
-        {Array.isArray(result.shuffled_scores) && result.shuffled_scores.length > 0 && (
-          <>
-            <Divider my="xs" />
-            <Text fw={500} size="sm">Shuffle-label baseline (CV mean)</Text>
-            <Plot
-              data={[ { type: 'histogram', x: result.shuffled_scores, opacity: 0.75, name: 'Shuffled' } ]}
-              layout={{
-                bargap: 0.05,
-                xaxis: { title: result.metric_name },
-                yaxis: { title: 'Count' },
-                shapes: [
-                  { type: 'line', x0: result.mean_score, x1: result.mean_score, y0: 0, y1: 1, yref: 'paper', line: { width: 2 } }
-                ],
-                annotations: result.p_value != null ? [{
-                  x: result.mean_score, y: 1, yref: 'paper',
-                  text: `real mean = ${typeof result.mean_score === 'number' ? result.mean_score.toFixed(4) : result.mean_score}${result.p_value != null ? ` · p≈${Number(result.p_value).toFixed(4)}` : ''}`,
-                  showarrow: false, xanchor: 'left', align: 'left'
-                }] : [],
-                margin: { t: 20, r: 10, b: 40, l: 50 }, height: 260
-              }}
-              config={{ displayModeBar: false }}
-              style={{ width: '100%', maxWidth: 520 }}
-            />
-          </>
-        )}
-      </Stack>
-    );
   }
 
   return (
@@ -501,24 +357,13 @@ export default function RunModelPanel() {
               />
 
               <Divider my="xs" />
-              <ModelCard 
+              <ModelSelectionCard 
                 value={model} 
                 onChange={setModel} 
               />
             </Stack>
           </Box>
         </Stack>
-      </Card>
-
-      <Card withBorder shadow="sm" radius="md" padding="lg">
-        {loading && (
-          <Group align="center" gap="sm">
-            <Loader size="sm" />
-            <Text size="sm">Crunching numbers…</Text>
-          </Group>
-        )}
-        {!loading && !result && <Text size="sm" c="dimmed">Run to see results.</Text>}
-        {!loading && result && <ResultView />}
       </Card>
     </Stack>
   );
