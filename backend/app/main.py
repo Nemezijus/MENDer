@@ -30,6 +30,7 @@ from .routers.health import router as health_router
 from .routers.files import router as files_router
 from .routers.learning_curve import router as learning_curve_router
 from .routers.progress import router as progress_router
+from .routers.models import router as models_router
 
 
 app = FastAPI(
@@ -84,6 +85,7 @@ app.include_router(pipeline_router, prefix="/api/v1", tags=["pipeline"])
 app.include_router(train_router,  prefix="/api/v1", tags=["train"])
 app.include_router(learning_curve_router, prefix="/api/v1", tags=["learning-curve"])
 app.include_router(progress_router, prefix="/api/v1", tags=["progress"])
+app.include_router(models_router, prefix="/api/v1", tags=["models"])
 
 if os.path.isdir("frontend_dist"):
     app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")

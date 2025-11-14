@@ -10,6 +10,8 @@ from utils.factories.pipeline_factory import make_pipeline
 from utils.factories.eval_factory import make_evaluator
 from utils.permutations.rng import RngManager
 from utils.factories.baseline_factory import make_baseline
+from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
+from utils.persistence.artifact_cache import artifact_cache
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
@@ -52,12 +54,20 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         pipeline = make_pipeline(cfg, rngm, stream=f"{mode}/fold{fold_id}")
         pipeline.fit(Xtr, ytr)
         y_pred = pipeline.predict(Xte)
+        last_pipeline = pipeline
 
         fold_scores.append(float(evaluator.score(yte, y_pred)))
         y_true_all.append(yte)
         y_pred_all.append(y_pred)
         n_train_sizes.append(int(Xtr.shape[0]))
         n_test_sizes.append(int(Xte.shape[0]))
+
+    refit_pipeline = None
+    if mode == "kfold":
+        refit_pipeline = make_pipeline(cfg, rngm, stream="kfold/refit")
+        refit_pipeline.fit(X, y)
+
+    effective_pipeline = refit_pipeline if refit_pipeline is not None else last_pipeline
 
     # --- Aggregate scores and confusion matrix ------------------------------
     if not fold_scores:
@@ -113,6 +123,32 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         result["notes"].append("LDA was fitted on the training labels.")
     if cfg.features.method == "sfs":
         result["notes"].append("SFS performed wrapper-based feature selection on training data.")
+
+    n_features_in = int(X.shape[1]) if hasattr(X, "shape") and len(X.shape) > 1 else None
+    classes_out = result["confusion"]["labels"] if result.get("confusion") else None
+    artifact_input = ArtifactBuilderInput(
+        cfg=cfg,
+        pipeline=effective_pipeline,
+        n_train=n_train_out,
+        n_test=n_test_out,
+        n_features=n_features_in,
+        classes=classes_out,
+        summary={
+            "metric_name": result["metric_name"],
+            "metric_value": result["metric_value"],
+            "mean_score": result["mean_score"],
+            "std_score": result["std_score"],
+            "n_splits": result["n_splits"],
+            "notes": result.get("notes", []),
+        },
+    )
+    result["artifact"] = build_model_artifact_meta(artifact_input)
+    try:
+        uid = result["artifact"]["uid"]
+        artifact_cache.put(uid, effective_pipeline)
+    except Exception:
+        # Cache errors must not break training response.
+        pass
 
     # --- Shuffle baseline ----------------------------------------------------
     n_shuffles = int(getattr(cfg.eval, "n_shuffles", 0) or 0)

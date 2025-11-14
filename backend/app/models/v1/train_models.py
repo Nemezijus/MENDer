@@ -10,6 +10,7 @@ from .shared import (
     SplitCVModel,
     MetricName,
 )
+from .model_artifact import ModelArtifactMeta
 
 
 class TrainRequest(BaseModel):
@@ -45,3 +46,6 @@ class TrainResponse(BaseModel):
     mean_score: Optional[float] = None
     std_score: Optional[float] = None
     n_splits: Optional[int] = None
+
+    # Model description
+    artifact: Optional[ModelArtifactMeta] = None

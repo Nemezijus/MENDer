@@ -6,6 +6,7 @@ import {
 
 import { useDataCtx } from '../state/DataContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
+import { useModelArtifact } from "../state/ModelArtifactContext";
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
@@ -79,6 +80,7 @@ export default function RunModelPanel() {
   const lastPercentRef = useRef(0);
 
   const { setResult } = useRunModelResultsCtx();
+  const { setArtifact, clearArtifact } = useModelArtifact();
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
 
@@ -224,6 +226,8 @@ export default function RunModelPanel() {
     }
     setErr(null);
     setResult(null);
+    // Clear any previous model artifact so ModelCard shows a clean slate until success
+    clearArtifact();
     setLoading(true);
 
     const wantProgress = useShuffleBaseline && Number(nShuffles) > 0;
@@ -270,7 +274,14 @@ export default function RunModelPanel() {
           : { ...base, split: { mode: 'kfold', n_splits: nSplits, stratified, shuffle } };
 
       const data = await runTrainRequest(payload);
+
+      // Store standard training results as before
       setResult(data);
+
+      // If an artifact was returned, store it in context
+      if (data?.artifact) {
+        setArtifact(data.artifact);
+      }
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
