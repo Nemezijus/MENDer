@@ -1,21 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Card, Button, Text,
   Stack, Group, Divider, Alert, Title, Box, Progress
 } from '@mantine/core';
 
 import { useDataCtx } from '../state/DataContext.jsx';
+import { useRunModelResultsCtx } from '../state/RunModelResultsContext.jsx';
+import { useModelArtifact } from '../state/ModelArtifactContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
-import { useModelArtifact } from "../state/ModelArtifactContext";
+
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
 import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
 import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
+
 import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
-import { useRunModelResultsCtx } from '../state/RunModelResultsContext.jsx';
+import { getModelSchema } from '../api/schema';
+
+// --- helpers ---------------------------------------------------------------
 
 function uuidv4() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -26,48 +31,155 @@ function uuidv4() {
   });
 }
 
+// stringify any error-like into readable text
+function toErrorText(e) {
+  if (typeof e === 'string') return e;
+  const data = e?.response?.data;
+  const detail = data?.detail ?? e?.detail;
+  const pick = detail ?? data ?? e?.message ?? e;
+  if (typeof pick === 'string') return pick;
+  if (Array.isArray(pick)) {
+    return pick.map((it) => {
+      if (typeof it === 'string') return it;
+      if (it && typeof it === 'object') {
+        const loc = Array.isArray(it.loc) ? it.loc.join('.') : it.loc;
+        return it.msg ? `${loc ? loc + ': ' : ''}${it.msg}` : JSON.stringify(it);
+      }
+      return String(it);
+    }).join('\n');
+  }
+  if (pick && typeof pick === 'object' && ('msg' in pick || 'type' in pick || 'loc' in pick)) {
+    const loc = Array.isArray(pick.loc) ? pick.loc.join('.') : pick.loc;
+    return `${loc ? loc + ': ' : ''}${pick.msg || pick.type || 'Validation error'}`;
+  }
+  try { return JSON.stringify(pick); } catch { return String(pick); }
+}
+
+// Build a method-specific, JSON-clean features payload from FeatureContext.
+// Only include keys for the chosen method to avoid Pydantic complaints.
+function featuresFromContext(fctx) {
+  const method = fctx?.method || 'none';
+  if (method === 'pca') {
+    return {
+      method: 'pca',
+      pca_n: fctx.pca_n ?? null,
+      pca_var: fctx.pca_var ?? 0.95,
+      pca_whiten: !!fctx.pca_whiten,
+    };
+  }
+  if (method === 'lda') {
+    return {
+      method: 'lda',
+      lda_n: fctx.lda_n ?? null,
+      lda_solver: fctx.lda_solver ?? 'svd',
+      lda_shrinkage: fctx.lda_shrinkage ?? null,
+      lda_tol: fctx.lda_tol ?? 1e-4,
+    };
+  }
+  if (method === 'sfs') {
+    let k = fctx.sfs_k;
+    if (k === '' || k == null) k = 'auto';
+    return {
+      method: 'sfs',
+      sfs_k: k, // int | 'auto'
+      sfs_direction: fctx.sfs_direction ?? 'forward',
+      sfs_cv: fctx.sfs_cv ?? 5,
+      sfs_n_jobs: fctx.sfs_n_jobs ?? null,
+    };
+  }
+  return { method: 'none' };
+}
+
+// --- component -------------------------------------------------------------
+
 export default function RunModelPanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
-  const {
-    method,
-    pca_n, pca_var, pca_whiten,
-    lda_n, lda_solver, lda_shrinkage, lda_tol,
-    sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
-  } = useFeatureCtx();
+  const fctx = useFeatureCtx();
 
+  const [modelSchema, setModelSchema] = useState(null);
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
+
+  // SPLIT / SCALE / METRIC
   const [splitMode, setSplitMode] = useState('holdout');
   const [trainFrac, setTrainFrac] = useState(0.75);
   const [nSplits, setNSplits] = useState(5);
   const [stratified, setStratified] = useState(true);
   const [shuffle, setShuffle] = useState(true);
-  const [seed, setSeed] = useState(42);
+  const [seed, setSeed] = useState('');
+
   const [scaleMethod, setScaleMethod] = useState('standard');
   const [metric, setMetric] = useState('accuracy');
 
-  const [model, setModel] = useState({
+  // >>> flat model state mirroring backend ModelModel <<<
+  const [model, setModel] = useState(() => ({
     algo: 'logreg',
-    logreg: { C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null, l1_ratio: 0.5 },
-    svm: {
-      kernel: 'rbf', C: 1.0, degree: 3, gammaMode: 'scale', gammaValue: 0.1, coef0: 0.0,
-      shrinking: true, probability: false, tol: 0.001, cache_size: 200.0, class_weight: null,
-      max_iter: -1, decision_function_shape: 'ovr', break_ties: false,
-    },
-    tree: {
-      criterion: 'gini', splitter: 'best', max_depth: null, min_samples_split: 2, min_samples_leaf: 1,
-      min_weight_fraction_leaf: 0.0, max_featuresMode: 'auto', max_featuresValue: null, random_state: null,
-      max_leaf_nodes: null, min_impurity_decrease: 0.0, class_weight: null, ccp_alpha: 0.0,
-    },
-    forest: {
-      n_estimators: 100, criterion: 'gini', max_depth: null, min_samples_split: 2, min_samples_leaf: 1,
-      min_weight_fraction_leaf: 0.0, max_featuresMode: 'sqrt', max_featuresValue: null, max_leaf_nodes: null,
-      min_impurity_decrease: 0.0, bootstrap: true, oob_score: false, n_jobs: null, random_state: null,
-      warm_start: false, class_weight: null, ccp_alpha: 0.0, max_samples: null,
-    },
-    knn: { 
-      n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null 
-    },
-  });
 
+    // Logistic Regression
+    C: 1.0,
+    penalty: 'l2',
+    solver: 'lbfgs',
+    max_iter: 1000,
+    class_weight: null,
+    l1_ratio: 0.5,
+
+    // SVM (SVC)
+    svm_C: 1.0,
+    svm_kernel: 'rbf',
+    svm_degree: 3,
+    svm_gamma: 'scale', // 'scale' | 'auto' | number
+    svm_coef0: 0.0,
+    svm_shrinking: true,
+    svm_probability: false,
+    svm_tol: 1e-3,
+    svm_cache_size: 200.0,
+    svm_class_weight: null,
+    svm_max_iter: -1,
+    svm_decision_function_shape: 'ovr',
+    svm_break_ties: false,
+
+    // DecisionTreeClassifier
+    tree_criterion: 'gini',
+    tree_splitter: 'best',
+    tree_max_depth: null,
+    tree_min_samples_split: 2,
+    tree_min_samples_leaf: 1,
+    tree_min_weight_fraction_leaf: 0.0,
+    tree_max_features: null, // null | 'sqrt' | 'log2' | number
+    tree_max_leaf_nodes: null,
+    tree_min_impurity_decrease: 0.0,
+    tree_class_weight: null,
+    tree_ccp_alpha: 0.0,
+
+    // RandomForestClassifier
+    forest_n_estimators: 100,
+    forest_criterion: 'gini',
+    forest_max_depth: null,
+    forest_min_samples_split: 2,
+    forest_min_samples_leaf: 1,
+    forest_min_weight_fraction_leaf: 0.0,
+    forest_max_features: 'sqrt', // 'sqrt' | 'log2' | number | null
+    forest_max_leaf_nodes: null,
+    forest_min_impurity_decrease: 0.0,
+    forest_bootstrap: true,
+    forest_oob_score: false,
+    forest_n_jobs: null,
+    forest_random_state: null,
+    forest_warm_start: false,
+    forest_class_weight: null,
+    forest_ccp_alpha: 0.0,
+    forest_max_samples: null,
+
+    // KNN
+    knn_n_neighbors: 5,
+    knn_weights: 'uniform',
+    knn_algorithm: 'auto',
+    knn_leaf_size: 30,
+    knn_p: 2,
+    knn_metric: 'minkowski',
+    knn_n_jobs: null,
+  }));
+
+  // Local UI state (progress/errors)
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -80,14 +192,80 @@ export default function RunModelPanel() {
   const lastPercentRef = useRef(0);
 
   const { setResult } = useRunModelResultsCtx();
-  const { setArtifact, clearArtifact } = useModelArtifact();
+  const { artifact, setArtifact, clearArtifact } = useModelArtifact();
+  const lastHydratedUid = useRef(null);
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { schema, defaults } = await getModelSchema();
+        if (!alive) return;
+        setModelSchema(schema);
+
+        // Apply backend defaults to the flat model only once (don’t overwrite user edits)
+        if (!defaultsApplied && defaults && typeof defaults === 'object') {
+          // The backend defaults already use flat keys (per Pydantic ModelModel)
+          // Make sure we keep our current algo if user changed it quickly
+          setModel((cur) => ({ ...defaults, algo: cur.algo ?? defaults.algo ?? 'logreg' }));
+          setDefaultsApplied(true);
+        }
+      } catch {
+        // ignore; UI will use hardcoded fallbacks for enums
+      }
+    })();
+    return () => { alive = false; };
+  }, [defaultsApplied]);
+
+  useEffect(() => {
+    const uid = artifact?.uid;
+    if (!uid) return;
+
+    if (lastHydratedUid.current === uid) return;
+    lastHydratedUid.current = uid;
+
+    // 1) MODEL (already flat)
+    if (artifact?.model && typeof artifact.model === 'object') {
+      setModel((cur) => ({ ...cur, ...artifact.model }));
+    }
+
+    // 2) FEATURES (via context helper)
+    if (artifact?.features && typeof artifact.features === 'object') {
+      fctx.setFromArtifact(artifact.features);
+    }
+
+    // 3) SCALE
+    const scaleMethodFromArt = artifact?.scale?.method;
+    if (scaleMethodFromArt) setScaleMethod(scaleMethodFromArt);
+
+    // 4) SPLIT
+    const split = artifact?.split || {};
+    const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
+    setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
+
+    if (mode === 'kfold' || 'n_splits' in split) {
+      if (split?.n_splits != null) setNSplits(Number(split.n_splits));
+    } else {
+      if (split?.train_frac != null) setTrainFrac(Number(split.train_frac));
+    }
+    if (split?.stratified != null) setStratified(!!split.stratified);
+    if (split?.shuffle != null) setShuffle(!!split.shuffle);
+
+    // 5) EVAL
+    const ev = artifact?.eval || {};
+    if (ev?.metric) setMetric(ev.metric);
+    if ('seed' in ev) {
+      setSeed(ev.seed == null ? '' : String(ev.seed));
+    }
+
+    // 6) Clear current results (avoid stale numbers from a different config)
+    setResult(null);
+  }, [artifact, fctx, setMetric, setNSplits, setSeed, setSplitMode, setStratified, setTrainFrac, setShuffle, setScaleMethod, setModel, setResult]);
 
   function startProgressPolling(progressId) {
     pollStopRef.current = false;
     lastPercentRef.current = 0;
-
     async function tick() {
       if (pollStopRef.current) return;
       try {
@@ -95,129 +273,19 @@ export default function RunModelPanel() {
         const pct = Math.round(rec.percent || 0);
         setProgress(pct);
         setProgressLabel(rec.label || '');
-
         let delay = 250;
         if (pct >= 90 && pct < 98) delay = 500;
         else if (pct >= 98 && !rec.done) delay = 1000;
-
         lastPercentRef.current = pct;
-
-        if (!rec.done) {
-          setTimeout(tick, delay);
-        } else {
-          pollStopRef.current = true;
-        }
+        if (!rec.done) setTimeout(tick, delay);
+        else pollStopRef.current = true;
       } catch {
         setTimeout(tick, 300);
       }
     }
     tick();
   }
-
-  function stopProgressPolling() {
-    pollStopRef.current = true;
-  }
-
-  const maxFeaturesToValue = (mode, val) => {
-    if (mode === 'auto' || mode === 'sqrt' || mode === 'log2') return mode;
-    if (mode === 'all') return null;
-    if (mode === 'custom') {
-      if (val === '' || val == null) return null;
-      const n = Number(val);
-      return Number.isNaN(n) ? null : n;
-    }
-    return null;
-  };
-
-  const modelPayload = useMemo(() => {
-    const m = model;
-    if (m.algo === 'logreg') {
-      const lr = m.logreg;
-      return {
-        algo: 'logreg',
-        C: Number(lr.C),
-        penalty: lr.penalty,
-        solver: lr.solver,
-        max_iter: Number(lr.max_iter),
-        class_weight: lr.class_weight,
-        ...(lr.penalty === 'elasticnet' ? { l1_ratio: Number(lr.l1_ratio ?? 0.5) } : {}),
-      };
-    }
-    if (m.algo === 'svm') {
-      const s = m.svm;
-      return {
-        algo: 'svm',
-        kernel: s.kernel,
-        C: Number(s.C),
-        degree: Number(s.degree),
-        gamma: s.gammaMode === 'value' ? Number(s.gammaValue) : s.gammaMode,
-        coef0: Number(s.coef0),
-        shrinking: Boolean(s.shrinking),
-        probability: Boolean(s.probability),
-        tol: Number(s.tol),
-        cache_size: Number(s.cache_size),
-        class_weight: s.class_weight,
-        max_iter: Number(s.max_iter),
-        decision_function_shape: s.decision_function_shape,
-        break_ties: Boolean(s.break_ties),
-      };
-    }
-    if (m.algo === 'tree') {
-      const t = m.tree;
-      return {
-        algo: 'tree',
-        criterion: t.criterion,
-        splitter: t.splitter,
-        max_depth: t.max_depth == null || t.max_depth === '' ? null : Number(t.max_depth),
-        min_samples_split: Number(t.min_samples_split),
-        min_samples_leaf: Number(t.min_samples_leaf),
-        min_weight_fraction_leaf: Number(t.min_weight_fraction_leaf),
-        max_features: maxFeaturesToValue(t.max_featuresMode, t.max_featuresValue),
-        random_state: t.random_state == null || t.random_state === '' ? null : Number(t.random_state),
-        max_leaf_nodes: t.max_leaf_nodes == null || t.max_leaf_nodes === '' ? null : Number(t.max_leaf_nodes),
-        min_impurity_decrease: Number(t.min_impurity_decrease),
-        class_weight: t.class_weight,
-        ccp_alpha: Number(t.ccp_alpha),
-      };
-    }
-    if (m.algo === 'forest') {
-      const f = m.forest;
-      return {
-        algo: 'forest',
-        n_estimators: Number(f.n_estimators),
-        criterion: f.criterion,
-        max_depth: f.max_depth == null || f.max_depth === '' ? null : Number(f.max_depth),
-        min_samples_split: Number(f.min_samples_split),
-        min_samples_leaf: Number(f.min_samples_leaf),
-        min_weight_fraction_leaf: Number(f.min_weight_fraction_leaf),
-        max_features: maxFeaturesToValue(f.max_featuresMode, f.max_featuresValue),
-        max_leaf_nodes: f.max_leaf_nodes == null || f.max_leaf_nodes === '' ? null : Number(f.max_leaf_nodes),
-        min_impurity_decrease: Number(f.min_impurity_decrease),
-        bootstrap: Boolean(f.bootstrap),
-        oob_score: Boolean(f.oob_score),
-        n_jobs: f.n_jobs == null || f.n_jobs === '' ? null : Number(f.n_jobs),
-        random_state: f.random_state == null || f.random_state === '' ? null : Number(f.random_state),
-        warm_start: Boolean(f.warm_start),
-        class_weight: f.class_weight,
-        ccp_alpha: Number(f.ccp_alpha),
-        max_samples: f.max_samples == null || f.max_samples === '' ? null : Number(f.max_samples),
-      };
-    }
-    if (m.algo === 'knn') {
-      const k = m.knn;
-      return {
-        algo: 'knn',
-        n_neighbors: Number(k.n_neighbors),
-        weights: k.weights,
-        algorithm: k.algorithm,
-        leaf_size: Number(k.leaf_size),
-        p: Number(k.p),
-        metric: k.metric,
-        n_jobs: k.n_jobs == null || k.n_jobs === '' ? null : Number(k.n_jobs),
-      };
-    }
-    return { algo: 'logreg', C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null };
-  }, [model]);
+  function stopProgressPolling() { pollStopRef.current = true; }
 
   async function handleRun() {
     if (!dataReady) {
@@ -226,7 +294,6 @@ export default function RunModelPanel() {
     }
     setErr(null);
     setResult(null);
-    // Clear any previous model artifact so ModelCard shows a clean slate until success
     clearArtifact();
     setLoading(true);
 
@@ -244,7 +311,7 @@ export default function RunModelPanel() {
     }
 
     try {
-      const base = {
+      const payload = {
         data: {
           x_path: npzPath ? null : xPath,
           y_path: npzPath ? null : yPath,
@@ -253,37 +320,28 @@ export default function RunModelPanel() {
           y_key: yKey,
         },
         scale: { method: scaleMethod },
-        features: {
-          method,
-          pca_n, pca_var, pca_whiten,
-          lda_n, lda_solver, lda_shrinkage, lda_tol,
-          sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
-        },
-        model: modelPayload,
+        features: featuresFromContext(fctx),
+        model,
         eval: {
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
           n_shuffles: wantProgress ? Number(nShuffles) : 0,
           ...(wantProgress ? { progress_id: progressId } : {}),
         },
+        split:
+          splitMode === 'holdout'
+            ? { mode: 'holdout', train_frac: trainFrac, stratified, shuffle }
+            : { mode: 'kfold', n_splits: nSplits, stratified, shuffle },
       };
 
-      const payload =
-        splitMode === 'holdout'
-          ? { ...base, split: { mode: 'holdout', train_frac: trainFrac, stratified, shuffle } }
-          : { ...base, split: { mode: 'kfold', n_splits: nSplits, stratified, shuffle } };
-
       const data = await runTrainRequest(payload);
-
-      // Store standard training results as before
       setResult(data);
-
-      // If an artifact was returned, store it in context
-      if (data?.artifact) {
-        setArtifact(data.artifact);
-      }
+      if (data?.artifact) setArtifact(data.artifact);
     } catch (e) {
-      const msg = e?.response?.data?.detail || e.message || String(e);
+      const msg =
+        toErrorText(e?.response?.data?.detail) ||
+        toErrorText(e?.response?.data) ||
+        toErrorText(e);
       setErr(msg);
       setProgress(0);
       setProgressLabel('');
@@ -312,7 +370,6 @@ export default function RunModelPanel() {
             </Button>
           </Group>
 
-          {/* Only show progress when shuffling (true backend progress available) */}
           {loading && useShuffleBaseline && Number(nShuffles) > 0 && (
             <Stack gap={4}>
               <Group justify="space-between">
@@ -325,7 +382,6 @@ export default function RunModelPanel() {
 
           <Box w="100%" style={{ maxWidth: 520 }}>
             <Stack gap="sm">
-
               <SplitOptionsCard
                 allowedModes={['holdout', 'kfold']}
                 mode={splitMode}
@@ -344,33 +400,23 @@ export default function RunModelPanel() {
 
               <Divider my="xs" />
 
-              <ScalingCard 
-                value={scaleMethod} 
-                onChange={setScaleMethod} 
-              />
+              <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
 
-              <FeatureCard 
-                title="Features" 
-              />
+              {/* Restored: Features section */}
+              <FeatureCard />
 
               <Divider my="xs" />
 
-              <MetricCard
-                value={metric}
-                onChange={setMetric}
-              />
+              <ModelSelectionCard model={model} onChange={setModel} schema={modelSchema} />
 
+              <Divider my="xs" />
+
+              <MetricCard value={metric} onChange={setMetric} />
               <ShuffleLabelsCard
                 checked={useShuffleBaseline}
-                onCheckedChange={(v) => setUseShuffleBaseline(v)}
+                onCheckedChange={setUseShuffleBaseline}
                 nShuffles={nShuffles}
                 onNShufflesChange={setNShuffles}
-              />
-
-              <Divider my="xs" />
-              <ModelSelectionCard 
-                value={model} 
-                onChange={setModel} 
               />
             </Stack>
           </Box>

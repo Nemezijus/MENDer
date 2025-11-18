@@ -1,5 +1,4 @@
-// src/state/FeatureContext.jsx
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 
 const FeatureContext = createContext(null);
 
@@ -24,21 +23,53 @@ export function FeatureProvider({ children }) {
   const [sfs_cv, setSfsCv] = useState(5);
   const [sfs_n_jobs, setSfsNJobs] = useState(null);
 
+  // --- one-shot hydration from artifact.features ---
+  const setFromArtifact = (feat) => {
+    const m = feat?.method ?? 'none';
+    setMethod(m);
+
+    if (m === 'pca') {
+      setPcaN(feat?.pca_n ?? null);
+      setPcaVar(feat?.pca_var ?? 0.95);
+      setPcaWhiten(!!feat?.pca_whiten);
+      return;
+    }
+
+    if (m === 'lda') {
+      setLdaN(feat?.lda_n ?? null);
+      setLdaSolver(feat?.lda_solver ?? 'svd');
+      setLdaShrinkage(feat?.lda_shrinkage ?? null);
+      setLdaTol(feat?.lda_tol ?? 1e-4);
+      return;
+    }
+
+    if (m === 'sfs') {
+      let k = feat?.sfs_k;
+      if (k == null || k === '') k = 'auto';
+      setSfsK(k);
+      setSfsDirection(feat?.sfs_direction ?? 'backward');
+      setSfsCv(Number(feat?.sfs_cv ?? 5));
+      setSfsNJobs(feat?.sfs_n_jobs ?? null);
+      return;
+    }
+
+    // 'none' -> leave other fields as-is
+  };
+
   const value = useMemo(() => ({
-    method, setMethod,
-    pca_n, setPcaN,
-    pca_var, setPcaVar,
-    pca_whiten, setPcaWhiten,
+    // state
+    method, pca_n, pca_var, pca_whiten,
+    lda_n, lda_solver, lda_shrinkage, lda_tol,
+    sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
 
-    lda_n, setLdaN,
-    lda_solver, setLdaSolver,
-    lda_shrinkage, setLdaShrinkage,
-    lda_tol, setLdaTol,
+    // setters
+    setMethod,
+    setPcaN, setPcaVar, setPcaWhiten,
+    setLdaN, setLdaSolver, setLdaShrinkage, setLdaTol,
+    setSfsK, setSfsDirection, setSfsCv, setSfsNJobs,
 
-    sfs_k, setSfsK,
-    sfs_direction, setSfsDirection,
-    sfs_cv, setSfsCv,
-    sfs_n_jobs, setSfsNJobs,
+    // hydrator
+    setFromArtifact,
   }), [
     method,
     pca_n, pca_var, pca_whiten,

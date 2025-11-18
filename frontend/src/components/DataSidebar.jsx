@@ -102,8 +102,8 @@ export default function DataSidebar() {
           </Group>
 
           {/* Manual container paths (if not uploading) */}
-          <TextInput label="X path (.mat / .npz)" value={xPath} onChange={(e) => setXPath(e.currentTarget.value)} disabled={!!npzPath} />
-          <TextInput label="y path (.mat / .npz)" value={yPath} onChange={(e) => setYPath(e.currentTarget.value)} disabled={!!npzPath} />
+          <TextInput label="Feature matrix (X) path (.mat / .npz)" value={xPath} onChange={(e) => setXPath(e.currentTarget.value)} disabled={!!npzPath} />
+          <TextInput label="Label vector (y) path (.mat / .npz)" value={yPath} onChange={(e) => setYPath(e.currentTarget.value)} disabled={!!npzPath} />
           <TextInput label="npz path (X,y)" value={npzPath || ''} onChange={(e) => setNPZPath(e.currentTarget.value || null)} />
 
           <Group grow>
@@ -118,8 +118,8 @@ export default function DataSidebar() {
           <Divider my="xs" label="or upload files" labelPosition="center" />
 
           {/* Upload area */}
-          <FileInput label="Upload X (.mat / .npz / .npy)" placeholder="Pick file (optional)" value={xLocalFile} onChange={setXLocalFile} accept=".mat,.npz,.npy" clearable />
-          <FileInput label="Upload y (.mat / .npz / .npy)" placeholder="Pick file (optional)" value={yLocalFile} onChange={setYLocalFile} accept=".mat,.npz,.npy" clearable />
+          <FileInput label="Upload Feature Matrix (X) (.mat / .npz)" placeholder="Pick file (optional)" value={xLocalFile} onChange={setXLocalFile} accept=".mat,.npz,.npy" clearable />
+          <FileInput label="Upload Label vector (y) (.mat / .npz)" placeholder="Pick file (optional)" value={yLocalFile} onChange={setYLocalFile} accept=".mat,.npz,.npy" clearable />
           <Group gap="xs">
             <Button size="xs" variant="light" onClick={handleUploadAndInspect} loading={loading}>Upload & Inspect</Button>
           </Group>

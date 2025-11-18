@@ -164,23 +164,46 @@ export default function LearningCurvePanel() {
       const mf = maxFeaturesToValue(f.max_features_mode, f.max_features_value);
       return {
         algo: 'forest',
-        rf_n_estimators: Number(f.n_estimators),
-        rf_criterion: f.criterion,
-        rf_max_depth: f.max_depth == null ? null : Number(f.max_depth),
-        rf_min_samples_split: Number(f.min_samples_split),
-        rf_min_samples_leaf: Number(f.min_samples_leaf),
-        rf_min_weight_fraction_leaf: Number(f.min_weight_fraction_leaf),
-        rf_max_features: mf,
-        rf_max_leaf_nodes: f.max_leaf_nodes == null ? null : Number(f.max_leaf_nodes),
-        rf_min_impurity_decrease: Number(f.min_impurity_decrease),
-        rf_bootstrap: !!f.bootstrap,
-        rf_oob_score: !!f.oob_score,
-        rf_n_jobs: f.n_jobs == null ? null : Number(f.n_jobs),
-        rf_class_weight: f.class_weight,
-        rf_ccp_alpha: Number(f.rf_ccp_alpha),
-        rf_warm_start: !!f.warm_start,
+        n_estimators: Number(f.n_estimators),
+        criterion: f.criterion,
+        max_depth: f.max_depth == null ? null : Number(f.max_depth),
+        min_samples_split: Number(f.min_samples_split),
+        min_samples_leaf: Number(f.min_samples_leaf),
+        min_weight_fraction_leaf: Number(f.min_weight_fraction_leaf),
+        max_features: mf,
+        max_leaf_nodes: f.max_leaf_nodes == null ? null : Number(f.max_leaf_nodes),
+        min_impurity_decrease: Number(f.min_impurity_decrease),
+        bootstrap: !!f.bootstrap,
+        oob_score: !!f.oob_score,
+        n_jobs: f.n_jobs == null ? null : Number(f.n_jobs),
+        class_weight: f.class_weight,
+        ccp_alpha: Number(f.ccp_alpha),   // ← not rf_ccp_alpha
+        warm_start: !!f.warm_start,
       };
     }
+
+    // if (m.algo === 'forest') {
+    //   const f = m.forest;
+    //   const mf = maxFeaturesToValue(f.max_features_mode, f.max_features_value);
+    //   return {
+    //     algo: 'forest',
+    //     rf_n_estimators: Number(f.n_estimators),
+    //     rf_criterion: f.criterion,
+    //     rf_max_depth: f.max_depth == null ? null : Number(f.max_depth),
+    //     rf_min_samples_split: Number(f.min_samples_split),
+    //     rf_min_samples_leaf: Number(f.min_samples_leaf),
+    //     rf_min_weight_fraction_leaf: Number(f.min_weight_fraction_leaf),
+    //     rf_max_features: mf,
+    //     rf_max_leaf_nodes: f.max_leaf_nodes == null ? null : Number(f.max_leaf_nodes),
+    //     rf_min_impurity_decrease: Number(f.min_impurity_decrease),
+    //     rf_bootstrap: !!f.bootstrap,
+    //     rf_oob_score: !!f.oob_score,
+    //     rf_n_jobs: f.n_jobs == null ? null : Number(f.n_jobs),
+    //     rf_class_weight: f.class_weight,
+    //     rf_ccp_alpha: Number(f.rf_ccp_alpha),
+    //     rf_warm_start: !!f.warm_start,
+    //   };
+    // }
     const k = m.knn;
     return {
       algo: 'knn',
@@ -241,7 +264,9 @@ export default function LearningCurvePanel() {
       const { data } = await api.post('/learning-curve', payload);
       setResult(data); // goes into context → right column panel
     } catch (e) {
-      const msg = e?.response?.data?.detail || e.message || String(e);
+      const raw = e?.response?.data?.detail ?? e.message ?? String(e);
+      const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
+      // const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
     } finally {
       setLoading(false);
