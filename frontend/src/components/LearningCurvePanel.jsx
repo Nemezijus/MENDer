@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Card, Button, Text,
   Stack, Group, Divider, Alert, Title, Box, NumberInput
@@ -13,13 +13,6 @@ import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import api from '../api/client';
 import { useLearningCurveResultsCtx } from '../state/LearningCurveResultsContext.jsx';
-
-function maxFeaturesToValue(mode, val) {
-  if (!mode || mode === 'none') return null;
-  if (mode === 'sqrt' || mode === 'log2') return mode;
-  if (mode === 'int' || mode === 'float') return Number(val);
-  return null;
-}
 
 export default function LearningCurvePanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
@@ -49,56 +42,96 @@ export default function LearningCurvePanel() {
   const [scaleMethod, setScaleMethod] = useState('standard');
   const [metric, setMetric] = useState('accuracy');
 
-  // Model state
+  // --- NEW: model schema + flat model state (schema-driven) ----------------
+  const [modelSchema, setModelSchema] = useState(null);
+
+  // Flat model: keys match backend ModelModel (shared_schemas.model_configs)
   const [model, setModel] = useState({
     algo: 'logreg',
-    logreg: {
-      C: 1.0,
-      penalty: 'l2',
-      solver: 'lbfgs',
-      max_iter: 1000,
-      class_weight: null,
-      l1_ratio: 0.5,
-    },
-    svm: {
-      kernel: 'rbf',
-      C: 1.0,
-      degree: 3,
-      gammaMode: 'scale',
-      gammaValue: 0.1,
-      coef0: 0.0,
-      shrinking: true,
-      probability: false,
-      tol: 0.001,
-      cache_size: 200.0,
-      class_weight: null,
-      max_iter: -1,
-      decision_function_shape: 'ovr',
-      break_ties: false,
-    },
-    tree: {
-      criterion: 'gini', splitter: 'best',
-      max_depth: null, min_samples_split: 2, min_samples_leaf: 1,
-      min_weight_fraction_leaf: 0.0,
-      max_features_mode: 'none', max_features_value: null,
-      max_leaf_nodes: null, min_impurity_decrease: 0.0,
-      class_weight: null,
-      ccp_alpha: 0.0,
-    },
-    forest: {
-      n_estimators: 100, criterion: 'gini',
-      max_depth: null, min_samples_split: 2, min_samples_leaf: 1,
-      min_weight_fraction_leaf: 0.0,
-      max_features_mode: 'sqrt', max_features_value: null,
-      max_leaf_nodes: null, min_impurity_decrease: 0.0,
-      bootstrap: true, oob_score: false, n_jobs: null,
-      class_weight: null, ccp_alpha: 0.0, warm_start: false,
-    },
-    knn: {
-      n_neighbors: 5, weights: 'uniform', algorithm: 'auto',
-      leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null,
-    },
+    // logreg
+    C: 1.0,
+    penalty: 'l2',
+    solver: 'lbfgs',
+    max_iter: 1000,
+    class_weight: null,
+    l1_ratio: 0.5,
+
+    // svm
+    svm_kernel: 'rbf',
+    svm_C: 1.0,
+    svm_degree: 3,
+    svm_gamma: 'scale', // or 'auto' or numeric
+    svm_coef0: 0.0,
+    svm_shrinking: true,
+    svm_probability: false,
+    svm_tol: 1e-3,
+    svm_cache_size: 200.0,
+    svm_class_weight: null,
+    svm_max_iter: -1,
+    svm_decision_function_shape: 'ovr',
+    svm_break_ties: false,
+
+    // tree
+    tree_criterion: 'gini',
+    tree_splitter: 'best',
+    tree_max_depth: null,
+    tree_min_samples_split: 2,
+    tree_min_samples_leaf: 1,
+    tree_min_weight_fraction_leaf: 0.0,
+    tree_max_features: null, // 'sqrt' | 'log2' | number | null
+    tree_max_leaf_nodes: null,
+    tree_min_impurity_decrease: 0.0,
+    tree_class_weight: null,
+    tree_ccp_alpha: 0.0,
+
+    // forest
+    forest_n_estimators: 100,
+    forest_criterion: 'gini',
+    forest_max_depth: null,
+    forest_min_samples_split: 2,
+    forest_min_samples_leaf: 1,
+    forest_min_weight_fraction_leaf: 0.0,
+    forest_max_features: 'sqrt',
+    forest_max_leaf_nodes: null,
+    forest_min_impurity_decrease: 0.0,
+    forest_bootstrap: true,
+    forest_oob_score: false,
+    forest_n_jobs: null,
+    forest_random_state: null,
+    forest_warm_start: false,
+    forest_class_weight: null,
+    forest_ccp_alpha: 0.0,
+    forest_max_samples: null,
+
+    // knn
+    knn_n_neighbors: 5,
+    knn_weights: 'uniform',
+    knn_algorithm: 'auto',
+    knn_leaf_size: 30,
+    knn_p: 2,
+    knn_metric: 'minkowski',
+    knn_n_jobs: null,
   });
+
+  // Fetch schema/defaults to keep enums/defaults in sync with backend
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/schema/model'); // served at /api/v1/schema/model
+        if (!cancel) {
+          setModelSchema(data?.schema ?? null);
+          if (data?.defaults) {
+            // Merge defaults over current model (preserve user changes if any)
+            setModel((prev) => ({ ...data.defaults, ...prev }));
+          }
+        }
+      } catch {
+        // schema fetch optional; UI has fallbacks
+      }
+    })();
+    return () => { cancel = true; };
+  }, []);
 
   const [trainSizesCSV, setTrainSizesCSV] = useState('');
   const [nSteps, setNSteps] = useState(5);
@@ -107,113 +140,84 @@ export default function LearningCurvePanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
+  // With flat state, payload can be the model as-is (minor sanitization)
   const modelPayload = useMemo(() => {
     const m = model;
-    if (m.algo === 'logreg') {
-      const lr = m.logreg;
-      return {
-        algo: 'logreg',
-        C: Number(lr.C),
-        penalty: lr.penalty,
-        solver: lr.solver,
-        max_iter: Number(lr.max_iter),
-        class_weight: lr.class_weight,
-        ...(lr.penalty === 'elasticnet' ? { l1_ratio: Number(lr.l1_ratio ?? 0.5) } : {}),
-      };
-    }
-    if (m.algo === 'svm') {
-      const s = m.svm;
-      const gamma = s.gammaMode === 'numeric' ? Number(s.gammaValue) : (s.gammaMode || 'scale');
-      return {
-        algo: 'svm',
-        svm_C: Number(s.C),
-        svm_kernel: s.kernel,
-        svm_degree: Number(s.degree),
-        svm_gamma: gamma,
-        svm_coef0: Number(s.coef0),
-        svm_shrinking: !!s.shrinking,
-        svm_probability: !!s.probability,
-        svm_tol: Number(s.tol),
-        svm_cache_size: Number(s.cache_size),
-        svm_class_weight: s.class_weight,
-        svm_max_iter: Number(s.max_iter),
-        svm_decision_function_shape: s.decision_function_shape,
-        svm_break_ties: !!s.break_ties,
-      };
-    }
-    if (m.algo === 'tree') {
-      const t = m.tree;
-      const mf = maxFeaturesToValue(t.max_features_mode, t.max_features_value);
-      return {
-        algo: 'tree',
-        tree_criterion: t.criterion,
-        tree_splitter: t.splitter,
-        tree_max_depth: t.max_depth == null ? null : Number(t.max_depth),
-        tree_min_samples_split: Number(t.min_samples_split),
-        tree_min_samples_leaf: Number(t.min_samples_leaf),
-        tree_min_weight_fraction_leaf: Number(t.min_weight_fraction_leaf),
-        tree_max_features: mf,
-        tree_max_leaf_nodes: t.max_leaf_nodes == null ? null : Number(t.max_leaf_nodes),
-        tree_min_impurity_decrease: Number(t.min_impurity_decrease),
-        tree_class_weight: t.class_weight,
-        tree_ccp_alpha: Number(t.ccp_alpha),
-      };
-    }
-    if (m.algo === 'forest') {
-      const f = m.forest;
-      const mf = maxFeaturesToValue(f.max_features_mode, f.max_features_value);
-      return {
-        algo: 'forest',
-        n_estimators: Number(f.n_estimators),
-        criterion: f.criterion,
-        max_depth: f.max_depth == null ? null : Number(f.max_depth),
-        min_samples_split: Number(f.min_samples_split),
-        min_samples_leaf: Number(f.min_samples_leaf),
-        min_weight_fraction_leaf: Number(f.min_weight_fraction_leaf),
-        max_features: mf,
-        max_leaf_nodes: f.max_leaf_nodes == null ? null : Number(f.max_leaf_nodes),
-        min_impurity_decrease: Number(f.min_impurity_decrease),
-        bootstrap: !!f.bootstrap,
-        oob_score: !!f.oob_score,
-        n_jobs: f.n_jobs == null ? null : Number(f.n_jobs),
-        class_weight: f.class_weight,
-        ccp_alpha: Number(f.ccp_alpha),   // ← not rf_ccp_alpha
-        warm_start: !!f.warm_start,
-      };
-    }
 
-    // if (m.algo === 'forest') {
-    //   const f = m.forest;
-    //   const mf = maxFeaturesToValue(f.max_features_mode, f.max_features_value);
-    //   return {
-    //     algo: 'forest',
-    //     rf_n_estimators: Number(f.n_estimators),
-    //     rf_criterion: f.criterion,
-    //     rf_max_depth: f.max_depth == null ? null : Number(f.max_depth),
-    //     rf_min_samples_split: Number(f.min_samples_split),
-    //     rf_min_samples_leaf: Number(f.min_samples_leaf),
-    //     rf_min_weight_fraction_leaf: Number(f.min_weight_fraction_leaf),
-    //     rf_max_features: mf,
-    //     rf_max_leaf_nodes: f.max_leaf_nodes == null ? null : Number(f.max_leaf_nodes),
-    //     rf_min_impurity_decrease: Number(f.min_impurity_decrease),
-    //     rf_bootstrap: !!f.bootstrap,
-    //     rf_oob_score: !!f.oob_score,
-    //     rf_n_jobs: f.n_jobs == null ? null : Number(f.n_jobs),
-    //     rf_class_weight: f.class_weight,
-    //     rf_ccp_alpha: Number(f.rf_ccp_alpha),
-    //     rf_warm_start: !!f.warm_start,
-    //   };
-    // }
-    const k = m.knn;
+    // Ensure numeric-ish fields are numbers where appropriate
+    const num = (v) => (v === '' || v == null ? v : Number(v));
+
+    // SVM gamma can be 'scale' | 'auto' | number
+    const svm_gamma = (typeof m.svm_gamma === 'number')
+      ? Number(m.svm_gamma)
+      : (m.svm_gamma ?? 'scale');
+
     return {
-      algo: 'knn',
-      knn_n_neighbors: Number(k.n_neighbors),
-      knn_weights: k.weights,
-      knn_algorithm: k.algorithm,
-      knn_leaf_size: Number(k.leaf_size),
-      knn_p: Number(k.p),
-      knn_metric: k.metric,
-      knn_n_jobs: k.n_jobs == null ? null : Number(k.n_jobs),
+      algo: m.algo,
+
+      // logreg
+      C: num(m.C),
+      penalty: m.penalty,
+      solver: m.solver,
+      max_iter: num(m.max_iter),
+      class_weight: m.class_weight,
+      ...(m.penalty === 'elasticnet' ? { l1_ratio: num(m.l1_ratio ?? 0.5) } : {}),
+
+      // svm
+      svm_C: num(m.svm_C),
+      svm_kernel: m.svm_kernel,
+      svm_degree: num(m.svm_degree),
+      svm_gamma,
+      svm_coef0: num(m.svm_coef0),
+      svm_shrinking: !!m.svm_shrinking,
+      svm_probability: !!m.svm_probability,
+      svm_tol: num(m.svm_tol),
+      svm_cache_size: num(m.svm_cache_size),
+      svm_class_weight: m.svm_class_weight,
+      svm_max_iter: num(m.svm_max_iter),
+      svm_decision_function_shape: m.svm_decision_function_shape,
+      svm_break_ties: !!m.svm_break_ties,
+
+      // tree
+      tree_criterion: m.tree_criterion,
+      tree_splitter: m.tree_splitter,
+      tree_max_depth: m.tree_max_depth == null ? null : num(m.tree_max_depth),
+      tree_min_samples_split: num(m.tree_min_samples_split),
+      tree_min_samples_leaf: num(m.tree_min_samples_leaf),
+      tree_min_weight_fraction_leaf: num(m.tree_min_weight_fraction_leaf),
+      tree_max_features: m.tree_max_features,
+      tree_max_leaf_nodes: m.tree_max_leaf_nodes == null ? null : num(m.tree_max_leaf_nodes),
+      tree_min_impurity_decrease: num(m.tree_min_impurity_decrease),
+      tree_class_weight: m.tree_class_weight,
+      tree_ccp_alpha: num(m.tree_ccp_alpha),
+
+      // forest (all with forest_* prefix)
+      forest_n_estimators: num(m.forest_n_estimators),
+      forest_criterion: m.forest_criterion,
+      forest_max_depth: m.forest_max_depth == null ? null : num(m.forest_max_depth),
+      forest_min_samples_split: num(m.forest_min_samples_split),
+      forest_min_samples_leaf: num(m.forest_min_samples_leaf),
+      forest_min_weight_fraction_leaf: num(m.forest_min_weight_fraction_leaf),
+      forest_max_features: m.forest_max_features,
+      forest_max_leaf_nodes: m.forest_max_leaf_nodes == null ? null : num(m.forest_max_leaf_nodes),
+      forest_min_impurity_decrease: num(m.forest_min_impurity_decrease),
+      forest_bootstrap: !!m.forest_bootstrap,
+      forest_oob_score: !!m.forest_oob_score,
+      forest_n_jobs: m.forest_n_jobs == null ? null : num(m.forest_n_jobs),
+      forest_random_state: m.forest_random_state == null ? null : num(m.forest_random_state),
+      forest_warm_start: !!m.forest_warm_start,
+      forest_class_weight: m.forest_class_weight,
+      forest_ccp_alpha: num(m.forest_ccp_alpha),
+      forest_max_samples: m.forest_max_samples == null ? null : num(m.forest_max_samples),
+
+      // knn
+      knn_n_neighbors: num(m.knn_n_neighbors),
+      knn_weights: m.knn_weights,
+      knn_algorithm: m.knn_algorithm,
+      knn_leaf_size: num(m.knn_leaf_size),
+      knn_p: num(m.knn_p),
+      knn_metric: m.knn_metric,
+      knn_n_jobs: m.knn_n_jobs == null ? null : num(m.knn_n_jobs),
     };
   }, [model]);
 
@@ -262,11 +266,10 @@ export default function LearningCurvePanel() {
       };
 
       const { data } = await api.post('/learning-curve', payload);
-      setResult(data); // goes into context → right column panel
+      setResult(data);
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
-      // const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
     } finally {
       setLoading(false);
@@ -325,7 +328,7 @@ export default function LearningCurvePanel() {
 
               <Divider my="xs" />
 
-              <ModelSelectionCard value={model} onChange={setModel} />
+              <ModelSelectionCard model={model} onChange={setModel} schema={modelSchema?.schema ? modelSchema.schema : modelSchema} />
 
               <Divider my="xs" />
 
