@@ -8,9 +8,13 @@ from sklearn.feature_selection import SequentialFeatureSelector
 
 from visualizations.general.plot_decision_regions import plot_decision_regions
 from utils.permutations.rng import RngManager
-from utils.configs.configs import (
-    RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig, ModelConfig, EvalConfig
-)
+
+from shared_schemas.run_config import RunConfig, DataModel
+from shared_schemas.split_configs import SplitHoldoutModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.eval_configs import EvalModel
 
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
@@ -251,13 +255,13 @@ if __name__ == "__main__":
                 )
 
     cfg = RunConfig(
-        data=DataConfig(
+        data=DataModel(
             x_path=args.x_path, y_path=args.y_path,
             npz_path=args.npz_path, x_key=args.x_key, y_key=args.y_key
         ),
-        split=SplitConfig(train_frac=args.train_frac, stratified=True),
-        scale=ScaleConfig(method=args.scale),
-        features=FeatureConfig(
+        split=SplitHoldoutModel(train_frac=args.train_frac, stratified=True),
+        scale=ScaleModel(method=args.scale),
+        features=FeaturesModel(
             method=args.features,
             # PCA
             pca_n=args.pca_n, pca_var=args.pca_var, pca_whiten=args.pca_whiten,
@@ -272,12 +276,12 @@ if __name__ == "__main__":
             sfs_cv=args.sfs_cv,
             sfs_n_jobs=args.sfs_n_jobs,
         ),
-        model=ModelConfig(
+        model=ModelModel(
             algo="logreg", C=args.C, penalty=args.penalty,
             solver=args.solver, max_iter=args.max_iter,
             class_weight=(None if args.class_weight in (None, "None") else "balanced")
         ),
-        eval=EvalConfig(metric=args.metric, n_shuffles=args.n_shuffles, seed=args.seed),
+        eval=EvalModel(metric=args.metric, n_shuffles=args.n_shuffles, seed=args.seed),
     )
 
     run_logreg_decoding(cfg)

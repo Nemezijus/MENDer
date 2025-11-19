@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 from typing import Dict, Any
 
-from utils.configs.configs import RunConfig
+from shared_schemas.run_config import RunConfig
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter

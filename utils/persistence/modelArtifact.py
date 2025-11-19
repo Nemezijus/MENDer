@@ -5,7 +5,7 @@ import uuid
 
 @dataclass
 class ArtifactBuilderInput:
-    cfg: Any                 # utils.configs.configs.RunConfig
+    cfg: Any                 
     pipeline: Any            # fitted sklearn Pipeline (or compatible)
     n_train: Optional[int]
     n_test: Optional[int]

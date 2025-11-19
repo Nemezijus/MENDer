@@ -8,7 +8,9 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import StratifiedKFold
 
-from utils.configs.configs import FeatureConfig, ModelConfig, EvalConfig
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.eval_configs import EvalModel
 from utils.strategies.interfaces import FeatureExtractor
 
 # Your existing PCA helper (no change to its code)
@@ -41,7 +43,7 @@ class NoOpFeatures(FeatureExtractor):
 @dataclass
 class PCAFeatures(FeatureExtractor):
     """PCA-based feature extractor wrapping the existing helper."""
-    cfg: FeatureConfig
+    cfg: FeaturesModel
     seed: Optional[int] = None  # int seed (derived via RngManager)
 
     def fit_transform_train_test(
@@ -73,7 +75,7 @@ class PCAFeatures(FeatureExtractor):
 @dataclass
 class LDAFeatures(FeatureExtractor):
     """LDA-based feature extractor wrapping the existing helper."""
-    cfg: FeatureConfig
+    cfg: FeaturesModel
 
     def fit_transform_train_test(
         self,
@@ -120,9 +122,9 @@ class SFSFeatures(FeatureExtractor):
     (so selection matches your downstream classifier), unless you prefer the simple
     LogisticRegression default below.
     """
-    cfg: FeatureConfig
-    model_cfg: ModelConfig
-    eval_cfg: EvalConfig
+    cfg: FeaturesModel
+    model_cfg: ModelModel
+    eval_cfg: EvalModel
     seed: Optional[int] = None  # for CV shuffle determinism
 
     def fit_transform_train_test(

@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from typing import Tuple, Optional, Iterator
 import numpy as np
 
-from utils.configs.configs import SplitConfig
+from shared_schemas.split_configs import SplitHoldoutModel, SplitCVModel
 from utils.preprocessing.general.trial_split import split as split_trials
 from utils.preprocessing.general.cv_split import generate_folds
 from .interfaces import Splitter
 
 @dataclass
 class HoldOutSplitter(Splitter):
-    cfg: SplitConfig
+    cfg: SplitHoldoutModel
     seed: Optional[int] = None
     use_custom: bool = False
 
@@ -25,7 +25,7 @@ class HoldOutSplitter(Splitter):
     
 @dataclass
 class KFoldSplitter(Splitter):
-    cfg: SplitConfig
+    cfg: SplitCVModel
     seed: Optional[int] = None
 
     def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:

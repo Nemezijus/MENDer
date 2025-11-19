@@ -1,7 +1,7 @@
 from __future__ import annotations
 from sklearn.pipeline import Pipeline
 
-from utils.configs.configs import RunConfig
+from shared_schemas.run_config import RunConfig
 from utils.permutations.rng import RngManager
 
 from utils.factories.scale_factory import make_scaler

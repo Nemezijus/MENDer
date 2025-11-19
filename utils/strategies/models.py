@@ -1,4 +1,3 @@
-# utils/strategies/models.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional, Union, Dict
@@ -9,13 +8,13 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
-from utils.configs.configs import ModelConfig
+from shared_schemas.model_configs import ModelModel
 from utils.strategies.interfaces import ModelBuilder
 
 
 @dataclass
 class LogRegBuilder(ModelBuilder):
-    cfg: ModelConfig
+    cfg: ModelModel
 
     def make_estimator(self) -> Any:
         penalty = self.cfg.penalty
@@ -54,7 +53,7 @@ class LogRegBuilder(ModelBuilder):
 
 @dataclass
 class SVMBuilder(ModelBuilder):
-    cfg: ModelConfig
+    cfg: ModelModel
     def make_estimator(self) -> Any:
         return SVC(
             C=self.cfg.svm_C,
@@ -78,7 +77,7 @@ class SVMBuilder(ModelBuilder):
 
 @dataclass
 class DecisionTreeBuilder(ModelBuilder):
-    cfg: ModelConfig
+    cfg: ModelModel
     def make_estimator(self) -> Any:
         return DecisionTreeClassifier(
             criterion=self.cfg.tree_criterion,
@@ -100,7 +99,7 @@ class DecisionTreeBuilder(ModelBuilder):
 
 @dataclass
 class RandomForestBuilder(ModelBuilder):
-    cfg: ModelConfig
+    cfg: ModelModel
     def make_estimator(self) -> Any:
         return RandomForestClassifier(
             n_estimators=self.cfg.rf_n_estimators,
@@ -124,7 +123,7 @@ class RandomForestBuilder(ModelBuilder):
 
 @dataclass
 class KNNBuilder(ModelBuilder):
-    cfg: ModelConfig
+    cfg: ModelModel
     def make_estimator(self) -> Any:
         return KNeighborsClassifier(
             n_neighbors=self.cfg.knn_n_neighbors,

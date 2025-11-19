@@ -1,20 +1,23 @@
 from __future__ import annotations
 from typing import Dict, Any, List
-from dataclasses import asdict
 
-# Reuse your config dataclasses and pipeline factory
-from utils.configs.configs import (
-    RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig, ModelConfig, EvalConfig
-)
+from shared_schemas.run_config import RunConfig, DataModel
+from shared_schemas.split_configs import SplitHoldoutModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.eval_configs import EvalModel
+
 from utils.permutations.rng import RngManager
 from utils.factories.pipeline_factory import make_pipeline
 
+
 def _class_path(obj: Any) -> str:
-    # sklearn transformers/estimators or literal "passthrough"
-    if isinstance(obj, str):
+    if isinstance(obj, str):  # e.g., "passthrough"
         return obj
     cls = obj.__class__
     return f"{cls.__module__}.{cls.__name__}"
+
 
 def _params_dict(obj: Any) -> Dict[str, Any]:
     if hasattr(obj, "get_params"):
@@ -24,30 +27,32 @@ def _params_dict(obj: Any) -> Dict[str, Any]:
             return {}
     return {}
 
+
 def preview_pipeline(payload) -> Dict[str, Any]:
     """
-    Build (but do not fit) the pipeline using your factory. If construction succeeds,
-    return step class paths and params; otherwise surface the error in a friendly shape.
+    Build (but do not fit) the pipeline using your factory.
+    Returns step class paths and params; surfaces construction errors.
     """
     errors: List[str] = []
     notes: List[str] = []
 
-    # Build full RunConfig (data/split are irrelevant for dry-fit; use defaults)
+    # Build a minimal, valid RunConfig.
+    # Data/split are irrelevant for preview; use a dummy holdout split.
     cfg = RunConfig(
-        data=DataConfig(),  # not used
-        split=SplitConfig(),  # not used
-        scale=ScaleConfig(**payload.scale.model_dump()),
-        features=FeatureConfig(**payload.features.model_dump()),
-        model=ModelConfig(**payload.model.model_dump()),
-        eval=EvalConfig(**payload.eval.model_dump()),
+        data=DataModel(),                          # not used in preview
+        split=SplitHoldoutModel(),                 # satisfies schema; not used for construction
+        scale=ScaleModel(**payload.scale.model_dump()),
+        features=FeaturesModel(**payload.features.model_dump()),
+        model=ModelModel(**payload.model.model_dump()),
+        eval=EvalModel(**payload.eval.model_dump()),
     )
 
     # Deterministic seed manager (if provided)
     rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
 
-    # Try to construct pipeline using your factory
+    # Try to construct pipeline using the factory
     try:
-        pipe = make_pipeline(cfg, rngm, stream="real")
+        pipe = make_pipeline(cfg, rngm, stream="preview")
     except Exception as e:
         return {
             "ok": False,
@@ -56,20 +61,20 @@ def preview_pipeline(payload) -> Dict[str, Any]:
             "errors": [str(e)],
         }
 
-    # Introspect the three steps
+    # Introspect the steps
     steps_out = []
     for name, step in pipe.steps:
         steps_out.append({
-            "name": name if name in ("scale", "feat", "clf") else name,
+            "name": name,
             "class_path": _class_path(step),
             "params": _params_dict(step),
         })
 
-    # Optional notes (examples)
+    # Optional notes
     if cfg.features.method == "lda":
         notes.append("LDA requires labels during fit; preview only instantiates the step.")
     if cfg.features.method == "sfs":
-        notes.append("SFS will build an inner estimator from your ModelConfig during feature selection.")
+        notes.append("SFS builds an inner estimator from your ModelModel during feature selection.")
 
     return {
         "ok": True,

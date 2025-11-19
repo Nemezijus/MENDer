@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional, Sequence
 import numpy as np
 
-from utils.configs.configs import EvalConfig
+from shared_schemas.eval_configs import EvalModel
 from utils.strategies.interfaces import Evaluator
 from utils.postprocessing.scoring import score as score_fn, classification_report_quick
 
@@ -12,10 +12,10 @@ from utils.postprocessing.scoring import score as score_fn, classification_repor
 class SklearnEvaluator(Evaluator):
     """
     Wraps your existing scoring functions.
-    - Uses EvalConfig.metric by default.
+    - Uses Evalmodel.metric by default.
     - Supports both hard-label and probabilistic metrics via optional args.
     """
-    cfg: EvalConfig
+    cfg: EvalModel
     kind: str = "classification"   # or "regression" (you can override per use-case)
 
     def score(

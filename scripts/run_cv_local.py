@@ -1,10 +1,12 @@
 # scripts/run_cv_local.py
 from __future__ import annotations
 
-from utils.configs.configs import (
-    RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig,
-    ModelConfig, EvalConfig
-)
+from shared_schemas.run_config import RunConfig, DataModel
+from shared_schemas.split_configs import SplitCVModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.eval_configs import EvalModel
 from instances.cv_classify_with_shuffle import run_cv_decoding
 
 # ==== EDIT THESE AS YOU LIKE ==================================================
@@ -15,12 +17,12 @@ from instances.cv_classify_with_shuffle import run_cv_decoding
 # )
 
 # Example B: MAT pair
-DATA = DataConfig(
+DATA = DataModel(
     x_path=r"./data/calcium/m67/2025_10_07/data_ensemble_mean.mat",
     y_path=r"./data/calcium/m67/2025_10_07/labels.mat",
 )
 
-SPLIT = SplitConfig(
+SPLIT = SplitCVModel(
     mode="kfold",         # <- important
     n_splits=10,
     stratified=True,
@@ -28,9 +30,9 @@ SPLIT = SplitConfig(
     train_frac=0.75,      # unused in kfold, kept for compatibility with your dataclass
 )
 
-SCALE = ScaleConfig(method="standard")
+SCALE = ScaleModel(method="standard")
 
-FEATURE = FeatureConfig(
+FEATURE = FeaturesModel(
     method="none",
     pca_n=None,
     pca_var=0.95,
@@ -49,7 +51,7 @@ FEATURE = FeatureConfig(
     sfs_n_jobs=None,
 )
 
-MODEL = ModelConfig(
+MODEL = ModelModel(
     algo="logreg",
     C=1.0,
     penalty="l2",
@@ -58,7 +60,7 @@ MODEL = ModelConfig(
     class_weight=None,
 )
 
-EVAL = EvalConfig(
+EVAL = EvalModel(
     metric="accuracy",
     n_shuffles=200,   # number of label permutations; set 0 to skip baseline
     seed=42,

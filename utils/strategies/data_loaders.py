@@ -1,11 +1,10 @@
-# utils/strategies/data_loaders.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import numpy as np
 
-from utils.configs.configs import DataConfig
-from utils.parse.data_read import load_mat_variable  # you already use this
+from shared_schemas.run_config import DataModel
+from utils.parse.data_read import load_mat_variable
 
 def _coerce_shapes(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     X = np.asarray(X)
@@ -57,7 +56,7 @@ def _coerce_shapes(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray
 
 @dataclass
 class NPZLoader:
-    cfg: DataConfig
+    cfg: DataModel
     def load(self) -> Tuple[np.ndarray, np.ndarray]:
         path = self.cfg.npz_path or self.cfg.x_path
         if not path:
@@ -74,7 +73,7 @@ class NPZLoader:
 
 @dataclass
 class MatPairLoader:
-    cfg: DataConfig
+    cfg: DataModel
     def load(self) -> Tuple[np.ndarray, np.ndarray]:
         if not (self.cfg.x_path and self.cfg.y_path):
             raise ValueError("MatPairLoader needs both x_path and y_path.")
@@ -84,7 +83,7 @@ class MatPairLoader:
 
 @dataclass
 class AutoLoader:
-    cfg: DataConfig
+    cfg: DataModel
     def load(self) -> Tuple[np.ndarray, np.ndarray]:
         # Prefer explicit npz if given
         if self.cfg.npz_path:

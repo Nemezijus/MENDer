@@ -1,15 +1,18 @@
 # scripts/run_logreg_local.py
 from __future__ import annotations
 
-from utils.configs.configs import (
-    RunConfig, DataConfig, SplitConfig, ScaleConfig, FeatureConfig,
-    ModelConfig, EvalConfig
-)
+from shared_schemas.run_config import RunConfig, DataModel
+from shared_schemas.split_configs import SplitHoldoutModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.eval_configs import EvalModel
+
 from instances.logreg_classify_with_shuffle import run_logreg_decoding
 
 # ==== EDIT THESE VALUES AS YOU LIKE ==========================================
 # Example A: NPZ bundle (Allen)
-# DATA = DataConfig(
+# DATA = DataModel(
 #     npz_path=r"./data/allen_vc/vc512326618_dg_orientation_mean.npz",
 #     x_key="X",   # change if your npz keys differ
 #     y_key="y",
@@ -17,16 +20,16 @@ from instances.logreg_classify_with_shuffle import run_logreg_decoding
 # )
 
 # Example B: MAT pair (comment A out and uncomment this if you prefer)
-DATA = DataConfig(
+DATA = DataModel(
     x_path=r"./data/calcium/m67/2025_10_07/data_ensemble_mean.mat",
     y_path=r"./data/calcium/m67/2025_10_07/labels.mat",
 )
 
-SPLIT   = SplitConfig(train_frac=0.75, stratified=True)
-SCALE   = ScaleConfig(method="standard")   # "standard","robust","minmax","maxabs","quantile","none"
+SPLIT   = SplitHoldoutModel(train_frac=0.75, stratified=True)
+SCALE   = ScaleModel(method="standard")   # "standard","robust","minmax","maxabs","quantile","none"
 
 # Choose one of: method="none" | "pca" | "lda" | "sfs"
-FEATURE = FeatureConfig(
+FEATURE = FeaturesModel(
     method="pca",
 
     # PCA knobs (used when method="pca")
@@ -47,7 +50,7 @@ FEATURE = FeatureConfig(
     sfs_n_jobs=None,           # or -1 for parallel if environment allows
 )
 
-MODEL   = ModelConfig(
+MODEL   = ModelModel(
     algo="logreg",
     C=1.0,
     penalty="l2",        # "l2"|"none"
@@ -56,7 +59,7 @@ MODEL   = ModelConfig(
     class_weight=None,   # or "balanced"
 )
 
-EVAL    = EvalConfig(
+EVAL    = EvalModel(
     metric="accuracy",   # "accuracy"|"balanced_accuracy"|"f1_macro"
     n_shuffles=100,
     seed=42,

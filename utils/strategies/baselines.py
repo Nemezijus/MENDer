@@ -1,10 +1,9 @@
-# utils/strategies/baselines.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 import numpy as np
 
-from utils.configs.configs import RunConfig
+from shared_schemas.run_config import RunConfig
 from utils.strategies.interfaces import BaselineRunner
 from utils.permutations.rng import RngManager
 from utils.permutations.shuffle import shuffle_simple_vector

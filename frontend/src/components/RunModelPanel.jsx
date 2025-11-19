@@ -191,7 +191,7 @@ export default function RunModelPanel() {
   const pollStopRef = useRef(false);
   const lastPercentRef = useRef(0);
 
-  const { setResult } = useRunModelResultsCtx();
+  const { result, setResult } = useRunModelResultsCtx();
   const { artifact, setArtifact, clearArtifact } = useModelArtifact();
   const lastHydratedUid = useRef(null);
 
@@ -260,7 +260,10 @@ export default function RunModelPanel() {
     }
 
     // 6) Clear current results (avoid stale numbers from a different config)
-    setResult(null);
+    const resultUid = result?.artifact?.uid;
+    if (!resultUid || resultUid !== uid) {
+      setResult(null);
+    }
   }, [artifact, fctx, setMetric, setNSplits, setSeed, setSplitMode, setStratified, setTrainFrac, setShuffle, setScaleMethod, setModel, setResult]);
 
   function startProgressPolling(progressId) {

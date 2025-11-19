@@ -7,7 +7,7 @@ from sklearn.preprocessing import (
     StandardScaler, RobustScaler, MinMaxScaler, MaxAbsScaler, QuantileTransformer
 )
 
-from utils.configs.configs import ScaleConfig
+from shared_schemas.scale_configs import ScaleModel
 from utils.strategies.interfaces import Scaler
 from utils.preprocessing.general.feature_scaling import scale_train_test
 
@@ -20,7 +20,7 @@ class PairScaler(Scaler):
     Use `make_transformer()` when assembling a scikit-learn Pipeline.
     Use `fit_transform()` in the current orchestrator (no pipeline).
     """
-    cfg: ScaleConfig
+    cfg: ScaleModel
 
     # ---------- NEW: sklearn step accessor ----------
     def make_transformer(self) -> Any:
@@ -41,7 +41,6 @@ class PairScaler(Scaler):
             return MaxAbsScaler(copy=True)
 
         if method == "quantile":
-            # Read optional knobs if you added them to ScaleConfig; fall back to safe defaults.
             output_dist = getattr(self.cfg, "quantile_output_distribution", "normal")
             n_quantiles = int(getattr(self.cfg, "quantile_n", 1000))
             subsample   = int(getattr(self.cfg, "quantile_subsample", 1e5))
@@ -72,6 +71,6 @@ class PairScaler(Scaler):
         return scale_train_test(
             X_train, X_test,
             method=self.cfg.method,
-            # If you expose quantile options in ScaleConfig, pass them through here too.
+            # If you expose quantile options in ScaleModel, pass them through here too.
             # e.g., quantile_output_distribution=self.cfg.quantile_output_distribution, ...
         )

@@ -1,16 +1,18 @@
 from __future__ import annotations
 from typing import Optional
 
-from utils.configs.configs import FeatureConfig, ModelConfig, EvalConfig
+from shared_schemas.eval_configs import EvalModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.model_configs import ModelModel
 from utils.strategies.interfaces import FeatureExtractor
 from utils.strategies.features import NoOpFeatures, PCAFeatures, LDAFeatures, SFSFeatures
 
 def make_features(
-    cfg: FeatureConfig,
+    cfg: FeaturesModel,
     *,
     seed: Optional[int],
-    model_cfg: Optional[ModelConfig] = None,
-    eval_cfg: Optional[EvalConfig] = None,
+    model_cfg: Optional[ModelModel] = None,
+    eval_cfg: Optional[EvalModel] = None,
 ) -> FeatureExtractor:
     method = (cfg.method or "none").lower()
     if method == "none":

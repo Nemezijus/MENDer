@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import StratifiedKFold, KFold
 
-from utils.configs.configs import RunConfig
+from shared_schemas.run_config import RunConfig
 from utils.permutations.rng import RngManager
 
 from utils.factories.data_loading_factory import make_data_loader

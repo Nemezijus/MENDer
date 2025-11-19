@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from ..models.v1.train_models import TrainRequest, TrainResponse
 from ..services.train_service import train
 from ..adapters.io_adapter import LoadError
-from utils.configs.configs import RunConfig
+from shared_schemas.run_config import RunConfig
 
 router = APIRouter()
 

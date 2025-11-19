@@ -1,12 +1,11 @@
-# utils/factories/model_factory.py
-from utils.configs.configs import ModelConfig
+from shared_schemas.model_configs import ModelModel
 from utils.strategies.interfaces import ModelBuilder
 from utils.strategies.models import (
     LogRegBuilder, SVMBuilder,
     DecisionTreeBuilder, RandomForestBuilder, KNNBuilder,
 )
 
-def make_model(cfg: ModelConfig) -> ModelBuilder:
+def make_model(cfg: ModelModel) -> ModelBuilder:
     algo = (cfg.algo or "logreg").lower()
     if algo == "logreg":
         return LogRegBuilder(cfg=cfg)

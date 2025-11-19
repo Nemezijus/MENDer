@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 import os
 import numpy as np
 
-from utils.configs.configs import DataConfig
+from shared_schemas.run_config import DataModel
 from utils.factories.data_loading_factory import make_data_loader
 
 DATA_ROOT = os.getenv("DATA_ROOT", "/data")       # RO datasets in Docker
@@ -100,11 +100,11 @@ def build_data_config(
     y_key: Optional[str],
     x_path: Optional[str],
     y_path: Optional[str],
-) -> DataConfig:
+) -> DataModel:
     npz_p = _normalize_and_check(npz_path)
     x_p = _normalize_and_check(x_path)
     y_p = _normalize_and_check(y_path)
-    return DataConfig(
+    return DataModel(
         npz_path=npz_p,
         x_path=x_p,
         y_path=y_p,

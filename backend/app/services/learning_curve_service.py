@@ -4,7 +4,7 @@ import math
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, learning_curve
 
-from utils.configs.configs import RunConfig
+from shared_schemas.run_config import RunConfig
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.pipeline_factory import make_pipeline
