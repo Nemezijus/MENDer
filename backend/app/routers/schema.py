@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 from pydantic import TypeAdapter
-
-from ..models.v1.shared import (
-    ModelModel, FeaturesModel, SplitHoldoutModel, SplitCVModel, ScaleModel, EvalModel
-)
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.eval_configs import EvalModel
 
 router = APIRouter()
 

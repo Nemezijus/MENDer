@@ -1,15 +1,14 @@
 from typing import Optional, Literal, Union, List, Dict, Any
 from pydantic import BaseModel, Field
-from .shared import FeaturesModel, ModelModel
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.types import ScaleName, MetricName
+#can also do 'from shared_schemas import FeaturesModel, ScaleModel, SplitCVModel, EvalModel, ModelModel, DataModel, RunConfig'
 
 # ---- Request models (mirror config knobs for a dry-fit) ----
 
-ScaleName = Literal["standard", "robust", "minmax", "maxabs", "quantile", "none"]
-
 class ScalePreview(BaseModel):
     method: ScaleName = "standard"
-
-MetricName = Literal["accuracy", "balanced_accuracy", "f1_macro"]
 
 class EvalPreview(BaseModel):
     metric: MetricName = "accuracy"

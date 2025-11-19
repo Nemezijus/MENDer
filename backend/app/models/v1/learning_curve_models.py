@@ -1,11 +1,12 @@
-# backend/app/models/v1/learning_curve_models.py
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
-from .shared import (
-    DataModel, ScaleModel, EvalModel,
-    FeaturesModel, ModelModel, SplitCVModel
-)
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.run_config import DataModel
+from shared_schemas.split_configs import SplitCVModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.eval_configs import EvalModel
 
 Number = Union[int, float]
 

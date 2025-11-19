@@ -1,15 +1,13 @@
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field
-from .shared import (
-    DataModel,
-    ScaleModel,
-    EvalModel,
-    FeaturesModel,
-    ModelModel,
-    SplitHoldoutModel,
-    SplitCVModel,
-    MetricName,
-)
+from shared_schemas.types import MetricName
+from shared_schemas.model_configs import ModelModel
+from shared_schemas.run_config import DataModel
+from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
+from shared_schemas.scale_configs import ScaleModel
+from shared_schemas.feature_configs import FeaturesModel
+from shared_schemas.eval_configs import EvalModel
+
 from .model_artifact import ModelArtifactMeta
 
 
