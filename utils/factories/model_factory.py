@@ -1,20 +1,14 @@
-from shared_schemas.model_configs import ModelModel
-from utils.strategies.interfaces import ModelBuilder
+from shared_schemas.model_configs import (
+  ModelConfig, LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig
+)
 from utils.strategies.models import (
-    LogRegBuilder, SVMBuilder,
-    DecisionTreeBuilder, RandomForestBuilder, KNNBuilder,
+  LogRegBuilder, SVMBuilder, DecisionTreeBuilder, RandomForestBuilder, KNNBuilder
 )
 
-def make_model(cfg: ModelModel) -> ModelBuilder:
-    algo = (cfg.algo or "logreg").lower()
-    if algo == "logreg":
-        return LogRegBuilder(cfg=cfg)
-    if algo == "svm":
-        return SVMBuilder(cfg=cfg)
-    if algo == "tree":
-        return DecisionTreeBuilder(cfg=cfg)
-    if algo == "forest":
-        return RandomForestBuilder(cfg=cfg)
-    if algo == "knn":
-        return KNNBuilder(cfg=cfg)
-    raise ValueError(f"Unknown model algo: {cfg.algo}")
+def make_model(cfg: ModelConfig):
+    if isinstance(cfg, LogRegConfig):  return LogRegBuilder(cfg)
+    if isinstance(cfg, SVMConfig):     return SVMBuilder(cfg)
+    if isinstance(cfg, TreeConfig):    return DecisionTreeBuilder(cfg)
+    if isinstance(cfg, ForestConfig):  return RandomForestBuilder(cfg)
+    if isinstance(cfg, KNNConfig):     return KNNBuilder(cfg)
+    raise ValueError(f"Unsupported algo: {getattr(cfg, 'algo', None)}")

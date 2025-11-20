@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field
 
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from shared_schemas.run_config import DataModel
 from shared_schemas.split_configs import SplitCVModel
 from shared_schemas.scale_configs import ScaleModel
@@ -15,7 +15,7 @@ class LearningCurveRequest(BaseModel):
     split: SplitCVModel              # requires mode="kfold"
     scale: ScaleModel
     features: FeaturesModel
-    model: ModelModel
+    model: ModelConfig
     eval: EvalModel
 
     # LC-specific knobs

@@ -3,7 +3,7 @@ from typing import Optional
 
 from shared_schemas.eval_configs import EvalModel
 from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from utils.strategies.interfaces import FeatureExtractor
 from utils.strategies.features import NoOpFeatures, PCAFeatures, LDAFeatures, SFSFeatures
 
@@ -11,7 +11,7 @@ def make_features(
     cfg: FeaturesModel,
     *,
     seed: Optional[int],
-    model_cfg: Optional[ModelModel] = None,
+    model_cfg: Optional[ModelConfig] = None,
     eval_cfg: Optional[EvalModel] = None,
 ) -> FeatureExtractor:
     method = (cfg.method or "none").lower()

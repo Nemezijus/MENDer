@@ -5,7 +5,7 @@ from shared_schemas.run_config import RunConfig, DataModel
 from shared_schemas.split_configs import SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
 from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from shared_schemas.eval_configs import EvalModel
 
 from utils.permutations.rng import RngManager
@@ -43,7 +43,7 @@ def preview_pipeline(payload) -> Dict[str, Any]:
         split=SplitHoldoutModel(),                 # satisfies schema; not used for construction
         scale=ScaleModel(**payload.scale.model_dump()),
         features=FeaturesModel(**payload.features.model_dump()),
-        model=ModelModel(**payload.model.model_dump()),
+        model=ModelConfig(**payload.model.model_dump()),
         eval=EvalModel(**payload.eval.model_dump()),
     )
 
@@ -74,7 +74,7 @@ def preview_pipeline(payload) -> Dict[str, Any]:
     if cfg.features.method == "lda":
         notes.append("LDA requires labels during fit; preview only instantiates the step.")
     if cfg.features.method == "sfs":
-        notes.append("SFS builds an inner estimator from your ModelModel during feature selection.")
+        notes.append("SFS builds an inner estimator from your ModelConfig during feature selection.")
 
     return {
         "ok": True,

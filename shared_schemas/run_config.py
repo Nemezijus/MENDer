@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from .split_configs import SplitHoldoutModel, SplitCVModel
 from .scale_configs import ScaleModel
 from .feature_configs import FeaturesModel
-from .model_configs import ModelModel
+from .model_configs import ModelConfig
 from .eval_configs import EvalModel
 
 class DataModel(BaseModel):
@@ -21,5 +21,5 @@ class RunConfig(BaseModel):
     split: Union[SplitHoldoutModel, SplitCVModel]
     scale: ScaleModel
     features: FeaturesModel
-    model: ModelModel
+    model: ModelConfig
     eval: EvalModel

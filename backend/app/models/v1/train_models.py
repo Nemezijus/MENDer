@@ -1,7 +1,7 @@
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field
 from shared_schemas.types import MetricName
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from shared_schemas.run_config import DataModel
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
@@ -17,7 +17,7 @@ class TrainRequest(BaseModel):
     split: Union[SplitHoldoutModel, SplitCVModel]
     scale: ScaleModel
     features: FeaturesModel
-    model: ModelModel
+    model: ModelConfig
     eval: EvalModel
 
 

@@ -18,9 +18,9 @@ import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
-import { getModelSchema } from '../api/schema';
+import { getModelSchema, getEnums } from '../api/schema';
 
-// --- helpers ---------------------------------------------------------------
+/** ---------- helpers ---------- **/
 
 function uuidv4() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -31,7 +31,6 @@ function uuidv4() {
   });
 }
 
-// stringify any error-like into readable text
 function toErrorText(e) {
   if (typeof e === 'string') return e;
   const data = e?.response?.data;
@@ -49,55 +48,44 @@ function toErrorText(e) {
     }).join('\n');
   }
   if (pick && typeof pick === 'object' && ('msg' in pick || 'type' in pick || 'loc' in pick)) {
-    const loc = Array.isArray(pick.loc) ? pick.loc.join('.') : pick.loc;
+    const loc = Array.isArray(pick.loc) ? it.loc.join('.') : pick.loc;
     return `${loc ? loc + ': ' : ''}${pick.msg || pick.type || 'Validation error'}`;
   }
   try { return JSON.stringify(pick); } catch { return String(pick); }
 }
 
-// Build a method-specific, JSON-clean features payload from FeatureContext.
-// Only include keys for the chosen method to avoid Pydantic complaints.
-function featuresFromContext(fctx) {
-  const method = fctx?.method || 'none';
-  if (method === 'pca') {
-    return {
-      method: 'pca',
-      pca_n: fctx.pca_n ?? null,
-      pca_var: fctx.pca_var ?? 0.95,
-      pca_whiten: !!fctx.pca_whiten,
-    };
+// Algo defaults (fallback if backend schema doesn't provide defaults)
+const DEFAULTS = {
+  logreg: { algo: 'logreg', C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null, l1_ratio: 0.5 },
+  svm:    { algo: 'svm', C: 1.0, kernel: 'rbf', degree: 3, gamma: 'scale', coef0: 0.0, shrinking: true, probability: false, tol: 1e-3, cache_size: 200.0, class_weight: null, max_iter: -1, decision_function_shape: 'ovr', break_ties: false },
+  tree:   { algo: 'tree', criterion: 'gini', splitter: 'best', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: null, max_leaf_nodes: null, min_impurity_decrease: 0.0, class_weight: null, ccp_alpha: 0.0 },
+  forest: { algo: 'forest', n_estimators: 100, criterion: 'gini', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: 'sqrt', max_leaf_nodes: null, min_impurity_decrease: 0.0, bootstrap: true, oob_score: false, n_jobs: null, random_state: null, warm_start: false, class_weight: null, ccp_alpha: 0.0, max_samples: null },
+  knn:    { algo: 'knn', n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null },
+};
+
+// Extract per-algo defaults from union JSON schema if present (fallback to hardcoded)
+function defaultsFromSchema(schema, algo) {
+  const oneOf = schema?.oneOf || schema?.anyOf || [];
+  for (const s of oneOf) {
+    const alg = s?.properties?.algo?.const ?? s?.properties?.algo?.default;
+    if (alg === algo) {
+      const props = s.properties || {};
+      const out = { algo };
+      for (const [k, v] of Object.entries(props)) {
+        if (k === 'algo') continue;
+        if ('default' in v) out[k] = v.default;
+      }
+      return Object.keys(out).length > 1 ? out : DEFAULTS[algo];
+    }
   }
-  if (method === 'lda') {
-    return {
-      method: 'lda',
-      lda_n: fctx.lda_n ?? null,
-      lda_solver: fctx.lda_solver ?? 'svd',
-      lda_shrinkage: fctx.lda_shrinkage ?? null,
-      lda_tol: fctx.lda_tol ?? 1e-4,
-    };
-  }
-  if (method === 'sfs') {
-    let k = fctx.sfs_k;
-    if (k === '' || k == null) k = 'auto';
-    return {
-      method: 'sfs',
-      sfs_k: k, // int | 'auto'
-      sfs_direction: fctx.sfs_direction ?? 'forward',
-      sfs_cv: fctx.sfs_cv ?? 5,
-      sfs_n_jobs: fctx.sfs_n_jobs ?? null,
-    };
-  }
-  return { method: 'none' };
+  return DEFAULTS[algo];
 }
 
-// --- component -------------------------------------------------------------
+/** ---------- component ---------- **/
 
 export default function RunModelPanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
   const fctx = useFeatureCtx();
-
-  const [modelSchema, setModelSchema] = useState(null);
-  const [defaultsApplied, setDefaultsApplied] = useState(false);
 
   // SPLIT / SCALE / METRIC
   const [splitMode, setSplitMode] = useState('holdout');
@@ -106,140 +94,64 @@ export default function RunModelPanel() {
   const [stratified, setStratified] = useState(true);
   const [shuffle, setShuffle] = useState(true);
   const [seed, setSeed] = useState('');
-
   const [scaleMethod, setScaleMethod] = useState('standard');
   const [metric, setMetric] = useState('accuracy');
 
-  // >>> flat model state mirroring backend ModelModel <<<
-  const [model, setModel] = useState(() => ({
-    algo: 'logreg',
+  // Union model state
+  const [schema, setSchema] = useState(null);
+  const [enums, setEnums] = useState(null);
+  const [model, setModel] = useState(DEFAULTS.logreg);
 
-    // Logistic Regression
-    C: 1.0,
-    penalty: 'l2',
-    solver: 'lbfgs',
-    max_iter: 1000,
-    class_weight: null,
-    l1_ratio: 0.5,
-
-    // SVM (SVC)
-    svm_C: 1.0,
-    svm_kernel: 'rbf',
-    svm_degree: 3,
-    svm_gamma: 'scale', // 'scale' | 'auto' | number
-    svm_coef0: 0.0,
-    svm_shrinking: true,
-    svm_probability: false,
-    svm_tol: 1e-3,
-    svm_cache_size: 200.0,
-    svm_class_weight: null,
-    svm_max_iter: -1,
-    svm_decision_function_shape: 'ovr',
-    svm_break_ties: false,
-
-    // DecisionTreeClassifier
-    tree_criterion: 'gini',
-    tree_splitter: 'best',
-    tree_max_depth: null,
-    tree_min_samples_split: 2,
-    tree_min_samples_leaf: 1,
-    tree_min_weight_fraction_leaf: 0.0,
-    tree_max_features: null, // null | 'sqrt' | 'log2' | number
-    tree_max_leaf_nodes: null,
-    tree_min_impurity_decrease: 0.0,
-    tree_class_weight: null,
-    tree_ccp_alpha: 0.0,
-
-    // RandomForestClassifier
-    forest_n_estimators: 100,
-    forest_criterion: 'gini',
-    forest_max_depth: null,
-    forest_min_samples_split: 2,
-    forest_min_samples_leaf: 1,
-    forest_min_weight_fraction_leaf: 0.0,
-    forest_max_features: 'sqrt', // 'sqrt' | 'log2' | number | null
-    forest_max_leaf_nodes: null,
-    forest_min_impurity_decrease: 0.0,
-    forest_bootstrap: true,
-    forest_oob_score: false,
-    forest_n_jobs: null,
-    forest_random_state: null,
-    forest_warm_start: false,
-    forest_class_weight: null,
-    forest_ccp_alpha: 0.0,
-    forest_max_samples: null,
-
-    // KNN
-    knn_n_neighbors: 5,
-    knn_weights: 'uniform',
-    knn_algorithm: 'auto',
-    knn_leaf_size: 30,
-    knn_p: 2,
-    knn_metric: 'minkowski',
-    knn_n_jobs: null,
-  }));
-
-  // Local UI state (progress/errors)
+  // Results / progress
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
-
   const [useShuffleBaseline, setUseShuffleBaseline] = useState(false);
   const [nShuffles, setNShuffles] = useState(100);
-
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
   const pollStopRef = useRef(false);
-  const lastPercentRef = useRef(0);
-
   const { result, setResult } = useRunModelResultsCtx();
   const { artifact, setArtifact, clearArtifact } = useModelArtifact();
   const lastHydratedUid = useRef(null);
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const { schema, defaults } = await getModelSchema();
+        const { schema } = await getModelSchema(); // union schema
         if (!alive) return;
-        setModelSchema(schema);
-
-        // Apply backend defaults to the flat model only once (don’t overwrite user edits)
-        if (!defaultsApplied && defaults && typeof defaults === 'object') {
-          // The backend defaults already use flat keys (per Pydantic ModelModel)
-          // Make sure we keep our current algo if user changed it quickly
-          setModel((cur) => ({ ...defaults, algo: cur.algo ?? defaults.algo ?? 'logreg' }));
-          setDefaultsApplied(true);
-        }
-      } catch {
-        // ignore; UI will use hardcoded fallbacks for enums
-      }
-    })();
+        setSchema(schema);
+        // refresh defaults for current algo (do not override user edits post-initial)
+        setModel((cur) => ({ ...defaultsFromSchema(schema, cur.algo), ...cur }));
+      } catch {}
+      try {
+        const e = await getEnums();
+        if (alive) setEnums(e);
+      } catch {}
+  })();
     return () => { alive = false; };
-  }, [defaultsApplied]);
+  }, []);
 
+  // hydrate from artifact
   useEffect(() => {
     const uid = artifact?.uid;
     if (!uid) return;
-
     if (lastHydratedUid.current === uid) return;
     lastHydratedUid.current = uid;
 
-    // 1) MODEL (already flat)
     if (artifact?.model && typeof artifact.model === 'object') {
-      setModel((cur) => ({ ...cur, ...artifact.model }));
+      setModel(artifact.model); // union payload straight in
     }
 
-    // 2) FEATURES (via context helper)
     if (artifact?.features && typeof artifact.features === 'object') {
       fctx.setFromArtifact(artifact.features);
     }
 
-    // 3) SCALE
     const scaleMethodFromArt = artifact?.scale?.method;
     if (scaleMethodFromArt) setScaleMethod(scaleMethodFromArt);
 
-    // 4) SPLIT
     const split = artifact?.split || {};
     const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
     setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
@@ -252,23 +164,26 @@ export default function RunModelPanel() {
     if (split?.stratified != null) setStratified(!!split.stratified);
     if (split?.shuffle != null) setShuffle(!!split.shuffle);
 
-    // 5) EVAL
     const ev = artifact?.eval || {};
     if (ev?.metric) setMetric(ev.metric);
-    if ('seed' in ev) {
-      setSeed(ev.seed == null ? '' : String(ev.seed));
-    }
+    if ('seed' in ev) setSeed(ev.seed == null ? '' : String(ev.seed));
 
-    // 6) Clear current results (avoid stale numbers from a different config)
     const resultUid = result?.artifact?.uid;
-    if (!resultUid || resultUid !== uid) {
-      setResult(null);
-    }
-  }, [artifact, fctx, setMetric, setNSplits, setSeed, setSplitMode, setStratified, setTrainFrac, setShuffle, setScaleMethod, setModel, setResult]);
+    if (!resultUid || resultUid !== uid) setResult(null);
+  }, [artifact]);
+
+  // respond to algo changes: swap to algo defaults (keep schema-derived defaults if available)
+  useEffect(() => {
+    setModel((cur) => {
+      const base = schema ? defaultsFromSchema(schema, cur.algo) : DEFAULTS[cur.algo] || DEFAULTS.logreg;
+      // If user just changed algo (ModelSelectionCard sets { algo }), other keys might be undefined.
+      // Merge base first, then user’s current keys (so edits survive).
+      return { ...base, ...cur };
+    });
+  }, [schema, model.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startProgressPolling(progressId) {
     pollStopRef.current = false;
-    lastPercentRef.current = 0;
     async function tick() {
       if (pollStopRef.current) return;
       try {
@@ -279,7 +194,6 @@ export default function RunModelPanel() {
         let delay = 250;
         if (pct >= 90 && pct < 98) delay = 500;
         else if (pct >= 98 && !rec.done) delay = 1000;
-        lastPercentRef.current = pct;
         if (!rec.done) setTimeout(tick, delay);
         else pollStopRef.current = true;
       } catch {
@@ -291,10 +205,7 @@ export default function RunModelPanel() {
   function stopProgressPolling() { pollStopRef.current = true; }
 
   async function handleRun() {
-    if (!dataReady) {
-      setErr('Load & inspect data first in the left sidebar.');
-      return;
-    }
+    if (!dataReady) { setErr('Load & inspect data first in the left sidebar.'); return; }
     setErr(null);
     setResult(null);
     clearArtifact();
@@ -302,15 +213,12 @@ export default function RunModelPanel() {
 
     const wantProgress = useShuffleBaseline && Number(nShuffles) > 0;
     const progressId = wantProgress ? uuidv4() : null;
-
     if (wantProgress) {
       setProgress(0);
       setProgressLabel(`Shuffling 0/${nShuffles}…`);
       startProgressPolling(progressId);
     } else {
-      stopProgressPolling();
-      setProgress(0);
-      setProgressLabel('');
+      stopProgressPolling(); setProgress(0); setProgressLabel('');
     }
 
     try {
@@ -323,8 +231,17 @@ export default function RunModelPanel() {
           y_key: yKey,
         },
         scale: { method: scaleMethod },
-        features: featuresFromContext(fctx),
-        model,
+        features: (() => {
+          const method = fctx?.method || 'none';
+          if (method === 'pca') return { method, pca_n: fctx.pca_n ?? null, pca_var: fctx.pca_var ?? 0.95, pca_whiten: !!fctx.pca_whiten };
+          if (method === 'lda') return { method, lda_n: fctx.lda_n ?? null, lda_solver: fctx.lda_solver ?? 'svd', lda_shrinkage: fctx.lda_shrinkage ?? null, lda_tol: fctx.lda_tol ?? 1e-4 };
+          if (method === 'sfs') {
+            let k = fctx.sfs_k; if (k === '' || k == null) k = 'auto';
+            return { method, sfs_k: k, sfs_direction: fctx.sfs_direction ?? 'forward', sfs_cv: fctx.sfs_cv ?? 5, sfs_n_jobs: fctx.sfs_n_jobs ?? null };
+          }
+          return { method: 'none' };
+        })(),
+        model, // ← union payload as-is
         eval: {
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
@@ -341,16 +258,9 @@ export default function RunModelPanel() {
       setResult(data);
       if (data?.artifact) setArtifact(data.artifact);
     } catch (e) {
-      const msg =
-        toErrorText(e?.response?.data?.detail) ||
-        toErrorText(e?.response?.data) ||
-        toErrorText(e);
-      setErr(msg);
-      setProgress(0);
-      setProgressLabel('');
+      setErr(toErrorText(e)); setProgress(0); setProgressLabel('');
     } finally {
-      stopProgressPolling();
-      setLoading(false);
+      stopProgressPolling(); setLoading(false);
     }
   }
 
@@ -404,13 +314,10 @@ export default function RunModelPanel() {
               <Divider my="xs" />
 
               <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
-
-              {/* Restored: Features section */}
               <FeatureCard />
-
               <Divider my="xs" />
 
-              <ModelSelectionCard model={model} onChange={setModel} schema={modelSchema} />
+              <ModelSelectionCard model={model} onChange={setModel} schema={schema} enums={enums}/>
 
               <Divider my="xs" />
 

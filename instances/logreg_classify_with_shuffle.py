@@ -13,7 +13,7 @@ from shared_schemas.run_config import RunConfig, DataModel
 from shared_schemas.split_configs import SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
 from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from shared_schemas.eval_configs import EvalModel
 
 from utils.factories.data_loading_factory import make_data_loader
@@ -276,7 +276,7 @@ if __name__ == "__main__":
             sfs_cv=args.sfs_cv,
             sfs_n_jobs=args.sfs_n_jobs,
         ),
-        model=ModelModel(
+        model=ModelConfig(
             algo="logreg", C=args.C, penalty=args.penalty,
             solver=args.solver, max_iter=args.max_iter,
             class_weight=(None if args.class_weight in (None, "None") else "balanced")

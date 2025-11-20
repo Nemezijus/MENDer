@@ -7,7 +7,7 @@ from .feature_configs import FeaturesModel
 from .scale_configs import ScaleModel
 from .split_configs import SplitHoldoutModel, SplitCVModel
 from .eval_configs import EvalModel
-from .model_configs import ModelModel
+from .model_configs import ModelConfig
 from .run_config import DataModel, RunConfig
 
 __all__ = [
@@ -16,5 +16,5 @@ __all__ = [
     "ScaleName", "MetricName", "SVMKernel", "SVMDecisionShape", "LDASolver",
     # configs
     "FeaturesModel", "ScaleModel", "SplitHoldoutModel", "SplitCVModel",
-    "EvalModel", "ModelModel", "DataModel", "RunConfig",
+    "EvalModel", "ModelConfig", "DataModel", "RunConfig",
 ]

@@ -8,7 +8,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import StratifiedKFold
 
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.eval_configs import EvalModel
 from utils.strategies.interfaces import FeatureExtractor
@@ -123,7 +123,7 @@ class SFSFeatures(FeatureExtractor):
     LogisticRegression default below.
     """
     cfg: FeaturesModel
-    model_cfg: ModelModel
+    model_cfg: ModelConfig
     eval_cfg: EvalModel
     seed: Optional[int] = None  # for CV shuffle determinism
 

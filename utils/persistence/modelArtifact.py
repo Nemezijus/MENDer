@@ -41,6 +41,18 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
     except Exception:
         steps = []
 
+    split_dict    = getattr(inp.cfg, "split", None)
+    scale_dict    = getattr(inp.cfg, "scale", None)
+    features_dict = getattr(inp.cfg, "features", None)
+    model_dict    = getattr(inp.cfg, "model", None)
+    eval_dict     = getattr(inp.cfg, "eval", None)
+
+    split_dict    = split_dict.model_dump(exclude_none=True)    if split_dict    is not None else None
+    scale_dict    = scale_dict.model_dump(exclude_none=True)    if scale_dict    is not None else None
+    features_dict = features_dict.model_dump(exclude_none=True) if features_dict is not None else None
+    model_dict    = model_dict.model_dump(exclude_none=True)    if model_dict    is not None else None
+    eval_dict     = eval_dict.model_dump(exclude_none=True)     if eval_dict     is not None else None
+
     return {
         "uid": str(uuid.uuid4()),
         "created_at": datetime.now(timezone.utc),
@@ -50,11 +62,11 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
         "n_samples_test": inp.n_test,
         "n_features_in": inp.n_features,
         "classes": inp.classes,
-        "split": inp.cfg.split.__dict__,
-        "scale": getattr(inp.cfg, "scale", None).__dict__ if getattr(inp.cfg, "scale", None) else None,
-        "features": getattr(inp.cfg, "features", None).__dict__ if getattr(inp.cfg, "features", None) else None,
-        "model": inp.cfg.model.__dict__,
-        "eval": inp.cfg.eval.__dict__,
+        "split": split_dict,
+        "scale": scale_dict,
+        "features": features_dict,
+        "model": model_dict,
+        "eval": eval_dict,
         "pipeline": steps,
         "metric_name": inp.summary.get("metric_name"),
         "metric_value": inp.summary.get("metric_value"),

@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Card, Button, Text,
-  Stack, Group, Divider, Alert, Title, Box, NumberInput
-} from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Card, Button, Text, Stack, Group, Divider, Alert, Title, Box, NumberInput } from '@mantine/core';
 
 import { useDataCtx } from '../state/DataContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
@@ -13,125 +10,63 @@ import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import api from '../api/client';
 import { useLearningCurveResultsCtx } from '../state/LearningCurveResultsContext.jsx';
+import { getModelSchema, getEnums} from '../api/schema';
+
+// per-algo default fallbacks (same as Run panel)
+const DEFAULTS = {
+  logreg: { algo: 'logreg', C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null, l1_ratio: 0.5 },
+  svm:    { algo: 'svm', C: 1.0, kernel: 'rbf', degree: 3, gamma: 'scale', coef0: 0.0, shrinking: true, probability: false, tol: 1e-3, cache_size: 200.0, class_weight: null, max_iter: -1, decision_function_shape: 'ovr', break_ties: false },
+  tree:   { algo: 'tree', criterion: 'gini', splitter: 'best', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: null, max_leaf_nodes: null, min_impurity_decrease: 0.0, class_weight: null, ccp_alpha: 0.0 },
+  forest: { algo: 'forest', n_estimators: 100, criterion: 'gini', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: 'sqrt', max_leaf_nodes: null, min_impurity_decrease: 0.0, bootstrap: true, oob_score: false, n_jobs: null, random_state: null, warm_start: false, class_weight: null, ccp_alpha: 0.0, max_samples: null },
+  knn:    { algo: 'knn', n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null },
+};
+
+function getAlgoSchema(schema, algo) {
+  if (!schema) return null;
+  const oneOf = schema.oneOf || schema.anyOf || [];
+  for (const s of oneOf) {
+    const alg = s?.properties?.algo?.const ?? s?.properties?.algo?.default;
+    if (alg === algo) return s;
+  }
+  return null;
+}
+
+function defaultsFromSchema(schema, algo) {
+  const s = getAlgoSchema(schema, algo);
+  if (!s) return DEFAULTS[algo];
+  const props = s.properties || {};
+  const out = { algo };
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'algo') continue;
+    if ('default' in v) out[k] = v.default;
+  }
+  return Object.keys(out).length > 1 ? out : DEFAULTS[algo];
+}
 
 export default function LearningCurvePanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
 
   const {
-    method,
-    pca_n, pca_var, pca_whiten,
+    method, pca_n, pca_var, pca_whiten,
     lda_n, lda_solver, lda_shrinkage, lda_tol,
     sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
   } = useFeatureCtx();
 
-  // From LC results context (shared with right column)
-  const {
-    nSplits,
-    setNSplits,
-    withinPct,
-    setWithinPct,
-    setResult,
-  } = useLearningCurveResultsCtx();
+  const { nSplits, setNSplits, withinPct, setWithinPct, setResult } = useLearningCurveResultsCtx();
 
-  // common split params
+  // split
   const [stratified, setStratified] = useState(true);
   const [shuffle, setShuffle] = useState(true);
-  const [seed, setSeed] = useState(42); // enabled only if shuffle
+  const [seed, setSeed] = useState(42);
 
-  // Scaling + Metric
+  // scale/metric
   const [scaleMethod, setScaleMethod] = useState('standard');
   const [metric, setMetric] = useState('accuracy');
 
-  // --- NEW: model schema + flat model state (schema-driven) ----------------
-  const [modelSchema, setModelSchema] = useState(null);
-
-  // Flat model: keys match backend ModelModel (shared_schemas.model_configs)
-  const [model, setModel] = useState({
-    algo: 'logreg',
-    // logreg
-    C: 1.0,
-    penalty: 'l2',
-    solver: 'lbfgs',
-    max_iter: 1000,
-    class_weight: null,
-    l1_ratio: 0.5,
-
-    // svm
-    svm_kernel: 'rbf',
-    svm_C: 1.0,
-    svm_degree: 3,
-    svm_gamma: 'scale', // or 'auto' or numeric
-    svm_coef0: 0.0,
-    svm_shrinking: true,
-    svm_probability: false,
-    svm_tol: 1e-3,
-    svm_cache_size: 200.0,
-    svm_class_weight: null,
-    svm_max_iter: -1,
-    svm_decision_function_shape: 'ovr',
-    svm_break_ties: false,
-
-    // tree
-    tree_criterion: 'gini',
-    tree_splitter: 'best',
-    tree_max_depth: null,
-    tree_min_samples_split: 2,
-    tree_min_samples_leaf: 1,
-    tree_min_weight_fraction_leaf: 0.0,
-    tree_max_features: null, // 'sqrt' | 'log2' | number | null
-    tree_max_leaf_nodes: null,
-    tree_min_impurity_decrease: 0.0,
-    tree_class_weight: null,
-    tree_ccp_alpha: 0.0,
-
-    // forest
-    forest_n_estimators: 100,
-    forest_criterion: 'gini',
-    forest_max_depth: null,
-    forest_min_samples_split: 2,
-    forest_min_samples_leaf: 1,
-    forest_min_weight_fraction_leaf: 0.0,
-    forest_max_features: 'sqrt',
-    forest_max_leaf_nodes: null,
-    forest_min_impurity_decrease: 0.0,
-    forest_bootstrap: true,
-    forest_oob_score: false,
-    forest_n_jobs: null,
-    forest_random_state: null,
-    forest_warm_start: false,
-    forest_class_weight: null,
-    forest_ccp_alpha: 0.0,
-    forest_max_samples: null,
-
-    // knn
-    knn_n_neighbors: 5,
-    knn_weights: 'uniform',
-    knn_algorithm: 'auto',
-    knn_leaf_size: 30,
-    knn_p: 2,
-    knn_metric: 'minkowski',
-    knn_n_jobs: null,
-  });
-
-  // Fetch schema/defaults to keep enums/defaults in sync with backend
-  useEffect(() => {
-    let cancel = false;
-    (async () => {
-      try {
-        const { data } = await api.get('/schema/model'); // served at /api/v1/schema/model
-        if (!cancel) {
-          setModelSchema(data?.schema ?? null);
-          if (data?.defaults) {
-            // Merge defaults over current model (preserve user changes if any)
-            setModel((prev) => ({ ...data.defaults, ...prev }));
-          }
-        }
-      } catch {
-        // schema fetch optional; UI has fallbacks
-      }
-    })();
-    return () => { cancel = true; };
-  }, []);
+  // union model + schema
+  const [schema, setSchema] = useState(null);
+  const [enums, setEnums] = useState(null);
+  const [model, setModel] = useState(DEFAULTS.logreg);
 
   const [trainSizesCSV, setTrainSizesCSV] = useState('');
   const [nSteps, setNSteps] = useState(5);
@@ -140,86 +75,30 @@ export default function LearningCurvePanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // With flat state, payload can be the model as-is (minor sanitization)
-  const modelPayload = useMemo(() => {
-    const m = model;
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { schema } = await getModelSchema();
+        if (!alive) return;
+        setSchema(schema);
+        setModel((cur) => ({ ...defaultsFromSchema(schema, cur.algo), ...cur }));
+      } catch { /* ignore */ }
+      try {
+        const e = await getEnums();
+        if (!alive) return;
+        setEnums(e);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
 
-    // Ensure numeric-ish fields are numbers where appropriate
-    const num = (v) => (v === '' || v == null ? v : Number(v));
-
-    // SVM gamma can be 'scale' | 'auto' | number
-    const svm_gamma = (typeof m.svm_gamma === 'number')
-      ? Number(m.svm_gamma)
-      : (m.svm_gamma ?? 'scale');
-
-    return {
-      algo: m.algo,
-
-      // logreg
-      C: num(m.C),
-      penalty: m.penalty,
-      solver: m.solver,
-      max_iter: num(m.max_iter),
-      class_weight: m.class_weight,
-      ...(m.penalty === 'elasticnet' ? { l1_ratio: num(m.l1_ratio ?? 0.5) } : {}),
-
-      // svm
-      svm_C: num(m.svm_C),
-      svm_kernel: m.svm_kernel,
-      svm_degree: num(m.svm_degree),
-      svm_gamma,
-      svm_coef0: num(m.svm_coef0),
-      svm_shrinking: !!m.svm_shrinking,
-      svm_probability: !!m.svm_probability,
-      svm_tol: num(m.svm_tol),
-      svm_cache_size: num(m.svm_cache_size),
-      svm_class_weight: m.svm_class_weight,
-      svm_max_iter: num(m.svm_max_iter),
-      svm_decision_function_shape: m.svm_decision_function_shape,
-      svm_break_ties: !!m.svm_break_ties,
-
-      // tree
-      tree_criterion: m.tree_criterion,
-      tree_splitter: m.tree_splitter,
-      tree_max_depth: m.tree_max_depth == null ? null : num(m.tree_max_depth),
-      tree_min_samples_split: num(m.tree_min_samples_split),
-      tree_min_samples_leaf: num(m.tree_min_samples_leaf),
-      tree_min_weight_fraction_leaf: num(m.tree_min_weight_fraction_leaf),
-      tree_max_features: m.tree_max_features,
-      tree_max_leaf_nodes: m.tree_max_leaf_nodes == null ? null : num(m.tree_max_leaf_nodes),
-      tree_min_impurity_decrease: num(m.tree_min_impurity_decrease),
-      tree_class_weight: m.tree_class_weight,
-      tree_ccp_alpha: num(m.tree_ccp_alpha),
-
-      // forest (all with forest_* prefix)
-      forest_n_estimators: num(m.forest_n_estimators),
-      forest_criterion: m.forest_criterion,
-      forest_max_depth: m.forest_max_depth == null ? null : num(m.forest_max_depth),
-      forest_min_samples_split: num(m.forest_min_samples_split),
-      forest_min_samples_leaf: num(m.forest_min_samples_leaf),
-      forest_min_weight_fraction_leaf: num(m.forest_min_weight_fraction_leaf),
-      forest_max_features: m.forest_max_features,
-      forest_max_leaf_nodes: m.forest_max_leaf_nodes == null ? null : num(m.forest_max_leaf_nodes),
-      forest_min_impurity_decrease: num(m.forest_min_impurity_decrease),
-      forest_bootstrap: !!m.forest_bootstrap,
-      forest_oob_score: !!m.forest_oob_score,
-      forest_n_jobs: m.forest_n_jobs == null ? null : num(m.forest_n_jobs),
-      forest_random_state: m.forest_random_state == null ? null : num(m.forest_random_state),
-      forest_warm_start: !!m.forest_warm_start,
-      forest_class_weight: m.forest_class_weight,
-      forest_ccp_alpha: num(m.forest_ccp_alpha),
-      forest_max_samples: m.forest_max_samples == null ? null : num(m.forest_max_samples),
-
-      // knn
-      knn_n_neighbors: num(m.knn_n_neighbors),
-      knn_weights: m.knn_weights,
-      knn_algorithm: m.knn_algorithm,
-      knn_leaf_size: num(m.knn_leaf_size),
-      knn_p: num(m.knn_p),
-      knn_metric: m.knn_metric,
-      knn_n_jobs: m.knn_n_jobs == null ? null : num(m.knn_n_jobs),
-    };
-  }, [model]);
+  useEffect(() => {
+    setModel((cur) => {
+      const base = schema ? defaultsFromSchema(schema, cur.algo) : DEFAULTS[cur.algo] || DEFAULTS.logreg;
+      return { ...base, ...cur };
+    });
+  }, [schema, model.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCompute() {
     if (!dataReady) {
@@ -232,10 +111,7 @@ export default function LearningCurvePanel() {
 
     try {
       const train_sizes = trainSizesCSV
-        ? trainSizesCSV
-            .split(',')
-            .map(s => s.trim())
-            .filter(Boolean)
+        ? trainSizesCSV.split(',').map(s => s.trim()).filter(Boolean)
             .map(x => (x.includes('.') ? parseFloat(x) : parseInt(x, 10)))
         : null;
 
@@ -253,9 +129,10 @@ export default function LearningCurvePanel() {
           method,
           pca_n, pca_var, pca_whiten,
           lda_n, lda_solver, lda_shrinkage, lda_tol,
-          sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
+          sfs_k: (sfs_k === '' || sfs_k == null) ? 'auto' : sfs_k,
+          sfs_direction, sfs_cv, sfs_n_jobs,
         },
-        model: modelPayload,
+        model, // ← union payload as-is
         eval: {
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
@@ -312,23 +189,17 @@ export default function LearningCurvePanel() {
 
               <Divider my="xs" />
 
-              <ScalingCard
-                value={scaleMethod}
-                onChange={setScaleMethod}
-              />
+              <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
 
               <FeatureCard title="Features" />
 
               <Divider my="xs" />
 
-              <MetricCard
-                value={metric}
-                onChange={setMetric}
-              />
+              <MetricCard value={metric} onChange={setMetric} />
 
               <Divider my="xs" />
 
-              <ModelSelectionCard model={model} onChange={setModel} schema={modelSchema?.schema ? modelSchema.schema : modelSchema} />
+              <ModelSelectionCard model={model} onChange={setModel} schema={schema} enums={enums} />
 
               <Divider my="xs" />
 

@@ -5,7 +5,7 @@ from shared_schemas.run_config import RunConfig, DataModel
 from shared_schemas.split_configs import SplitCVModel
 from shared_schemas.scale_configs import ScaleModel
 from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelModel
+from shared_schemas.model_configs import ModelConfig
 from shared_schemas.eval_configs import EvalModel
 from instances.cv_classify_with_shuffle import run_cv_decoding
 
@@ -51,7 +51,7 @@ FEATURE = FeaturesModel(
     sfs_n_jobs=None,
 )
 
-MODEL = ModelModel(
+MODEL = ModelConfig(
     algo="logreg",
     C=1.0,
     penalty="l2",
