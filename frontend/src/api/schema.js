@@ -6,6 +6,12 @@ export async function getModelSchema() {
 
 export async function getEnums() {
   const res = await fetch('/api/v1/schema/enums');
-  if (!res.ok) throw new Error(`Schema fetch failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Enums fetch failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getAllDefaults() {
+  const res = await fetch('/api/v1/schema/defaults');
+  if (!res.ok) throw new Error(`Defaults fetch failed: ${res.status}`);
   return res.json();
 }

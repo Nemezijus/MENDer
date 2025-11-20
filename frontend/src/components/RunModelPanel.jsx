@@ -18,7 +18,9 @@ import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
-import { getModelSchema, getEnums } from '../api/schema';
+
+// NEW: centralized defaults/enums/meta
+import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 
 /** ---------- helpers ---------- **/
 
@@ -54,38 +56,14 @@ function toErrorText(e) {
   try { return JSON.stringify(pick); } catch { return String(pick); }
 }
 
-// Algo defaults (fallback if backend schema doesn't provide defaults)
-const DEFAULTS = {
-  logreg: { algo: 'logreg', C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null, l1_ratio: 0.5 },
-  svm:    { algo: 'svm', C: 1.0, kernel: 'rbf', degree: 3, gamma: 'scale', coef0: 0.0, shrinking: true, probability: false, tol: 1e-3, cache_size: 200.0, class_weight: null, max_iter: -1, decision_function_shape: 'ovr', break_ties: false },
-  tree:   { algo: 'tree', criterion: 'gini', splitter: 'best', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: null, max_leaf_nodes: null, min_impurity_decrease: 0.0, class_weight: null, ccp_alpha: 0.0 },
-  forest: { algo: 'forest', n_estimators: 100, criterion: 'gini', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: 'sqrt', max_leaf_nodes: null, min_impurity_decrease: 0.0, bootstrap: true, oob_score: false, n_jobs: null, random_state: null, warm_start: false, class_weight: null, ccp_alpha: 0.0, max_samples: null },
-  knn:    { algo: 'knn', n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null },
-};
-
-// Extract per-algo defaults from union JSON schema if present (fallback to hardcoded)
-function defaultsFromSchema(schema, algo) {
-  const oneOf = schema?.oneOf || schema?.anyOf || [];
-  for (const s of oneOf) {
-    const alg = s?.properties?.algo?.const ?? s?.properties?.algo?.default;
-    if (alg === algo) {
-      const props = s.properties || {};
-      const out = { algo };
-      for (const [k, v] of Object.entries(props)) {
-        if (k === 'algo') continue;
-        if ('default' in v) out[k] = v.default;
-      }
-      return Object.keys(out).length > 1 ? out : DEFAULTS[algo];
-    }
-  }
-  return DEFAULTS[algo];
-}
-
 /** ---------- component ---------- **/
 
 export default function RunModelPanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
   const fctx = useFeatureCtx();
+
+  // Centralized schema/defaults/enums
+  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
 
   // SPLIT / SCALE / METRIC
   const [splitMode, setSplitMode] = useState('holdout');
@@ -97,10 +75,8 @@ export default function RunModelPanel() {
   const [scaleMethod, setScaleMethod] = useState('standard');
   const [metric, setMetric] = useState('accuracy');
 
-  // Union model state
-  const [schema, setSchema] = useState(null);
-  const [enums, setEnums] = useState(null);
-  const [model, setModel] = useState(DEFAULTS.logreg);
+  // Union model state (hydrated from backend defaults)
+  const [model, setModel] = useState(null);
 
   // Results / progress
   const [loading, setLoading] = useState(false);
@@ -116,28 +92,18 @@ export default function RunModelPanel() {
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
 
+  // Initialize model once defaults arrive
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const { schema } = await getModelSchema(); // union schema
-        if (!alive) return;
-        setSchema(schema);
-        // refresh defaults for current algo (do not override user edits post-initial)
-        setModel((cur) => ({ ...defaultsFromSchema(schema, cur.algo), ...cur }));
-      } catch {}
-      try {
-        const e = await getEnums();
-        if (alive) setEnums(e);
-      } catch {}
-  })();
-    return () => { alive = false; };
-  }, []);
+    if (!defsLoading && !model) {
+      const init = getModelDefaults('logreg') || { algo: 'logreg' };
+      setModel(init);
+    }
+  }, [defsLoading, getModelDefaults, model]);
 
   // hydrate from artifact
   useEffect(() => {
     const uid = artifact?.uid;
-    if (!uid) return;
+    if (!uid || !model) return;
     if (lastHydratedUid.current === uid) return;
     lastHydratedUid.current = uid;
 
@@ -170,17 +136,14 @@ export default function RunModelPanel() {
 
     const resultUid = result?.artifact?.uid;
     if (!resultUid || resultUid !== uid) setResult(null);
-  }, [artifact]);
+  }, [artifact, model, fctx, result, setResult]);
 
-  // respond to algo changes: swap to algo defaults (keep schema-derived defaults if available)
+  // When algo changes, rehydrate from backend defaults and preserve user edits
   useEffect(() => {
-    setModel((cur) => {
-      const base = schema ? defaultsFromSchema(schema, cur.algo) : DEFAULTS[cur.algo] || DEFAULTS.logreg;
-      // If user just changed algo (ModelSelectionCard sets { algo }), other keys might be undefined.
-      // Merge base first, then user’s current keys (so edits survive).
-      return { ...base, ...cur };
-    });
-  }, [schema, model.algo]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!model) return;
+    const base = getModelDefaults(model.algo) || { algo: model.algo };
+    setModel((cur) => ({ ...base, ...cur }));
+  }, [getModelDefaults, model?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startProgressPolling(progressId) {
     pollStopRef.current = false;
@@ -206,6 +169,7 @@ export default function RunModelPanel() {
 
   async function handleRun() {
     if (!dataReady) { setErr('Load & inspect data first in the left sidebar.'); return; }
+    if (!model) return;
     setErr(null);
     setResult(null);
     clearArtifact();
@@ -264,6 +228,10 @@ export default function RunModelPanel() {
     }
   }
 
+  if (defsLoading || !models || !model) {
+    return null; // optionally render a skeleton
+  }
+
   return (
     <Stack gap="lg" maw={760}>
       <Title order={3}>Run a Model</Title>
@@ -317,7 +285,19 @@ export default function RunModelPanel() {
               <FeatureCard />
               <Divider my="xs" />
 
-              <ModelSelectionCard model={model} onChange={setModel} schema={schema} enums={enums}/>
+              <ModelSelectionCard
+                model={model}
+                onChange={(next) => {
+                  if (next?.algo && next.algo !== model.algo) {
+                    const d = getModelDefaults(next.algo) || { algo: next.algo };
+                    setModel({ ...d, ...next });
+                  } else {
+                    setModel(next);
+                  }
+                }}
+                schema={models?.schema}
+                enums={enums}
+              />
 
               <Divider my="xs" />
 

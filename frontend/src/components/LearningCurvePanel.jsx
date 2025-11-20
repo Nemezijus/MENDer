@@ -10,38 +10,9 @@ import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import api from '../api/client';
 import { useLearningCurveResultsCtx } from '../state/LearningCurveResultsContext.jsx';
-import { getModelSchema, getEnums} from '../api/schema';
 
-// per-algo default fallbacks (same as Run panel)
-const DEFAULTS = {
-  logreg: { algo: 'logreg', C: 1.0, penalty: 'l2', solver: 'lbfgs', max_iter: 1000, class_weight: null, l1_ratio: 0.5 },
-  svm:    { algo: 'svm', C: 1.0, kernel: 'rbf', degree: 3, gamma: 'scale', coef0: 0.0, shrinking: true, probability: false, tol: 1e-3, cache_size: 200.0, class_weight: null, max_iter: -1, decision_function_shape: 'ovr', break_ties: false },
-  tree:   { algo: 'tree', criterion: 'gini', splitter: 'best', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: null, max_leaf_nodes: null, min_impurity_decrease: 0.0, class_weight: null, ccp_alpha: 0.0 },
-  forest: { algo: 'forest', n_estimators: 100, criterion: 'gini', max_depth: null, min_samples_split: 2, min_samples_leaf: 1, min_weight_fraction_leaf: 0.0, max_features: 'sqrt', max_leaf_nodes: null, min_impurity_decrease: 0.0, bootstrap: true, oob_score: false, n_jobs: null, random_state: null, warm_start: false, class_weight: null, ccp_alpha: 0.0, max_samples: null },
-  knn:    { algo: 'knn', n_neighbors: 5, weights: 'uniform', algorithm: 'auto', leaf_size: 30, p: 2, metric: 'minkowski', n_jobs: null },
-};
-
-function getAlgoSchema(schema, algo) {
-  if (!schema) return null;
-  const oneOf = schema.oneOf || schema.anyOf || [];
-  for (const s of oneOf) {
-    const alg = s?.properties?.algo?.const ?? s?.properties?.algo?.default;
-    if (alg === algo) return s;
-  }
-  return null;
-}
-
-function defaultsFromSchema(schema, algo) {
-  const s = getAlgoSchema(schema, algo);
-  if (!s) return DEFAULTS[algo];
-  const props = s.properties || {};
-  const out = { algo };
-  for (const [k, v] of Object.entries(props)) {
-    if (k === 'algo') continue;
-    if ('default' in v) out[k] = v.default;
-  }
-  return Object.keys(out).length > 1 ? out : DEFAULTS[algo];
-}
+// NEW: centralized defaults/enums/meta
+import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 
 export default function LearningCurvePanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
@@ -54,6 +25,9 @@ export default function LearningCurvePanel() {
 
   const { nSplits, setNSplits, withinPct, setWithinPct, setResult } = useLearningCurveResultsCtx();
 
+  // centralized schema/defaults/enums
+  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+
   // split
   const [stratified, setStratified] = useState(true);
   const [shuffle, setShuffle] = useState(true);
@@ -63,10 +37,8 @@ export default function LearningCurvePanel() {
   const [scaleMethod, setScaleMethod] = useState('standard');
   const [metric, setMetric] = useState('accuracy');
 
-  // union model + schema
-  const [schema, setSchema] = useState(null);
-  const [enums, setEnums] = useState(null);
-  const [model, setModel] = useState(DEFAULTS.logreg);
+  // union model (hydrated from backend defaults)
+  const [model, setModel] = useState(null);
 
   const [trainSizesCSV, setTrainSizesCSV] = useState('');
   const [nSteps, setNSteps] = useState(5);
@@ -75,36 +47,28 @@ export default function LearningCurvePanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
+  // initialize once defaults arrive
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const { schema } = await getModelSchema();
-        if (!alive) return;
-        setSchema(schema);
-        setModel((cur) => ({ ...defaultsFromSchema(schema, cur.algo), ...cur }));
-      } catch { /* ignore */ }
-      try {
-        const e = await getEnums();
-        if (!alive) return;
-        setEnums(e);
-      } catch {}
-    })();
-    return () => { alive = false; };
-  }, []);
+    if (!defsLoading && !model) {
+      const init = getModelDefaults('logreg') || { algo: 'logreg' };
+      setModel(init);
+    }
+  }, [defsLoading, getModelDefaults, model]);
 
+  // on algo change, rehydrate from backend defaults while keeping edits
   useEffect(() => {
-    setModel((cur) => {
-      const base = schema ? defaultsFromSchema(schema, cur.algo) : DEFAULTS[cur.algo] || DEFAULTS.logreg;
-      return { ...base, ...cur };
-    });
-  }, [schema, model.algo]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!model) return;
+    const base = getModelDefaults(model.algo) || { algo: model.algo };
+    setModel((cur) => ({ ...base, ...cur }));
+  }, [getModelDefaults, model?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCompute() {
     if (!dataReady) {
       setErr('Load & inspect data first in the left sidebar.');
       return;
     }
+    if (!model) return;
+
     setErr(null);
     setResult(null);
     setLoading(true);
@@ -132,7 +96,7 @@ export default function LearningCurvePanel() {
           sfs_k: (sfs_k === '' || sfs_k == null) ? 'auto' : sfs_k,
           sfs_direction, sfs_cv, sfs_n_jobs,
         },
-        model, // ← union payload as-is
+        model, // union payload as-is
         eval: {
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
@@ -151,6 +115,10 @@ export default function LearningCurvePanel() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (defsLoading || !models || !model) {
+    return null; // optionally render a skeleton/spinner
   }
 
   return (
@@ -199,7 +167,19 @@ export default function LearningCurvePanel() {
 
               <Divider my="xs" />
 
-              <ModelSelectionCard model={model} onChange={setModel} schema={schema} enums={enums} />
+              <ModelSelectionCard
+                model={model}
+                onChange={(next) => {
+                  if (next?.algo && next.algo !== model.algo) {
+                    const d = getModelDefaults(next.algo) || { algo: next.algo };
+                    setModel({ ...d, ...next });
+                  } else {
+                    setModel(next);
+                  }
+                }}
+                schema={models?.schema}
+                enums={enums}
+              />
 
               <Divider my="xs" />
 

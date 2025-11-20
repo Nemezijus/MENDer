@@ -8,7 +8,7 @@ from shared_schemas import types as T
 
 from shared_schemas.model_configs import (
     ModelConfig,           # ← discriminated union
-    LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,  # concretes for defaults
+    LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,
 )
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
@@ -79,8 +79,117 @@ def _model_union_schema_and_defaults():
 
     return {"schema": schema, "defaults": defaults}
 
+def _enums_payload():
+    """Centralized enum lists for dropdowns — single source of truth."""
+    def safe(alias): return _flatten_literal_alias(alias) if alias is not None else None
+    enums = {
+        # modeling
+        "PenaltyName":          safe(getattr(T, "PenaltyName", None)),
+        "LogRegSolver":         safe(getattr(T, "LogRegSolver", None)),
+        "SVMKernel":            safe(getattr(T, "SVMKernel", None)),
+        "SVMDecisionShape":     safe(getattr(T, "SVMDecisionShape", None)),
+        "TreeCriterion":        safe(getattr(T, "TreeCriterion", None)),
+        "TreeSplitter":         safe(getattr(T, "TreeSplitter", None)),
+        "MaxFeaturesName":      safe(getattr(T, "MaxFeaturesName", None)),
 
+        # class weights
+        "ClassWeightBalanced":  safe(getattr(T, "ClassWeightBalanced", None)),
+        "ForestClassWeight":    safe(getattr(T, "ForestClassWeight", None)),
+
+        # KNN
+        "KNNWeights":           safe(getattr(T, "KNNWeights", None)),
+        "KNNAlgorithm":         safe(getattr(T, "KNNAlgorithm", None)),
+        "KNNMetric":            safe(getattr(T, "KNNMetric", None)),
+
+        # pipeline-wide
+        "ScaleName":            safe(getattr(T, "ScaleName", None)),
+        "FeatureName":          safe(getattr(T, "FeatureName", None)),
+        "MetricName":           safe(getattr(T, "MetricName", None)),
+    }
+    return {k: v for k, v in enums.items() if v is not None}
+
+def _schema_defaults(pyd_model):
+    """Return defaults by instantiating a concrete Pydantic model."""
+    return pyd_model().model_dump()
+
+
+def _model_defaults_and_meta():
+    """
+    Return:
+      - defaults: {algo: {...}}
+      - meta: {algo: {task: 'classification'|'regression'|'nn', family: 'svm'|'tree'|...}}
+    For now, categorize existing algos as classification; expand as you add regressors/NNs.
+    """
+    algo_classes = [LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig]
+    defaults = {}
+    meta = {}
+
+    for cls in algo_classes:
+        inst = cls()
+        algo = inst.algo  # discriminator const
+        defaults[algo] = inst.model_dump()
+
+        # Minimal meta; adjust when you add new families/tasks
+        if algo in ("logreg", "svm"):
+            family = "linear" if algo == "logreg" else "svm"
+        elif algo == "tree":
+            family = "tree"
+        elif algo == "forest":
+            family = "forest"
+        elif algo == "knn":
+            family = "knn"
+        else:
+            family = "other"
+
+        meta[algo] = {
+            "task": "classification",   # update as you introduce regressors/nn
+            "family": family,
+        }
+
+    return defaults, meta
 # ---------- routes ----------
+
+@router.get("/defaults")
+def get_all_defaults():
+    """
+    Consolidated defaults + enums for the UI.
+    Use this to remove hardcoded DEFAULTS and static option lists on the frontend.
+    """
+    model_defaults, model_meta = _model_defaults_and_meta()
+
+    payload = {
+        "models": {
+            "schema": TypeAdapter(ModelConfig).json_schema(),  # union schema (oneOf + discriminator)
+            "defaults": model_defaults,
+            "meta": model_meta,
+        },
+        "scale": {
+            "schema": TypeAdapter(ScaleModel).json_schema(),
+            "defaults": _schema_defaults(ScaleModel),
+        },
+        "features": {
+            "schema": TypeAdapter(FeaturesModel).json_schema(),
+            "defaults": _schema_defaults(FeaturesModel),
+        },
+        "split": {
+            "holdout": {
+                "schema": TypeAdapter(SplitHoldoutModel).json_schema(),
+                "defaults": _schema_defaults(SplitHoldoutModel),
+            },
+            "kfold": {
+                "schema": TypeAdapter(SplitCVModel).json_schema(),
+                "defaults": _schema_defaults(SplitCVModel),
+            },
+        },
+        "eval": {
+            "schema": TypeAdapter(EvalModel).json_schema(),
+            "defaults": _schema_defaults(EvalModel),
+        },
+        "enums": _enums_payload(),
+        # Optional: bump when you change schemas to help the UI invalidate caches
+        "schema_version": 1,
+    }
+    return payload
 
 @router.get("/enums")
 def get_enums():

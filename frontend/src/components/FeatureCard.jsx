@@ -1,5 +1,67 @@
 import { Card, Stack, Group, Text, Select, NumberInput, Checkbox, TextInput, Tooltip } from '@mantine/core';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
+import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
+
+/** -------- helpers to read enums from the Features schema -------- **/
+
+function resolveRef(schema, ref) {
+  if (!schema || !ref || typeof ref !== 'string') return null;
+  const prefix = '#/$defs/';
+  if (!ref.startsWith(prefix)) return null;
+  const key = ref.slice(prefix.length);
+  return schema?.$defs?.[key] ?? null;
+}
+
+function getMethodSchema(schema, method) {
+  if (!schema || !method) return null;
+
+  // try discriminator mapping
+  const mapping = schema?.discriminator?.mapping;
+  if (mapping && mapping[method]) {
+    const target = resolveRef(schema, mapping[method]);
+    if (target) return target;
+  }
+
+  // fallback: scan oneOf/anyOf and check properties.method const/default
+  const variants = schema?.oneOf || schema?.anyOf || [];
+  for (const entry of variants) {
+    const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
+    const m = target?.properties?.method?.const ?? target?.properties?.method?.default;
+    if (m === method) return target || null;
+  }
+  return null;
+}
+
+function enumFromSubSchema(sub, key, fallback) {
+  try {
+    const p = sub?.properties?.[key];
+    if (!p) return fallback;
+    if (Array.isArray(p.enum)) return p.enum;
+    const list = (p.anyOf ?? p.oneOf ?? [])
+      .flatMap((x) => {
+        if (Array.isArray(x.enum)) return x.enum;
+        if (x.const != null) return [x.const];
+        if (x.type === 'null') return [null];
+        return [];
+      });
+    return list.length ? list : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function toSelectData(values, { includeNone = false } = {}) {
+  const out = [];
+  let sawNull = false;
+  for (const v of values ?? []) {
+    if (v === null) { sawNull = true; continue; }
+    out.push({ value: String(v), label: String(v) });
+  }
+  if (includeNone && sawNull) out.unshift({ value: 'none', label: 'none' });
+  return out;
+}
+
+/** ---------------- component ---------------- **/
 
 export default function FeatureCard({ title = 'Features' }) {
   const {
@@ -20,18 +82,16 @@ export default function FeatureCard({ title = 'Features' }) {
     sfs_n_jobs, setSfsNJobs,
   } = useFeatureCtx();
 
-  const methodSelect = (
-    <Select
-      label="Feature method"
-      data={[
-        { value: 'none', label: 'none' },
-        { value: 'pca', label: 'pca' },
-        { value: 'lda', label: 'lda' },
-        { value: 'sfs', label: 'sfs' },
-      ]}
-      value={method}
-      onChange={setMethod}
-    />
+  const { features, enums } = useSchemaDefaults();
+
+  const methods = toSelectData(enums?.FeatureName ?? ['none', 'pca', 'lda', 'sfs']);
+  const sub = getMethodSchema(features?.schema, method);
+
+  const ldaSolverData = toSelectData(
+    enumFromSubSchema(sub, 'lda_solver', ['svd', 'lsqr', 'eigen'])
+  );
+  const sfsDirectionData = toSelectData(
+    enumFromSubSchema(sub, 'sfs_direction', ['forward', 'backward'])
   );
 
   return (
@@ -41,7 +101,12 @@ export default function FeatureCard({ title = 'Features' }) {
           <Text fw={500}>{title}</Text>
         </Group>
 
-        {methodSelect}
+        <Select
+          label="Feature method"
+          data={methods}
+          value={method}
+          onChange={setMethod}
+        />
 
         {/* PCA controls */}
         {method === 'pca' && (
@@ -88,11 +153,7 @@ export default function FeatureCard({ title = 'Features' }) {
             </Tooltip>
             <Select
               label="lda_solver"
-              data={[
-                { value: 'svd', label: 'svd' },
-                { value: 'lsqr', label: 'lsqr' },
-                { value: 'eigen', label: 'eigen' },
-              ]}
+              data={ldaSolverData}
               value={lda_solver}
               onChange={setLdaSolver}
             />
@@ -125,19 +186,15 @@ export default function FeatureCard({ title = 'Features' }) {
                 value={String(sfs_k)}
                 onChange={(e) => {
                   const v = e.currentTarget.value.trim();
-                  // allow 'auto' or integer-like
                   if (v === '' || v.toLowerCase() === 'auto') setSfsK('auto');
-                  else setSfsK(v.replace(/\D/g, '')); // keep digits only
+                  else setSfsK(v.replace(/\D/g, ''));
                 }}
                 placeholder="auto or integer"
               />
             </Tooltip>
             <Select
               label="sfs_direction"
-              data={[
-                { value: 'forward', label: 'forward' },
-                { value: 'backward', label: 'backward' },
-              ]}
+              data={sfsDirectionData}
               value={sfs_direction}
               onChange={setSfsDirection}
             />
