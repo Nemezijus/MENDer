@@ -2,7 +2,6 @@ import { Card, Stack, Group, Text, Divider, Select, NumberInput, Checkbox, Simpl
 
 /** ---------------- helpers ---------------- **/
 
-// Resolve a local $ref like "#/$defs/LogRegConfig" into the actual sub-schema object
 function resolveRef(schema, ref) {
   if (!schema || !ref || typeof ref !== 'string') return null;
   const prefix = '#/$defs/';
@@ -11,18 +10,15 @@ function resolveRef(schema, ref) {
   return schema?.$defs?.[key] ?? null;
 }
 
-// Get the sub-schema for the current algo from a discriminated-union schema
 function getAlgoSchema(schema, algo) {
   if (!schema || !algo) return null;
 
-  // 1) Best: use discriminator mapping if present
   const mapping = schema?.discriminator?.mapping;
   if (mapping && mapping[algo]) {
     const target = resolveRef(schema, mapping[algo]);
     if (target) return target;
   }
 
-  // 2) Fallback: scan oneOf entries and resolve $ref
   const variants = schema?.oneOf || schema?.anyOf || [];
   for (const entry of variants) {
     const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
@@ -33,27 +29,24 @@ function getAlgoSchema(schema, algo) {
   return null;
 }
 
-// read enum for a key from the selected algo's sub-schema
 function enumFromSubSchema(sub, key, fallback) {
   try {
     const p = sub?.properties?.[key];
     if (!p) return fallback;
     if (Array.isArray(p.enum)) return p.enum;
     const list = (p.anyOf ?? p.oneOf ?? [])
-      .map((x) => {
+      .flatMap((x) => {
         if (Array.isArray(x.enum)) return x.enum;
         if (x.const != null) return [x.const];
         if (x.type === 'null') return [null];
         return [];
-     })
-      .flat();
+      });
     return list.length ? list : fallback;
   } catch {
     return fallback;
   }
 }
 
-// Turn an enum array into Mantine <Select> data, optionally injecting a "none" option for null
 function toSelectData(enums, { includeNoneLabel = false } = {}) {
   const out = [];
   let hasNull = false;
@@ -65,12 +58,10 @@ function toSelectData(enums, { includeNoneLabel = false } = {}) {
   return out;
 }
 
-// Map "none" UI choice to null, otherwise keep as string
 function fromSelectNullable(v) {
   return v === 'none' ? null : v;
 }
 
-// tree/forest max_features adapters
 function maxFeatToModeVal(v) {
   if (v == null) return { mode: 'none', value: null };
   if (v === 'sqrt' || v === 'log2') return { mode: v, value: null };
@@ -90,17 +81,47 @@ function modeValToMaxFeat(mode, value) {
   return null;
 }
 
+function algoListFromSchema(schema) {
+  if (!schema) return null;
+
+  const mapping = schema?.discriminator?.mapping;
+  if (mapping && typeof mapping === 'object') {
+    const keys = Object.keys(mapping);
+    if (keys.length) return keys;
+  }
+
+  const variants = schema?.oneOf || schema?.anyOf || [];
+  const set = new Set();
+  for (const entry of variants) {
+    const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
+    const alg = target?.properties?.algo?.const ?? target?.properties?.algo?.default;
+    if (alg) set.add(String(alg));
+  }
+  if (set.size) return Array.from(set);
+
+  return null;
+}
+
 /** --------------- component --------------- **/
 
-export default function ModelSelectionCard({ model, onChange, schema, enums }) {
+export default function ModelSelectionCard({ model, onChange, schema, enums, models }) {
   const m = model || {};
   const set = (patch) => onChange?.({ ...m, ...patch });
 
-  // pick sub-schema for current algo (now $ref-aware)
-  const sub = getAlgoSchema(schema, m.algo);
+  // Prefer schema -> defaults -> known fallback
+  const schemaAlgos = algoListFromSchema(schema);
+  const defaultsAlgos = models?.defaults ? Object.keys(models.defaults) : null;
+  const available = new Set(schemaAlgos || defaultsAlgos || ['logreg','svm','tree','forest','knn','linreg']);
 
-  // --- schema-powered enums (with safe fallbacks to /schema/enums) ---
-  const algoData = toSelectData(['logreg', 'svm', 'tree', 'forest', 'knn']);
+  // Preferred ordering, append any extras after
+  const preferred = ['logreg','svm','tree','forest','knn','linreg'];
+  const ordered = [
+    ...preferred.filter(a => available.has(a)),
+    ...Array.from(available).filter(a => !preferred.includes(a)),
+  ];
+  const algoData = toSelectData(ordered);
+
+  const sub = getAlgoSchema(schema, m.algo);
 
   // Logistic Regression enums
   const lrPenalty     = toSelectData(enumFromSubSchema(sub, 'penalty', enums?.PenaltyName));
@@ -138,11 +159,9 @@ export default function ModelSelectionCard({ model, onChange, schema, enums }) {
   const knnAlgorithm = toSelectData(enumFromSubSchema(sub, 'algorithm', enums?.KNNAlgorithm));
   const knnMetric    = toSelectData(enumFromSubSchema(sub, 'metric',    enums?.KNNMetric));
 
-  // SVM gamma UI adapter (now unprefixed)
   const gammaMode = typeof m.gamma === 'number' ? 'numeric' : (m.gamma ?? 'scale');
   const gammaValue = typeof m.gamma === 'number' ? m.gamma : 0.1;
 
-  // tree/forest max_features (now unprefixed within algo)
   const tMF = maxFeatToModeVal(m.max_features);
   const fMF = maxFeatToModeVal(m.max_features);
 
@@ -154,11 +173,8 @@ export default function ModelSelectionCard({ model, onChange, schema, enums }) {
         <Select
           label="Algorithm"
           data={algoData}
-          value={m.algo ?? 'logreg'}
-          onChange={(algo) => {
-            if (!algo) return;
-            set({ algo }); // Panels handle swapping in algo defaults
-          }}
+          value={m.algo ?? (algoData[0]?.value ?? 'logreg')}
+          onChange={(algo) => { if (algo) set({ algo }); }}
         />
 
         {/* Logistic Regression */}
@@ -333,8 +349,37 @@ export default function ModelSelectionCard({ model, onChange, schema, enums }) {
           </Stack>
         )}
 
+        {/* Linear Regression */}
+        {m.algo === 'linreg' && (
+          <Stack gap="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              <Checkbox
+                label="fit_intercept"
+                checked={!!m.fit_intercept}
+                onChange={(e)=>set({ fit_intercept: e.currentTarget.checked })}
+              />
+              <Checkbox
+                label="copy_X"
+                checked={m.copy_X ?? true}
+                onChange={(e)=>set({ copy_X: e.currentTarget.checked })}
+              />
+              <NumberInput
+                label="n_jobs"
+                value={m.n_jobs ?? null}
+                onChange={(v)=>set({ n_jobs: v })}
+                allowDecimal={false}
+              />
+              <Checkbox
+                label="positive"
+                checked={!!m.positive}
+                onChange={(e)=>set({ positive: e.currentTarget.checked })}
+              />
+            </SimpleGrid>
+          </Stack>
+        )}
+
         <Divider my="xs" />
-        <Text size="xs" c="dimmed">Enums come from backend schema when available (with /schema/enums fallback).</Text>
+        <Text size="xs" c="dimmed">Algorithms are derived from schema/defaults and ordered: logreg, svm, tree, forest, knn, linreg.</Text>
       </Stack>
     </Card>
   );

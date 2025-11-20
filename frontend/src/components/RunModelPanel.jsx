@@ -64,7 +64,7 @@ export default function RunModelPanel() {
 
   // Centralized schema/defaults/enums
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
-
+  
   // SPLIT / SCALE / METRIC
   const [splitMode, setSplitMode] = useState('holdout');
   const [trainFrac, setTrainFrac] = useState(0.75);

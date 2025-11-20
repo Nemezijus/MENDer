@@ -1,4 +1,3 @@
-# backend/app/routers/schema.py
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -9,6 +8,7 @@ from shared_schemas import types as T
 from shared_schemas.model_configs import (
     ModelConfig,           # ← discriminated union
     LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,
+    LinearRegConfig
 )
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
@@ -120,31 +120,32 @@ def _model_defaults_and_meta():
       - meta: {algo: {task: 'classification'|'regression'|'nn', family: 'svm'|'tree'|...}}
     For now, categorize existing algos as classification; expand as you add regressors/NNs.
     """
-    algo_classes = [LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig]
+    algo_classes = [LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig, LinearRegConfig]
     defaults = {}
     meta = {}
 
     for cls in algo_classes:
         inst = cls()
-        algo = inst.algo  # discriminator const
+        algo = inst.algo
         defaults[algo] = inst.model_dump()
 
-        # Minimal meta; adjust when you add new families/tasks
-        if algo in ("logreg", "svm"):
-            family = "linear" if algo == "logreg" else "svm"
-        elif algo == "tree":
-            family = "tree"
-        elif algo == "forest":
-            family = "forest"
-        elif algo == "knn":
-            family = "knn"
+        # family + task
+        if algo in ("logreg",):
+            family, task = "linear", "classification"
+        elif algo in ("svm",):
+            family, task = "svm", "classification"
+        elif algo in ("tree",):
+            family, task = "tree", "classification"
+        elif algo in ("forest",):
+            family, task = "forest", "classification"
+        elif algo in ("knn",):
+            family, task = "knn", "classification"
+        elif algo in ("linreg",):
+            family, task = "linear", "regression"
         else:
-            family = "other"
+            family, task = "other", "classification"
 
-        meta[algo] = {
-            "task": "classification",   # update as you introduce regressors/nn
-            "family": family,
-        }
+        meta[algo] = {"task": task, "family": family}
 
     return defaults, meta
 # ---------- routes ----------

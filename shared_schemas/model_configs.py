@@ -92,17 +92,26 @@ class KNNConfig(BaseModel):
     metric: Literal["minkowski", "euclidean", "manhattan", "chebyshev"] = "minkowski"
     n_jobs: Optional[int] = None
 
+#------------------------------------------
+#               REGRESSORS
+#------------------------------------------
 
+class LinearRegConfig(BaseModel):
+    algo: Literal["linreg"] = "linreg"
+    fit_intercept: bool = True
+    copy_X: bool = True
+    n_jobs: Optional[int] = None
+    positive: bool = False
 # -----------------------------
 # Discriminated union (single source for "model")
 # -----------------------------
 ModelConfig = Annotated[
-    Union[LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig],
+    Union[LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig, LinearRegConfig,],
     Field(discriminator="algo"),
 ]
 
 
 __all__ = [
     "LogRegConfig", "SVMConfig", "TreeConfig", "ForestConfig", "KNNConfig",
-    "ModelConfig",
+    "ModelConfig", "LinearRegConfig",
 ]

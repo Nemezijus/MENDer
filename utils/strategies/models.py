@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import inspect
 
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
 from shared_schemas.model_configs import (
-    LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,
+    LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig, LinearRegConfig
 )
 from utils.strategies.interfaces import ModelBuilder
 
@@ -112,6 +112,19 @@ class KNNBuilder(ModelBuilder):
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(KNeighborsClassifier, self.cfg)
         return KNeighborsClassifier(**kw)
+
+    def build(self) -> Any:
+        return self.make_estimator()
+
+
+# -------------REGRESSORS----------------
+@dataclass
+class LinRegBuilder(ModelBuilder):
+    cfg: LinearRegConfig
+
+    def make_estimator(self) -> Any:
+        kw = _filtered_kwargs(LinearRegression, self.cfg)
+        return LinearRegression(**kw)
 
     def build(self) -> Any:
         return self.make_estimator()
