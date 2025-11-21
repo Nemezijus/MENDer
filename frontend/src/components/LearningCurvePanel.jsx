@@ -179,6 +179,7 @@ export default function LearningCurvePanel() {
                 }}
                 schema={models?.schema}
                 enums={enums}
+                models={models}   // <-- pass defaults + meta so filtering by task works
               />
 
               <Divider my="xs" />

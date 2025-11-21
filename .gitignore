@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 /data/calcium/
+/data/classification/
 /data/allen/
 /data/allen_cache/
 /data/allen_vc/

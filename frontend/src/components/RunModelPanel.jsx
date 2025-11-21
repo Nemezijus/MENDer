@@ -8,6 +8,7 @@ import { useDataCtx } from '../state/DataContext.jsx';
 import { useRunModelResultsCtx } from '../state/RunModelResultsContext.jsx';
 import { useModelArtifact } from '../state/ModelArtifactContext.jsx';
 import { useFeatureCtx } from '../state/FeatureContext.jsx';
+import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
@@ -18,9 +19,6 @@ import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
-
-// NEW: centralized defaults/enums/meta
-import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 
 /** ---------- helpers ---------- **/
 
@@ -297,6 +295,7 @@ export default function RunModelPanel() {
                 }}
                 schema={models?.schema}
                 enums={enums}
+                models={models}
               />
 
               <Divider my="xs" />

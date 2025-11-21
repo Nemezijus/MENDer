@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Card, Stack, Text, TextInput, Button, Divider, Alert, Group, Badge, FileInput } from '@mantine/core';
+import { Card, Stack, Text, TextInput, Button, Divider, Alert, Group, Badge, FileInput, Select } from '@mantine/core';
 import { useDataCtx } from '../state/DataContext.jsx';
 import { inspectData } from '../api/data';
-import { uploadFile } from '../api/files'; // NEW
+import { uploadFile } from '../api/files';
 
 export default function DataSidebar() {
   const {
@@ -13,6 +13,7 @@ export default function DataSidebar() {
     yKey, setYKey,
     inspectReport, setInspectReport,
     dataReady,
+    taskInferred, taskSelected, setTaskSelected, effectiveTask,
   } = useDataCtx();
 
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,10 @@ export default function DataSidebar() {
       };
       const report = await inspectData(payload);
       setInspectReport(report);
+      // Reset manual override if the user hasn’t chosen one yet
+      if (!taskSelected && report?.task_inferred) {
+        // no-op: we prefer to let user set override explicitly
+      }
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
@@ -54,7 +59,7 @@ export default function DataSidebar() {
         const up = await uploadFile(xLocalFile);  // { path, original_name }
         newXPath = up.path;
         setXPath(newXPath);
-        setNPZPath(null); // if we upload X/Y separately, clear npz
+        setNPZPath(null); // clear npz when providing X/Y separately
       }
 
       // Upload y if provided
@@ -81,7 +86,6 @@ export default function DataSidebar() {
       const status = e?.response?.status;
       const msg = e?.response?.data?.detail || e.message || String(e);
       if (status === 404 && /files\/upload/.test(e?.config?.url || '')) {
-        // Upload router not found — tell the user they can use manual paths in dev
         setErr("Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.");
       } else {
         setErr(msg);
@@ -91,6 +95,11 @@ export default function DataSidebar() {
       setLoading(false);
     }
   }
+
+  // Helpers to render y-summary
+  const ySum = inspectReport?.y_summary || null;
+  const isClassification = effectiveTask === 'classification';
+  const isRegression = effectiveTask === 'regression';
 
   return (
     <Stack gap="md" w={320}>
@@ -110,6 +119,19 @@ export default function DataSidebar() {
             <TextInput label="X key" value={xKey} onChange={(e) => setXKey(e.currentTarget.value)} />
             <TextInput label="y key" value={yKey} onChange={(e) => setYKey(e.currentTarget.value)} />
           </Group>
+
+          {/* NEW: Task selector (defaults to inferred; user can override) */}
+          <Select
+            label="Task"
+            data={[
+              { value: 'classification', label: 'classification' },
+              { value: 'regression', label: 'regression' },
+            ]}
+            value={taskSelected || taskInferred || null}
+            placeholder={taskInferred ? `inferred: ${taskInferred}` : 'select'}
+            onChange={(v) => setTaskSelected(v)}
+            clearable
+          />
 
           <Group gap="xs">
             <Button size="xs" onClick={handleInspect} loading={loading}>Inspect</Button>
@@ -140,7 +162,33 @@ export default function DataSidebar() {
           <Stack gap={2}>
             <Text size="sm">n_samples: {inspectReport.n_samples}</Text>
             <Text size="sm">n_features: {inspectReport.n_features}</Text>
-            <Text size="sm">classes: {Array.isArray(inspectReport.classes) ? inspectReport.classes.join(', ') : String(inspectReport.classes)}</Text>
+            <Text size="sm">task (inferred): {inspectReport.task_inferred || '—'}</Text>
+
+            {/* Classification display */}
+            {isClassification && (
+              <>
+                <Text size="sm">
+                  classes: {
+                    Array.isArray(inspectReport.classes)
+                      ? inspectReport.classes.join(', ')
+                      : String(inspectReport.classes)
+                  }
+                </Text>
+                <Text size="sm">
+                  n_classes: {Array.isArray(inspectReport.classes) ? inspectReport.classes.length : 0}
+                </Text>
+              </>
+            )}
+
+            {/* Regression display */}
+            {isRegression && ySum && (
+              <>
+                <Text size="sm">y: n={ySum.n}, unique={ySum.n_unique}</Text>
+                <Text size="sm">min/max: {ySum.min} / {ySum.max}</Text>
+                <Text size="sm">mean±std: {ySum.mean} ± {ySum.std}</Text>
+              </>
+            )}
+
             <Text size="sm">missing total: {inspectReport.missingness?.total ?? 0}</Text>
             {inspectReport.suggestions?.recommend_pca && (
               <Alert color="blue" variant="light" mt="xs">

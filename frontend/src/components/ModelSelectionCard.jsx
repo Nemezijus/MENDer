@@ -1,6 +1,8 @@
 import { Card, Stack, Group, Text, Divider, Select, NumberInput, Checkbox, SimpleGrid } from '@mantine/core';
+import { useEffect } from 'react';
+import { useDataCtx } from '../state/DataContext.jsx';
 
-/** ---------------- helpers ---------------- **/
+/** ---------------- helpers (unchanged) ---------------- **/
 
 function resolveRef(schema, ref) {
   if (!schema || !ref || typeof ref !== 'string') return null;
@@ -108,6 +110,9 @@ export default function ModelSelectionCard({ model, onChange, schema, enums, mod
   const m = model || {};
   const set = (patch) => onChange?.({ ...m, ...patch });
 
+  // NEW: dataset task from DataContext (classification | regression | null)
+  const { effectiveTask } = useDataCtx();
+
   // Prefer schema -> defaults -> known fallback
   const schemaAlgos = algoListFromSchema(schema);
   const defaultsAlgos = models?.defaults ? Object.keys(models.defaults) : null;
@@ -115,11 +120,32 @@ export default function ModelSelectionCard({ model, onChange, schema, enums, mod
 
   // Preferred ordering, append any extras after
   const preferred = ['logreg','svm','tree','forest','knn','linreg'];
-  const ordered = [
+  const orderedAll = [
     ...preferred.filter(a => available.has(a)),
     ...Array.from(available).filter(a => !preferred.includes(a)),
   ];
-  const algoData = toSelectData(ordered);
+
+  // NEW: filter by task using backend-provided meta[algo].task
+  const meta = models?.meta || {};
+  const matchesTask = (algo) => {
+    if (!effectiveTask) return true;                     // no filter if task unknown
+    const t = meta[algo]?.task;                          // 'classification' | 'regression' | undefined
+    if (!t) return true;                                 // if backend didn’t annotate, don’t hide it
+    return t === effectiveTask;
+  };
+  const ordered = orderedAll.filter(matchesTask);
+
+  // If current selection is incompatible with task, auto-switch to first compatible
+  useEffect(() => {
+    if (!m?.algo) return;
+    if (ordered.length === 0) return;                    // nothing to switch to
+    if (!matchesTask(m.algo)) {
+      set({ algo: ordered[0] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTask, JSON.stringify(orderedAll), JSON.stringify(meta)]);
+
+  const algoData = toSelectData(ordered.length ? ordered : orderedAll);
 
   const sub = getAlgoSchema(schema, m.algo);
 
@@ -379,7 +405,9 @@ export default function ModelSelectionCard({ model, onChange, schema, enums, mod
         )}
 
         <Divider my="xs" />
-        <Text size="xs" c="dimmed">Algorithms are derived from schema/defaults and ordered: logreg, svm, tree, forest, knn, linreg.</Text>
+        <Text size="xs" c="dimmed">
+          Algorithms are filtered by dataset task via <code>models.meta[algo].task</code> and your selected task in the Data panel.
+        </Text>
       </Stack>
     </Card>
   );

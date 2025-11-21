@@ -1,3 +1,4 @@
+// src/state/SchemaDefaultsContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getAllDefaults } from '../api/schema';
 
@@ -12,7 +13,7 @@ export function SchemaDefaultsProvider({ children }) {
     let alive = true;
     (async () => {
       try {
-        const data = await getAllDefaults();
+        const data = await getAllDefaults(); // { models:{schema,defaults,meta}, scale, features, split, eval, enums }
         if (!alive) return;
         setPayload(data);
       } catch (e) {
@@ -31,26 +32,54 @@ export function SchemaDefaultsProvider({ children }) {
       return {
         loading, error,
         models: null, scale: null, features: null, split: null, eval: null, enums: null,
+        // getters
         getModelDefaults: () => null,
         getModelMeta: () => null,
         getScaleDefaults: () => null,
         getFeaturesDefaults: () => null,
         getEvalDefaults: () => null,
-        getSplitDefaults: (mode) => null,
+        getSplitDefaults: () => null,
+        // new helpers
+        meta: null,
+        algoList: [],
+        getCompatibleAlgos: () => [],
       };
     }
+
     const { models, scale, features, split, eval: evalSection, enums } = payload;
+    const meta = models?.meta ?? {};
+
+    // Compute a stable ordering without using hooks inside this memo
+    const algoList = (models?.defaults && Object.keys(models.defaults).length > 0)
+      ? Object.keys(models.defaults)
+      : ['logreg','svm','tree','forest','knn','linreg']; // fallback order
+
+    const getCompatibleAlgos = (task) => {
+      if (!task) return algoList; // no filter if task unknown
+      return algoList.filter((algo) => {
+        const t = meta?.[algo]?.task;
+        // if backend didn’t annotate, don’t hide it
+        return !t || t === task;
+      });
+    };
 
     return {
       loading, error,
       models, scale, features, split, eval: evalSection, enums,
+
       // handy getters
       getModelDefaults: (algo) => models?.defaults?.[algo] ?? null,
       getModelMeta: (algo) => models?.meta?.[algo] ?? null,
       getScaleDefaults: () => scale?.defaults ?? null,
       getFeaturesDefaults: () => features?.defaults ?? null,
       getEvalDefaults: () => evalSection?.defaults ?? null,
-      getSplitDefaults: (mode) => (mode === 'kfold' ? split?.kfold?.defaults : split?.holdout?.defaults) ?? null,
+      getSplitDefaults: (mode) =>
+        (mode === 'kfold' ? split?.kfold?.defaults : split?.holdout?.defaults) ?? null,
+
+      // helpers for model filtering
+      meta,
+      algoList,
+      getCompatibleAlgos,
     };
   }, [payload, loading, error]);
 

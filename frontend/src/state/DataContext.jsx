@@ -15,6 +15,12 @@ export function DataProvider({ children }) {
   const [inspectReport, setInspectReport] = useState(null);
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
 
+  // NEW: task handling (inferred from backend; user can override)
+  const taskInferred = inspectReport?.task_inferred || null;
+  const [taskSelected, setTaskSelected] = useState(null); // 'classification' | 'regression' | null
+
+  const effectiveTask = taskSelected || taskInferred || null;
+
   const value = useMemo(() => ({
     // paths/keys
     xPath, setXPath,
@@ -26,9 +32,17 @@ export function DataProvider({ children }) {
     // report
     inspectReport, setInspectReport,
 
+    // task
+    taskInferred,
+    taskSelected, setTaskSelected,
+    effectiveTask,
+
     // derived
     dataReady,
-  }), [xPath, yPath, npzPath, xKey, yKey, inspectReport, dataReady]);
+  }), [
+    xPath, yPath, npzPath, xKey, yKey,
+    inspectReport, taskInferred, taskSelected, effectiveTask, dataReady
+  ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

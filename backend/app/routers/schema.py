@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from pydantic import TypeAdapter
-from typing import Literal, Union, get_args, get_origin  # <-- added Literal, Union, get_origin
+from typing import Literal, Union, get_args, get_origin
 from shared_schemas import types as T
 
 from shared_schemas.model_configs import (
     ModelConfig,           # ← discriminated union
     LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,
-    LinearRegConfig
+    LinearRegConfig,
 )
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
@@ -79,6 +79,10 @@ def _model_union_schema_and_defaults():
 
     return {"schema": schema, "defaults": defaults}
 
+def _schema_defaults(pyd_model):
+    """Return defaults by instantiating a concrete Pydantic model."""
+    return pyd_model().model_dump()
+
 def _enums_payload():
     """Centralized enum lists for dropdowns — single source of truth."""
     def safe(alias): return _flatten_literal_alias(alias) if alias is not None else None
@@ -108,11 +112,6 @@ def _enums_payload():
     }
     return {k: v for k, v in enums.items() if v is not None}
 
-def _schema_defaults(pyd_model):
-    """Return defaults by instantiating a concrete Pydantic model."""
-    return pyd_model().model_dump()
-
-
 def _model_defaults_and_meta():
     """
     Return:
@@ -129,18 +128,17 @@ def _model_defaults_and_meta():
         algo = inst.algo
         defaults[algo] = inst.model_dump()
 
-        # family + task
-        if algo in ("logreg",):
+        if algo == "logreg":
             family, task = "linear", "classification"
-        elif algo in ("svm",):
+        elif algo == "svm":
             family, task = "svm", "classification"
-        elif algo in ("tree",):
+        elif algo == "tree":
             family, task = "tree", "classification"
-        elif algo in ("forest",):
+        elif algo == "forest":
             family, task = "forest", "classification"
-        elif algo in ("knn",):
+        elif algo == "knn":
             family, task = "knn", "classification"
-        elif algo in ("linreg",):
+        elif algo == "linreg":
             family, task = "linear", "regression"
         else:
             family, task = "other", "classification"
@@ -187,48 +185,52 @@ def get_all_defaults():
             "defaults": _schema_defaults(EvalModel),
         },
         "enums": _enums_payload(),
-        # Optional: bump when you change schemas to help the UI invalidate caches
         "schema_version": 1,
     }
     return payload
 
 @router.get("/enums")
 def get_enums():
-    """
-    Expose centralized enum values defined in shared_schemas/types.py.
-    Safe: a missing or non-Literal alias won’t 500 the endpoint.
-    """
-    def safe(alias):
-        return _flatten_literal_alias(alias) if alias is not None else None
-
-    enums = {
-        # modeling
-        "PenaltyName":          safe(T.PenaltyName),
-        "LogRegSolver":         safe(getattr(T, "LogRegSolver", None)),
-        "SVMKernel":            safe(T.SVMKernel),
-        "SVMDecisionShape":     safe(T.SVMDecisionShape),
-        "TreeCriterion":        safe(T.TreeCriterion),
-        "TreeSplitter":         safe(T.TreeSplitter),
-        "MaxFeaturesName":      safe(T.MaxFeaturesName),
-
-        # class weights
-        "ClassWeightBalanced":  safe(getattr(T, "ClassWeightBalanced", None)),
-        "ForestClassWeight":    safe(getattr(T, "ForestClassWeight", None)),
-
-        # KNN
-        "KNNWeights":           safe(getattr(T, "KNNWeights", None)),
-        "KNNAlgorithm":         safe(getattr(T, "KNNAlgorithm", None)),
-        "KNNMetric":            safe(getattr(T, "KNNMetric", None)),
-
-        # pipeline-wide
-        "ScaleName":            safe(T.ScaleName),
-        "FeatureName":          safe(T.FeatureName),
-        "MetricName":           safe(T.MetricName),
-    }
-
-    # Drop any None entries (types not present or not Literal-based)
-    enums = {k: v for k, v in enums.items() if v is not None}
+    """Expose centralized enum values defined in shared_schemas/types.py."""
+    enums = _enums_payload()
     return {"enums": enums}
+# @router.get("/enums")
+# def get_enums():
+#     """
+#     Expose centralized enum values defined in shared_schemas/types.py.
+#     Safe: a missing or non-Literal alias won’t 500 the endpoint.
+#     """
+#     def safe(alias):
+#         return _flatten_literal_alias(alias) if alias is not None else None
+
+#     enums = {
+#         # modeling
+#         "PenaltyName":          safe(T.PenaltyName),
+#         "LogRegSolver":         safe(getattr(T, "LogRegSolver", None)),
+#         "SVMKernel":            safe(T.SVMKernel),
+#         "SVMDecisionShape":     safe(T.SVMDecisionShape),
+#         "TreeCriterion":        safe(T.TreeCriterion),
+#         "TreeSplitter":         safe(T.TreeSplitter),
+#         "MaxFeaturesName":      safe(T.MaxFeaturesName),
+
+#         # class weights
+#         "ClassWeightBalanced":  safe(getattr(T, "ClassWeightBalanced", None)),
+#         "ForestClassWeight":    safe(getattr(T, "ForestClassWeight", None)),
+
+#         # KNN
+#         "KNNWeights":           safe(getattr(T, "KNNWeights", None)),
+#         "KNNAlgorithm":         safe(getattr(T, "KNNAlgorithm", None)),
+#         "KNNMetric":            safe(getattr(T, "KNNMetric", None)),
+
+#         # pipeline-wide
+#         "ScaleName":            safe(T.ScaleName),
+#         "FeatureName":          safe(T.FeatureName),
+#         "MetricName":           safe(T.MetricName),
+#     }
+
+#     # Drop any None entries (types not present or not Literal-based)
+#     enums = {k: v for k, v in enums.items() if v is not None}
+#     return {"enums": enums}
 
 
 @router.get("/model")
