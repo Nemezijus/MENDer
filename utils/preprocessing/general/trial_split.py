@@ -1,4 +1,4 @@
-# utils/preprocessing/trial_split.py
+# utils/preprocessing/general/trial_split.py
 from __future__ import annotations
 
 from typing import Tuple, Union
@@ -53,15 +53,19 @@ def split(
     train_frac: float = 0.8,
     *,
     custom: bool = False,
+    stratify: bool = True,
     rng: Union[None, int, np.random.Generator] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Public splitter: stratified train/test split on `y`.
+    Public splitter: train/test split on `y`.
 
     Modes
     -----
-    - custom=False (default): uses sklearn.train_test_split(stratify=y).
-    - custom=True: uses a single StratifiedShuffleSplit via _split_trials.
+    - custom=False (default):
+        uses sklearn.train_test_split, with optional stratification.
+    - custom=True:
+        if stratify=True: uses a single StratifiedShuffleSplit via _split_trials.
+        if stratify=False: uses train_test_split without stratify.
     """
     X = np.asarray(X)
     y = np.asarray(y).ravel()
@@ -74,11 +78,21 @@ def split(
     random_state = _to_child_seed(rng)
 
     if custom:
-        return _split_trials(X, y, train_frac, rng=random_state)
+        if stratify:
+            return _split_trials(X, y, train_frac, rng=random_state)
+        # custom + non-stratified: simple shuffled split without class balancing
+        return train_test_split(
+            X, y,
+            train_size=train_frac,
+            shuffle=True,
+            random_state=random_state,
+            stratify=None,
+        )
 
+    # standard path: optionally stratified train_test_split
     return train_test_split(
         X, y,
         train_size=train_frac,
-        stratify=y,
+        stratify=y if stratify else None,
         random_state=random_state,
     )

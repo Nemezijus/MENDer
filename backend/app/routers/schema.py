@@ -110,6 +110,13 @@ def _enums_payload():
         "FeatureName":          safe(getattr(T, "FeatureName", None)),
         "MetricName":           safe(getattr(T, "MetricName", None)),
     }
+    cls = safe(getattr(T, "ClassificationMetricName", None))
+    reg = safe(getattr(T, "RegressionMetricName", None))
+    metric_by_task = {}
+    if cls: metric_by_task["classification"] = cls
+    if reg: metric_by_task["regression"] = reg
+    if metric_by_task:
+        enums["MetricByTask"] = metric_by_task
     return {k: v for k, v in enums.items() if v is not None}
 
 def _model_defaults_and_meta():
@@ -127,23 +134,10 @@ def _model_defaults_and_meta():
         inst = cls()
         algo = inst.algo
         defaults[algo] = inst.model_dump()
-
-        if algo == "logreg":
-            family, task = "linear", "classification"
-        elif algo == "svm":
-            family, task = "svm", "classification"
-        elif algo == "tree":
-            family, task = "tree", "classification"
-        elif algo == "forest":
-            family, task = "forest", "classification"
-        elif algo == "knn":
-            family, task = "knn", "classification"
-        elif algo == "linreg":
-            family, task = "linear", "regression"
-        else:
-            family, task = "other", "classification"
-
-        meta[algo] = {"task": task, "family": family}
+        meta[algo] = {
+            "task": cls.task,
+            "family": cls.family,
+        }
 
     return defaults, meta
 # ---------- routes ----------

@@ -20,8 +20,33 @@ ForestClassWeight: TypeAlias = Union[Literal["balanced", "balanced_subsample"], 
 # Scaling
 ScaleName: TypeAlias = Literal["standard", "robust", "minmax", "maxabs", "quantile", "none"]
 
-# Metrics
-MetricName: TypeAlias = Literal["accuracy", "balanced_accuracy", "f1_macro"]
+# Classification metrics
+ClassificationMetricName: TypeAlias = Literal[
+    "accuracy",
+    "balanced_accuracy",
+    "f1_macro",
+    "f1_micro",
+    "f1_weighted",
+    "precision_macro",
+    "recall_macro",
+    "log_loss",
+    "roc_auc_ovr",
+    "roc_auc_ovo",
+    "avg_precision_macro",
+]
+
+# Regression metrics
+RegressionMetricName: TypeAlias = Literal[
+    "r2",
+    "explained_variance",
+    "mse",
+    "rmse",
+    "mae",
+    "mape",
+]
+
+# Union used by EvalModel
+MetricName: TypeAlias = Union[ClassificationMetricName, RegressionMetricName]
 
 # SVM helpers
 SVMKernel: TypeAlias = Literal["linear", "poly", "rbf", "sigmoid"]

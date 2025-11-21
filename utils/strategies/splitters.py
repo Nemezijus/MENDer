@@ -1,3 +1,4 @@
+# utils/strategies/splitters.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple, Optional, Iterator
@@ -8,6 +9,7 @@ from utils.preprocessing.general.trial_split import split as split_trials
 from utils.preprocessing.general.cv_split import generate_folds
 from .interfaces import Splitter
 
+
 @dataclass
 class HoldOutSplitter(Splitter):
     cfg: SplitHoldoutModel
@@ -16,13 +18,16 @@ class HoldOutSplitter(Splitter):
 
     def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         Xtr, Xte, ytr, yte = split_trials(
-            X, y,
+            X,
+            y,
             train_frac=self.cfg.train_frac,
             custom=self.use_custom,
+            stratify=self.cfg.stratified,
             rng=self.seed,
         )
         yield Xtr, Xte, ytr, yte
-    
+
+
 @dataclass
 class KFoldSplitter(Splitter):
     cfg: SplitCVModel
@@ -30,7 +35,8 @@ class KFoldSplitter(Splitter):
 
     def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         yield from generate_folds(
-            X, y,
+            X,
+            y,
             n_splits=self.cfg.n_splits,
             stratified=self.cfg.stratified,
             shuffle=self.cfg.shuffle,

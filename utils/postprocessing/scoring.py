@@ -44,6 +44,64 @@ def _infer_kind(y_true: np.ndarray) -> Literal["classification", "regression"]:
         return "classification"
     return "regression"
 
+PROBA_METRICS = {"log_loss", "roc_auc_ovr", "roc_auc_ovo", "avg_precision_macro"}
+
+def make_estimator_scorer(kind: str, metric: str):
+    """
+    Return a callable(estimator, X, y) suitable for sklearn's learning_curve / cross_val_score.
+    It uses YOUR unified metric names and YOUR score(...) implementation.
+    """
+
+    def _scorer(estimator, X, y):
+        y_true = _as_1d(y)
+
+        if kind == "classification":
+            if metric in PROBA_METRICS:
+                # Metrics that need probabilities or decision scores
+                if hasattr(estimator, "predict_proba"):
+                    y_proba = estimator.predict_proba(X)
+                    return score(
+                        y_true,
+                        kind="classification",
+                        metric=metric,
+                        y_proba=y_proba,
+                    )
+                elif hasattr(estimator, "decision_function"):
+                    y_score = estimator.decision_function(X)
+                    return score(
+                        y_true,
+                        kind="classification",
+                        metric=metric,
+                        y_score=y_score,
+                    )
+                else:
+                    raise ValueError(
+                        f"Metric '{metric}' requires predict_proba or decision_function "
+                        f"but estimator {type(estimator).__name__} has neither."
+                    )
+            else:
+                # Hard-label metrics
+                y_pred = estimator.predict(X)
+                return score(
+                    y_true,
+                    y_pred,
+                    kind="classification",
+                    metric=metric,
+                )
+
+        elif kind == "regression":
+            y_pred = estimator.predict(X)
+            return score(
+                y_true,
+                y_pred,
+                kind="regression",
+                metric=metric,
+            )
+
+        else:
+            raise ValueError(f"Unsupported kind in make_estimator_scorer: {kind!r}")
+
+    return _scorer
 
 # ------------------------- Classification -------------------------
 

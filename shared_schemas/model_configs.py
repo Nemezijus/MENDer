@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional, Union, Literal, Annotated
+from typing import Dict, Optional, Union, Literal, Annotated, ClassVar, TypedDict
 from pydantic import BaseModel, Field
 
 from .types import (
@@ -8,12 +8,42 @@ from .types import (
     TreeCriterion, TreeSplitter, MaxFeaturesName,
 )
 
+class ModelMeta(TypedDict):
+    task: str   # or ModelTask if you define it in types.py
+    family: str
+
+
+def get_model_meta(model_cfg: "ModelConfig") -> ModelMeta:
+    cls = model_cfg.__class__
+    return {
+        "task": getattr(cls, "task", "classification"),
+        "family": getattr(cls, "family", "other"),
+    }
+
+
+def get_model_task(model_cfg: "ModelConfig") -> str:
+    cls = model_cfg.__class__
+    return getattr(cls, "task", "classification")
+
+def get_model_task_by_algo(algo: str) -> str:
+    mapping = {
+        "logreg": LogRegConfig.task,
+        "svm": SVMConfig.task,
+        "tree": TreeConfig.task,
+        "forest": ForestConfig.task,
+        "knn": KNNConfig.task,
+        "linreg": LinearRegConfig.task,
+    }
+    return mapping.get(algo, "classification")
 # -----------------------------
 # Algo-specific model configs (unprefixed fields)
 # -----------------------------
 
 class LogRegConfig(BaseModel):
     algo: Literal["logreg"] = "logreg"
+
+    task: ClassVar[str] = "classification"
+    family: ClassVar[str] = "linear"
 
     C: float = 1.0
     penalty: PenaltyName = "l2"
@@ -26,6 +56,9 @@ class LogRegConfig(BaseModel):
 
 class SVMConfig(BaseModel):
     algo: Literal["svm"] = "svm"
+
+    task: ClassVar[str] = "classification"
+    family: ClassVar[str] = "svm"
 
     C: float = 1.0
     kernel: SVMKernel = "rbf"
@@ -45,6 +78,9 @@ class SVMConfig(BaseModel):
 class TreeConfig(BaseModel):
     algo: Literal["tree"] = "tree"
 
+    task: ClassVar[str] = "classification"
+    family: ClassVar[str] = "forest"
+
     criterion: TreeCriterion = "gini"
     splitter: TreeSplitter = "best"
     max_depth: Optional[int] = None
@@ -61,6 +97,9 @@ class TreeConfig(BaseModel):
 
 class ForestConfig(BaseModel):
     algo: Literal["forest"] = "forest"
+
+    task: ClassVar[str] = "classification"
+    family: ClassVar[str] = "forest"
 
     n_estimators: int = 100
     criterion: TreeCriterion = "gini"
@@ -84,6 +123,9 @@ class ForestConfig(BaseModel):
 class KNNConfig(BaseModel):
     algo: Literal["knn"] = "knn"
 
+    task: ClassVar[str] = "classification"
+    family: ClassVar[str] = "knn"
+
     n_neighbors: int = 5
     weights: Literal["uniform", "distance"] = "uniform"
     algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
@@ -98,6 +140,10 @@ class KNNConfig(BaseModel):
 
 class LinearRegConfig(BaseModel):
     algo: Literal["linreg"] = "linreg"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
     fit_intercept: bool = True
     copy_X: bool = True
     n_jobs: Optional[int] = None

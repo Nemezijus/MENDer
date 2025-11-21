@@ -3,6 +3,7 @@ from sklearn.metrics import confusion_matrix
 from typing import Dict, Any
 
 from shared_schemas.run_config import RunConfig
+from shared_schemas.model_configs import get_model_task
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter
@@ -33,9 +34,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 
     # --- Split (hold-out or k-fold) -----------------------------------------
     split_seed = rngm.child_seed("train/split")
-    splitter = make_splitter(cfg.split, seed=split_seed)
 
-    # --- Fit / evaluate over splits (handles both holdout & kfold) ----------
     try:
         mode = getattr(cfg.split, "mode")
     except AttributeError:
@@ -44,7 +43,18 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     if mode not in ("holdout", "kfold"):
         raise ValueError(f"Unsupported split mode in train service: {mode!r}")
 
-    evaluator = make_evaluator(cfg.eval, kind="classification")
+    # Decide evaluation kind based on model config (classification vs regression)
+    task = get_model_task(cfg.model)
+    eval_kind = "regression" if task == "regression" else "classification"
+
+    # For regression, stratification does not make sense -> force it off defensively
+    if eval_kind == "regression" and hasattr(cfg.split, "stratified"):
+        cfg.split.stratified = False
+
+    splitter = make_splitter(cfg.split, seed=split_seed)
+
+    # --- Fit / evaluate over splits (handles both holdout & kfold) ----------
+    evaluator = make_evaluator(cfg.eval, kind=eval_kind)
 
     fold_scores = []
     y_true_all, y_pred_all = [], []
@@ -79,7 +89,8 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     y_true_all = np.concatenate(y_true_all) if y_true_all else np.array([])
     y_pred_all = np.concatenate(y_pred_all) if y_pred_all else np.array([])
 
-    if y_true_all.size and y_pred_all.size:
+    # Confusion matrix only makes sense for classification
+    if eval_kind == "classification" and y_true_all.size and y_pred_all.size:
         labels_arr = np.unique(np.concatenate([y_true_all, y_pred_all]))
         cm_mat = confusion_matrix(y_true_all, y_pred_all, labels=labels_arr).astype(int).tolist()
         labels_out = [str(l) if not isinstance(l, (int, float)) else l for l in labels_arr]
@@ -125,7 +136,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         result["notes"].append("SFS performed wrapper-based feature selection on training data.")
 
     n_features_in = int(X.shape[1]) if hasattr(X, "shape") and len(X.shape) > 1 else None
-    classes_out = result["confusion"]["labels"] if result.get("confusion") else None
+    classes_out = result["confusion"]["labels"] if result.get("confusion") and result["confusion"]["labels"] else None
     artifact_input = ArtifactBuilderInput(
         cfg=cfg,
         pipeline=effective_pipeline,

@@ -2,15 +2,18 @@
 from typing import Dict, Any
 import math
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, learning_curve
+from sklearn.model_selection import StratifiedKFold, KFold, learning_curve
 
 from shared_schemas.run_config import RunConfig
+from shared_schemas.model_configs import LinearRegConfig, get_model_task
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.pipeline_factory import make_pipeline
 from utils.permutations.rng import RngManager
+from utils.postprocessing.scoring import make_estimator_scorer
 
 from ..models.v1.learning_curve_models import LearningCurveRequest, LearningCurveResponse
+
 
 def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
     # Build a RunConfig exactly like your CV router does (pydantic models work fine here)
@@ -22,21 +25,42 @@ def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
         model=req.model,
         eval=req.eval,
     )
+    # Decide task kind from model (temporary heuristic)
+    task = get_model_task(cfg.model)
+    eval_kind = "regression" if task == "regression" else "classification"
+    scorer = make_estimator_scorer(eval_kind, cfg.eval.metric)
 
     # 1) Load & sanity-check (reuse strategies)
     loader = make_data_loader(cfg.data)
     X, y = loader.load()
     make_sanity_checker().check(X, y)
 
-    # 2) RNG & CV (StratifiedKFold like your CV flow)
-    rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
-    cv = StratifiedKFold(
-        n_splits=cfg.split.n_splits,
-        shuffle=cfg.split.shuffle,
-        random_state=(rngm.child_seed("lc/split") if cfg.split.shuffle else None),
-    )
+    # Decide task kind from model (classification vs regression)
+    if isinstance(cfg.model, LinearRegConfig):
+        eval_kind = "regression"
+    else:
+        eval_kind = "classification"
 
-    # 3) Estimator pipeline (scale -> feat -> clf)
+    # 2) RNG & CV
+    rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
+    cv_seed = rngm.child_seed("lc/split") if cfg.split.shuffle else None
+
+    stratified_flag = getattr(cfg.split, "stratified", True)
+
+    if eval_kind == "classification" and stratified_flag:
+        cv = StratifiedKFold(
+            n_splits=cfg.split.n_splits,
+            shuffle=cfg.split.shuffle,
+            random_state=cv_seed,
+        )
+    else:
+        cv = KFold(
+            n_splits=cfg.split.n_splits,
+            shuffle=cfg.split.shuffle,
+            random_state=cv_seed,
+        )
+
+    # 3) Estimator pipeline (scale -> feat -> model)
     pipe = make_pipeline(cfg, rngm, stream="lc")
 
     # 4) Train sizes
@@ -44,15 +68,16 @@ def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
         train_sizes = np.array(req.train_sizes)
     else:
         train_sizes = np.linspace(0.1, 1.0, req.n_steps)
-    
+
     # 5) sklearn.learning_curve
+
     sizes_abs, train_scores, val_scores = learning_curve(
         estimator=pipe,
         X=X,
         y=y,
         train_sizes=train_sizes,
         cv=cv,
-        scoring=cfg.eval.metric,
+        scoring=scorer,
         n_jobs=req.n_jobs,
         shuffle=False,        # we already handle shuffling in the CV splitter
         return_times=False,

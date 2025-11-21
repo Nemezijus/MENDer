@@ -1,4 +1,7 @@
+// frontend/src/components/SplitOptionsCard.jsx
+import { useEffect } from 'react';
 import { Card, Stack, Text, Select, NumberInput, Group, Checkbox } from '@mantine/core';
+import { useDataCtx } from '../state/DataContext.jsx';
 
 export default function SplitOptionsCard({
   title = 'Data split',
@@ -28,12 +31,24 @@ export default function SplitOptionsCard({
   seed,
   onSeedChange,
 }) {
+  const { effectiveTask } = useDataCtx();
+
   const hasHoldout = allowedModes.includes('holdout');
   const hasKFold = allowedModes.includes('kfold');
   const showModeSelect = hasHoldout && hasKFold;
 
   // If consumer passes only one mode, we respect their state; mode select is hidden.
   const effectiveMode = showModeSelect ? (mode || 'holdout') : (hasKFold ? 'kfold' : 'holdout');
+
+  // Classification can use stratified splits; regression should not.
+  const allowStratified = effectiveTask !== 'regression';
+
+  // Auto-correct stale "stratified = true" when switching to regression
+  useEffect(() => {
+    if (!allowStratified && stratified && onStratifiedChange) {
+      onStratifiedChange(false);
+    }
+  }, [allowStratified, stratified, onStratifiedChange]);
 
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -78,6 +93,7 @@ export default function SplitOptionsCard({
           <Checkbox
             label="Stratified"
             checked={!!stratified}
+            disabled={!allowStratified}
             onChange={(e) => onStratifiedChange?.(e.currentTarget.checked)}
           />
           <Checkbox
