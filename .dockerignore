@@ -13,7 +13,10 @@ frontend/.cache
 .eggs
 
 # Data & big local assets (we mount /data at runtime)
-data
+data/**
+!data/classical/wine/**
+!data/regression/**
+!data/allen_vc/**
 *.mat
 *.npz
 *.npy

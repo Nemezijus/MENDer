@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 
 from shared_schemas.run_config import RunConfig
+from shared_schemas.model_configs import get_model_task
 from utils.strategies.interfaces import BaselineRunner
 from utils.permutations.rng import RngManager
 from utils.permutations.shuffle import shuffle_simple_vector
@@ -22,6 +23,14 @@ class LabelShuffleBaseline(BaselineRunner):
     cfg: RunConfig
     rngm: RngManager
 
+    def _get_eval_kind(self) -> str:
+        """
+        Decide whether to use classification or regression scoring
+        based on the model config's task metadata.
+        """
+        task = get_model_task(self.cfg.model)
+        return "regression" if task == "regression" else "classification"
+
     def _score_once_holdout(self, X: np.ndarray, y: np.ndarray, seed: int) -> float:
         splitter   = make_splitter(self.cfg.split, seed=seed)
         scaler     = make_scaler(self.cfg.scale)
@@ -29,7 +38,9 @@ class LabelShuffleBaseline(BaselineRunner):
         model_bld  = make_model(self.cfg.model)
         trainer    = make_trainer()
         predictor  = make_predictor()
-        evaluator  = make_evaluator(self.cfg.eval, kind="classification")
+
+        eval_kind  = self._get_eval_kind()
+        evaluator  = make_evaluator(self.cfg.eval, kind=eval_kind)
 
         Xtr, Xte, ytr, yte = next(splitter.split(X, y))
         Xtr, Xte = scaler.fit_transform(Xtr, Xte)
@@ -38,6 +49,7 @@ class LabelShuffleBaseline(BaselineRunner):
         model = model_bld.build()
         model = trainer.fit(model, Xtr_fx, ytr)
         y_pred = predictor.predict(model, Xte_fx)
+
         return float(evaluator.score(yte, y_pred))
 
     def _score_once_kfold(self, X: np.ndarray, y: np.ndarray, seed_base: int) -> float:
@@ -45,7 +57,8 @@ class LabelShuffleBaseline(BaselineRunner):
         For CV, compute a single scalar per shuffle: the mean of fold scores.
         Each fold uses a deterministic child seed derived from the shuffle index.
         """
-        evaluator = make_evaluator(self.cfg.eval, kind="classification")
+        eval_kind = self._get_eval_kind()
+        evaluator = make_evaluator(self.cfg.eval, kind=eval_kind)
         fold_scores: list[float] = []
 
         # Recreate a fresh splitter for this shuffle (generators are one-shot)

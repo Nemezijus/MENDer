@@ -1,7 +1,9 @@
 # backend/app/services/data_service.py
 import numpy as np
 from typing import Dict, Any, Tuple
+
 from ..adapters.io_adapter import load_X_y
+
 
 def compute_missingness(X: np.ndarray) -> Tuple[int, list]:
     if np.issubdtype(X.dtype, np.number):
@@ -10,6 +12,7 @@ def compute_missingness(X: np.ndarray) -> Tuple[int, list]:
         by_col = missing_mask.sum(axis=0).astype(int).tolist()
         return total, by_col
     return 0, []
+
 
 def _infer_task_and_y_summary(y: np.ndarray) -> Tuple[str, Dict[str, Any]]:
     """
@@ -61,7 +64,14 @@ def _infer_task_and_y_summary(y: np.ndarray) -> Tuple[str, Dict[str, Any]]:
 
     return task, y_summary
 
-def inspect_data(payload) -> Dict[str, Any]:
+
+def load_dataset(payload) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Shared helper for loading X and y from an inspect / prediction payload.
+
+    This centralizes the call to `load_X_y` so that higher-level services
+    (like prediction) do not deal with file paths directly.
+    """
     X, y = load_X_y(
         payload.npz_path,
         payload.x_key,
@@ -69,6 +79,15 @@ def inspect_data(payload) -> Dict[str, Any]:
         payload.x_path,
         payload.y_path,
     )
+    return X, y
+
+
+def inspect_data(payload) -> Dict[str, Any]:
+    """
+    Data inspection endpoint: load X, y once via `load_dataset`, then
+    compute missingness, task inference and y-summary.
+    """
+    X, y = load_dataset(payload)
 
     n_samples = int(X.shape[0])
     n_features = int(X.shape[1])
@@ -79,7 +98,7 @@ def inspect_data(payload) -> Dict[str, Any]:
     if recommend_pca:
         reason = f"n_features ({n_features}) >> n_samples ({n_samples}); consider PCA."
 
-    # --- NEW: infer task and build y_summary
+    # --- infer task and build y_summary
     task_inferred, y_summary = _infer_task_and_y_summary(y)
 
     # Keep legacy fields to avoid breaking UI:

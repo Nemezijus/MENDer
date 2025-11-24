@@ -22,6 +22,10 @@ services:
       - mender_artifacts:/app/backend/app/artifacts
       # NEW: writable uploads dir inside /data
       - mender_uploads:/uploads
+      - ../shared_schemas:/app/shared_schemas:ro
+      - ../data/classical/wine:/app/data/classical/wine:ro
+      - ../data/regression:/app/data/regression:ro
+      - ../data/allen_vc:/app/data/allen_vc:ro
     ports:
       - "${HOST_PORT_BACKEND:-8000}:8000"
     networks: [mender]

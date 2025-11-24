@@ -1,4 +1,3 @@
-// src/api/data.js
 import api from './client';
 
 // existing inspect endpoint (reuse)

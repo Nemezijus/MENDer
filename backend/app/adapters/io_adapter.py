@@ -4,9 +4,12 @@ import numpy as np
 
 from shared_schemas.run_config import DataModel
 from utils.factories.data_loading_factory import make_data_loader
+from utils.strategies.data_loaders import _coerce_shapes
+from utils.parse.data_read import load_mat_variable
 
 DATA_ROOT = os.getenv("DATA_ROOT", "/data")       # RO datasets in Docker
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads") # RW uploads (Docker:/uploads; Dev: ./uploads)
+
 
 class LoadError(Exception):
     pass
@@ -22,6 +25,7 @@ def _coerce_dev_relative(p: str) -> str:
     if norm.startswith("data/"):
         return os.path.join(_repo_root(), norm)
     return p
+
 
 def _is_running_in_docker() -> bool:
     """
@@ -47,6 +51,7 @@ def _is_running_in_docker() -> bool:
         pass
 
     return False
+
 
 def _normalize_and_check(path: Optional[str]) -> Optional[str]:
     """
@@ -120,11 +125,92 @@ def load_X_y(
     x_path: Optional[str],
     y_path: Optional[str],
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Training/inspect helper: requires both X and y to be present somewhere.
+    """
     try:
         cfg = build_data_config(npz_path, x_key, y_key, x_path, y_path)
         loader = make_data_loader(cfg)
         X, y = loader.load()
         return X, y
+    except LoadError:
+        raise
+    except Exception as e:
+        raise LoadError(str(e))
+
+
+def load_X_optional_y(
+    npz_path: Optional[str],
+    x_key: Optional[str],
+    y_key: Optional[str],
+    x_path: Optional[str],
+    y_path: Optional[str],
+) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    """
+    Prediction helper: X is required, y is optional.
+
+    Cases
+    -----
+    - Single .npz (npz_path or x_path ending with .npz):
+        * Always load X from x_key.
+        * If y_key is present -> run full _coerce_shapes(X, y).
+        * If y_key is missing -> return X (rows as observations) and y=None.
+    - MAT pair (x_path + y_path provided):
+        * Delegate to the standard loader via make_data_loader (training semantics).
+    - Single MAT (x_path only):
+        * Load variable from x_path, ensure X is 2D, return y=None.
+    """
+    try:
+        cfg = build_data_config(npz_path, x_key, y_key, x_path, y_path)
+
+        # --- NPZ-based loading ------------------------------------------------
+        if cfg.npz_path or (cfg.x_path and cfg.x_path.lower().endswith(".npz")):
+            path = cfg.npz_path or cfg.x_path
+            if not path:
+                raise LoadError("NPZ loading requires npz_path or x_path pointing to a .npz file.")
+            data = np.load(path, allow_pickle=True)
+
+            if cfg.x_key not in data:
+                raise LoadError(
+                    f"Key '{cfg.x_key}' not found in {path}. Available keys: {list(data.keys())}"
+                )
+
+            X_raw = np.asarray(data[cfg.x_key])
+
+            # If y is present in the file, use the full training-like alignment.
+            if cfg.y_key in data.files:
+                y_raw = np.asarray(data[cfg.y_key]).ravel()
+                X, y = _coerce_shapes(X_raw, y_raw)
+                return X, y
+
+            # X-only NPZ: be conservative, just ensure X is 2D.
+            X = np.asarray(X_raw)
+            if X.ndim == 1:
+                X = X[:, None]
+            if X.ndim != 2:
+                raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
+            return X, None
+
+        # --- MAT pair: both X and y provided ---------------------------------
+        if cfg.x_path and cfg.y_path:
+            loader = make_data_loader(cfg)  # AutoLoader -> MatPairLoader or NPZLoader
+            X, y = loader.load()
+            return X, y
+
+        # --- Single MAT: X only ----------------------------------------------
+        if cfg.x_path and not cfg.y_path:
+            X_raw = np.asarray(load_mat_variable(cfg.x_path))
+            X = X_raw
+            if X.ndim == 1:
+                X = X[:, None]
+            if X.ndim != 2:
+                raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
+            return X, None
+
+        raise LoadError(
+            "You must provide at least one feature source (npz_path or x_path) for prediction."
+        )
+
     except LoadError:
         raise
     except Exception as e:

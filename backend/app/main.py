@@ -32,7 +32,7 @@ from .routers.learning_curve import router as learning_curve_router
 from .routers.progress import router as progress_router
 from .routers.models import router as models_router
 from .routers.schema import router as schema_router
-
+from .routers.predict import router as predict_router  # <-- NEW
 
 app = FastAPI(
     title="MENDer Local API",
@@ -79,15 +79,16 @@ async def log_requests(request: Request, call_next):
         pass
 
 # Routers
-app.include_router(health_router, prefix="/api/v1", tags=["health"])
-app.include_router(files_router,  prefix="/api/v1", tags=["files"])
-app.include_router(data_router,   prefix="/api/v1", tags=["data"])
-app.include_router(pipeline_router, prefix="/api/v1", tags=["pipeline"])
-app.include_router(train_router,  prefix="/api/v1", tags=["train"])
-app.include_router(learning_curve_router, prefix="/api/v1", tags=["learning-curve"])
-app.include_router(progress_router, prefix="/api/v1", tags=["progress"])
-app.include_router(models_router, prefix="/api/v1", tags=["models"])
-app.include_router(schema_router, prefix="/api/v1/schema", tags=["schema"])
+app.include_router(health_router,        prefix="/api/v1",        tags=["health"])
+app.include_router(files_router,         prefix="/api/v1",        tags=["files"])
+app.include_router(data_router,          prefix="/api/v1",        tags=["data"])
+app.include_router(pipeline_router,      prefix="/api/v1",        tags=["pipeline"])
+app.include_router(train_router,         prefix="/api/v1",        tags=["train"])
+app.include_router(learning_curve_router, prefix="/api/v1",       tags=["learning-curve"])
+app.include_router(progress_router,      prefix="/api/v1",        tags=["progress"])
+app.include_router(models_router,        prefix="/api/v1",        tags=["models"])
+app.include_router(predict_router,       prefix="/api/v1",        tags=["predict"])
+app.include_router(schema_router,        prefix="/api/v1/schema", tags=["schema"])
 
 if os.path.isdir("frontend_dist"):
     app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")

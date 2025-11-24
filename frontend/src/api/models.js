@@ -66,6 +66,71 @@ export async function loadModel(file) {
   return await resp.json();
 }
 
+/**
+ * Apply an existing model to a new dataset (production data).
+ * @param {{ artifactUid: string, artifactMeta: object, data: object }} params
+ *   - artifactUid: current model artifact UID
+ *   - artifactMeta: current artifact meta (ModelArtifactMeta as plain object)
+ *   - data: DataInspectRequest-like object { x_path?, y_path?, npz_path?, x_key, y_key }
+ * @returns {Promise<object>} ApplyModelResponse
+ */
+export async function applyModelToData({ artifactUid, artifactMeta, data }) {
+  const resp = await fetch('/api/v1/models/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      artifact_uid: artifactUid,
+      artifact_meta: artifactMeta,
+      data,
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(text || `Apply model failed with status ${resp.status}`);
+  }
+
+  return await resp.json();
+}
+
+/**
+ * Export predictions as CSV for an applied model.
+ * This uses a streaming endpoint that returns text/csv.
+ *
+ * @param {{ artifactUid: string, artifactMeta: object, data: object, filename?: string }} params
+ *   - artifactUid: current model artifact UID
+ *   - artifactMeta: current artifact meta (ModelArtifactMeta as plain object)
+ *   - data: DataInspectRequest-like object { x_path?, y_path?, npz_path?, x_key, y_key }
+ *   - filename: optional client-suggested filename (without or with .csv)
+ * @returns {Promise<{ blob: Blob, filename: string }>}
+ */
+export async function exportPredictions({ artifactUid, artifactMeta, data, filename }) {
+  const resp = await fetch('/api/v1/models/apply/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      artifact_uid: artifactUid,
+      artifact_meta: artifactMeta,
+      data,
+      filename,
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(text || `Export predictions failed with status ${resp.status}`);
+  }
+
+  const blob = await resp.blob();
+  const cd = resp.headers.get('Content-Disposition');
+  const serverName = parseContentDispositionFilename(cd);
+
+  return {
+    blob,
+    filename: serverName || filename || 'predictions.csv',
+  };
+}
+
 /** Fallback download if interactive save is not supported. */
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

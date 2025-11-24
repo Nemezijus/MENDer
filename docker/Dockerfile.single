@@ -25,6 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY shared_schemas/ /app/shared_schemas/
+COPY data/classical/wine/ /app/data/classical/wine/
+COPY data/regression/ /app/data/regression/
+COPY data/allen_vc/ /app/data/allen_vc/
+
 # Copy backend + shared Python code
 COPY backend ./backend
 COPY utils ./utils
