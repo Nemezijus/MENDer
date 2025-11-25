@@ -13,6 +13,7 @@ from utils.permutations.rng import RngManager
 from utils.factories.baseline_factory import make_baseline
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
 from utils.persistence.artifact_cache import artifact_cache
+from utils.postprocessing.scoring import PROBA_METRICS
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
@@ -66,7 +67,30 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         y_pred = pipeline.predict(Xte)
         last_pipeline = pipeline
 
-        fold_scores.append(float(evaluator.score(yte, y_pred)))
+        metric_name = cfg.eval.metric
+        y_proba = None
+        y_score = None
+
+        if eval_kind == "classification" and metric_name in PROBA_METRICS:
+            if hasattr(pipeline, "predict_proba"):
+                y_proba = pipeline.predict_proba(Xte)
+            elif hasattr(pipeline, "decision_function"):
+                y_score = pipeline.decision_function(Xte)
+            else:
+                raise ValueError(
+                    f"Metric '{metric_name}' requires predict_proba or decision_function, "
+                    f"but estimator {type(pipeline).__name__} has neither."
+                )
+
+        score_val = evaluator.score(
+            yte,
+            y_pred=y_pred,
+            y_proba=y_proba,
+            y_score=y_score,
+        )
+        fold_scores.append(float(score_val))
+
+        # fold_scores.append(float(evaluator.score(yte, y_pred)))
         y_true_all.append(yte)
         y_pred_all.append(y_pred)
         n_train_sizes.append(int(Xtr.shape[0]))
