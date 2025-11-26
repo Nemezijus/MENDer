@@ -1,6 +1,6 @@
 import { Card, Stack, Group, Text, Select, NumberInput, Checkbox, TextInput, Tooltip } from '@mantine/core';
-import { useFeatureCtx } from '../state/FeatureContext.jsx';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
+import { useFeatureStore } from '../state/useFeatureStore.js';
 
 /** -------- helpers to read enums from the Features schema -------- **/
 
@@ -80,7 +80,7 @@ export default function FeatureCard({ title = 'Features' }) {
     sfs_direction, setSfsDirection,
     sfs_cv, setSfsCv,
     sfs_n_jobs, setSfsNJobs,
-  } = useFeatureCtx();
+  } = useFeatureStore();
 
   const { features, enums } = useSchemaDefaults();
 

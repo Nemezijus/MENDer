@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Stack, Text, Card, useMantineTheme } from '@mantine/core';
-import { useLearningCurveResultsCtx } from '../state/LearningCurveResultsContext.jsx';
+import { useResultsStore } from '../state/useResultsStore.js';
 import LearningCurveResults from './visualizations/LearningCurveResults.jsx';
 import LearningCurveAnalyticsResults from './visualizations/LearningCurveAnalyticsResults.jsx';
 
@@ -11,17 +11,20 @@ export default function LearningCurveResultsPanel() {
   const gridColor = isDark ? theme.colors.dark[4] : '#e0e0e0';
   const axisColor = isDark ? theme.colors.dark[2] : '#222';
 
-  const { result, nSplits, withinPct } = useLearningCurveResultsCtx();
+  const learningCurveResult = useResultsStore((s) => s.learningCurveResult);
+  const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
+  const learningCurveWithinPct = useResultsStore((s) => s.learningCurveWithinPct);
+
 
   const analytics = useMemo(() => {
-    if (!result) return null;
-    const xs = result.train_sizes;
-    const trainMean = result.train_scores_mean;
-    const trainStd  = result.train_scores_std;
-    const valMean   = result.val_scores_mean;
-    const valStd    = result.val_scores_std;
+    if (!learningCurveResult) return null;
+    const xs = learningCurveResult.train_sizes;
+    const trainMean = learningCurveResult.train_scores_mean;
+    const trainStd  = learningCurveResult.train_scores_std;
+    const valMean   = learningCurveResult.val_scores_mean;
+    const valStd    = learningCurveResult.val_scores_std;
 
-    const n = Math.max(1, Number(nSplits));
+    const n = Math.max(1, Number(learningCurveNSplits));
     const trainSEM = trainStd.map(s => s / Math.sqrt(n));
     const valSEM   = valStd.map(s => s / Math.sqrt(n));
 
@@ -36,7 +39,7 @@ export default function LearningCurveResultsPanel() {
       idx: bestIdx,
     };
 
-    const cutoff = withinPct * best.val;
+    const cutoff = learningCurveWithinPct * best.val;
     let minimalIdx = bestIdx;
     for (let i = 0; i < valMean.length; i++) {
       if (valMean[i] >= cutoff) { minimalIdx = i; break; }
@@ -50,7 +53,7 @@ export default function LearningCurveResultsPanel() {
     };
 
     return { xs, trainMean, valMean, trainSEM, valSEM, best, minimal };
-  }, [result, nSplits, withinPct]);
+  }, [learningCurveResult, learningCurveNSplits, learningCurveWithinPct]);
 
   const plotTraces = useMemo(() => {
     if (!analytics) return [];
@@ -132,13 +135,13 @@ export default function LearningCurveResultsPanel() {
       <Stack gap="sm">
         <Text fw={500}>Learning Curve Results</Text>
 
-        {!result && (
+        {!learningCurveResult && (
           <Text size="sm" c="dimmed">
             Compute a learning curve to see results here.
           </Text>
         )}
 
-        {result && (
+        {learningCurveResult && (
           <>
             <LearningCurveResults
               plotTraces={plotTraces}
@@ -148,7 +151,7 @@ export default function LearningCurveResultsPanel() {
             />
             <LearningCurveAnalyticsResults
               analytics={analytics}
-              withinPct={withinPct}
+              withinPct={learningCurveWithinPct}
             />
           </>
         )}

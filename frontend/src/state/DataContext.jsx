@@ -1,4 +1,3 @@
-// src/state/DataContext.jsx
 import { createContext, useContext, useMemo, useState } from 'react';
 
 const DataContext = createContext(null);

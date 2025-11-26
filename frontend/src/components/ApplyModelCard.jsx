@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   Card,
   Stack,
@@ -11,10 +11,9 @@ import {
   Badge,
 } from '@mantine/core';
 
-import { useModelArtifact } from '../state/ModelArtifactContext.jsx';
-import { useProductionDataCtx } from '../state/ProductionDataContext.jsx';
-import { useProductionResultsCtx } from '../state/ProductionResultsContext.jsx';
-
+import { useProductionDataStore } from '../state/useProductionDataStore.js';
+import { useResultsStore } from '../state/useResultsStore.js';
+import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { uploadFile } from '../api/files';
 import {
   applyModelToData,
@@ -123,26 +122,35 @@ function PredictionsPreview({ applyResult }) {
 }
 
 export default function ApplyModelCard() {
-  const { artifact } = useModelArtifact();
-  const {
-    xPath,
-    setXPath,
-    yPath,
-    setYPath,
-    npzPath,
-    setNpzPath,
-    xKey,
-    yKey,
-    dataReady,
-  } = useProductionDataCtx();
-  const {
-    applyResult,
-    setApplyResult,
-    isRunning,
-    setIsRunning,
-    error,
-    setError,
-  } = useProductionResultsCtx();
+  const artifact = useModelArtifactStore((s) => s.artifact);
+
+  // --- production data (Zustand) ---
+  const xPath = useProductionDataStore((s) => s.xPath);
+  const yPath = useProductionDataStore((s) => s.yPath);
+  const npzPath = useProductionDataStore((s) => s.npzPath);
+  const xKey = useProductionDataStore((s) => s.xKey);
+  const yKey = useProductionDataStore((s) => s.yKey);
+
+  const setXPath = useProductionDataStore((s) => s.setXPath);
+  const setYPath = useProductionDataStore((s) => s.setYPath);
+  const setNpzPath = useProductionDataStore((s) => s.setNpzPath);
+  // keys are currently fixed to X/y in UI, but we keep setters if we ever expose them
+  // const setXKey = useProductionDataStore((s) => s.setXKey);
+  // const setYKey = useProductionDataStore((s) => s.setYKey);
+
+  const dataReady = useProductionDataStore(
+    (s) => Boolean(s.xPath || s.npzPath)
+  );
+
+  // --- results / UI state (Zustand) ---
+  const applyResult = useResultsStore((s) => s.applyResult);
+  const setApplyResult = useResultsStore((s) => s.setApplyResult);
+
+  const isRunning = useResultsStore((s) => s.productionIsRunning);
+  const setIsRunning = useResultsStore((s) => s.setProductionIsRunning);
+
+  const error = useResultsStore((s) => s.productionError);
+  const setError = useResultsStore((s) => s.setProductionError);
 
   const hasModel = Boolean(artifact);
   const canRun = hasModel && dataReady && !isRunning;
@@ -153,7 +161,7 @@ export default function ApplyModelCard() {
       try {
         setError(null);
         const res = await uploadFile(file);
-        // Assuming backend returns { path, original_name, ... }
+        // Backend returns { path, original_name } or { npz_path, ... }
         if (res.npz_path) {
           setNpzPath(res.npz_path);
           setXPath('');

@@ -5,10 +5,11 @@ import {
 } from '@mantine/core';
 
 import { useDataCtx } from '../state/DataContext.jsx';
-import { useRunModelResultsCtx } from '../state/RunModelResultsContext.jsx';
-import { useModelArtifact } from '../state/ModelArtifactContext.jsx';
-import { useFeatureCtx } from '../state/FeatureContext.jsx';
+
+import { useResultsStore } from '../state/useResultsStore.js';
+import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
+import { useFeatureStore } from '../state/useFeatureStore.js';
 
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
@@ -58,7 +59,7 @@ function toErrorText(e) {
 
 export default function RunModelPanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
-  const fctx = useFeatureCtx();
+  const fctx = useFeatureStore();
 
   // Centralized schema/defaults/enums
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
@@ -76,7 +77,7 @@ export default function RunModelPanel() {
   // Union model state (hydrated from backend defaults)
   const [model, setModel] = useState(null);
 
-  // Results / progress
+  // Results / progress (local UI)
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
   const [useShuffleBaseline, setUseShuffleBaseline] = useState(false);
@@ -84,8 +85,17 @@ export default function RunModelPanel() {
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
   const pollStopRef = useRef(false);
-  const { result, setResult } = useRunModelResultsCtx();
-  const { artifact, setArtifact, clearArtifact } = useModelArtifact();
+
+  // Zustand results store: train result slice
+  const trainResult = useResultsStore((s) => s.trainResult);
+  const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const clearTrainResult = useResultsStore((s) => s.clearTrainResult);
+
+  // Model artifact store (Zustand)
+  const artifact = useModelArtifactStore((s) => s.artifact);
+  const setArtifact = useModelArtifactStore((s) => s.setArtifact);
+  const clearArtifact = useModelArtifactStore((s) => s.clearArtifact);
+
   const lastHydratedUid = useRef(null);
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
@@ -132,9 +142,11 @@ export default function RunModelPanel() {
     if (ev?.metric) setMetric(ev.metric);
     if ('seed' in ev) setSeed(ev.seed == null ? '' : String(ev.seed));
 
-    const resultUid = result?.artifact?.uid;
-    if (!resultUid || resultUid !== uid) setResult(null);
-  }, [artifact, model, fctx, result, setResult]);
+    const resultUid = trainResult?.artifact?.uid;
+    if (!resultUid || resultUid !== uid) {
+      clearTrainResult();
+    }
+  }, [artifact, model, fctx, trainResult, clearTrainResult, setScaleMethod, setSplitMode, setNSplits, setTrainFrac, setStratified, setShuffle, setMetric, setSeed]);
 
   // When algo changes, rehydrate from backend defaults and preserve user edits
   useEffect(() => {
@@ -166,10 +178,13 @@ export default function RunModelPanel() {
   function stopProgressPolling() { pollStopRef.current = true; }
 
   async function handleRun() {
-    if (!dataReady) { setErr('Load & inspect data first in the left sidebar.'); return; }
+    if (!dataReady) {
+      setErr('Load & inspect data first in the left sidebar.');
+      return;
+    }
     if (!model) return;
     setErr(null);
-    setResult(null);
+    clearTrainResult();
     clearArtifact();
     setLoading(true);
 
@@ -180,7 +195,9 @@ export default function RunModelPanel() {
       setProgressLabel(`Shuffling 0/${nShuffles}…`);
       startProgressPolling(progressId);
     } else {
-      stopProgressPolling(); setProgress(0); setProgressLabel('');
+      stopProgressPolling();
+      setProgress(0);
+      setProgressLabel('');
     }
 
     try {
@@ -195,11 +212,33 @@ export default function RunModelPanel() {
         scale: { method: scaleMethod },
         features: (() => {
           const method = fctx?.method || 'none';
-          if (method === 'pca') return { method, pca_n: fctx.pca_n ?? null, pca_var: fctx.pca_var ?? 0.95, pca_whiten: !!fctx.pca_whiten };
-          if (method === 'lda') return { method, lda_n: fctx.lda_n ?? null, lda_solver: fctx.lda_solver ?? 'svd', lda_shrinkage: fctx.lda_shrinkage ?? null, lda_tol: fctx.lda_tol ?? 1e-4 };
+          if (method === 'pca') {
+            return {
+              method,
+              pca_n: fctx.pca_n ?? null,
+              pca_var: fctx.pca_var ?? 0.95,
+              pca_whiten: !!fctx.pca_whiten,
+            };
+          }
+          if (method === 'lda') {
+            return {
+              method,
+              lda_n: fctx.lda_n ?? null,
+              lda_solver: fctx.lda_solver ?? 'svd',
+              lda_shrinkage: fctx.lda_shrinkage ?? null,
+              lda_tol: fctx.lda_tol ?? 1e-4,
+            };
+          }
           if (method === 'sfs') {
-            let k = fctx.sfs_k; if (k === '' || k == null) k = 'auto';
-            return { method, sfs_k: k, sfs_direction: fctx.sfs_direction ?? 'forward', sfs_cv: fctx.sfs_cv ?? 5, sfs_n_jobs: fctx.sfs_n_jobs ?? null };
+            let k = fctx.sfs_k;
+            if (k === '' || k == null) k = 'auto';
+            return {
+              method,
+              sfs_k: k,
+              sfs_direction: fctx.sfs_direction ?? 'forward',
+              sfs_cv: fctx.sfs_cv ?? 5,
+              sfs_n_jobs: fctx.sfs_n_jobs ?? null,
+            };
           }
           return { method: 'none' };
         })(),
@@ -217,12 +256,15 @@ export default function RunModelPanel() {
       };
 
       const data = await runTrainRequest(payload);
-      setResult(data);
+      setTrainResult(data);
       if (data?.artifact) setArtifact(data.artifact);
     } catch (e) {
-      setErr(toErrorText(e)); setProgress(0); setProgressLabel('');
+      setErr(toErrorText(e));
+      setProgress(0);
+      setProgressLabel('');
     } finally {
-      stopProgressPolling(); setLoading(false);
+      stopProgressPolling();
+      setLoading(false);
     }
   }
 

@@ -2,17 +2,15 @@ import { useEffect, useState } from 'react';
 import { Card, Button, Text, Stack, Group, Divider, Alert, Title, Box, NumberInput } from '@mantine/core';
 
 import { useDataCtx } from '../state/DataContext.jsx';
-import { useFeatureCtx } from '../state/FeatureContext.jsx';
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
 import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import api from '../api/client';
-import { useLearningCurveResultsCtx } from '../state/LearningCurveResultsContext.jsx';
-
-// NEW: centralized defaults/enums/meta
+import { useResultsStore } from '../state/useResultsStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
+import { useFeatureStore } from '../state/useFeatureStore.js';
 
 export default function LearningCurvePanel() {
   const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
@@ -21,9 +19,16 @@ export default function LearningCurvePanel() {
     method, pca_n, pca_var, pca_whiten,
     lda_n, lda_solver, lda_shrinkage, lda_tol,
     sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
-  } = useFeatureCtx();
+  } = useFeatureStore();
 
-  const { nSplits, setNSplits, withinPct, setWithinPct, setResult } = useLearningCurveResultsCtx();
+  const learningCurveResult = useResultsStore((s) => s.learningCurveResult);
+  const setLearningCurveResult = useResultsStore((s) => s.setLearningCurveResult);
+
+  const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
+  const setLearningCurveNSplits = useResultsStore((s) => s.setLearningCurveNSplits);
+
+  const learningCurveWithinPct = useResultsStore((s) => s.learningCurveWithinPct);
+  const setLearningCurveWithinPct = useResultsStore((s) => s.setLearningCurveWithinPct);
 
   // centralized schema/defaults/enums
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
@@ -70,7 +75,7 @@ export default function LearningCurvePanel() {
     if (!model) return;
 
     setErr(null);
-    setResult(null);
+    setLearningCurveResult(null);
     setLoading(true);
 
     try {
@@ -87,7 +92,7 @@ export default function LearningCurvePanel() {
           x_key: xKey,
           y_key: yKey,
         },
-        split: { mode: 'kfold', n_splits: nSplits, stratified, shuffle },
+        split: { mode: 'kfold', n_splits: learningCurveNSplits, stratified, shuffle },
         scale: { method: scaleMethod },
         features: {
           method,
@@ -107,7 +112,7 @@ export default function LearningCurvePanel() {
       };
 
       const { data } = await api.post('/learning-curve', payload);
-      setResult(data);
+      setLearningCurveResult(data);
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
@@ -145,8 +150,8 @@ export default function LearningCurvePanel() {
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['kfold']}
-                nSplits={nSplits}
-                onNSplitsChange={setNSplits}
+                nSplits={learningCurveNSplits}
+                onNSplitsChange={setLearningCurveNSplits}
                 stratified={stratified}
                 onStratifiedChange={setStratified}
                 shuffle={shuffle}
@@ -218,8 +223,8 @@ export default function LearningCurvePanel() {
                 min={0.5}
                 max={1.0}
                 step={0.01}
-                value={withinPct}
-                onChange={setWithinPct}
+                value={learningCurveWithinPct}
+                onChange={setLearningCurveWithinPct}
                 precision={2}
               />
             </Stack>

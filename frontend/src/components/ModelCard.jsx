@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Card, Text, Group, Stack, Divider, Badge, Button, Tooltip } from '@mantine/core';
-import { useModelArtifact } from '../state/ModelArtifactContext.jsx';
+import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { saveModel, loadModel, saveBlobInteractive } from '../api/models';
 
 function fmt(val, digits = 4) {
@@ -10,7 +10,9 @@ function fmt(val, digits = 4) {
 }
 
 export default function ModelCard() {
-  const { artifact, setArtifact } = useModelArtifact();
+  const artifact = useModelArtifactStore((s) => s.artifact);
+  const setArtifact = useModelArtifactStore((s) => s.setArtifact);
+  const clearArtifact = useModelArtifactStore((s) => s.clearArtifact);
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);

@@ -1,16 +1,16 @@
 import { Card, Stack, Text } from '@mantine/core';
-import { useRunModelResultsCtx } from '../state/RunModelResultsContext.jsx';
+import { useResultsStore } from '../state/useResultsStore.js';
 import GeneralSummary from './visualizations/GeneralSummary.jsx';
 import KFoldResults from './visualizations/KFoldResults.jsx';
 import ConfusionMatrixResults from './visualizations/ConfusionMatrixResults.jsx';
 import BaselineShufflingResults from './visualizations/BaselineShufflingResults.jsx';
 
 export default function ModelTrainingResultsPanel() {
-  const { result } = useRunModelResultsCtx();
+  const trainResult = useResultsStore((s) => s.trainResult);
 
-  const isCV = result && Array.isArray(result.fold_scores);
+  const isCV = trainResult && Array.isArray(trainResult.fold_scores);
 
-  if (!result) {
+  if (!trainResult) {
     return (
       <Card withBorder radius="md" shadow="sm" padding="md">
         <Text fw={500} mb="xs">Results</Text>
@@ -22,7 +22,7 @@ export default function ModelTrainingResultsPanel() {
   }
 
   const hasBaseline =
-    Array.isArray(result.shuffled_scores) && result.shuffled_scores.length > 0;
+    Array.isArray(trainResult.shuffled_scores) && trainResult.shuffled_scores.length > 0;
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
@@ -31,44 +31,44 @@ export default function ModelTrainingResultsPanel() {
 
         <GeneralSummary
           isCV={isCV}
-          metricName={result.metric_name}
-          metricValue={result.metric_value}
-          meanScore={result.mean_score}
-          stdScore={result.std_score}
-          nTrain={result.n_train}
-          nTest={result.n_test}
+          metricName={trainResult.metric_name}
+          metricValue={trainResult.metric_value}
+          meanScore={trainResult.mean_score}
+          stdScore={trainResult.std_score}
+          nTrain={trainResult.n_train}
+          nTest={trainResult.n_test}
         />
 
         {isCV ? (
           <KFoldResults
             title={'K-fold data splitting results'}
-            foldScores={result.fold_scores}
-            metricName={result.metric_name}
-            meanScore={result.mean_score}
-            stdScore={result.std_score}
+            foldScores={trainResult.fold_scores}
+            metricName={trainResult.metric_name}
+            meanScore={trainResult.mean_score}
+            stdScore={trainResult.std_score}
           />
         ) : (
           <ConfusionMatrixResults
-            confusion={result.confusion}
+            confusion={trainResult.confusion}
           />
         )}
 
         {hasBaseline && (
           <BaselineShufflingResults
             title={isCV ? 'Shuffle-label baseline (CV mean)' : 'Shuffle-label baseline'}
-            metricName={result.metric_name}
+            metricName={trainResult.metric_name}
             referenceLabel={isCV ? 'real mean' : 'real'}
-            referenceValue={isCV ? result.mean_score : result.metric_value}
-            shuffledScores={result.shuffled_scores}
-            pValue={result.p_value}
+            referenceValue={isCV ? trainResult.mean_score : trainResult.metric_value}
+            shuffledScores={trainResult.shuffled_scores}
+            pValue={trainResult.p_value}
           />
         )}
 
-        {Array.isArray(result.notes) && result.notes.length > 0 && (
+        {Array.isArray(trainResult.notes) && trainResult.notes.length > 0 && (
           <>
             <Text fw={500} size="sm" mt="sm">Notes</Text>
             <ul style={{ marginTop: 4 }}>
-              {result.notes.map((n, i) => (
+              {trainResult.notes.map((n, i) => (
                 <li key={i}>
                   <Text size="sm">{n}</Text>
                 </li>
