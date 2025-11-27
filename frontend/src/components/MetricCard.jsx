@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Card, Stack, Text, Select } from '@mantine/core';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
-import { useDataCtx } from '../state/DataContext.jsx';
+import { useDataStore } from '../state/useDataStore.js';
 
 export default function MetricCard({
   title = 'Metric',
@@ -9,7 +9,10 @@ export default function MetricCard({
   onChange,
 }) {
   const { enums } = useSchemaDefaults();
-  const { effectiveTask } = useDataCtx();
+
+  const effectiveTask = useDataStore(
+    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
+  );
 
   const metricByTask = enums?.MetricByTask || null;
 
@@ -26,8 +29,6 @@ export default function MetricCard({
   }
 
   // Ensure the selected value is always in the current option list.
-  // This fixes the "stale accuracy" issue when switching to regression:
-  // if 'accuracy' is no longer a valid option, we reset to the first valid metric.
   useEffect(() => {
     if (!rawList || rawList.length === 0) return;
 

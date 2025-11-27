@@ -1,7 +1,7 @@
 // frontend/src/components/SplitOptionsCard.jsx
 import { useEffect } from 'react';
 import { Card, Stack, Text, Select, NumberInput, Group, Checkbox } from '@mantine/core';
-import { useDataCtx } from '../state/DataContext.jsx';
+import { useDataStore } from '../state/useDataStore.js';
 
 export default function SplitOptionsCard({
   title = 'Data split',
@@ -31,7 +31,9 @@ export default function SplitOptionsCard({
   seed,
   onSeedChange,
 }) {
-  const { effectiveTask } = useDataCtx();
+  const effectiveTask = useDataStore(
+    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
+  );
 
   const hasHoldout = allowedModes.includes('holdout');
   const hasKFold = allowedModes.includes('kfold');

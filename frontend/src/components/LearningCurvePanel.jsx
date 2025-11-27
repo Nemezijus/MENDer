@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Text, Stack, Group, Divider, Alert, Title, Box, NumberInput } from '@mantine/core';
 
-import { useDataCtx } from '../state/DataContext.jsx';
+import { useDataStore } from '../state/useDataStore.js';
 import FeatureCard from './FeatureCard.jsx';
 import ScalingCard from './ScalingCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
@@ -13,12 +13,27 @@ import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useFeatureStore } from '../state/useFeatureStore.js';
 
 export default function LearningCurvePanel() {
-  const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
+  const xPath = useDataStore((s) => s.xPath);
+  const yPath = useDataStore((s) => s.yPath);
+  const npzPath = useDataStore((s) => s.npzPath);
+  const xKey = useDataStore((s) => s.xKey);
+  const yKey = useDataStore((s) => s.yKey);
+  const inspectReport = useDataStore((s) => s.inspectReport);
+  const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
 
   const {
-    method, pca_n, pca_var, pca_whiten,
-    lda_n, lda_solver, lda_shrinkage, lda_tol,
-    sfs_k, sfs_direction, sfs_cv, sfs_n_jobs,
+    method,
+    pca_n,
+    pca_var,
+    pca_whiten,
+    lda_n,
+    lda_solver,
+    lda_shrinkage,
+    lda_tol,
+    sfs_k,
+    sfs_direction,
+    sfs_cv,
+    sfs_n_jobs,
   } = useFeatureStore();
 
   const learningCurveResult = useResultsStore((s) => s.learningCurveResult);
@@ -80,8 +95,11 @@ export default function LearningCurvePanel() {
 
     try {
       const train_sizes = trainSizesCSV
-        ? trainSizesCSV.split(',').map(s => s.trim()).filter(Boolean)
-            .map(x => (x.includes('.') ? parseFloat(x) : parseInt(x, 10)))
+        ? trainSizesCSV
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((x) => (x.includes('.') ? parseFloat(x) : parseInt(x, 10)))
         : null;
 
       const payload = {
@@ -96,10 +114,17 @@ export default function LearningCurvePanel() {
         scale: { method: scaleMethod },
         features: {
           method,
-          pca_n, pca_var, pca_whiten,
-          lda_n, lda_solver, lda_shrinkage, lda_tol,
-          sfs_k: (sfs_k === '' || sfs_k == null) ? 'auto' : sfs_k,
-          sfs_direction, sfs_cv, sfs_n_jobs,
+          pca_n,
+          pca_var,
+          pca_whiten,
+          lda_n,
+          lda_solver,
+          lda_shrinkage,
+          lda_tol,
+          sfs_k: sfs_k === '' || sfs_k == null ? 'auto' : sfs_k,
+          sfs_direction,
+          sfs_cv,
+          sfs_n_jobs,
         },
         model, // union payload as-is
         eval: {
@@ -133,7 +158,9 @@ export default function LearningCurvePanel() {
       {err && (
         <Alert color="red" variant="light">
           <Text fw={500}>Error</Text>
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{err}</Text>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {err}
+          </Text>
         </Alert>
       )}
 
@@ -141,7 +168,12 @@ export default function LearningCurvePanel() {
         <Stack gap="md">
           <Group justify="space-between" wrap="nowrap">
             <Text fw={500}>Configuration</Text>
-            <Button size="xs" onClick={handleCompute} loading={loading} disabled={!dataReady}>
+            <Button
+              size="xs"
+              onClick={handleCompute}
+              loading={loading}
+              disabled={!dataReady}
+            >
               {loading ? 'Computing…' : 'Compute'}
             </Button>
           </Group>
@@ -184,7 +216,7 @@ export default function LearningCurvePanel() {
                 }}
                 schema={models?.schema}
                 enums={enums}
-                models={models}   // <-- pass defaults + meta so filtering by task works
+                models={models} // defaults + meta
               />
 
               <Divider my="xs" />
@@ -205,11 +237,18 @@ export default function LearningCurvePanel() {
                 onChange={setNJobs}
               />
               <Text size="sm" c="dimmed">
-                Optional Train sizes (CSV): fractions in (0,1] or absolute integers. Example:
-                <Text span fw={500}> 0.1,0.3,0.5,0.7,1.0 </Text> or <Text span fw={500}> 50,100,200 </Text>
+                Optional Train sizes (CSV): fractions in (0,1] or absolute integers.
+                Example:
+                <Text span fw={500}> 0.1,0.3,0.5,0.7,1.0 </Text> or{' '}
+                <Text span fw={500}> 50,100,200 </Text>
               </Text>
               <textarea
-                style={{ width: '100%', minHeight: 70, fontFamily: 'inherit', fontSize: '0.9rem' }}
+                style={{
+                  width: '100%',
+                  minHeight: 70,
+                  fontFamily: 'inherit',
+                  fontSize: '0.9rem',
+                }}
                 placeholder="e.g. 0.1,0.3,0.5,0.7,1.0"
                 value={trainSizesCSV}
                 onChange={(e) => setTrainSizesCSV(e.currentTarget.value)}

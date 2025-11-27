@@ -1,6 +1,6 @@
 import { Card, Stack, Group, Text, Divider, Select, NumberInput, Checkbox, SimpleGrid } from '@mantine/core';
 import { useEffect } from 'react';
-import { useDataCtx } from '../state/DataContext.jsx';
+import { useDataStore } from '../state/useDataStore.js';
 
 /** ---------------- helpers (unchanged) ---------------- **/
 
@@ -110,8 +110,9 @@ export default function ModelSelectionCard({ model, onChange, schema, enums, mod
   const m = model || {};
   const set = (patch) => onChange?.({ ...m, ...patch });
 
-  // NEW: dataset task from DataContext (classification | regression | null)
-  const { effectiveTask } = useDataCtx();
+  const effectiveTask = useDataStore(
+    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
+  );
 
   // Prefer schema -> defaults -> known fallback
   const schemaAlgos = algoListFromSchema(schema);

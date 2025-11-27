@@ -1,97 +1,103 @@
 // src/state/SchemaDefaultsContext.jsx
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getAllDefaults } from '../api/schema';
 
-const SchemaDefaultsContext = createContext(null);
+/**
+ * Fetch + normalize the /schema/defaults payload using TanStack Query.
+ *
+ * Backend returns roughly:
+ * {
+ *   models: { schema, defaults, meta },
+ *   scale: { schema, defaults },
+ *   features: { schema, defaults },
+ *   split: { schema, defaults },
+ *   eval: { schema, defaults },
+ *   enums: { ... }
+ * }
+ */
 
-export function SchemaDefaultsProvider({ children }) {
-  const [payload, setPayload] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+function useSchemaDefaultsQuery() {
+  return useQuery({
+    queryKey: ['schema-defaults'],
+    queryFn: getAllDefaults,
+    // tweak as you like; these are reasonable starting points:
+    staleTime: 5 * 60 * 1000,     // 5 minutes: treat as "fresh"
+    cacheTime: 60 * 60 * 1000,    // 1 hour cache
+    refetchOnWindowFocus: false,  // no surprise refetch on tab focus
+  });
+}
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const data = await getAllDefaults(); // { models:{schema,defaults,meta}, scale, features, split, eval, enums }
-        if (!alive) return;
-        setPayload(data);
-      } catch (e) {
-        if (!alive) return;
-        setError(e);
-      } finally {
-        if (!alive) return;
-        setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
+export function useSchemaDefaults() {
+  const { data, isLoading, isError, error } = useSchemaDefaultsQuery();
 
   const value = useMemo(() => {
-    if (!payload) {
+    if (!data) {
       return {
-        loading, error,
-        models: null, scale: null, features: null, split: null, eval: null, enums: null,
-        // getters
+        raw: null,
+        models: null,
+        scale: null,
+        features: null,
+        split: null,
+        eval: null,
+        enums: {},
+        loading: isLoading,
+        error: isError ? (error ?? null) : null,
         getModelDefaults: () => null,
         getModelMeta: () => null,
-        getScaleDefaults: () => null,
-        getFeaturesDefaults: () => null,
-        getEvalDefaults: () => null,
-        getSplitDefaults: () => null,
-        // new helpers
-        meta: null,
-        algoList: [],
         getCompatibleAlgos: () => [],
       };
     }
 
-    const { models, scale, features, split, eval: evalSection, enums } = payload;
+    const models = data.models ?? null;
+    const scale = data.scale ?? null;
+    const features = data.features ?? null;
+    const split = data.split ?? null;
+    const evalCfg = data.eval ?? null;
+    const enums = data.enums ?? {};
+
+    const defaults = models?.defaults ?? {};
     const meta = models?.meta ?? {};
 
-    // Compute a stable ordering without using hooks inside this memo
-    const algoList = (models?.defaults && Object.keys(models.defaults).length > 0)
-      ? Object.keys(models.defaults)
-      : ['logreg','svm','tree','forest','knn','linreg']; // fallback order
+    const getModelDefaults = (algo) => {
+      if (!algo) return null;
+      return defaults[algo] ?? null;
+    };
+
+    const getModelMeta = (algo) => {
+      if (!algo) return null;
+      return meta[algo] ?? null;
+    };
 
     const getCompatibleAlgos = (task) => {
-      if (!task) return algoList; // no filter if task unknown
-      return algoList.filter((algo) => {
-        const t = meta?.[algo]?.task;
-        // if backend didn’t annotate, don’t hide it
-        return !t || t === task;
+      const all = Object.keys(defaults);
+      if (!task) return all;
+
+      return all.filter((name) => {
+        const m = meta[name];
+        if (!m) return true; // if no meta, don't exclude
+        const t = m.task;
+        if (!t) return true;
+        if (Array.isArray(t)) return t.includes(task);
+        return t === task;
       });
     };
 
     return {
-      loading, error,
-      models, scale, features, split, eval: evalSection, enums,
-
-      // handy getters
-      getModelDefaults: (algo) => models?.defaults?.[algo] ?? null,
-      getModelMeta: (algo) => models?.meta?.[algo] ?? null,
-      getScaleDefaults: () => scale?.defaults ?? null,
-      getFeaturesDefaults: () => features?.defaults ?? null,
-      getEvalDefaults: () => evalSection?.defaults ?? null,
-      getSplitDefaults: (mode) =>
-        (mode === 'kfold' ? split?.kfold?.defaults : split?.holdout?.defaults) ?? null,
-
-      // helpers for model filtering
-      meta,
-      algoList,
+      raw: data,
+      models,
+      scale,
+      features,
+      split,
+      eval: evalCfg,
+      enums,
+      loading: isLoading,
+      error: isError ? (error ?? null) : null,
+      getModelDefaults,
+      getModelMeta,
       getCompatibleAlgos,
     };
-  }, [payload, loading, error]);
+  }, [data, isLoading, isError, error]);
 
-  return (
-    <SchemaDefaultsContext.Provider value={value}>
-      {children}
-    </SchemaDefaultsContext.Provider>
-  );
-}
-
-export function useSchemaDefaults() {
-  const ctx = useContext(SchemaDefaultsContext);
-  if (!ctx) throw new Error('useSchemaDefaults must be used within SchemaDefaultsProvider');
-  return ctx;
+  return value;
 }

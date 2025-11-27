@@ -1,20 +1,41 @@
 import { useState } from 'react';
-import { Card, Stack, Text, TextInput, Button, Divider, Alert, Group, Badge, FileInput, Select } from '@mantine/core';
-import { useDataCtx } from '../state/DataContext.jsx';
-import { inspectData } from '../api/data';
+import {
+  Card,
+  Stack,
+  Text,
+  TextInput,
+  Button,
+  Divider,
+  Alert,
+  Group,
+  Badge,
+  FileInput,
+  Select,
+} from '@mantine/core';
+import { useDataStore } from '../state/useDataStore.js';
+import { useInspectDataMutation } from '../state/useInspectDataMutation.js';
 import { uploadFile } from '../api/files';
 
 export default function DataSidebar() {
-  const {
-    xPath, setXPath,
-    yPath, setYPath,
-    npzPath, setNPZPath,
-    xKey, setXKey,
-    yKey, setYKey,
-    inspectReport, setInspectReport,
-    dataReady,
-    taskInferred, taskSelected, setTaskSelected, effectiveTask,
-  } = useDataCtx();
+  const xPath = useDataStore((s) => s.xPath);
+  const setXPath = useDataStore((s) => s.setXPath);
+  const yPath = useDataStore((s) => s.yPath);
+  const setYPath = useDataStore((s) => s.setYPath);
+  const npzPath = useDataStore((s) => s.npzPath);
+  const setNPZPath = useDataStore((s) => s.setNPZPath);
+  const xKey = useDataStore((s) => s.xKey);
+  const setXKey = useDataStore((s) => s.setXKey);
+  const yKey = useDataStore((s) => s.yKey);
+  const setYKey = useDataStore((s) => s.setYKey);
+  const inspectReport = useDataStore((s) => s.inspectReport);
+  const setInspectReport = useDataStore((s) => s.setInspectReport);
+  const taskSelected = useDataStore((s) => s.taskSelected);
+  const setTaskSelected = useDataStore((s) => s.setTaskSelected);
+
+  // derived values (used to live in DataContext)
+  const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
+  const taskInferred = inspectReport?.task_inferred || null;
+  const effectiveTask = taskSelected || taskInferred || null;
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -22,6 +43,8 @@ export default function DataSidebar() {
   // local file selections for upload
   const [xLocalFile, setXLocalFile] = useState(null);
   const [yLocalFile, setYLocalFile] = useState(null);
+
+  const inspectMutation = useInspectDataMutation();
 
   async function handleInspect() {
     setErr(null);
@@ -34,12 +57,9 @@ export default function DataSidebar() {
         x_key: xKey,
         y_key: yKey,
       };
-      const report = await inspectData(payload);
+      const report = await inspectMutation.mutateAsync(payload);
       setInspectReport(report);
-      // Reset manual override if the user hasn’t chosen one yet
-      if (!taskSelected && report?.task_inferred) {
-        // no-op: we prefer to let user set override explicitly
-      }
+      // We still let the user explicitly override task; no auto-set here.
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
@@ -56,7 +76,7 @@ export default function DataSidebar() {
       // Upload X if provided
       let newXPath = xPath;
       if (xLocalFile) {
-        const up = await uploadFile(xLocalFile);  // { path, original_name }
+        const up = await uploadFile(xLocalFile); // { path, original_name }
         newXPath = up.path;
         setXPath(newXPath);
         setNPZPath(null); // clear npz when providing X/Y separately
@@ -80,13 +100,15 @@ export default function DataSidebar() {
         y_key: yKey || 'y',
       };
 
-      const report = await inspectData(inspectPayload);
+      const report = await inspectMutation.mutateAsync(inspectPayload);
       setInspectReport(report);
     } catch (e) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.detail || e.message || String(e);
       if (status === 404 && /files\/upload/.test(e?.config?.url || '')) {
-        setErr("Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.");
+        setErr(
+          'Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.',
+        );
       } else {
         setErr(msg);
       }
@@ -111,16 +133,38 @@ export default function DataSidebar() {
           </Group>
 
           {/* Manual container paths (if not uploading) */}
-          <TextInput label="Feature matrix (X) path (.mat / .npz)" value={xPath} onChange={(e) => setXPath(e.currentTarget.value)} disabled={!!npzPath} />
-          <TextInput label="Label vector (y) path (.mat / .npz)" value={yPath} onChange={(e) => setYPath(e.currentTarget.value)} disabled={!!npzPath} />
-          <TextInput label="npz path (X,y)" value={npzPath || ''} onChange={(e) => setNPZPath(e.currentTarget.value || null)} />
+          <TextInput
+            label="Feature matrix (X) path (.mat / .npz)"
+            value={xPath}
+            onChange={(e) => setXPath(e.currentTarget.value)}
+            disabled={!!npzPath}
+          />
+          <TextInput
+            label="Label vector (y) path (.mat / .npz)"
+            value={yPath}
+            onChange={(e) => setYPath(e.currentTarget.value)}
+            disabled={!!npzPath}
+          />
+          <TextInput
+            label="npz path (X,y)"
+            value={npzPath || ''}
+            onChange={(e) => setNPZPath(e.currentTarget.value || null)}
+          />
 
           <Group grow>
-            <TextInput label="X key" value={xKey} onChange={(e) => setXKey(e.currentTarget.value)} />
-            <TextInput label="y key" value={yKey} onChange={(e) => setYKey(e.currentTarget.value)} />
+            <TextInput
+              label="X key"
+              value={xKey}
+              onChange={(e) => setXKey(e.currentTarget.value)}
+            />
+            <TextInput
+              label="y key"
+              value={yKey}
+              onChange={(e) => setYKey(e.currentTarget.value)}
+            />
           </Group>
 
-          {/* NEW: Task selector (defaults to inferred; user can override) */}
+          {/* Task selector (inferred + override) */}
           <Select
             label="Task"
             data={[
@@ -134,21 +178,46 @@ export default function DataSidebar() {
           />
 
           <Group gap="xs">
-            <Button size="xs" onClick={handleInspect} loading={loading}>Inspect</Button>
+            <Button size="xs" onClick={handleInspect} loading={loading}>
+              Inspect
+            </Button>
           </Group>
 
           <Divider my="xs" label="or upload files" labelPosition="center" />
 
           {/* Upload area */}
-          <FileInput label="Upload Feature Matrix (X) (.mat / .npz)" placeholder="Pick file (optional)" value={xLocalFile} onChange={setXLocalFile} accept=".mat,.npz,.npy" clearable />
-          <FileInput label="Upload Label vector (y) (.mat / .npz)" placeholder="Pick file (optional)" value={yLocalFile} onChange={setYLocalFile} accept=".mat,.npz,.npy" clearable />
+          <FileInput
+            label="Upload Feature Matrix (X) (.mat / .npz)"
+            placeholder="Pick file (optional)"
+            value={xLocalFile}
+            onChange={setXLocalFile}
+            accept=".mat,.npz,.npy"
+            clearable
+          />
+          <FileInput
+            label="Upload Label vector (y) (.mat / .npz)"
+            placeholder="Pick file (optional)"
+            value={yLocalFile}
+            onChange={setYLocalFile}
+            accept=".mat,.npz,.npy"
+            clearable
+          />
           <Group gap="xs">
-            <Button size="xs" variant="light" onClick={handleUploadAndInspect} loading={loading}>Upload & Inspect</Button>
+            <Button
+              size="xs"
+              variant="light"
+              onClick={handleUploadAndInspect}
+              loading={loading}
+            >
+              Upload & Inspect
+            </Button>
           </Group>
 
           {err && (
             <Alert color="red" variant="light" title="Error">
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{err}</Text>
+              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                {err}
+              </Text>
             </Alert>
           )}
         </Stack>
@@ -156,26 +225,36 @@ export default function DataSidebar() {
 
       {/* Quick summary */}
       <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Text fw={600} mb="xs">Summary</Text>
-        {!inspectReport && <Text size="sm" c="dimmed">Run Inspect to see data summary.</Text>}
+        <Text fw={600} mb="xs">
+          Summary
+        </Text>
+        {!inspectReport && (
+          <Text size="sm" c="dimmed">
+            Run Inspect to see data summary.
+          </Text>
+        )}
         {inspectReport && (
           <Stack gap={2}>
             <Text size="sm">n_samples: {inspectReport.n_samples}</Text>
             <Text size="sm">n_features: {inspectReport.n_features}</Text>
-            <Text size="sm">task (inferred): {inspectReport.task_inferred || '—'}</Text>
+            <Text size="sm">
+              task (inferred): {inspectReport.task_inferred || '—'}
+            </Text>
 
             {/* Classification display */}
             {isClassification && (
               <>
                 <Text size="sm">
-                  classes: {
-                    Array.isArray(inspectReport.classes)
-                      ? inspectReport.classes.join(', ')
-                      : String(inspectReport.classes)
-                  }
+                  classes:{' '}
+                  {Array.isArray(inspectReport.classes)
+                    ? inspectReport.classes.join(', ')
+                    : String(inspectReport.classes)}
                 </Text>
                 <Text size="sm">
-                  n_classes: {Array.isArray(inspectReport.classes) ? inspectReport.classes.length : 0}
+                  n_classes:{' '}
+                  {Array.isArray(inspectReport.classes)
+                    ? inspectReport.classes.length
+                    : 0}
                 </Text>
               </>
             )}
@@ -183,16 +262,27 @@ export default function DataSidebar() {
             {/* Regression display */}
             {isRegression && ySum && (
               <>
-                <Text size="sm">y: n={ySum.n}, unique={ySum.n_unique}</Text>
-                <Text size="sm">min/max: {ySum.min} / {ySum.max}</Text>
-                <Text size="sm">mean±std: {ySum.mean} ± {ySum.std}</Text>
+                <Text size="sm">
+                  y: n={ySum.n}, unique={ySum.n_unique}
+                </Text>
+                <Text size="sm">
+                  min/max: {ySum.min} / {ySum.max}
+                </Text>
+                <Text size="sm">
+                  mean±std: {ySum.mean} ± {ySum.std}
+                </Text>
               </>
             )}
 
-            <Text size="sm">missing total: {inspectReport.missingness?.total ?? 0}</Text>
+            <Text size="sm">
+              missing total: {inspectReport.missingness?.total ?? 0}
+            </Text>
             {inspectReport.suggestions?.recommend_pca && (
               <Alert color="blue" variant="light" mt="xs">
-                <Text size="sm">Suggestion: {inspectReport.suggestions.reason || 'consider PCA'}</Text>
+                <Text size="sm">
+                  Suggestion:{' '}
+                  {inspectReport.suggestions.reason || 'consider PCA'}
+                </Text>
               </Alert>
             )}
           </Stack>

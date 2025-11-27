@@ -4,8 +4,8 @@ import {
   Stack, Group, Divider, Alert, Title, Box, Progress
 } from '@mantine/core';
 
-import { useDataCtx } from '../state/DataContext.jsx';
 
+import { useDataStore } from '../state/useDataStore.js';
 import { useResultsStore } from '../state/useResultsStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
@@ -58,7 +58,13 @@ function toErrorText(e) {
 /** ---------- component ---------- **/
 
 export default function RunModelPanel() {
-  const { xPath, yPath, npzPath, xKey, yKey, dataReady } = useDataCtx();
+  const xPath = useDataStore((s) => s.xPath);
+  const yPath = useDataStore((s) => s.yPath);
+  const npzPath = useDataStore((s) => s.npzPath);
+  const xKey = useDataStore((s) => s.xKey);
+  const yKey = useDataStore((s) => s.yKey);
+  const inspectReport = useDataStore((s) => s.inspectReport);
+  const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
   const fctx = useFeatureStore();
 
   // Centralized schema/defaults/enums
