@@ -137,7 +137,7 @@ export default function ModelCard() {
       } else {
         // Artifact changed due to a fresh training run
         setStatus('trained');
-        // IMPORTANT: no info message here, to avoid duplicate text
+        // no info message here, to avoid duplicate text
         setInfo(null);
       }
       lastUidRef.current = artifact.uid;
@@ -207,6 +207,59 @@ export default function ModelCard() {
     statusText = 'Model loaded from file.';
   } else {
     statusText = 'Model present.';
+  }
+
+  // Convenience for stats; tolerate old artifacts that don't have these fields.
+  const nParameters =
+    artifact && Object.prototype.hasOwnProperty.call(artifact, 'n_parameters')
+      ? artifact.n_parameters
+      : null;
+  const extraStats =
+    artifact && artifact.extra_stats && typeof artifact.extra_stats === 'object'
+      ? artifact.extra_stats
+      : {};
+
+  const hasAnyExtraStat =
+    extraStats.n_support_vectors != null ||
+    extraStats.n_trees != null ||
+    extraStats.total_tree_nodes != null ||
+    extraStats.max_tree_depth != null ||
+    extraStats.pca_n_components != null;
+
+  // Feature section: show PCA components if we can
+  const featureCfg = artifact?.features ?? null;
+  const featuresMethod = featureCfg?.method || 'none';
+
+  let featuresText = featuresMethod;
+
+  if (featuresMethod === 'pca') {
+    // 1) Actual fitted components (if backend ever adds this into extra_stats)
+    const pcaNFromStats =
+      extraStats && Object.prototype.hasOwnProperty.call(extraStats, 'pca_n_components')
+        ? extraStats.pca_n_components
+        : null;
+
+    // 2) Configured pca_n (manual)
+    const pcaNFromCfg =
+      featureCfg && Object.prototype.hasOwnProperty.call(featureCfg, 'pca_n')
+        ? featureCfg.pca_n
+        : null;
+
+    // 3) Variance-based PCA
+    const pcaVarFromCfg =
+      featureCfg && Object.prototype.hasOwnProperty.call(featureCfg, 'pca_var')
+        ? featureCfg.pca_var
+        : null;
+
+    const nComp = pcaNFromStats != null ? pcaNFromStats : pcaNFromCfg;
+
+    if (nComp != null) {
+      featuresText = `pca (${nComp} components)`;
+    } else if (pcaVarFromCfg != null) {
+      featuresText = `pca (var=${pcaVarFromCfg})`;
+    } else {
+      featuresText = 'pca';
+    }
   }
 
   return (
@@ -293,12 +346,50 @@ export default function ModelCard() {
             </Text>
 
             <Text size="sm">
-              <strong>Features:</strong> {artifact?.features?.method ?? 'none'}
+              <strong>Features:</strong> {featuresText}
             </Text>
 
             <Text size="sm">
               <strong>Split:</strong> {artifact?.split?.mode ?? '—'}
             </Text>
+
+            {/* Model stats */}
+            <Divider my="xs" />
+            <Text size="sm" fw={500}>
+              Model stats
+            </Text>
+            <Text size="sm">
+              <strong>Parameters:</strong>{' '}
+              {nParameters != null ? fmt(nParameters, 0) : 'not available'}
+            </Text>
+            {extraStats.n_support_vectors != null && (
+              <Text size="sm">
+                <strong>Support vectors:</strong>{' '}
+                {fmt(extraStats.n_support_vectors, 0)}
+              </Text>
+            )}
+            {extraStats.n_trees != null && (
+              <Text size="sm">
+                <strong>Trees:</strong> {fmt(extraStats.n_trees, 0)}
+              </Text>
+            )}
+            {extraStats.total_tree_nodes != null && (
+              <Text size="sm">
+                <strong>Total tree nodes:</strong>{' '}
+                {fmt(extraStats.total_tree_nodes, 0)}
+              </Text>
+            )}
+            {extraStats.max_tree_depth != null && (
+              <Text size="sm">
+                <strong>Max tree depth:</strong>{' '}
+                {fmt(extraStats.max_tree_depth, 0)}
+              </Text>
+            )}
+            {!hasAnyExtraStat && nParameters == null && (
+              <Text size="sm" c="dimmed">
+                Additional stats not available for this artifact.
+              </Text>
+            )}
 
             {/* Hyperparameters */}
             {artifact?.model && (

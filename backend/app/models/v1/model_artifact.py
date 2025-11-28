@@ -38,5 +38,9 @@ class ModelArtifactMeta(BaseModel):
     n_splits: Optional[int] = None
     notes: List[str] = Field(default_factory=list)
 
+    # Model complexity / statistics
+    n_parameters: Optional[int] = None
+    extra_stats: Dict[str, Any] = Field(default_factory=dict)
+
 class ModelArtifact(BaseModel):
     meta: ModelArtifactMeta
