@@ -1,11 +1,9 @@
-import { useCallback } from 'react';
 import {
   Card,
   Stack,
   Text,
   Group,
   Button,
-  FileInput,
   Alert,
   Table,
   Badge,
@@ -14,7 +12,6 @@ import {
 import { useProductionDataStore } from '../state/useProductionDataStore.js';
 import { useResultsStore } from '../state/useResultsStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
-import { uploadFile } from '../api/files';
 import {
   applyModelToData,
   exportPredictions,
@@ -131,13 +128,6 @@ export default function ApplyModelCard() {
   const xKey = useProductionDataStore((s) => s.xKey);
   const yKey = useProductionDataStore((s) => s.yKey);
 
-  const setXPath = useProductionDataStore((s) => s.setXPath);
-  const setYPath = useProductionDataStore((s) => s.setYPath);
-  const setNpzPath = useProductionDataStore((s) => s.setNpzPath);
-  // keys are currently fixed to X/y in UI, but we keep setters if we ever expose them
-  // const setXKey = useProductionDataStore((s) => s.setXKey);
-  // const setYKey = useProductionDataStore((s) => s.setYKey);
-
   const dataReady = useProductionDataStore(
     (s) => Boolean(s.xPath || s.npzPath)
   );
@@ -154,45 +144,6 @@ export default function ApplyModelCard() {
 
   const hasModel = Boolean(artifact);
   const canRun = hasModel && dataReady && !isRunning;
-
-  const handleUploadX = useCallback(
-    async (file) => {
-      if (!file) return;
-      try {
-        setError(null);
-        const res = await uploadFile(file);
-        // Backend returns { path, original_name } or { npz_path, ... }
-        if (res.npz_path) {
-          setNpzPath(res.npz_path);
-          setXPath('');
-        } else if (res.path) {
-          setXPath(res.path);
-          setNpzPath('');
-        }
-      } catch (e) {
-        console.error(e);
-        setError(e?.message || 'Failed to upload X file');
-      }
-    },
-    [setXPath, setNpzPath, setError]
-  );
-
-  const handleUploadY = useCallback(
-    async (file) => {
-      if (!file) return;
-      try {
-        setError(null);
-        const res = await uploadFile(file);
-        if (res.path) {
-          setYPath(res.path);
-        }
-      } catch (e) {
-        console.error(e);
-        setError(e?.message || 'Failed to upload y file');
-      }
-    },
-    [setYPath, setError]
-  );
 
   const buildDataPayload = () => ({
     // Mirrors DataInspectRequest fields
@@ -263,35 +214,14 @@ export default function ApplyModelCard() {
           <Text size="xs" fw={500}>
             Production data
           </Text>
-          <FileInput
-            label="Features (X)"
-            placeholder="Upload features file"
-            onChange={handleUploadX}
-            disabled={!hasModel || isRunning}
-            accept=".mat,.npz,.npy,.csv,.txt"
-            size="xs"
-          />
-          {xPath || npzPath ? (
-            <Text size="xs" c="dimmed">
-              Saved X as: {npzPath || xPath}
-            </Text>
-          ) : null}
-          <FileInput
-            label="Labels (y, optional)"
-            placeholder="Upload labels file"
-            onChange={handleUploadY}
-            disabled={!hasModel || isRunning}
-            accept=".mat,.npz,.npy,.csv,.txt"
-            size="xs"
-          />
-          {yPath ? (
-            <Text size="xs" c="dimmed">
-              Saved y as: {yPath}
-            </Text>
-          ) : null}
           <Text size="xs" c="dimmed">
-            X is required. y is optional; if provided, an evaluation metric will be
-            computed.
+            Features (X): {npzPath || xPath || 'not set'}
+          </Text>
+          <Text size="xs" c="dimmed">
+            Labels (y, optional): {yPath || 'not set'}
+          </Text>
+          <Text size="xs" c="dimmed">
+            Keys: X = {xKey || 'X'}, y = {yKey || 'y'}
           </Text>
         </Stack>
 

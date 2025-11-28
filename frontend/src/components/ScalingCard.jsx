@@ -10,7 +10,7 @@ export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
       <Stack gap="sm">
-        <Text fw={500}>{title}</Text>
+        <Text fw={600}>{title}</Text>
         <Select
           label="Scaling method"
           data={scaleOptions}

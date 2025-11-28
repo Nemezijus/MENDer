@@ -98,7 +98,7 @@ export default function FeatureCard({ title = 'Features' }) {
     <Card withBorder shadow="sm" radius="md" padding="lg">
       <Stack gap="md">
         <Group justify="space-between" wrap="nowrap">
-          <Text fw={500}>{title}</Text>
+          <Text fw={600}>{title}</Text>
         </Group>
 
         <Select

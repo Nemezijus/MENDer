@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Group, Stack, Divider, Badge, Button, Tooltip } from '@mantine/core';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useDataStore } from '../state/useDataStore.js';
-import { saveModel, loadModel, saveBlobInteractive } from '../api/models';
+import { saveModel, saveBlobInteractive } from '../api/models';
 
 function fmt(val, digits = 4) {
   if (val == null || Number.isNaN(Number(val))) return '—';
@@ -52,16 +52,13 @@ export default function ModelCard() {
   const effectiveTask = taskSelected || inspectReport?.task_inferred || null;
 
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
-  const [info, setInfo] = useState(null); // only for transient messages (save/load)
+  const [info, setInfo] = useState(null); // transient messages
 
   // 'none' | 'trained' | 'loaded' | 'incompatible'
   const [status, setStatus] = useState('none');
 
-  const fileInputRef = useRef(null);
   const lastUidRef = useRef(null);
-  const justLoadedRef = useRef(false); // set only in onFileChosen
 
   /** ---------- compatibility checks ---------- **/
   let compatible = true;
@@ -121,7 +118,7 @@ export default function ModelCard() {
       ? 'red'
       : 'dimmed';
 
-  /** ---------- detect artifact changes (train vs load) ---------- **/
+  /** ---------- detect artifact changes (train vs external load) ---------- **/
   useEffect(() => {
     if (!artifact) {
       setStatus('none');
@@ -131,15 +128,10 @@ export default function ModelCard() {
     }
 
     if (artifact.uid && artifact.uid !== lastUidRef.current) {
-      if (justLoadedRef.current) {
-        // We just loaded from disk, onFileChosen already set status + info
-        justLoadedRef.current = false;
-      } else {
-        // Artifact changed due to a fresh training run
-        setStatus('trained');
-        // no info message here, to avoid duplicate text
-        setInfo(null);
-      }
+      // Artifact changed (e.g. after a new training run or an external load)
+      setStatus('trained');
+      // no extra info message here to avoid duplicate text
+      setInfo(null);
       lastUidRef.current = artifact.uid;
     }
   }, [artifact]);
@@ -165,31 +157,6 @@ export default function ModelCard() {
       setErr(e?.message || String(e));
     } finally {
       setSaving(false);
-    }
-  }
-
-  function onClickLoad() {
-    setErr(null);
-    setInfo(null);
-    fileInputRef.current?.click();
-  }
-
-  async function onFileChosen(ev) {
-    const file = ev.target.files?.[0];
-    if (!file) return;
-    setLoading(true);
-    setErr(null);
-    try {
-      const { artifact: loadedMeta } = await loadModel(file);
-      justLoadedRef.current = true;
-      setArtifact(loadedMeta);
-      setStatus('loaded');
-      setInfo(`Loaded model "${file.name}".`);
-    } catch (e) {
-      setErr(e?.message || String(e));
-    } finally {
-      setLoading(false);
-      ev.target.value = '';
     }
   }
 
@@ -445,16 +412,6 @@ export default function ModelCard() {
               Save model
             </Button>
           </Tooltip>
-          <Button size="xs" variant="light" onClick={onClickLoad} loading={loading}>
-            Load model
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".mend,application/octet-stream"
-            style={{ display: 'none' }}
-            onChange={onFileChosen}
-          />
         </Group>
       </Stack>
     </Card>

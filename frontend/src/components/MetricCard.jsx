@@ -49,7 +49,7 @@ export default function MetricCard({
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
       <Stack gap="sm">
-        <Text fw={500}>{title}</Text>
+        <Text fw={600}>{title}</Text>
         <Select
           label="Metric method"
           data={metricOptions}

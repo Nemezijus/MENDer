@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { Card, Button, Text, Stack, Group, Divider, Alert, Title, Box, NumberInput } from '@mantine/core';
 
 import { useDataStore } from '../state/useDataStore.js';
-import FeatureCard from './FeatureCard.jsx';
-import ScalingCard from './ScalingCard.jsx';
+
 import ModelSelectionCard from './ModelSelectionCard.jsx';
-import MetricCard from './MetricCard.jsx';
+
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import api from '../api/client';
 import { useResultsStore } from '../state/useResultsStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useFeatureStore } from '../state/useFeatureStore.js';
+import { useSettingsStore } from '../state/useSettingsStore.js';
 
 export default function LearningCurvePanel() {
   const xPath = useDataStore((s) => s.xPath);
@@ -54,8 +54,8 @@ export default function LearningCurvePanel() {
   const [seed, setSeed] = useState(42);
 
   // scale/metric
-  const [scaleMethod, setScaleMethod] = useState('standard');
-  const [metric, setMetric] = useState('accuracy');
+  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
+  const metric = useSettingsStore((s) => s.metric);
 
   // union model (hydrated from backend defaults)
   const [model, setModel] = useState(null);
@@ -178,7 +178,14 @@ export default function LearningCurvePanel() {
             </Button>
           </Group>
 
-          <Box w="100%" style={{ maxWidth: 560 }}>
+          {/* Centered configuration stack inside the card */}
+          <Box
+            style={{
+              maxWidth: 560,
+              margin: '0 auto',
+              width: '100%',
+            }}
+          >
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['kfold']}
@@ -191,16 +198,6 @@ export default function LearningCurvePanel() {
                 seed={seed}
                 onSeedChange={setSeed}
               />
-
-              <Divider my="xs" />
-
-              <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
-
-              <FeatureCard title="Features" />
-
-              <Divider my="xs" />
-
-              <MetricCard value={metric} onChange={setMetric} />
 
               <Divider my="xs" />
 

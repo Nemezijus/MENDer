@@ -124,11 +124,11 @@ export default function DataSidebar() {
   const isRegression = effectiveTask === 'regression';
 
   return (
-    <Stack gap="md" w={320}>
+    <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="sm">
           <Group justify="space-between" align="center">
-            <Text fw={600}>Data</Text>
+            <Text fw={600}>Training data</Text>
             {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
           </Group>
 

@@ -10,12 +10,13 @@ import { useResultsStore } from '../state/useResultsStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useFeatureStore } from '../state/useFeatureStore.js';
+import { useSettingsStore } from '../state/useSettingsStore.js';
 
-import FeatureCard from './FeatureCard.jsx';
-import ScalingCard from './ScalingCard.jsx';
+// import FeatureCard from './FeatureCard.jsx';
+// import ScalingCard from './ScalingCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
 import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
-import MetricCard from './MetricCard.jsx';
+// import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { runTrainRequest } from '../api/train';
@@ -77,8 +78,10 @@ export default function RunModelPanel() {
   const [stratified, setStratified] = useState(true);
   const [shuffle, setShuffle] = useState(true);
   const [seed, setSeed] = useState('');
-  const [scaleMethod, setScaleMethod] = useState('standard');
-  const [metric, setMetric] = useState('accuracy');
+  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
+  const setScaleMethod = useSettingsStore((s) => s.setScaleMethod);
+  const metric = useSettingsStore((s) => s.metric);
+  const setMetric = useSettingsStore((s) => s.setMetric);
 
   // Union model state (hydrated from backend defaults)
   const [model, setModel] = useState(null);
@@ -115,44 +118,51 @@ export default function RunModelPanel() {
   }, [defsLoading, getModelDefaults, model]);
 
   // hydrate from artifact
-  useEffect(() => {
-    const uid = artifact?.uid;
-    if (!uid || !model) return;
-    if (lastHydratedUid.current === uid) return;
-    lastHydratedUid.current = uid;
+useEffect(() => {
+  const uid = artifact?.uid;
+  if (!uid || !model) return;
+  if (lastHydratedUid.current === uid) return;
+  lastHydratedUid.current = uid;
 
-    if (artifact?.model && typeof artifact.model === 'object') {
-      setModel(artifact.model); // union payload straight in
-    }
+  // Hydrate model hyperparameters from the artifact,
+  // but DO NOT override global scaling / metric / feature settings.
+  if (artifact?.model && typeof artifact.model === 'object') {
+    setModel(artifact.model); // union payload straight in
+  }
 
-    if (artifact?.features && typeof artifact.features === 'object') {
-      fctx.setFromArtifact(artifact.features);
-    }
+  const split = artifact?.split || {};
+  const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
+  setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
 
-    const scaleMethodFromArt = artifact?.scale?.method;
-    if (scaleMethodFromArt) setScaleMethod(scaleMethodFromArt);
+  if (mode === 'kfold' || 'n_splits' in split) {
+    if (split?.n_splits != null) setNSplits(Number(split.n_splits));
+  } else {
+    if (split?.train_frac != null) setTrainFrac(Number(split.train_frac));
+  }
+  if (split?.stratified != null) setStratified(!!split.stratified);
+  if (split?.shuffle != null) setShuffle(!!split.shuffle);
 
-    const split = artifact?.split || {};
-    const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
-    setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
+  const ev = artifact?.eval || {};
+  if ('seed' in ev) {
+    setSeed(ev.seed == null ? '' : String(ev.seed));
+  }
 
-    if (mode === 'kfold' || 'n_splits' in split) {
-      if (split?.n_splits != null) setNSplits(Number(split.n_splits));
-    } else {
-      if (split?.train_frac != null) setTrainFrac(Number(split.train_frac));
-    }
-    if (split?.stratified != null) setStratified(!!split.stratified);
-    if (split?.shuffle != null) setShuffle(!!split.shuffle);
-
-    const ev = artifact?.eval || {};
-    if (ev?.metric) setMetric(ev.metric);
-    if ('seed' in ev) setSeed(ev.seed == null ? '' : String(ev.seed));
-
-    const resultUid = trainResult?.artifact?.uid;
-    if (!resultUid || resultUid !== uid) {
-      clearTrainResult();
-    }
-  }, [artifact, model, fctx, trainResult, clearTrainResult, setScaleMethod, setSplitMode, setNSplits, setTrainFrac, setStratified, setShuffle, setMetric, setSeed]);
+  const resultUid = trainResult?.artifact?.uid;
+  if (!resultUid || resultUid !== uid) {
+    clearTrainResult();
+  }
+}, [
+  artifact,
+  model,
+  trainResult,
+  clearTrainResult,
+  setSplitMode,
+  setNSplits,
+  setTrainFrac,
+  setStratified,
+  setShuffle,
+  setSeed,
+]);
 
   // When algo changes, rehydrate from backend defaults and preserve user edits
   useEffect(() => {
@@ -307,7 +317,14 @@ export default function RunModelPanel() {
             </Stack>
           )}
 
-          <Box w="100%" style={{ maxWidth: 520 }}>
+          {/* Centered configuration stack inside the card */}
+          <Box
+            style={{
+              maxWidth: 520,
+              margin: '0 auto',
+              width: '100%',
+            }}
+          >
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['holdout', 'kfold']}
@@ -327,10 +344,6 @@ export default function RunModelPanel() {
 
               <Divider my="xs" />
 
-              <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
-              <FeatureCard />
-              <Divider my="xs" />
-
               <ModelSelectionCard
                 model={model}
                 onChange={(next) => {
@@ -345,10 +358,9 @@ export default function RunModelPanel() {
                 enums={enums}
                 models={models}
               />
-
+              
               <Divider my="xs" />
 
-              <MetricCard value={metric} onChange={setMetric} />
               <ShuffleLabelsCard
                 checked={useShuffleBaseline}
                 onCheckedChange={setUseShuffleBaseline}
