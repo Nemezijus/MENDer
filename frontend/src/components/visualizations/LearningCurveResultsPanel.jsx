@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Stack, Text, Card, useMantineTheme } from '@mantine/core';
-import { useResultsStore } from '../state/useResultsStore.js';
-import LearningCurveResults from './visualizations/LearningCurveResults.jsx';
-import LearningCurveAnalyticsResults from './visualizations/LearningCurveAnalyticsResults.jsx';
+import { useResultsStore } from '../../state/useResultsStore.js';
+import LearningCurveResults from './LearningCurveResults.jsx';
+import LearningCurveAnalyticsResults from './LearningCurveAnalyticsResults.jsx';
 
 export default function LearningCurveResultsPanel() {
   const theme = useMantineTheme();

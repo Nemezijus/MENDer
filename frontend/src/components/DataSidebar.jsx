@@ -40,11 +40,17 @@ export default function DataSidebar() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // local file selections for upload
+  // local file selections for upload (for showing filenames while component is mounted)
   const [xLocalFile, setXLocalFile] = useState(null);
   const [yLocalFile, setYLocalFile] = useState(null);
 
   const inspectMutation = useInspectDataMutation();
+
+  function basename(path) {
+    if (!path) return '';
+    const parts = String(path).split(/[\\/]/);
+    return parts[parts.length - 1] || path;
+  }
 
   async function handleInspect() {
     setErr(null);
@@ -123,6 +129,10 @@ export default function DataSidebar() {
   const isClassification = effectiveTask === 'classification';
   const isRegression = effectiveTask === 'regression';
 
+  // Filenames to show after navigating away & back
+  const xUploadedName = xLocalFile?.name || basename(xPath);
+  const yUploadedName = yLocalFile?.name || basename(yPath);
+
   return (
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -188,7 +198,7 @@ export default function DataSidebar() {
           {/* Upload area */}
           <FileInput
             label="Upload Feature Matrix (X) (.mat / .npz)"
-            placeholder="Pick file (optional)"
+            placeholder={xUploadedName || 'Pick file (optional)'}
             value={xLocalFile}
             onChange={setXLocalFile}
             accept=".mat,.npz,.npy"
@@ -196,7 +206,7 @@ export default function DataSidebar() {
           />
           <FileInput
             label="Upload Label vector (y) (.mat / .npz)"
-            placeholder="Pick file (optional)"
+            placeholder={yUploadedName || 'Pick file (optional)'}
             value={yLocalFile}
             onChange={setYLocalFile}
             accept=".mat,.npz,.npy"

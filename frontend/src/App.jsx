@@ -8,7 +8,7 @@ import RunModelPanel from './components/RunModelPanel.jsx';
 import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 import ModelCard from './components/ModelCard.jsx';
 import ModelTrainingResultsPanel from './components/ModelTrainingResultsPanel.jsx';
-import LearningCurveResultsPanel from './components/LearningCurveResultsPanel.jsx';
+import LearningCurveResultsPanel from './components/visualizations/LearningCurveResultsPanel.jsx';
 import ApplyModelCard from './components/ApplyModelCard.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import ModelLoadCard from './components/ModelLoadCard.jsx';
@@ -83,7 +83,7 @@ export default function App() {
       case 'train':
         return (
           <Stack gap="md">
-            <Title order={3}>Train a model</Title>
+            <Title order={3} align="center">Model training</Title>
             <DataGuard>
               <RunModelPanel />
             </DataGuard>
@@ -127,7 +127,7 @@ export default function App() {
   }
 
   return (
-    <Container fluid py="md">
+    <Container fluid pt="xl" pb="md">
       {/* W = 80% of screen width */}
       <Box mx="auto" style={{ width: '80vw' }}>
         <Box

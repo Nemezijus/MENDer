@@ -22,7 +22,7 @@ class PairScaler(Scaler):
     """
     cfg: ScaleModel
 
-    # ---------- NEW: sklearn step accessor ----------
+    # ---------- sklearn step accessor ----------
     def make_transformer(self) -> Any:
         method = (self.cfg.method or "none").lower()
 
