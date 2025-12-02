@@ -14,8 +14,6 @@ export const useTuningStore = create((set) => ({
     trainSizesCSV: '',
     nSteps: 5,
     nJobs: 1,
-    // in case you ever want k-fold here too
-    nSplits: 5,
   },
 
   // Validation curve-specific UI state + last result
@@ -41,6 +39,19 @@ export const useTuningStore = create((set) => ({
     result: null,
   },
 
+  // Randomized search-specific UI state + last result
+  randomSearch: {
+    nSplits: 5,
+    stratified: true,
+    shuffle: true,
+    seed: 42,
+    nJobs: 1,
+    nIter: 20,
+    hyperParam1: makeEmptyParam(),
+    hyperParam2: makeEmptyParam(),
+    result: null,
+  },
+
   // Shallow-merge updates for each sub-slice
   setLearningCurve: (partial) =>
     set((state) => ({
@@ -55,5 +66,10 @@ export const useTuningStore = create((set) => ({
   setGridSearch: (partial) =>
     set((state) => ({
       gridSearch: { ...state.gridSearch, ...partial },
+    })),
+
+  setRandomSearch: (partial) =>
+    set((state) => ({
+      randomSearch: { ...state.randomSearch, ...partial },
     })),
 }));

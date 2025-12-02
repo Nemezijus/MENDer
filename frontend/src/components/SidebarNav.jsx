@@ -50,6 +50,11 @@ const SECTION_GROUPS = [
         label: 'Grid search',
         description: 'Exhaustive search over two hyperparameters',
       },
+      {
+        id: 'random-search',
+        label: 'Randomized search',
+        description: 'Random sampling over two hyperparameters',
+      },
     ],
   },
   {

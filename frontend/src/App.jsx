@@ -1,5 +1,6 @@
+// frontend/src/App.jsx
 import { useState } from 'react';
-import { Container, Box, Stack, Alert, Text, Title, Tabs } from '@mantine/core';
+import { Container, Box, Stack, Alert, Text, Title } from '@mantine/core';
 
 import SidebarNav from './components/SidebarNav.jsx';
 
@@ -13,10 +14,11 @@ import ApplyModelCard from './components/ApplyModelCard.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import ModelLoadCard from './components/ModelLoadCard.jsx';
 import ProductionDataUploadCard from './components/ProductionDataUploadCard.jsx';
-import GridSearchPanel from './components/GridSearchPanel.jsx';
 
 import { useDataStore } from './state/useDataStore.js';
 import ValidationCurvePanel from './components/ValidationCurvePanel.jsx';
+import GridSearchPanel from './components/GridSearchPanel.jsx';
+import RandomSearchPanel from './components/RandomSearchPanel.jsx';
 
 const COLUMN_GAP = 'var(--mantine-spacing-lg)';
 
@@ -30,8 +32,8 @@ function DataGuard({ children }) {
       <Alert color="yellow" variant="light">
         <Text fw={500}>No inspected training data yet.</Text>
         <Text size="sm">
-          Please upload and inspect your training data in the <strong>Data &amp; files</strong> section
-          before using this panel.
+          Please upload and inspect your training data in the{' '}
+          <strong>Data &amp; files</strong> section before using this panel.
         </Text>
       </Alert>
     );
@@ -50,20 +52,17 @@ export default function App() {
           <Stack gap="md">
             <Title order={3}>Upload your data</Title>
 
-            {/* Middle area: left (training data + summary), right (load model + production data) */}
             <Box
               style={{
                 display: 'flex',
                 gap: COLUMN_GAP,
-                alignItems: 'flex-start', // don't stretch right column to full left height
+                alignItems: 'flex-start',
               }}
             >
-              {/* Left side: Training Data + Summary (inside DataSidebar) */}
               <Box style={{ flex: 11, minWidth: 0 }}>
                 <DataSidebar />
               </Box>
 
-              {/* Right side: Load a saved model, then Production data */}
               <Box style={{ flex: 9, minWidth: 0 }}>
                 <Stack gap="md">
                   <ModelLoadCard />
@@ -85,7 +84,9 @@ export default function App() {
       case 'train':
         return (
           <Stack gap="md">
-            <Title order={3} align="center">Model training</Title>
+            <Title order={3} align="center">
+              Model training
+            </Title>
             <DataGuard>
               <RunModelPanel />
             </DataGuard>
@@ -123,12 +124,22 @@ export default function App() {
           </Stack>
         );
 
+      case 'random-search':
+        return (
+          <Stack gap="md">
+            <Title order={3}>Randomized search</Title>
+            <DataGuard>
+              <RandomSearchPanel />
+            </DataGuard>
+          </Stack>
+        );
+
       case 'results':
         return (
           <Stack gap="md">
             <Title order={3}>View results</Title>
             <DataGuard>
-                <ModelTrainingResultsPanel />
+              <ModelTrainingResultsPanel />
             </DataGuard>
           </Stack>
         );
@@ -148,26 +159,25 @@ export default function App() {
 
   return (
     <Container fluid pt="xl" pb="md">
-      {/* W = 80% of screen width */}
       <Box mx="auto" style={{ width: '80vw' }}>
         <Box
           style={{
             display: 'flex',
             alignItems: 'flex-start',
-            gap: COLUMN_GAP, // same spacing between sidebar, main, and model card
+            gap: COLUMN_GAP,
           }}
         >
-          {/* Sidebar / navbar (≈20%) */}
+          {/* Left: sidebar */}
           <Box style={{ flex: 2, minWidth: 0 }}>
             <SidebarNav active={activeSection} onChange={setActiveSection} />
           </Box>
 
-          {/* Main content (≈50%) */}
+          {/* Center: main content */}
           <Box style={{ flex: 5, minWidth: 0 }}>
             {renderMain()}
           </Box>
 
-          {/* Persistent ModelCard (≈30%) */}
+          {/* Right: persistent model card */}
           <Box style={{ flex: 3, minWidth: 0 }}>
             <ModelCard />
           </Box>
