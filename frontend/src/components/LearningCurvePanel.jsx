@@ -1,16 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Text, Stack, Group, Divider, Alert, Title, Box, NumberInput } from '@mantine/core';
+import {
+  Card,
+  Button,
+  Text,
+  Stack,
+  Group,
+  Divider,
+  Alert,
+  Title,
+  Box,
+  NumberInput,
+} from '@mantine/core';
 
 import { useDataStore } from '../state/useDataStore.js';
-
-import ModelSelectionCard from './ModelSelectionCard.jsx';
-
-import SplitOptionsCard from './SplitOptionsCard.jsx';
-import api from '../api/client';
+import { useFeatureStore } from '../state/useFeatureStore.js';
 import { useResultsStore } from '../state/useResultsStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
-import { useFeatureStore } from '../state/useFeatureStore.js';
 import { useSettingsStore } from '../state/useSettingsStore.js';
+import { useTuningStore } from '../state/useTuningStore.js';
+import { useModelConfigStore } from '../state/useModelConfigStore.js';
+
+import ModelSelectionCard from './ModelSelectionCard.jsx';
+import SplitOptionsCard from './SplitOptionsCard.jsx';
+
+import { requestLearningCurve } from '../api/tuning';
 
 export default function LearningCurvePanel() {
   const xPath = useDataStore((s) => s.xPath);
@@ -36,58 +49,58 @@ export default function LearningCurvePanel() {
     sfs_n_jobs,
   } = useFeatureStore();
 
-  const learningCurveResult = useResultsStore((s) => s.learningCurveResult);
   const setLearningCurveResult = useResultsStore((s) => s.setLearningCurveResult);
-
   const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
   const setLearningCurveNSplits = useResultsStore((s) => s.setLearningCurveNSplits);
-
   const learningCurveWithinPct = useResultsStore((s) => s.learningCurveWithinPct);
   const setLearningCurveWithinPct = useResultsStore((s) => s.setLearningCurveWithinPct);
 
-  // centralized schema/defaults/enums
+  const lcState = useTuningStore((s) => s.learningCurve);
+  const setLcState = useTuningStore((s) => s.setLearningCurve);
+
+  const {
+    stratified,
+    shuffle,
+    seed,
+    trainSizesCSV,
+    nSteps,
+    nJobs,
+  } = lcState;
+
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
 
-  // split
-  const [stratified, setStratified] = useState(true);
-  const [shuffle, setShuffle] = useState(true);
-  const [seed, setSeed] = useState(42);
-
-  // scale/metric
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
 
-  // union model (hydrated from backend defaults)
-  const [model, setModel] = useState(null);
-
-  const [trainSizesCSV, setTrainSizesCSV] = useState('');
-  const [nSteps, setNSteps] = useState(5);
-  const [nJobs, setNJobs] = useState(1);
+  // Per-panel model config (learning curve slice)
+  const lcModel = useModelConfigStore((s) => s.learningCurve);
+  const setLcModel = useModelConfigStore((s) => s.setLearningCurveModel);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // initialize once defaults arrive
+  // Initialize LC model once
   useEffect(() => {
-    if (!defsLoading && !model) {
+    if (!defsLoading && !lcModel) {
       const init = getModelDefaults('logreg') || { algo: 'logreg' };
-      setModel(init);
+      setLcModel(init);
     }
-  }, [defsLoading, getModelDefaults, model]);
+  }, [defsLoading, getModelDefaults, lcModel, setLcModel]);
 
-  // on algo change, rehydrate from backend defaults while keeping edits
+  // When algo changes, rehydrate from backend defaults while preserving overrides
   useEffect(() => {
-    if (!model) return;
-    const base = getModelDefaults(model.algo) || { algo: model.algo };
-    setModel((cur) => ({ ...base, ...cur }));
-  }, [getModelDefaults, model?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!lcModel) return;
+    const base = getModelDefaults(lcModel.algo) || { algo: lcModel.algo };
+    const merged = { ...base, ...lcModel };
+    setLcModel(merged);
+  }, [getModelDefaults, lcModel?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCompute() {
     if (!dataReady) {
-      setErr('Load & inspect data first in the left sidebar.');
+      setErr('Load & inspect data first in the Data & files section.');
       return;
     }
-    if (!model) return;
+    if (!lcModel) return;
 
     setErr(null);
     setLearningCurveResult(null);
@@ -110,7 +123,12 @@ export default function LearningCurvePanel() {
           x_key: xKey,
           y_key: yKey,
         },
-        split: { mode: 'kfold', n_splits: learningCurveNSplits, stratified, shuffle },
+        split: {
+          mode: 'kfold',
+          n_splits: learningCurveNSplits,
+          stratified,
+          shuffle,
+        },
         scale: { method: scaleMethod },
         features: {
           method,
@@ -126,7 +144,7 @@ export default function LearningCurvePanel() {
           sfs_cv,
           sfs_n_jobs,
         },
-        model, // union payload as-is
+        model: lcModel,
         eval: {
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
@@ -136,8 +154,8 @@ export default function LearningCurvePanel() {
         n_jobs: Number(nJobs),
       };
 
-      const { data } = await api.post('/learning-curve', payload);
-      setLearningCurveResult(data);
+      const data = await requestLearningCurve(payload);
+      setLearningCurveResult({ ...data, metric_used: metric });
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
@@ -147,8 +165,8 @@ export default function LearningCurvePanel() {
     }
   }
 
-  if (defsLoading || !models || !model) {
-    return null; // optionally render a skeleton/spinner
+  if (defsLoading || !models || !lcModel) {
+    return null;
   }
 
   return (
@@ -178,42 +196,35 @@ export default function LearningCurvePanel() {
             </Button>
           </Group>
 
-          {/* Centered configuration stack inside the card */}
-          <Box
-            style={{
-              maxWidth: 560,
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
+          <Box w="100%" style={{ maxWidth: 560, margin: '0 auto' }}>
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['kfold']}
                 nSplits={learningCurveNSplits}
                 onNSplitsChange={setLearningCurveNSplits}
                 stratified={stratified}
-                onStratifiedChange={setStratified}
+                onStratifiedChange={(value) => setLcState({ stratified: value })}
                 shuffle={shuffle}
-                onShuffleChange={setShuffle}
+                onShuffleChange={(value) => setLcState({ shuffle: value })}
                 seed={seed}
-                onSeedChange={setSeed}
+                onSeedChange={(value) => setLcState({ seed: value })}
               />
 
               <Divider my="xs" />
 
               <ModelSelectionCard
-                model={model}
+                model={lcModel}
                 onChange={(next) => {
-                  if (next?.algo && next.algo !== model.algo) {
+                  if (next?.algo && lcModel && next.algo !== lcModel.algo) {
                     const d = getModelDefaults(next.algo) || { algo: next.algo };
-                    setModel({ ...d, ...next });
+                    setLcModel({ ...d, ...next });
                   } else {
-                    setModel(next);
+                    setLcModel(next);
                   }
                 }}
                 schema={models?.schema}
                 enums={enums}
-                models={models} // defaults + meta
+                models={models}
               />
 
               <Divider my="xs" />
@@ -224,14 +235,14 @@ export default function LearningCurvePanel() {
                 max={50}
                 step={1}
                 value={nSteps}
-                onChange={setNSteps}
+                onChange={(value) => setLcState({ nSteps: value })}
               />
               <NumberInput
                 label="n_jobs"
                 min={1}
                 step={1}
                 value={nJobs}
-                onChange={setNJobs}
+                onChange={(value) => setLcState({ nJobs: value })}
               />
               <Text size="sm" c="dimmed">
                 Optional Train sizes (CSV): fractions in (0,1] or absolute integers.
@@ -248,7 +259,9 @@ export default function LearningCurvePanel() {
                 }}
                 placeholder="e.g. 0.1,0.3,0.5,0.7,1.0"
                 value={trainSizesCSV}
-                onChange={(e) => setTrainSizesCSV(e.currentTarget.value)}
+                onChange={(e) =>
+                  setLcState({ trainSizesCSV: e.currentTarget.value })
+                }
               />
 
               <Divider my="xs" />

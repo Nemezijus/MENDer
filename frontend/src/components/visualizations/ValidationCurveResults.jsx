@@ -1,23 +1,22 @@
 import Plot from 'react-plotly.js';
 
-export default function LearningCurveResults({
+export default function ValidationCurveResults({
   plotTraces,
   textColor,
   gridColor,
   axisColor,
-  metricLabel = 'Accuracy',
+  metricLabel = 'Metric',
+  paramName,
 }) {
-  // Ensure both mean curves have markers, and only the 3 main items appear in legend
+  // Ensure both mean curves have markers, and only the key items show in legend
   const adjustedTraces = (plotTraces || []).map((trace) => {
     const t = { ...trace };
 
-    // Make sure both means use lines+markers
     if (t.name === 'Train (mean)' || t.name === 'Validation (mean)') {
       t.mode = 'lines+markers';
     }
 
-    // Legend control: show only these three
-    if (['Train (mean)', 'Validation (mean)', 'Recommended size'].includes(t.name)) {
+    if (['Train (mean)', 'Validation (mean)', 'Recommended value'].includes(t.name)) {
       t.showlegend = true;
     } else {
       t.showlegend = false;
@@ -26,6 +25,8 @@ export default function LearningCurveResults({
     return t;
   });
 
+  const xTitle = paramName || 'Parameter value';
+  const curveLabel = paramName || 'parameter value';
   const yTitle = `${metricLabel} (mean ± SEM)`;
 
   return (
@@ -33,14 +34,13 @@ export default function LearningCurveResults({
       data={adjustedTraces}
       layout={{
         title: {
-          text: `Learning Curve — ${metricLabel} vs. Training Set Size`,
+          text: `Validation Curve — ${metricLabel} vs. ${curveLabel}`,
           font: { color: textColor },
-          // Slightly lower in the figure to separate from legend
           y: 0.97,
         },
         font: { color: textColor },
         xaxis: {
-          title: { text: 'Training size (samples)' },
+          title: { text: xTitle },
           tickfont: { color: textColor },
           titlefont: { color: textColor },
           gridcolor: gridColor,
@@ -56,17 +56,15 @@ export default function LearningCurveResults({
           linecolor: axisColor,
           mirror: true,
           automargin: true,
-          // range removed so Plotly can auto-range for arbitrary metrics
         },
         legend: {
           orientation: 'h',
           x: 0.5,
-          y: 1,             // move legend a bit higher above plot
+          y: 1,
           xanchor: 'center',
           yanchor: 'bottom',
           font: { color: textColor },
         },
-        // More top margin so title + legend have breathing room
         margin: { l: 10, r: 10, t: 90, b: 90 },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',

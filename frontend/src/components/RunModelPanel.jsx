@@ -4,19 +4,16 @@ import {
   Stack, Group, Divider, Alert, Title, Box, Progress
 } from '@mantine/core';
 
-
 import { useDataStore } from '../state/useDataStore.js';
 import { useResultsStore } from '../state/useResultsStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useFeatureStore } from '../state/useFeatureStore.js';
 import { useSettingsStore } from '../state/useSettingsStore.js';
+import { useModelConfigStore } from '../state/useModelConfigStore.js';
 
-// import FeatureCard from './FeatureCard.jsx';
-// import ScalingCard from './ScalingCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
 import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
-// import MetricCard from './MetricCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { runTrainRequest } from '../api/train';
@@ -68,9 +65,8 @@ export default function RunModelPanel() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
   const fctx = useFeatureStore();
 
-  // Centralized schema/defaults/enums
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
-  
+
   // SPLIT / SCALE / METRIC
   const [splitMode, setSplitMode] = useState('holdout');
   const [trainFrac, setTrainFrac] = useState(0.75);
@@ -83,8 +79,9 @@ export default function RunModelPanel() {
   const metric = useSettingsStore((s) => s.metric);
   const setMetric = useSettingsStore((s) => s.setMetric);
 
-  // Union model state (hydrated from backend defaults)
-  const [model, setModel] = useState(null);
+  // Per-panel model config (train slice)
+  const trainModel = useModelConfigStore((s) => s.train);
+  const setTrainModel = useModelConfigStore((s) => s.setTrainModel);
 
   // Results / progress (local UI)
   const [loading, setLoading] = useState(false);
@@ -109,67 +106,61 @@ export default function RunModelPanel() {
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
 
-  // Initialize model once defaults arrive
+  // Initialize train model once defaults arrive
   useEffect(() => {
-    if (!defsLoading && !model) {
+    if (!defsLoading && !trainModel) {
       const init = getModelDefaults('logreg') || { algo: 'logreg' };
-      setModel(init);
+      setTrainModel(init);
     }
-  }, [defsLoading, getModelDefaults, model]);
+  }, [defsLoading, getModelDefaults, trainModel, setTrainModel]);
 
-  // hydrate from artifact
-useEffect(() => {
-  const uid = artifact?.uid;
-  if (!uid || !model) return;
-  if (lastHydratedUid.current === uid) return;
-  lastHydratedUid.current = uid;
+  // Hydrate from artifact into train model + split/eval settings
+  useEffect(() => {
+    const uid = artifact?.uid;
+    if (!uid || !trainModel) return;
+    if (lastHydratedUid.current === uid) return;
+    lastHydratedUid.current = uid;
 
-  // Hydrate model hyperparameters from the artifact,
-  // but DO NOT override global scaling / metric / feature settings.
-  if (artifact?.model && typeof artifact.model === 'object') {
-    setModel(artifact.model); // union payload straight in
-  }
+    if (artifact?.model && typeof artifact.model === 'object') {
+      // union payload straight in
+      setTrainModel(artifact.model);
+    }
 
-  const split = artifact?.split || {};
-  const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
-  setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
+    const split = artifact?.split || {};
+    const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
+    setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
 
-  if (mode === 'kfold' || 'n_splits' in split) {
-    if (split?.n_splits != null) setNSplits(Number(split.n_splits));
-  } else {
-    if (split?.train_frac != null) setTrainFrac(Number(split.train_frac));
-  }
-  if (split?.stratified != null) setStratified(!!split.stratified);
-  if (split?.shuffle != null) setShuffle(!!split.shuffle);
+    if (mode === 'kfold' || 'n_splits' in split) {
+      if (split?.n_splits != null) setNSplits(Number(split.n_splits));
+    } else {
+      if (split?.train_frac != null) setTrainFrac(Number(split.train_frac));
+    }
+    if (split?.stratified != null) setStratified(!!split.stratified);
+    if (split?.shuffle != null) setShuffle(!!split.shuffle);
 
-  const ev = artifact?.eval || {};
-  if ('seed' in ev) {
-    setSeed(ev.seed == null ? '' : String(ev.seed));
-  }
+    const ev = artifact?.eval || {};
+    if ('seed' in ev) {
+      setSeed(ev.seed == null ? '' : String(ev.seed));
+    }
 
-  const resultUid = trainResult?.artifact?.uid;
-  if (!resultUid || resultUid !== uid) {
-    clearTrainResult();
-  }
-}, [
-  artifact,
-  model,
-  trainResult,
-  clearTrainResult,
-  setSplitMode,
-  setNSplits,
-  setTrainFrac,
-  setStratified,
-  setShuffle,
-  setSeed,
-]);
+    const resultUid = trainResult?.artifact?.uid;
+    if (!resultUid || resultUid !== uid) {
+      clearTrainResult();
+    }
+  }, [
+    artifact,
+    trainModel,
+    trainResult,
+    clearTrainResult,
+  ]);
 
   // When algo changes, rehydrate from backend defaults and preserve user edits
   useEffect(() => {
-    if (!model) return;
-    const base = getModelDefaults(model.algo) || { algo: model.algo };
-    setModel((cur) => ({ ...base, ...cur }));
-  }, [getModelDefaults, model?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!trainModel) return;
+    const base = getModelDefaults(trainModel.algo) || { algo: trainModel.algo };
+    const merged = { ...base, ...trainModel };
+    setTrainModel(merged);
+  }, [getModelDefaults, trainModel?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startProgressPolling(progressId) {
     pollStopRef.current = false;
@@ -198,7 +189,8 @@ useEffect(() => {
       setErr('Load & inspect data first in the left sidebar.');
       return;
     }
-    if (!model) return;
+    if (!trainModel) return;
+
     setErr(null);
     clearTrainResult();
     clearArtifact();
@@ -258,7 +250,7 @@ useEffect(() => {
           }
           return { method: 'none' };
         })(),
-        model, // ← union payload as-is
+        model: trainModel, // ← union payload as-is
         eval: {
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
@@ -284,7 +276,7 @@ useEffect(() => {
     }
   }
 
-  if (defsLoading || !models || !model) {
+  if (defsLoading || !models || !trainModel) {
     return null; // optionally render a skeleton
   }
 
@@ -345,20 +337,20 @@ useEffect(() => {
               <Divider my="xs" />
 
               <ModelSelectionCard
-                model={model}
+                model={trainModel}
                 onChange={(next) => {
-                  if (next?.algo && next.algo !== model.algo) {
+                  if (next?.algo && trainModel && next.algo !== trainModel.algo) {
                     const d = getModelDefaults(next.algo) || { algo: next.algo };
-                    setModel({ ...d, ...next });
+                    setTrainModel({ ...d, ...next });
                   } else {
-                    setModel(next);
+                    setTrainModel(next);
                   }
                 }}
                 schema={models?.schema}
                 enums={enums}
                 models={models}
               />
-              
+
               <Divider my="xs" />
 
               <ShuffleLabelsCard

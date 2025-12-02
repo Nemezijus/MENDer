@@ -36,11 +36,20 @@ const SECTION_GROUPS = [
     label: 'TUNING',
     items: [
       {
-        id: 'tuning',
+        id: 'learning-curve',
         label: 'Learning curve',
         description: 'Explore sample size vs performance',
       },
-      // later: validation curve, grid search, etc.
+      {
+        id: 'validation-curve',
+        label: 'Validation curve',
+        description: 'Explore hyperparameter vs performance',
+      },
+      {
+        id: 'grid-search',
+        label: 'Grid search',
+        description: 'Exhaustive search over two hyperparameters',
+      },
     ],
   },
   {

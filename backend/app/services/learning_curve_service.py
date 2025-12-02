@@ -1,23 +1,26 @@
-# backend/app/services/learning_curve_service.py
-from typing import Dict, Any
-import math
-import numpy as np
-from sklearn.model_selection import StratifiedKFold, KFold, learning_curve
+from __future__ import annotations
 
 from shared_schemas.run_config import RunConfig
-from shared_schemas.model_configs import LinearRegConfig, get_model_task
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.sanity_factory import make_sanity_checker
-from utils.factories.pipeline_factory import make_pipeline
-from utils.permutations.rng import RngManager
-from utils.postprocessing.scoring import make_estimator_scorer
+from shared_schemas.tuning_configs import LearningCurveConfig
+from utils.factories.tuning_factory import make_learning_curve_runner
 
-from ..models.v1.learning_curve_models import LearningCurveRequest, LearningCurveResponse
+from ..models.v1.tuning_models import (
+    LearningCurveRequest,
+    LearningCurveResponse,
+)
 
 
 def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
-    # Build a RunConfig exactly like your CV router does (pydantic models work fine here)
-    cfg = RunConfig(
+    """
+    Thin service wrapper for computing a learning curve.
+
+    All heavy lifting (data loading, pipeline construction, sklearn.learning_curve)
+    is handled in the business-logic layer (LearningCurveRunner); this service only
+    maps the API models to shared configs and back.
+    """
+
+    # 1) Build the shared RunConfig used across training / tuning
+    run_cfg = RunConfig(
         data=req.data,
         split=req.split,
         scale=req.scale,
@@ -25,84 +28,17 @@ def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
         model=req.model,
         eval=req.eval,
     )
-    # Decide task kind from model (temporary heuristic)
-    task = get_model_task(cfg.model)
-    eval_kind = "regression" if task == "regression" else "classification"
-    scorer = make_estimator_scorer(eval_kind, cfg.eval.metric)
 
-    # 1) Load & sanity-check (reuse strategies)
-    loader = make_data_loader(cfg.data)
-    X, y = loader.load()
-    make_sanity_checker().check(X, y)
-
-    # Decide task kind from model (classification vs regression)
-    if isinstance(cfg.model, LinearRegConfig):
-        eval_kind = "regression"
-    else:
-        eval_kind = "classification"
-
-    # 2) RNG & CV
-    rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
-    cv_seed = rngm.child_seed("lc/split") if cfg.split.shuffle else None
-
-    stratified_flag = getattr(cfg.split, "stratified", True)
-
-    if eval_kind == "classification" and stratified_flag:
-        cv = StratifiedKFold(
-            n_splits=cfg.split.n_splits,
-            shuffle=cfg.split.shuffle,
-            random_state=cv_seed,
-        )
-    else:
-        cv = KFold(
-            n_splits=cfg.split.n_splits,
-            shuffle=cfg.split.shuffle,
-            random_state=cv_seed,
-        )
-
-    # 3) Estimator pipeline (scale -> feat -> model)
-    pipe = make_pipeline(cfg, rngm, stream="lc")
-
-    # 4) Train sizes
-    if req.train_sizes is not None:
-        train_sizes = np.array(req.train_sizes)
-    else:
-        train_sizes = np.linspace(0.1, 1.0, req.n_steps)
-
-    # 5) sklearn.learning_curve
-
-    sizes_abs, train_scores, val_scores = learning_curve(
-        estimator=pipe,
-        X=X,
-        y=y,
-        train_sizes=train_sizes,
-        cv=cv,
-        scoring=scorer,
+    # 2) Build the tuning-specific config
+    lc_cfg = LearningCurveConfig(
+        train_sizes=req.train_sizes,
+        n_steps=req.n_steps,
         n_jobs=req.n_jobs,
-        shuffle=False,        # we already handle shuffling in the CV splitter
-        return_times=False,
     )
 
-    # 6) Aggregate
-    train_mean = np.mean(train_scores, axis=1).tolist()
-    train_std  = np.std(train_scores, axis=1).tolist()
-    val_mean   = np.mean(val_scores, axis=1).tolist()
-    val_std    = np.std(val_scores, axis=1).tolist()
+    # 3) Delegate to the tuning strategy
+    runner = make_learning_curve_runner(run_cfg, lc_cfg)
+    result_dict = runner.run()
 
-    def _sanitize_floats(lst):
-        out = []
-        for v in lst:
-            try:
-                fv = float(v)
-                out.append(fv if math.isfinite(fv) else None)
-            except Exception:
-                out.append(None)
-        return out
-
-    return LearningCurveResponse(
-        train_sizes=sizes_abs.tolist(),
-        train_scores_mean=_sanitize_floats(train_mean),
-        train_scores_std=_sanitize_floats(train_std),
-        val_scores_mean=_sanitize_floats(val_mean),
-        val_scores_std=_sanitize_floats(val_std),
-    )
+    # 4) Adapt to API response model
+    return LearningCurveResponse(**result_dict)

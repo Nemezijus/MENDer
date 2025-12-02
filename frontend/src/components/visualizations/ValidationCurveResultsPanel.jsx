@@ -1,57 +1,79 @@
 import { useMemo } from 'react';
-import { Stack, Text, Card, useMantineTheme } from '@mantine/core';
-import { useResultsStore } from '../../state/useResultsStore.js';
+import { Card, Stack, Text, useMantineTheme } from '@mantine/core';
 import { useSettingsStore } from '../../state/useSettingsStore';
-import LearningCurveResults from './LearningCurveResults.jsx';
-import LearningCurveAnalyticsResults from './LearningCurveAnalyticsResults.jsx';
+import ValidationCurveResults from './ValidationCurveResults.jsx';
+import ValidationCurveAnalyticsResults from './ValidationCurveAnalyticsResults.jsx';
 
-export default function LearningCurveResultsPanel() {
+export default function ValidationCurveResultsPanel({
+  result,
+  nSplits,
+  withinPct = 0.99,
+}) {
   const theme = useMantineTheme();
   const isDark = theme.colorScheme === 'dark';
   const textColor = isDark ? theme.colors.gray[2] : theme.black;
   const gridColor = isDark ? theme.colors.dark[4] : '#e0e0e0';
   const axisColor = isDark ? theme.colors.dark[2] : '#222';
 
-  const learningCurveResult = useResultsStore((s) => s.learningCurveResult);
-  const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
-  const learningCurveWithinPct = useResultsStore((s) => s.learningCurveWithinPct);
-
   const metricFromSettings = useSettingsStore((s) => s.metric);
   const metricLabel =
-    (learningCurveResult && learningCurveResult.metric_used) ||
-    metricFromSettings ||
-    'Accuracy';
+    (result && result.metric_used) || metricFromSettings || 'Metric';
 
   const analytics = useMemo(() => {
-    if (!learningCurveResult) return null;
-    const xs = learningCurveResult.train_sizes;
-    const trainMean = learningCurveResult.train_scores_mean;
-    const trainStd  = learningCurveResult.train_scores_std;
-    const valMean   = learningCurveResult.val_scores_mean;
-    const valStd    = learningCurveResult.val_scores_std;
+    if (!result) return null;
 
-    const n = Math.max(1, Number(learningCurveNSplits));
-    const trainSEM = trainStd.map((s) => s / Math.sqrt(n));
-    const valSEM   = valStd.map((s) => s / Math.sqrt(n));
+    const xs = result.param_range || [];
+    const trainMean = result.train_scores_mean || [];
+    const trainStd = result.train_scores_std || [];
+    const valMean = result.val_scores_mean || [];
+    const valStd = result.val_scores_std || [];
 
-    let bestIdx = 0;
-    for (let i = 1; i < valMean.length; i++) {
-      if (valMean[i] > valMean[bestIdx]) bestIdx = i;
+    if (!valMean.length) return null;
+
+    const n = Math.max(1, Number(nSplits || 1));
+    const trainSEM = trainStd.map((s) =>
+      s == null ? 0 : s / Math.sqrt(n)
+    );
+    const valSEM = valStd.map((s) =>
+      s == null ? 0 : s / Math.sqrt(n)
+    );
+
+    // Find best validation index among non-null / non-NaN values
+    let bestIdx = -1;
+    for (let i = 0; i < valMean.length; i++) {
+      const v = valMean[i];
+      if (v == null || Number.isNaN(v)) continue;
+      if (bestIdx === -1 || v > valMean[bestIdx]) {
+        bestIdx = i;
+      }
     }
+
+    // Fallback: if we never found a "best", but we have values, use index 0
+    if (bestIdx === -1) {
+      if (valMean.length === 0) return null;
+      bestIdx = 0;
+    }
+
     const best = {
-      size: xs[bestIdx],
+      value: xs[bestIdx],
       val: valMean[bestIdx],
       train: trainMean[bestIdx],
       idx: bestIdx,
     };
 
-    const cutoff = learningCurveWithinPct * best.val;
+    const cutoff = withinPct * best.val;
     let minimalIdx = bestIdx;
     for (let i = 0; i < valMean.length; i++) {
-      if (valMean[i] >= cutoff) { minimalIdx = i; break; }
+      const v = valMean[i];
+      if (v == null || Number.isNaN(v)) continue;
+      if (v >= cutoff) {
+        minimalIdx = i;
+        break;
+      }
     }
+
     const minimal = {
-      size: xs[minimalIdx],
+      value: xs[minimalIdx],
       val: valMean[minimalIdx],
       train: trainMean[minimalIdx],
       idx: minimalIdx,
@@ -59,15 +81,21 @@ export default function LearningCurveResultsPanel() {
     };
 
     return { xs, trainMean, valMean, trainSEM, valSEM, best, minimal };
-  }, [learningCurveResult, learningCurveNSplits, learningCurveWithinPct]);
+  }, [result, nSplits, withinPct]);
 
   const plotTraces = useMemo(() => {
     if (!analytics) return [];
 
     const { xs, trainMean, valMean, trainSEM, valSEM, minimal } = analytics;
 
-    const lower = (arr, sem) => arr.map((v, i) => v - sem[i]);
-    const upper = (arr, sem) => arr.map((v, i) => v + sem[i]);
+    const lower = (arr, sem) =>
+      arr.map((v, i) =>
+        v == null || sem[i] == null ? null : v - sem[i]
+      );
+    const upper = (arr, sem) =>
+      arr.map((v, i) =>
+        v == null || sem[i] == null ? null : v + sem[i]
+      );
 
     const trainLower = {
       x: xs,
@@ -96,7 +124,8 @@ export default function LearningCurveResultsPanel() {
       name: 'Train (mean)',
       type: 'scatter',
       mode: 'lines+markers',
-      hovertemplate: 'Train size: %{x}<br>Train acc: %{y:.3f}<extra></extra>',
+      hovertemplate:
+        'Param: %{x}<br>Train ' + metricLabel + ': %{y:.3f}<extra></extra>',
     };
 
     const valLower = {
@@ -126,45 +155,56 @@ export default function LearningCurveResultsPanel() {
       name: 'Validation (mean)',
       type: 'scatter',
       mode: 'lines+markers',
-      hovertemplate: 'Train size: %{x}<br>Val acc: %{y:.3f}<extra></extra>',
+      hovertemplate:
+        'Param: %{x}<br>Val ' + metricLabel + ': %{y:.3f}<extra></extra>',
     };
 
     const vLine = {
-      x: [minimal.size, minimal.size],
+      x: [minimal.value, minimal.value],
       y: [0, 1],
-      name: 'Recommended size',
+      name: 'Recommended value',
       mode: 'lines',
       line: { dash: 'dash' },
       hoverinfo: 'skip',
       showlegend: true,
     };
 
-    return [trainLower, trainUpper, trainLine, valLower, valUpper, valLine, vLine];
+    return [
+      trainLower,
+      trainUpper,
+      trainLine,
+      valLower,
+      valUpper,
+      valLine,
+      vLine,
+    ];
   }, [analytics, metricLabel]);
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
       <Stack gap="sm">
-        <Text fw={500}>Learning Curve Results</Text>
+        <Text fw={500}>Validation Curve Results</Text>
 
-        {!learningCurveResult && (
+        {!result && (
           <Text size="sm" c="dimmed">
-            Compute a learning curve to see results here.
+            Compute a validation curve to see results here.
           </Text>
         )}
 
-        {learningCurveResult && (
+        {result && analytics && (
           <>
-            <LearningCurveResults
+            <ValidationCurveResults
               plotTraces={plotTraces}
               textColor={textColor}
               gridColor={gridColor}
               axisColor={axisColor}
               metricLabel={metricLabel}
+              paramName={result.param_name}
             />
-            <LearningCurveAnalyticsResults
+            <ValidationCurveAnalyticsResults
               analytics={analytics}
-              withinPct={learningCurveWithinPct}
+              withinPct={withinPct}
+              metricLabel={metricLabel}
             />
           </>
         )}
@@ -172,4 +212,3 @@ export default function LearningCurveResultsPanel() {
     </Card>
   );
 }
-

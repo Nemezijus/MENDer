@@ -1,4 +1,3 @@
-# utils/strategies/interfaces.py
 from __future__ import annotations
 from typing import Protocol, Tuple, Any, Optional, Literal, Sequence, Iterator, Union
 
@@ -117,4 +116,13 @@ class BaselineRunner(Protocol):
         y: np.ndarray,
     ) -> np.ndarray:
         """Return an array of baseline (e.g., shuffle) scores."""
+        ...
+
+class TuningStrategy(Protocol):
+    """
+    Generic 'tuning' strategy: learning curves, validation curves, searches, etc.
+    It is responsible for loading data (via factories) and returning a structured
+    result for the backend/service to serialize.
+    """
+    def run(self) -> Any:
         ...

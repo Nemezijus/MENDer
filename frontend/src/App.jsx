@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Container, Box, Stack, Alert, Text, Title } from '@mantine/core';
+import { Container, Box, Stack, Alert, Text, Title, Tabs } from '@mantine/core';
 
 import SidebarNav from './components/SidebarNav.jsx';
 
@@ -13,8 +13,10 @@ import ApplyModelCard from './components/ApplyModelCard.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import ModelLoadCard from './components/ModelLoadCard.jsx';
 import ProductionDataUploadCard from './components/ProductionDataUploadCard.jsx';
+import GridSearchPanel from './components/GridSearchPanel.jsx';
 
 import { useDataStore } from './state/useDataStore.js';
+import ValidationCurvePanel from './components/ValidationCurvePanel.jsx';
 
 const COLUMN_GAP = 'var(--mantine-spacing-lg)';
 
@@ -90,12 +92,33 @@ export default function App() {
           </Stack>
         );
 
-      case 'tuning':
+      case 'learning-curve':
         return (
           <Stack gap="md">
-            <Title order={3}>Tune and diagnose</Title>
+            <Title order={3}>Find optimal data split</Title>
             <DataGuard>
               <LearningCurvePanel />
+              <LearningCurveResultsPanel />
+            </DataGuard>
+          </Stack>
+        );
+
+      case 'validation-curve':
+        return (
+          <Stack gap="md">
+            <Title order={3}>Find the best parameter value</Title>
+            <DataGuard>
+              <ValidationCurvePanel />
+            </DataGuard>
+          </Stack>
+        );
+
+      case 'grid-search':
+        return (
+          <Stack gap="md">
+            <Title order={3}>Grid search</Title>
+            <DataGuard>
+              <GridSearchPanel />
             </DataGuard>
           </Stack>
         );
@@ -105,10 +128,7 @@ export default function App() {
           <Stack gap="md">
             <Title order={3}>View results</Title>
             <DataGuard>
-              <Stack gap="lg">
                 <ModelTrainingResultsPanel />
-                <LearningCurveResultsPanel />
-              </Stack>
             </DataGuard>
           </Stack>
         );
