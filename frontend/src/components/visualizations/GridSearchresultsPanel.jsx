@@ -1,7 +1,7 @@
 // frontend/src/components/visualizations/GridSearchResultsPanel.jsx
 import { useMemo } from 'react';
 import { Card, Stack, Text, useMantineTheme } from '@mantine/core';
-import { useSettingsStore } from '../../state/useSettingsStore';
+import { useSettingsStore } from '../../state/useSettingsStore.js';
 import GridSearchResults from './GridSearchResults.jsx';
 import GridSearchAnalyticsResults from './GridSearchAnalyticsResults.jsx';
 
