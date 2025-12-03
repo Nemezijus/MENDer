@@ -300,7 +300,7 @@ export default function GridSearchPanel() {
         </Stack>
       </Card>
 
-      {gridResult && <GridSearchResultsPanel result={gridResult} />}
+      <GridSearchResultsPanel result={gridResult} />
     </Stack>
   );
 }

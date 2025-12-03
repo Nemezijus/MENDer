@@ -260,12 +260,12 @@ export default function ValidationCurvePanel() {
         </Stack>
       </Card>
 
-      {validationResult && (
+      
         <ValidationCurveResultsPanel
           result={validationResult}
           nSplits={nSplits}
         />
-      )}
+      
     </Stack>
   );
 }

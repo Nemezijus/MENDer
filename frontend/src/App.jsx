@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import { useState } from 'react';
 import { Container, Box, Stack, Alert, Text, Title } from '@mantine/core';
 
@@ -9,7 +8,6 @@ import RunModelPanel from './components/RunModelPanel.jsx';
 import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 import ModelCard from './components/ModelCard.jsx';
 import ModelTrainingResultsPanel from './components/ModelTrainingResultsPanel.jsx';
-import LearningCurveResultsPanel from './components/visualizations/LearningCurveResultsPanel.jsx';
 import ApplyModelCard from './components/ApplyModelCard.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import ModelLoadCard from './components/ModelLoadCard.jsx';
@@ -99,7 +97,6 @@ export default function App() {
             <Title order={3}>Find optimal data split</Title>
             <DataGuard>
               <LearningCurvePanel />
-              <LearningCurveResultsPanel />
             </DataGuard>
           </Stack>
         );

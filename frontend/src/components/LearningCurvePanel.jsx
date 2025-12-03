@@ -24,6 +24,7 @@ import ModelSelectionCard from './ModelSelectionCard.jsx';
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { requestLearningCurve } from '../api/tuning';
+import LearningCurveResultsPanel from './visualizations/LearningCurveResultsPanel.jsx';
 
 export default function LearningCurvePanel() {
   const xPath = useDataStore((s) => s.xPath);
@@ -281,11 +282,14 @@ export default function LearningCurvePanel() {
 
           {loading && (
             <Text size="xs" c="dimmed">
-              Results will appear in the right-hand “Learning Curve Results” panel.
+              Results will appear below once the learning curve computation finishes.
             </Text>
           )}
         </Stack>
       </Card>
+
+      {/* Results are handled inside this panel now, same style as other tuning panels */}
+      <LearningCurveResultsPanel />
     </Stack>
   );
 }

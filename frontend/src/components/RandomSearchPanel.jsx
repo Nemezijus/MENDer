@@ -313,7 +313,7 @@ export default function RandomSearchPanel() {
         </Stack>
       </Card>
 
-      {randomResult && <RandomSearchResultsPanel result={randomResult} />}
+      <RandomSearchResultsPanel result={randomResult} />
     </Stack>
   );
 }
