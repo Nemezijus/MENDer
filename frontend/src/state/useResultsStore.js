@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
 export const useResultsStore = create((set) => ({
+  // --- Result view selection (for ResultsPanel) ---
+  activeResultKind: null,               // 'train' | 'regression' | 'cluster' | ...
+  setActiveResultKind: (kind) => set({ activeResultKind: kind }),
   // --- Train a model -------------------
   trainResult: null,
   setTrainResult: (result) => set({ trainResult: result }),

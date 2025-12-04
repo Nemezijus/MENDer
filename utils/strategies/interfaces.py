@@ -100,14 +100,6 @@ class Evaluator(Protocol):
         """
         ...
 
-    def quick_report(
-        self,
-        y_true: np.ndarray,
-        y_pred: np.ndarray,
-    ) -> dict:
-        """Optional convenience: common classification scores (accuracy, f1, confusion, ...)."""
-        ...
-
 class BaselineRunner(Protocol):
     def run(
         self,
@@ -125,4 +117,23 @@ class TuningStrategy(Protocol):
     result for the backend/service to serialize.
     """
     def run(self) -> Any:
+        ...
+
+class MetricsComputer(Protocol):
+    """
+    Compute structured evaluation metrics (confusion-matrix-based metrics,
+    ROC curves, etc.) from true labels and predictions.
+
+    Implementations may assume this is only called for classification problems
+    when kind="classification"; for regression, they can return empty metrics.
+    """
+    def compute(
+        self,
+        y_true: np.ndarray,
+        y_pred: np.ndarray,
+        *,
+        y_proba: Optional[np.ndarray] = None,
+        y_score: Optional[np.ndarray] = None,
+        labels: Optional[Sequence] = None,
+    ) -> Any:
         ...

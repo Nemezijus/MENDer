@@ -7,7 +7,7 @@ import DataSidebar from './components/DataSidebar.jsx';
 import RunModelPanel from './components/RunModelPanel.jsx';
 import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 import ModelCard from './components/ModelCard.jsx';
-import ModelTrainingResultsPanel from './components/ModelTrainingResultsPanel.jsx';
+import ResultsPanel from './components/ResultsPanel.jsx';
 import ApplyModelCard from './components/ApplyModelCard.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
 import ModelLoadCard from './components/ModelLoadCard.jsx';
@@ -136,7 +136,7 @@ export default function App() {
           <Stack gap="md">
             <Title order={3}>View results</Title>
             <DataGuard>
-              <ModelTrainingResultsPanel />
+              <ResultsPanel />
             </DataGuard>
           </Stack>
         );

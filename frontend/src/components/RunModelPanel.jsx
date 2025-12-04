@@ -96,6 +96,7 @@ export default function RunModelPanel() {
   const trainResult = useResultsStore((s) => s.trainResult);
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
   const clearTrainResult = useResultsStore((s) => s.clearTrainResult);
+  const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
 
   // Model artifact store (Zustand)
   const artifact = useModelArtifactStore((s) => s.artifact);
@@ -265,6 +266,7 @@ export default function RunModelPanel() {
 
       const data = await runTrainRequest(payload);
       setTrainResult(data);
+      setActiveResultKind('train');
       if (data?.artifact) setArtifact(data.artifact);
     } catch (e) {
       setErr(toErrorText(e));

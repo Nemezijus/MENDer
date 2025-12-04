@@ -1,4 +1,3 @@
-# utils/strategies/evaluators.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Sequence
@@ -6,7 +5,7 @@ import numpy as np
 
 from shared_schemas.eval_configs import EvalModel
 from utils.strategies.interfaces import Evaluator
-from utils.postprocessing.scoring import score as score_fn, classification_report_quick
+from utils.postprocessing.scoring import score as score_fn
 
 @dataclass
 class SklearnEvaluator(Evaluator):
@@ -36,11 +35,3 @@ class SklearnEvaluator(Evaluator):
             y_score=y_score,
             labels=labels,
         )
-
-    def quick_report(
-        self,
-        y_true: np.ndarray,
-        y_pred: np.ndarray,
-    ) -> dict:
-        # classification convenience; safe to call only when kind == "classification"
-        return classification_report_quick(y_true, y_pred)

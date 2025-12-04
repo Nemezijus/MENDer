@@ -11,6 +11,7 @@ from sklearn.metrics import (
     recall_score,
     log_loss,
     roc_auc_score,
+    roc_curve,
     average_precision_score,
     confusion_matrix,
     r2_score,
@@ -27,9 +28,13 @@ def _as_1d(a: np.ndarray) -> np.ndarray:
     a = np.asarray(a)
     return a.ravel()
 
+
 def _check_len(y_true: np.ndarray, y_pred_like: np.ndarray, name: str):
     if y_true.shape[0] != y_pred_like.shape[0]:
-        raise ValueError(f"Length mismatch: y_true({y_true.shape[0]}) vs {name}({y_pred_like.shape[0]}).")
+        raise ValueError(
+            f"Length mismatch: y_true({y_true.shape[0]}) vs {name}({y_pred_like.shape[0]})."
+        )
+
 
 def _infer_kind(y_true: np.ndarray) -> Literal["classification", "regression"]:
     """
@@ -44,7 +49,9 @@ def _infer_kind(y_true: np.ndarray) -> Literal["classification", "regression"]:
         return "classification"
     return "regression"
 
+
 PROBA_METRICS = {"log_loss", "roc_auc_ovr", "roc_auc_ovo", "avg_precision_macro"}
+
 
 def make_estimator_scorer(kind: str, metric: str):
     """
@@ -103,6 +110,7 @@ def make_estimator_scorer(kind: str, metric: str):
 
     return _scorer
 
+
 # ------------------------- Classification -------------------------
 
 _CLASS_METRICS = {
@@ -112,14 +120,19 @@ _CLASS_METRICS = {
     "f1_macro": lambda y, yhat, **kw: f1_score(y, yhat, average="macro"),
     "f1_micro": lambda y, yhat, **kw: f1_score(y, yhat, average="micro"),
     "f1_weighted": lambda y, yhat, **kw: f1_score(y, yhat, average="weighted"),
-    "precision_macro": lambda y, yhat, **kw: precision_score(y, yhat, average="macro", zero_division=0),
-    "recall_macro": lambda y, yhat, **kw: recall_score(y, yhat, average="macro", zero_division=0),
+    "precision_macro": lambda y, yhat, **kw: precision_score(
+        y, yhat, average="macro", zero_division=0
+    ),
+    "recall_macro": lambda y, yhat, **kw: recall_score(
+        y, yhat, average="macro", zero_division=0
+    ),
     # probability / score-based metrics (need y_proba or y_score)
     "log_loss": "log_loss",                # needs y_proba
     "roc_auc_ovr": "roc_auc_ovr",          # needs y_score or y_proba
     "roc_auc_ovo": "roc_auc_ovo",          # needs y_score or y_proba
     "avg_precision_macro": "avg_precision_macro",  # needs y_score or y_proba (one-vs-rest)
 }
+
 
 def _classification_score(
     y_true: np.ndarray,
@@ -137,7 +150,9 @@ def _classification_score(
     y_true = _as_1d(y_true)
 
     if metric not in _CLASS_METRICS:
-        raise ValueError(f"Unknown classification metric '{metric}'. Supported: {list(_CLASS_METRICS)}")
+        raise ValueError(
+            f"Unknown classification metric '{metric}'. Supported: {list(_CLASS_METRICS)}"
+        )
 
     fn = _CLASS_METRICS[metric]
 
@@ -169,7 +184,15 @@ def _classification_score(
         return float(log_loss(y_true, Z, labels=labels))
     elif metric in ("roc_auc_ovr", "roc_auc_ovo"):
         multi_class = "ovr" if metric.endswith("ovr") else "ovo"
-        return float(roc_auc_score(y_true, Z, multi_class=multi_class, labels=labels, average="macro"))
+        return float(
+            roc_auc_score(
+                y_true,
+                Z,
+                multi_class=multi_class,
+                labels=labels,
+                average="macro",
+            )
+        )
     elif metric == "avg_precision_macro":
         # One-vs-rest average precision (macro)
         return float(average_precision_score(y_true, Z, average="macro"))
@@ -188,6 +211,7 @@ _REG_METRICS = {
     "mape": lambda y, yhat, **kw: mean_absolute_percentage_error(y, yhat),
 }
 
+
 def _regression_score(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -199,7 +223,9 @@ def _regression_score(
     _check_len(y_true, y_pred, "y_pred")
 
     if metric not in _REG_METRICS:
-        raise ValueError(f"Unknown regression metric '{metric}'. Supported: {list(_REG_METRICS)}")
+        raise ValueError(
+            f"Unknown regression metric '{metric}'. Supported: {list(_REG_METRICS)}"
+        )
     return float(_REG_METRICS[metric](y_true, y_pred))
 
 
@@ -217,52 +243,6 @@ def score(
 ) -> float:
     """
     Universal scorer for classification and regression.
-
-    Parameters
-    ----------
-    y_true : array-like, shape (n_samples,)
-        Ground truth targets.
-    y_pred : array-like, optional
-        Predicted hard outputs. Required for hard-label metrics and all regression metrics.
-    kind : {'auto','classification','regression'}, default='auto'
-        Problem type. If 'auto', we infer from `y_true` (heuristic).
-    metric : str, default='accuracy'
-        Classification: 'accuracy','balanced_accuracy','f1_macro','f1_micro','f1_weighted',
-                        'precision_macro','recall_macro','log_loss','roc_auc_ovr','roc_auc_ovo',
-                        'avg_precision_macro'
-        Regression: 'r2','explained_variance','mse','rmse','mae','mape'
-    y_proba : array-like, optional
-        Class probabilities (n_samples, n_classes) or (n_samples,) for positive class (binary).
-    y_score : array-like, optional
-        Decision scores/margins. Used if y_proba is not provided.
-    labels : sequence, optional
-        Label ordering for some metrics (e.g., log_loss, roc_auc in multiclass).
-
-    Returns
-    -------
-    float
-        The requested metric value.
-
-    Notes
-    -----
-    - For classification probability-based metrics, prefer `y_proba`. If absent, `y_score` is used.
-    - For regression, `y_pred` is required.
-    - If `kind='auto'`, a simple heuristic is used; pass `kind` explicitly when in doubt.
-
-    Examples
-    --------
-    1. score_val = score(
-        y_test, y_pred,
-        kind="classification",
-        metric="accuracy",   # or 'balanced_accuracy', 'f1_macro', ...
-    )
-    
-    2. y_proba = model.predict_proba(X_test)  # shape (n_samples, n_classes)
-    ll = score(y_test, kind="classification", metric="log_loss", y_proba=y_proba)
-    auc = score(y_test, kind="classification", metric="roc_auc_ovr", y_proba=y_proba)
-
-    3. r2 = score(y_test, y_pred, kind="regression", metric="r2")
-    rmse = score(y_test, y_pred, kind="regression", metric="rmse")
     """
     y_true = _as_1d(y_true)
     if kind == "auto":
@@ -285,21 +265,224 @@ def score(
         raise ValueError("kind must be one of {'auto','classification','regression'}.")
 
 
-def classification_report_quick(
+def confusion_matrix_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
+    labels: Optional[Sequence] = None,
 ) -> dict:
     """
-    Small convenience: return a dict of common classification scores.
+    Compute a structured set of confusion-matrix-based metrics.
+
+    Returns a dict with:
+    - labels: np.ndarray of class labels (in the order used for the matrix)
+    - matrix: np.ndarray of shape (n_classes, n_classes)
+    - per_class: list of dicts with TP/FP/TN/FN and derived rates per class
+    - global: dict with overall accuracy and balanced_accuracy
+    - macro_avg: macro-averaged precision/recall/f1
+    - weighted_avg: weighted-averaged precision/recall/f1
     """
-    y_true = _as_1d(y_true); y_pred = _as_1d(y_pred)
+    y_true = _as_1d(y_true)
+    y_pred = _as_1d(y_pred)
     _check_len(y_true, y_pred, "y_pred")
+
+    if labels is None:
+        labels_arr = np.unique(np.concatenate([y_true, y_pred]))
+    else:
+        labels_arr = np.asarray(labels)
+
+    cm = confusion_matrix(y_true, y_pred, labels=labels_arr)
+    total = cm.sum()
+
+    per_class = []
+    for idx, label in enumerate(labels_arr):
+        tp = int(cm[idx, idx])
+        fn = int(cm[idx, :].sum() - tp)
+        fp = int(cm[:, idx].sum() - tp)
+        tn = int(total - (tp + fp + fn))
+        support = int(cm[idx, :].sum())
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # = TPR
+        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+        tnr = tn / (tn + fp) if (tn + fp) > 0 else 0.0      # specificity
+        fnr = fn / (fn + tp) if (fn + tp) > 0 else 0.0
+
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0
+            else 0.0
+        )
+
+        per_class.append(
+            {
+                "label": label,
+                "tp": tp,
+                "fp": fp,
+                "tn": tn,
+                "fn": fn,
+                "support": support,
+                "tpr": recall,
+                "fpr": fpr,
+                "tnr": tnr,
+                "fnr": fnr,
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+            }
+        )
+
+    # Aggregate metrics using sklearn (for consistency)
+    acc = accuracy_score(y_true, y_pred)
+    bal_acc = balanced_accuracy_score(y_true, y_pred)
+
+    prec_macro = precision_score(
+        y_true, y_pred, average="macro", zero_division=0
+    )
+    rec_macro = recall_score(
+        y_true, y_pred, average="macro", zero_division=0
+    )
+    f1_macro = f1_score(
+        y_true, y_pred, average="macro", zero_division=0
+    )
+
+    prec_weighted = precision_score(
+        y_true, y_pred, average="weighted", zero_division=0
+    )
+    rec_weighted = recall_score(
+        y_true, y_pred, average="weighted", zero_division=0
+    )
+    f1_weighted = f1_score(
+        y_true, y_pred, average="weighted", zero_division=0
+    )
+
     return {
-        "accuracy": accuracy_score(y_true, y_pred),
-        "balanced_accuracy": balanced_accuracy_score(y_true, y_pred),
-        "f1_macro": f1_score(y_true, y_pred, average="macro"),
-        "f1_weighted": f1_score(y_true, y_pred, average="weighted"),
-        "precision_macro": precision_score(y_true, y_pred, average="macro", zero_division=0),
-        "recall_macro": recall_score(y_true, y_pred, average="macro", zero_division=0),
-        "confusion_matrix": confusion_matrix(y_true, y_pred),
+        "labels": labels_arr,
+        "matrix": cm,
+        "per_class": per_class,
+        "global": {
+            "accuracy": float(acc),
+            "balanced_accuracy": float(bal_acc),
+        },
+        "macro_avg": {
+            "precision": float(prec_macro),
+            "recall": float(rec_macro),
+            "f1": float(f1_macro),
+        },
+        "weighted_avg": {
+            "precision": float(prec_weighted),
+            "recall": float(rec_weighted),
+            "f1": float(f1_weighted),
+        },
+    }
+
+
+def binary_roc_curve_from_scores(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    *,
+    pos_label: Optional[float] = None,
+) -> dict:
+    """
+    Compute a ROC curve for binary classification from a 1D score/proba array.
+
+    Returns dict with pos_label, fpr, tpr, thresholds, auc.
+    """
+    y_true = _as_1d(y_true)
+    y_score = _as_1d(y_score)
+    _check_len(y_true, y_score, "y_score")
+
+    labels = np.unique(y_true)
+    if pos_label is None:
+        if labels.size != 2:
+            raise ValueError(
+                "binary_roc_curve_from_scores requires exactly two classes when "
+                f"pos_label is not given; got {labels.size} classes."
+            )
+        pos_label = labels[1]
+
+    fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=pos_label)
+    auc_val = roc_auc_score(y_true, y_score)
+
+    return {
+        "pos_label": pos_label,
+        "fpr": fpr,
+        "tpr": tpr,
+        "thresholds": thresholds,
+        "auc": float(auc_val),
+    }
+
+
+def multiclass_roc_curves_from_scores(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    labels: Optional[Sequence] = None,
+) -> dict:
+    """
+    Compute one-vs-rest ROC curves for multiclass classification from a 2D score/proba array.
+
+    Parameters
+    ----------
+    y_true : array-like, shape (n_samples,)
+        True labels.
+    y_score : array-like, shape (n_samples, n_classes)
+        Continuous scores or probabilities for each class.
+    labels : sequence, optional
+        Label ordering. If None, the sorted unique labels from y_true are used.
+
+    Returns
+    -------
+    dict with:
+        - labels: np.ndarray of class labels (order matches columns in y_score)
+        - per_class: list of dicts {label, fpr, tpr, thresholds, auc}
+        - macro_avg: dict with macro-averaged AUC across classes
+    """
+    y_true = _as_1d(y_true)
+    Y = np.asarray(y_score)
+    if Y.ndim != 2:
+        raise ValueError(
+            f"multiclass_roc_curves_from_scores expects a 2D array of scores, got shape {Y.shape}."
+        )
+    _check_len(y_true, Y, "y_score")
+
+    if labels is None:
+        labels_arr = np.unique(y_true)
+    else:
+        labels_arr = np.asarray(labels)
+
+    if Y.shape[1] != labels_arr.size:
+        raise ValueError(
+            "Mismatch between number of columns in y_score "
+            f"({Y.shape[1]}) and number of labels ({labels_arr.size})."
+        )
+
+    per_class = []
+    aucs = []
+
+    for idx, label in enumerate(labels_arr):
+        # One-vs-rest binarization for this class
+        y_true_bin = (y_true == label).astype(int)
+        scores_k = Y[:, idx]
+
+        fpr, tpr, thresholds = roc_curve(y_true_bin, scores_k, pos_label=1)
+        auc_k = roc_auc_score(y_true_bin, scores_k)
+
+        per_class.append(
+            {
+                "label": label,
+                "fpr": fpr,
+                "tpr": tpr,
+                "thresholds": thresholds,
+                "auc": float(auc_k),
+            }
+        )
+        aucs.append(auc_k)
+
+    macro_auc = float(np.mean(aucs)) if aucs else float("nan")
+
+    return {
+        "labels": labels_arr,
+        "per_class": per_class,
+        "macro_avg": {
+            "auc": macro_auc,
+        },
     }

@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.metrics import confusion_matrix
 from typing import Dict, Any
 
 from shared_schemas.run_config import RunConfig
@@ -9,6 +8,7 @@ from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter
 from utils.factories.pipeline_factory import make_pipeline
 from utils.factories.eval_factory import make_evaluator
+from utils.factories.metrics_factory import make_metrics_computer
 from utils.permutations.rng import RngManager
 from utils.factories.baseline_factory import make_baseline
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
@@ -18,6 +18,17 @@ from utils.postprocessing.scoring import PROBA_METRICS
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
 
+def _safe_float_list(arr) -> list[float]:
+    """Convert array-like to a JSON-safe list of finite floats."""
+    a = np.asarray(arr, dtype=float)
+    # Replace NaN with 0.0, +inf with 1.0, -inf with 0.0 (arbitrary but finite).
+    a = np.nan_to_num(a, nan=0.0, posinf=1.0, neginf=0.0)
+    return a.tolist()
+
+
+def _safe_float_scalar(x: float) -> float:
+    """Make a single float JSON-safe (no NaN/inf)."""
+    return float(np.nan_to_num(float(x), nan=0.0, posinf=1.0, neginf=0.0))
 
 def train(cfg: RunConfig) -> Dict[str, Any]:
     # --- Load data -----------------------------------------------------------
@@ -48,6 +59,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     task = get_model_task(cfg.model)
     eval_kind = "regression" if task == "regression" else "classification"
 
+    metrics_computer = make_metrics_computer(kind=eval_kind)
     # For regression, stratification does not make sense -> force it off defensively
     if eval_kind == "regression" and hasattr(cfg.split, "stratified"):
         cfg.split.stratified = False
@@ -59,6 +71,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 
     fold_scores = []
     y_true_all, y_pred_all = [], []
+    y_proba_all, y_score_all = [], []
     n_train_sizes, n_test_sizes = [], []
 
     for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
@@ -71,17 +84,30 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         y_proba = None
         y_score = None
 
-        if eval_kind == "classification" and metric_name in PROBA_METRICS:
+        # if eval_kind == "classification" and metric_name in PROBA_METRICS:
+        #     if hasattr(pipeline, "predict_proba"):
+        #         y_proba = pipeline.predict_proba(Xte)
+        #     elif hasattr(pipeline, "decision_function"):
+        #         y_score = pipeline.decision_function(Xte)
+        #     else:
+        #         raise ValueError(
+        #             f"Metric '{metric_name}' requires predict_proba or decision_function, "
+        #             f"but estimator {type(pipeline).__name__} has neither."
+        #         )
+
+        # For classification, we try to compute scores/probabilities once per fold.
+        if eval_kind == "classification":
             if hasattr(pipeline, "predict_proba"):
                 y_proba = pipeline.predict_proba(Xte)
             elif hasattr(pipeline, "decision_function"):
                 y_score = pipeline.decision_function(Xte)
-            else:
+
+            # If the chosen metric *needs* probabilities/scores, enforce availability
+            if metric_name in PROBA_METRICS and y_proba is None and y_score is None:
                 raise ValueError(
                     f"Metric '{metric_name}' requires predict_proba or decision_function, "
                     f"but estimator {type(pipeline).__name__} has neither."
                 )
-
         score_val = evaluator.score(
             yte,
             y_pred=y_pred,
@@ -93,6 +119,10 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         # fold_scores.append(float(evaluator.score(yte, y_pred)))
         y_true_all.append(yte)
         y_pred_all.append(y_pred)
+        if y_proba is not None:
+            y_proba_all.append(y_proba)
+        if y_score is not None:
+            y_score_all.append(y_score)
         n_train_sizes.append(int(Xtr.shape[0]))
         n_test_sizes.append(int(Xte.shape[0]))
 
@@ -103,23 +133,118 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 
     effective_pipeline = refit_pipeline if refit_pipeline is not None else last_pipeline
 
-    # --- Aggregate scores and confusion matrix ------------------------------
+    # --- Aggregate scores and metrics (confusion + ROC) ---------------------
     if not fold_scores:
         fold_scores = [float("nan")]
 
     mean_score = float(np.mean(fold_scores))
     std_score = float(np.std(fold_scores))  # parity with CV
 
-    y_true_all = np.concatenate(y_true_all) if y_true_all else np.array([])
-    y_pred_all = np.concatenate(y_pred_all) if y_pred_all else np.array([])
+    # Concatenate per-fold arrays
+    y_true_all_arr = np.concatenate(y_true_all) if y_true_all else np.array([])
+    y_pred_all_arr = np.concatenate(y_pred_all) if y_pred_all else np.array([])
 
-    # Confusion matrix only makes sense for classification
-    if eval_kind == "classification" and y_true_all.size and y_pred_all.size:
-        labels_arr = np.unique(np.concatenate([y_true_all, y_pred_all]))
-        cm_mat = confusion_matrix(y_true_all, y_pred_all, labels=labels_arr).astype(int).tolist()
-        labels_out = [str(l) if not isinstance(l, (int, float)) else l for l in labels_arr]
+    y_proba_all_arr = np.concatenate(y_proba_all, axis=0) if y_proba_all else None
+    y_score_all_arr = np.concatenate(y_score_all, axis=0) if y_score_all else None
+
+    # Compute metrics via strategy (classification only)
+    if eval_kind == "classification" and y_true_all_arr.size and y_pred_all_arr.size:
+        metrics_result = metrics_computer.compute(
+            y_true_all_arr,
+            y_pred_all_arr,
+            y_proba=y_proba_all_arr,
+            y_score=y_score_all_arr,
+        )
+        confusion_payload = metrics_result.get("confusion")
+        roc_raw = metrics_result.get("roc")
     else:
-        cm_mat, labels_out = [], []
+        confusion_payload = None
+        roc_raw = None
+
+    # Normalize confusion payload into JSON-friendly pieces
+    if confusion_payload is not None:
+        labels_arr = confusion_payload["labels"]
+        matrix_arr = confusion_payload["matrix"]
+
+        # Convert labels to proper JSON-friendly types
+        if hasattr(labels_arr, "tolist"):
+            labels_base = labels_arr.tolist()
+        else:
+            labels_base = list(labels_arr)
+
+        labels_out = [
+            str(l) if not isinstance(l, (int, float)) else l for l in labels_base
+        ]
+
+        if hasattr(matrix_arr, "tolist"):
+            cm_mat = matrix_arr.tolist()
+        else:
+            cm_mat = matrix_arr
+
+        per_class = confusion_payload.get("per_class") or []
+        overall = confusion_payload.get("global") or None
+        confusion_macro_avg = confusion_payload.get("macro_avg") or None
+        weighted_avg = confusion_payload.get("weighted_avg") or None
+    else:
+        labels_out = []
+        cm_mat = []
+        per_class = []
+        overall = None
+        confusion_macro_avg = None
+        weighted_avg = None
+
+    # Normalize ROC payload into RocMetrics shape
+    roc_payload = None
+    if roc_raw is not None:
+        if "pos_label" in roc_raw:
+            # Binary ROC
+            auc_val = _safe_float_scalar(roc_raw["auc"])
+            curve = {
+                "label": roc_raw["pos_label"],
+                "fpr": _safe_float_list(roc_raw["fpr"]),
+                "tpr": _safe_float_list(roc_raw["tpr"]),
+                "thresholds": _safe_float_list(roc_raw["thresholds"]),
+                "auc": auc_val,
+            }
+            roc_payload = {
+                "kind": "binary",
+                "curves": [curve],
+                "labels": None,
+                "macro_auc": auc_val,
+            }
+        elif "per_class" in roc_raw:
+            # Multiclass one-vs-rest ROC
+            labels_arr = roc_raw.get("labels")
+            if hasattr(labels_arr, "tolist"):
+                labels_list = labels_arr.tolist()
+            else:
+                labels_list = list(labels_arr) if labels_arr is not None else None
+
+            curves = []
+            for entry in roc_raw["per_class"]:
+                curves.append(
+                    {
+                        "label": entry["label"],
+                        "fpr": _safe_float_list(entry["fpr"]),
+                        "tpr": _safe_float_list(entry["tpr"]),
+                        "thresholds": _safe_float_list(entry["thresholds"]),
+                        "auc": _safe_float_scalar(entry["auc"]),
+                    }
+                )
+
+            roc_macro_avg = roc_raw.get("macro_avg") or {}
+            macro_auc = (
+                _safe_float_scalar(roc_macro_avg["auc"])
+                if "auc" in roc_macro_avg
+                else None
+            )
+
+            roc_payload = {
+                "kind": "multiclass",
+                "curves": curves,
+                "labels": labels_list,
+                "macro_auc": macro_auc,
+            }
 
     n_train_avg = int(np.round(np.mean(n_train_sizes))) if n_train_sizes else 0
     n_test_avg = int(np.round(np.mean(n_test_sizes))) if n_test_sizes else 0
@@ -145,7 +270,12 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         "confusion": {
             "labels": labels_out,
             "matrix": cm_mat,
+            "per_class": per_class,
+            "overall": overall,
+            "macro_avg": confusion_macro_avg,
+            "weighted_avg": weighted_avg,
         },
+        "roc": roc_payload,
         "n_train": n_train_out,
         "n_test": n_test_out,
         "notes": [],
