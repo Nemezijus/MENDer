@@ -21,6 +21,7 @@ class PerClassConfusionMetrics(BaseModel):
     precision: float
     recall: float
     f1: float
+    mcc: float
 
 
 class ConfusionOverallMetrics(BaseModel):
@@ -32,6 +33,7 @@ class ConfusionAveragedMetrics(BaseModel):
     precision: float
     recall: float
     f1: float
+    mcc: float
 
 
 class ConfusionMatrix(BaseModel):

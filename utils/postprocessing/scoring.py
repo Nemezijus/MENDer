@@ -19,6 +19,7 @@ from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
     mean_absolute_percentage_error,
+    matthews_corrcoef,  # <-- NEW
 )
 
 
@@ -276,10 +277,10 @@ def confusion_matrix_metrics(
     Returns a dict with:
     - labels: np.ndarray of class labels (in the order used for the matrix)
     - matrix: np.ndarray of shape (n_classes, n_classes)
-    - per_class: list of dicts with TP/FP/TN/FN and derived rates per class
+    - per_class: list of dicts with TP/FP/TN/FN and derived rates per class (incl. MCC)
     - global: dict with overall accuracy and balanced_accuracy
-    - macro_avg: macro-averaged precision/recall/f1
-    - weighted_avg: weighted-averaged precision/recall/f1
+    - macro_avg: macro-averaged precision/recall/f1/mcc
+    - weighted_avg: weighted-averaged precision/recall/f1/mcc
     """
     y_true = _as_1d(y_true)
     y_pred = _as_1d(y_pred)
@@ -294,12 +295,16 @@ def confusion_matrix_metrics(
     total = cm.sum()
 
     per_class = []
+    per_class_mcc = []
+    supports = []
+
     for idx, label in enumerate(labels_arr):
         tp = int(cm[idx, idx])
         fn = int(cm[idx, :].sum() - tp)
         fp = int(cm[:, idx].sum() - tp)
         tn = int(total - (tp + fp + fn))
         support = int(cm[idx, :].sum())
+        supports.append(support)
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # = TPR
@@ -312,6 +317,15 @@ def confusion_matrix_metrics(
             if (precision + recall) > 0
             else 0.0
         )
+
+        # Per-class MCC via sklearn (one-vs-rest)
+        y_true_bin = (y_true == label).astype(int)
+        y_pred_bin = (y_pred == label).astype(int)
+        mcc_val = matthews_corrcoef(y_true_bin, y_pred_bin)
+        if not np.isfinite(mcc_val):
+            mcc_val = 0.0
+        mcc_val = float(mcc_val)
+        per_class_mcc.append(mcc_val)
 
         per_class.append(
             {
@@ -328,8 +342,12 @@ def confusion_matrix_metrics(
                 "precision": precision,
                 "recall": recall,
                 "f1": f1,
+                "mcc": mcc_val,
             }
         )
+
+    supports_arr = np.asarray(supports, dtype=float)
+    per_class_mcc_arr = np.asarray(per_class_mcc, dtype=float)
 
     # Aggregate metrics using sklearn (for consistency)
     acc = accuracy_score(y_true, y_pred)
@@ -355,6 +373,13 @@ def confusion_matrix_metrics(
         y_true, y_pred, average="weighted", zero_division=0
     )
 
+    # Macro / weighted MCC from per-class MCC
+    macro_mcc = float(per_class_mcc_arr.mean()) if per_class_mcc_arr.size > 0 else 0.0
+    if supports_arr.sum() > 0:
+        weighted_mcc = float(np.average(per_class_mcc_arr, weights=supports_arr))
+    else:
+        weighted_mcc = macro_mcc
+
     return {
         "labels": labels_arr,
         "matrix": cm,
@@ -367,11 +392,13 @@ def confusion_matrix_metrics(
             "precision": float(prec_macro),
             "recall": float(rec_macro),
             "f1": float(f1_macro),
+            "mcc": float(macro_mcc),
         },
         "weighted_avg": {
             "precision": float(prec_weighted),
             "recall": float(rec_weighted),
             "f1": float(f1_weighted),
+            "mcc": float(weighted_mcc),
         },
     }
 

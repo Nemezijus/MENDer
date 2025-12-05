@@ -30,11 +30,11 @@ export default function ClassificationResultsPanel({ trainResult }) {
 
         {hasConfusion && (
           <>
+            <ConfusionMatrixResults confusion={confusion} />
             <ClassificationMetricResults
               confusion={confusion}
               metricName={metricName}
             />
-            <ConfusionMatrixResults confusion={confusion} />
           </>
         )}
 
