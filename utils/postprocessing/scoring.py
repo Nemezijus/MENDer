@@ -1,4 +1,3 @@
-# utils/postprocessing/scoring.py
 from __future__ import annotations
 
 from typing import Literal, Optional, Sequence
@@ -19,7 +18,7 @@ from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
     mean_absolute_percentage_error,
-    matthews_corrcoef,  # <-- NEW
+    matthews_corrcoef,
 )
 
 
@@ -427,7 +426,13 @@ def binary_roc_curve_from_scores(
             )
         pos_label = labels[1]
 
-    fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=pos_label)
+    # Keep all points for smoother-looking curves
+    fpr, tpr, thresholds = roc_curve(
+        y_true,
+        y_score,
+        pos_label=pos_label,
+        drop_intermediate=False,
+    )
     auc_val = roc_auc_score(y_true, y_score)
 
     return {
@@ -461,7 +466,11 @@ def multiclass_roc_curves_from_scores(
     dict with:
         - labels: np.ndarray of class labels (order matches columns in y_score)
         - per_class: list of dicts {label, fpr, tpr, thresholds, auc}
-        - macro_avg: dict with macro-averaged AUC across classes
+        - macro_avg: dict with:
+            - auc: macro-averaged AUC across classes  (unchanged, for compatibility)
+            - fpr, tpr, thresholds (ROC curve for macro-average)
+        - micro_avg: dict with:
+            - fpr, tpr, thresholds, auc for micro-averaged ROC
     """
     y_true = _as_1d(y_true)
     Y = np.asarray(y_score)
@@ -482,34 +491,85 @@ def multiclass_roc_curves_from_scores(
             f"({Y.shape[1]}) and number of labels ({labels_arr.size})."
         )
 
-    per_class = []
-    aucs = []
+    per_class: list[dict] = []
+    aucs: list[float] = []
 
+    # For micro-average, build a one-vs-rest indicator matrix: (n_samples, n_classes)
+    y_true_indicator = (y_true[:, None] == labels_arr[None, :]).astype(int)
+
+    # ---- Per-class one-vs-rest ROC curves ----
     for idx, label in enumerate(labels_arr):
-        # One-vs-rest binarization for this class
-        y_true_bin = (y_true == label).astype(int)
+        y_true_bin = y_true_indicator[:, idx]
         scores_k = Y[:, idx]
 
-        fpr, tpr, thresholds = roc_curve(y_true_bin, scores_k, pos_label=1)
+        fpr_k, tpr_k, thresholds_k = roc_curve(
+            y_true_bin,
+            scores_k,
+            pos_label=1,
+            drop_intermediate=False,
+        )
         auc_k = roc_auc_score(y_true_bin, scores_k)
 
         per_class.append(
             {
                 "label": label,
-                "fpr": fpr,
-                "tpr": tpr,
-                "thresholds": thresholds,
+                "fpr": fpr_k,
+                "tpr": tpr_k,
+                "thresholds": thresholds_k,
                 "auc": float(auc_k),
             }
         )
         aucs.append(auc_k)
 
-    macro_auc = float(np.mean(aucs)) if aucs else float("nan")
+    # ---- Macro-average ROC curve ----
+    if per_class:
+        # Pool all unique FPRs from all per-class curves
+        all_fpr = np.unique(
+            np.concatenate([cls_curve["fpr"] for cls_curve in per_class])
+        )
+
+        # Interpolate TPRs at these FPR points, then average across classes
+        mean_tpr = np.zeros_like(all_fpr)
+        for cls_curve in per_class:
+            mean_tpr += np.interp(all_fpr, cls_curve["fpr"], cls_curve["tpr"])
+        mean_tpr /= len(per_class)
+
+        macro_fpr = all_fpr
+        macro_tpr = mean_tpr
+        # Keep original semantic of macro_auc as mean of per-class AUCs
+        macro_auc = float(np.mean(aucs)) if aucs else float("nan")
+    else:
+        macro_fpr = np.array([0.0, 1.0])
+        macro_tpr = np.array([0.0, 1.0])
+        macro_auc = float("nan")
+
+    # ---- Micro-average ROC curve ----
+    # Flatten one-vs-rest indicator and scores
+    y_true_flat = y_true_indicator.ravel()
+    y_score_flat = Y.ravel()
+
+    micro_fpr, micro_tpr, micro_thresholds = roc_curve(
+        y_true_flat,
+        y_score_flat,
+        pos_label=1,
+        drop_intermediate=False,
+    )
+    # For indicator format, average="micro" equals ROC AUC on flattened arrays
+    micro_auc = roc_auc_score(y_true_indicator, Y, average="micro")
 
     return {
         "labels": labels_arr,
         "per_class": per_class,
         "macro_avg": {
-            "auc": macro_auc,
+            "auc": macro_auc,          # existing field, unchanged semantics
+            "fpr": macro_fpr,
+            "tpr": macro_tpr,
+            "thresholds": None,        # not well-defined for macro-averaged curve
+        },
+        "micro_avg": {
+            "fpr": micro_fpr,
+            "tpr": micro_tpr,
+            "thresholds": micro_thresholds,
+            "auc": float(micro_auc),
         },
     }

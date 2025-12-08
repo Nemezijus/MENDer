@@ -75,3 +75,4 @@ class RocMetrics(BaseModel):
     # For binary, macro_auc == curves[0].auc; for multiclass, macro_auc is
     # the macro-averaged AUC across classes.
     macro_auc: Optional[float] = None
+    micro_auc: Optional[float] = None

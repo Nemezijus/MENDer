@@ -18,6 +18,7 @@ from utils.postprocessing.scoring import PROBA_METRICS
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
 
+
 def _safe_float_list(arr) -> list[float]:
     """Convert array-like to a JSON-safe list of finite floats."""
     a = np.asarray(arr, dtype=float)
@@ -29,6 +30,7 @@ def _safe_float_list(arr) -> list[float]:
 def _safe_float_scalar(x: float) -> float:
     """Make a single float JSON-safe (no NaN/inf)."""
     return float(np.nan_to_num(float(x), nan=0.0, posinf=1.0, neginf=0.0))
+
 
 def train(cfg: RunConfig) -> Dict[str, Any]:
     # --- Load data -----------------------------------------------------------
@@ -84,17 +86,6 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         y_proba = None
         y_score = None
 
-        # if eval_kind == "classification" and metric_name in PROBA_METRICS:
-        #     if hasattr(pipeline, "predict_proba"):
-        #         y_proba = pipeline.predict_proba(Xte)
-        #     elif hasattr(pipeline, "decision_function"):
-        #         y_score = pipeline.decision_function(Xte)
-        #     else:
-        #         raise ValueError(
-        #             f"Metric '{metric_name}' requires predict_proba or decision_function, "
-        #             f"but estimator {type(pipeline).__name__} has neither."
-        #         )
-
         # For classification, we try to compute scores/probabilities once per fold.
         if eval_kind == "classification":
             if hasattr(pipeline, "predict_proba"):
@@ -116,7 +107,6 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         )
         fold_scores.append(float(score_val))
 
-        # fold_scores.append(float(evaluator.score(yte, y_pred)))
         y_true_all.append(yte)
         y_pred_all.append(y_pred)
         if y_proba is not None:
@@ -239,12 +229,53 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
                 else None
             )
 
+            # Optionally add a macro-average ROC curve if fpr/tpr are available
+            macro_fpr = roc_macro_avg.get("fpr")
+            macro_tpr = roc_macro_avg.get("tpr")
+            if macro_fpr is not None and macro_tpr is not None:
+                curves.append(
+                    {
+                        "label": "macro",
+                        "fpr": _safe_float_list(macro_fpr),
+                        "tpr": _safe_float_list(macro_tpr),
+                        # thresholds for macro-average are not well-defined;
+                        # use empty list to keep the schema consistent.
+                        "thresholds": [],
+                        "auc": macro_auc if macro_auc is not None else 0.0,
+                    }
+                )
+
+            # Optionally add a micro-average ROC curve if present
+            roc_micro_avg = roc_raw.get("micro_avg") or {}
+            micro_auc: float | None = None
+            micro_fpr = roc_micro_avg.get("fpr")
+            micro_tpr = roc_micro_avg.get("tpr")
+            micro_thresholds = roc_micro_avg.get("thresholds")
+
+            if (
+                micro_fpr is not None
+                and micro_tpr is not None
+                and micro_thresholds is not None
+            ):
+                micro_auc = _safe_float_scalar(roc_micro_avg.get("auc", float("nan")))
+                curves.append(
+                    {
+                        "label": "micro",
+                        "fpr": _safe_float_list(micro_fpr),
+                        "tpr": _safe_float_list(micro_tpr),
+                        "thresholds": _safe_float_list(micro_thresholds),
+                        "auc": micro_auc,
+                    }
+                )
+
             roc_payload = {
                 "kind": "multiclass",
                 "curves": curves,
                 "labels": labels_list,
                 "macro_auc": macro_auc,
             }
+            if micro_auc is not None:
+                roc_payload["micro_auc"] = micro_auc
 
     n_train_avg = int(np.round(np.mean(n_train_sizes))) if n_train_sizes else 0
     n_test_avg = int(np.round(np.mean(n_test_sizes))) if n_test_sizes else 0

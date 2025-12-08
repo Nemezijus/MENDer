@@ -6,17 +6,48 @@ export default function RocResults({ roc }) {
     return null;
   }
 
-  const { kind, curves, macro_auc } = roc;
+  const { kind, curves, macro_auc, micro_auc } = roc;
 
-  // Yosemite-ish earthy palette (olive, slate, green, peach, brown, mustard)
-  const baseColors = [
-    '#b3a369', // olive
-    '#5c6f82', // slate blue/grey
-    '#637939', // deep green
-    '#f2a65a', // peach / warm orange
-    '#8c4c2e', // brown
-    '#d2b04c', // mustard
-  ];
+  // New palette
+const baseColors = [
+  '#2a9d8f',
+  '#f4a261',
+  '#9576c9',
+  '#e36040',
+  '#287271',
+  '#8ab17d',
+  '#bc6b85',
+  '#264653',
+  '#e9c46a',
+  '#ec8151',
+];
+
+  const MICRO_COLOR = '#7209b7';
+  const MACRO_COLOR = '#4361ee';
+
+  // Slightly darken the color for subsequent cycles over the palette
+  const adjustColor = (hex, repeatIndex) => {
+    if (!repeatIndex) return hex;
+
+    const factor = Math.pow(0.9, repeatIndex); // darker each time
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+
+    const rf = Math.max(0, Math.min(255, Math.round(r * factor)));
+    const gf = Math.max(0, Math.min(255, Math.round(g * factor)));
+    const bf = Math.max(0, Math.min(255, Math.round(b * factor)));
+
+    const toHex = (v) => v.toString(16).padStart(2, '0');
+    return `#${toHex(rf)}${toHex(gf)}${toHex(bf)}`;
+  };
+
+  const getPaletteColor = (idx) => {
+    const baseIndex = idx % baseColors.length;
+    const repeatIndex = Math.floor(idx / baseColors.length);
+    const base = baseColors[baseIndex];
+    return adjustColor(base, repeatIndex);
+  };
 
   const traces = curves.map((curve, idx) => {
     const rawLabel = curve.label != null ? String(curve.label) : 'ROC';
@@ -30,14 +61,15 @@ export default function RocResults({ roc }) {
     const isMacro =
       lower === 'macro' || lower === 'macro avg' || lower === 'macro_avg';
 
-    const color =
-      isMicro || isMacro
-        ? '#000000'
-        : baseColors[idx % baseColors.length];
+    const color = isMicro
+      ? MICRO_COLOR
+      : isMacro
+      ? MACRO_COLOR
+      : getPaletteColor(idx);
 
     const lineStyle = {
       color,
-      width: isMicro || isMacro ? 3 : 2,
+      width: isMicro || isMacro ? 3 : 2, // one size thicker than normal curves
       dash: isMicro || isMacro ? 'dot' : 'solid',
     };
 
@@ -76,6 +108,9 @@ export default function RocResults({ roc }) {
       ? macro_auc.toFixed(3)
       : null;
 
+  const microVal =
+    typeof micro_auc === 'number' ? micro_auc.toFixed(3) : null;
+
   return (
     <Stack gap="xs">
       <Text fw={500} size="xl" align="center">
@@ -102,11 +137,12 @@ export default function RocResults({ roc }) {
               range: [0, 1.05],
               tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
               ticktext: ['0', '0.2', '0.4', '0.6', '0.8', '1.0'],
+              tickfont: { size: 16 },
               showgrid: true,
               gridcolor: 'rgba(200,200,200,0.4)',
               zeroline: false,
               showline: true,
-              linewidth: 2,
+              linewidth: 1, // normal thickness
               linecolor: '#000',
               mirror: false,
               constrain: 'domain',
@@ -121,11 +157,12 @@ export default function RocResults({ roc }) {
               range: [0, 1.05],
               tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
               ticktext: ['0', '0.2', '0.4', '0.6', '0.8', '1.0'],
+              tickfont: { size: 16 },
               showgrid: true,
               gridcolor: 'rgba(200,200,200,0.4)',
               zeroline: false,
               showline: true,
-              linewidth: 2,
+              linewidth: 1, // normal thickness
               linecolor: '#000',
               mirror: false,
               constrain: 'domain',
@@ -168,14 +205,37 @@ export default function RocResults({ roc }) {
         />
       </div>
 
-      {macroText && macroVal && (
-        <Text size="sm">
-          {macroText}
-          <Text span fw={700}>
-            {macroVal}
+    {(macroText && macroVal) || microVal ? (
+      <Stack gap={2}>
+        {macroText && macroVal && (
+          <Text size="sm">
+            {macroText}
+            <Text span fw={700}>
+              {macroVal}
+            </Text>
           </Text>
-        </Text>
-      )}
+        )}
+
+        {microVal && (
+          <Text size="sm">
+            Micro AUC:{' '}
+            <Text span fw={700}>
+              {microVal}
+            </Text>
+          </Text>
+        )}
+
+        {/* Show explanation only when Micro AUC is present (i.e. multiclass) */}
+        {microVal && (
+          <Text span size="xs" c="dimmed">
+            Macro AUC treats all classes equally, so it’s more informative when you
+            want to compare performance across classes—especially if some classes
+            are rare. Micro AUC looks at every prediction together and reflects
+            overall performance weighted by how often each class appears.
+          </Text>
+        )}
+      </Stack>
+    ) : null}
     </Stack>
   );
 }
