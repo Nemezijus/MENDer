@@ -40,7 +40,7 @@ export default function ClassificationResultsPanel({ trainResult }) {
 
         {hasRoc && (
           <>
-            {hasConfusion && <Divider />}
+            {hasConfusion}
             <RocResults roc={roc} />
           </>
         )}

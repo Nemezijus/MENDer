@@ -21,6 +21,9 @@ export default function ClassificationMetricResults({
   const supports = per_class.map((c) => c.support ?? 0);
   const totalSupport = supports.reduce((acc, s) => acc + s, 0);
 
+  const nClasses = per_class.length;
+  const isMulticlass = nClasses > 2;
+
   // ---- class imbalance (max/min support, ignoring zeros) ----
   const nonZeroSupports = supports.filter((s) => s > 0);
   const imbalanceRatio =
@@ -122,9 +125,30 @@ export default function ClassificationMetricResults({
       ? safeWeightedMean(per_class.map((c) => c.mcc), supports)
       : null);
 
+  // ---- Tooltip texts (binary vs multiclass aware) ----
+  const precisionTooltip = isMulticlass
+    ? 'For a given class, precision answers: “Of all samples the model predicted as this class, what fraction really belong to it?” High precision means the model rarely assigns this label incorrectly.'
+    : 'Precision answers: “Of all samples predicted as positive, what fraction really are positive?” High precision means the model rarely raises false alarms.';
+
+  const recallTooltip = isMulticlass
+    ? 'For a given class, recall (TPR) answers: “Of all true samples of this class, what fraction did the model correctly label as this class?” High recall means the model rarely misses this class.'
+    : 'Recall (TPR) answers: “Of all true positive samples, what fraction did the model correctly detect?” High recall means the model rarely misses positive cases.';
+
+  const fprTooltip = isMulticlass
+    ? 'For a given class, FPR is the fraction of samples from other classes that were incorrectly given this label. Lower FPR means fewer impostors being mistaken for this class.'
+    : 'FPR is the fraction of true negative samples that were incorrectly predicted as positive. Lower FPR means fewer false alarms.';
+
+  const tnrTooltip = isMulticlass
+    ? 'For a given class, TNR (specificity) is the fraction of samples from other classes that correctly do not receive this label. Higher TNR means the model usually avoids assigning this class when it should not.'
+    : 'TNR (specificity) is the fraction of true negative samples that the model correctly keeps as negative. Higher TNR means fewer false positives.';
+
+  const fnrTooltip = isMulticlass
+    ? 'For a given class, FNR is the fraction of true samples of this class that the model failed to label as such. Lower FNR means fewer missed examples of this class.'
+    : 'FNR is the fraction of true positive samples that the model missed. Lower FNR means fewer missed positive cases.';
+
   return (
     <Stack gap="xs" mt={2}>
-      <Text fw={500}  size="xl" align="center">
+      <Text fw={500} size="xl" align="center">
         Summary of metrics
       </Text>
 
@@ -187,7 +211,7 @@ export default function ClassificationMetricResults({
 
             <Table.Th style={{ textAlign: 'center' }}>
               <Tooltip
-                label="Precision measures how many of the predicted positives are actually correct. High precision means few false positives."
+                label={precisionTooltip}
                 multiline
                 maw={260}
                 withArrow
@@ -200,7 +224,7 @@ export default function ClassificationMetricResults({
 
             <Table.Th style={{ textAlign: 'center' }}>
               <Tooltip
-                label="Recall, or True Positive Rate (TPR), measures how many of the true positives the model correctly finds. A recall of 1 means every true case was detected."
+                label={recallTooltip}
                 multiline
                 maw={260}
                 withArrow
@@ -213,7 +237,7 @@ export default function ClassificationMetricResults({
 
             <Table.Th style={{ textAlign: 'center' }}>
               <Tooltip
-                label="False Positive Rate (FPR) measures how many of the true negatives were incorrectly predicted as positive. Lower values are better."
+                label={fprTooltip}
                 multiline
                 maw={260}
                 withArrow
@@ -226,7 +250,7 @@ export default function ClassificationMetricResults({
 
             <Table.Th style={{ textAlign: 'center' }}>
               <Tooltip
-                label="True Negative Rate (TNR), or specificity, measures how many of the true negatives were correctly predicted as negative. Higher values are better."
+                label={tnrTooltip}
                 multiline
                 maw={260}
                 withArrow
@@ -239,7 +263,7 @@ export default function ClassificationMetricResults({
 
             <Table.Th style={{ textAlign: 'center' }}>
               <Tooltip
-                label="False Negative Rate (FNR) measures how many of the true positives were missed by the model. Lower values are better."
+                label={fnrTooltip}
                 multiline
                 maw={260}
                 withArrow

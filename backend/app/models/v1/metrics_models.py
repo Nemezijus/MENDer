@@ -71,7 +71,7 @@ class RocMetrics(BaseModel):
 
     # For multiclass, labels list the classes; for binary, it can be None
     labels: Optional[List[Union[int, float, str]]] = None
-
+    positive_label: Optional[Union[int, float, str]] = None
     # For binary, macro_auc == curves[0].auc; for multiclass, macro_auc is
     # the macro-averaged AUC across classes.
     macro_auc: Optional[float] = None

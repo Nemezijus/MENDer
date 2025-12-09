@@ -150,7 +150,6 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     else:
         confusion_payload = None
         roc_raw = None
-
     # Normalize confusion payload into JSON-friendly pieces
     if confusion_payload is not None:
         labels_arr = confusion_payload["labels"]
@@ -201,6 +200,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
                 "curves": [curve],
                 "labels": None,
                 "macro_auc": auc_val,
+                "positive_label": roc_raw["pos_label"],
             }
         elif "per_class" in roc_raw:
             # Multiclass one-vs-rest ROC
@@ -345,7 +345,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     except Exception:
         # Cache errors must not break training response.
         pass
-
+    
     # --- Shuffle baseline ----------------------------------------------------
     n_shuffles = int(getattr(cfg.eval, "n_shuffles", 0) or 0)
     progress_id = getattr(cfg.eval, "progress_id", None)

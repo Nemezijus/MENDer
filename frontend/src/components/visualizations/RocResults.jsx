@@ -5,7 +5,6 @@ export default function RocResults({ roc }) {
   if (!roc || !Array.isArray(roc.curves) || roc.curves.length === 0) {
     return null;
   }
-
   const { kind, curves, macro_auc, micro_auc } = roc;
 
   // New palette
@@ -205,6 +204,13 @@ const baseColors = [
         />
       </div>
 
+    {roc.kind === "binary" && roc.positive_label !== undefined && (
+      <Text size="xs" c="dimmed">
+        This ROC curve treats class <Text span fw={600}>{roc.positive_label} </Text> 
+        as the reference (positive) class. The curve shows how well the model 
+        distinguishes that class from the other one across thresholds.
+      </Text>
+    )}
     {(macroText && macroVal) || microVal ? (
       <Stack gap={2}>
         {macroText && macroVal && (
