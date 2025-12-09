@@ -74,7 +74,7 @@ export default function App() {
       case 'settings':
         return (
           <Stack gap="md">
-            <Title order={3}>Specify global settings</Title>
+            <Title order={3} align="center">Specify global settings</Title>
             <SettingsPanel />
           </Stack>
         );
@@ -94,7 +94,7 @@ export default function App() {
       case 'learning-curve':
         return (
           <Stack gap="md">
-            <Title order={3}>Find optimal data split</Title>
+            <Title order={3} align="center">Find optimal data split</Title>
             <DataGuard>
               <LearningCurvePanel />
             </DataGuard>
@@ -104,7 +104,7 @@ export default function App() {
       case 'validation-curve':
         return (
           <Stack gap="md">
-            <Title order={3}>Find the best parameter value</Title>
+            <Title order={3} align="center">Find the best parameter value</Title>
             <DataGuard>
               <ValidationCurvePanel />
             </DataGuard>
@@ -114,7 +114,7 @@ export default function App() {
       case 'grid-search':
         return (
           <Stack gap="md">
-            <Title order={3}>Grid search</Title>
+            <Title order={3} align="center">Grid search</Title>
             <DataGuard>
               <GridSearchPanel />
             </DataGuard>
@@ -124,7 +124,7 @@ export default function App() {
       case 'random-search':
         return (
           <Stack gap="md">
-            <Title order={3}>Randomized search</Title>
+            <Title order={3} align="center">Randomized search</Title>
             <DataGuard>
               <RandomSearchPanel />
             </DataGuard>
@@ -134,7 +134,7 @@ export default function App() {
       case 'results':
         return (
           <Stack gap="md">
-            <Title order={3}>View results</Title>
+            <Title order={3} align="center">View results</Title>
             <DataGuard>
               <ResultsPanel />
             </DataGuard>
@@ -144,7 +144,7 @@ export default function App() {
       case 'predictions':
         return (
           <Stack gap="md">
-            <Title order={3}>Run predictions</Title>
+            <Title order={3} align="center">Run predictions</Title>
             <ApplyModelCard />
           </Stack>
         );

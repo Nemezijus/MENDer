@@ -1,4 +1,5 @@
-import { Box, Stack } from '@mantine/core';
+// src/components/SettingsPanel.jsx
+import { Stack, Tabs, Text } from '@mantine/core';
 
 import ScalingCard from './ScalingCard.jsx';
 import FeatureCard from './FeatureCard.jsx';
@@ -12,32 +13,30 @@ export default function SettingsPanel() {
   const setMetric = useSettingsStore((s) => s.setMetric);
 
   return (
-    <Box
-      style={{
-        display: 'flex',
-        gap: 'var(--mantine-spacing-lg)',
-        alignItems: 'flex-start', // <- prevents vertical stretching
-        flexWrap: 'wrap', // nicer on small screens
-      }}
-    >
-      {/* Left column: Scaling + Features stacked */}
-      <Box style={{ flex: 1, minWidth: 0 }}>
-        <Stack gap="lg">
-          <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
-          <FeatureCard />
-        </Stack>
-      </Box>
+    <Stack gap="md">
+      <Text fw={600} size="lg">
+        Global modelling settings
+      </Text>
 
-      {/* Right column: Metric, natural height */}
-      <Box
-        style={{
-          flex: 1,
-          minWidth: 260, // small guard so it doesn't get too narrow
-          alignSelf: 'flex-start',
-        }}
-      >
-        <MetricCard value={metric} onChange={setMetric} />
-      </Box>
-    </Box>
+      <Tabs defaultValue="scaling" keepMounted={false}>
+        <Tabs.List grow>
+          <Tabs.Tab value="scaling">Scaling</Tabs.Tab>
+          <Tabs.Tab value="metric">Metric</Tabs.Tab>
+          <Tabs.Tab value="features">Features</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="scaling" pt="md">
+          <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="metric" pt="md">
+          <MetricCard value={metric} onChange={setMetric} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="features" pt="md">
+          <FeatureCard />
+        </Tabs.Panel>
+      </Tabs>
+    </Stack>
   );
 }
