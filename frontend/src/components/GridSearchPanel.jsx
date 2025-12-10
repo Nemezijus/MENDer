@@ -212,7 +212,6 @@ export default function GridSearchPanel() {
 
           <Box
             style={{
-              maxWidth: 560,
               margin: '0 auto',
               width: '100%',
             }}

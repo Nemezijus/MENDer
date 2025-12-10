@@ -215,7 +215,6 @@ export default function RandomSearchPanel() {
 
           <Box
             style={{
-              maxWidth: 560,
               margin: '0 auto',
               width: '100%',
             }}

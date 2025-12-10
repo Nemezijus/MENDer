@@ -65,7 +65,7 @@ export default function RunModelPanel() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
   const fctx = useFeatureStore();
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+  const { loading: defsLoading, models, enums, getModelDefaults, getCompatibleAlgos } = useSchemaDefaults();
 
   // SPLIT / SCALE / METRIC
   const [splitMode, setSplitMode] = useState('holdout');
@@ -105,6 +105,11 @@ export default function RunModelPanel() {
 
   const lastHydratedUid = useRef(null);
 
+  const effectiveTask = useDataStore(
+  (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
+);
+
+
   useEffect(() => () => { pollStopRef.current = true; }, []);
 
   // Initialize train model once defaults arrive
@@ -114,6 +119,36 @@ export default function RunModelPanel() {
       setTrainModel(init);
     }
   }, [defsLoading, getModelDefaults, trainModel, setTrainModel]);
+
+  useEffect(() => {
+    if (!trainModel) return;
+    if (!models) return; // schema/defaults not ready yet
+
+    const currentAlgo = trainModel.algo;
+    const compat = getCompatibleAlgos(effectiveTask); // [] if none / unknown task
+
+    if (!compat || compat.length === 0) {
+      // Nothing to filter against; leave as is
+      return;
+    }
+
+    // If current algo is still okay, do nothing
+    if (currentAlgo && compat.includes(currentAlgo)) {
+      return;
+    }
+
+    // Otherwise, pick the first compatible algo and reset to its defaults
+    const nextAlgo = compat[0];
+    const defaults = getModelDefaults(nextAlgo) || { algo: nextAlgo };
+    setTrainModel(defaults);
+  }, [
+    effectiveTask,
+    trainModel,
+    models,
+    getCompatibleAlgos,
+    getModelDefaults,
+    setTrainModel,
+  ]);
 
   // Hydrate from artifact into train model + split/eval settings
   useEffect(() => {
@@ -314,7 +349,7 @@ export default function RunModelPanel() {
           {/* Centered configuration stack inside the card */}
           <Box
             style={{
-              maxWidth: 520,
+              
               margin: '0 auto',
               width: '100%',
             }}
@@ -351,6 +386,7 @@ export default function RunModelPanel() {
                 schema={models?.schema}
                 enums={enums}
                 models={models}
+                showHelp={true}
               />
 
               <Divider my="xs" />

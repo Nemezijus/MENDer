@@ -197,7 +197,7 @@ export default function LearningCurvePanel() {
             </Button>
           </Group>
 
-          <Box w="100%" style={{ maxWidth: 560, margin: '0 auto' }}>
+          <Box w="100%" style={{ margin: '0 auto' }}>
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['kfold']}

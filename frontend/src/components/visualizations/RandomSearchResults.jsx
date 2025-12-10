@@ -110,7 +110,6 @@ export default function RandomSearchResults({
         y: [by],
         type: 'scatter',
         mode: 'markers',
-        name: 'Best',
         marker: {
           size: 12,
           symbol: 'x',

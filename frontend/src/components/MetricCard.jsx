@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { Card, Stack, Text, Select, Group, Box } from '@mantine/core';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useDataStore } from '../state/useDataStore.js';
-import { MetricIntroText } from './helpers/helpTexts/MetricHelptext.jsx';
-import MetricHelpText from './helpers/helpTexts/MetricHelptext.jsx';
+import MetricHelpText, { MetricIntroText } from './helpers/helpTexts/MetricHelpText.jsx';
 
 export default function MetricCard({
   title = 'Metric',

@@ -194,7 +194,6 @@ export default function ValidationCurvePanel() {
 
           <Box
             style={{
-              maxWidth: 560,
               margin: '0 auto',
               width: '100%',
             }}
