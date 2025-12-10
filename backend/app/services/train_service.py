@@ -329,6 +329,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         n_test=n_test_out,
         n_features=n_features_in,
         classes=classes_out,
+        kind=eval_kind,
         summary={
             "metric_name": result["metric_name"],
             "metric_value": result["metric_value"],

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Literal
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import uuid
@@ -15,6 +15,8 @@ class ArtifactBuilderInput:
     n_features: Optional[int]
     classes: Optional[List[Any]]
     summary: Dict[str, Any]  # scores, notes, n_splits, metric name/value
+    kind: Optional[Literal["classification", "regression"]] = None
+    
 
 
 def _safe_params_dict(step) -> Dict[str, Any]:
@@ -141,6 +143,7 @@ def _estimate_param_stats(pipeline: Any) -> Tuple[Optional[int], Dict[str, Any]]
 
 def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
     """Return a dict compatible with ModelArtifactMeta(**dict)."""
+    
     steps: List[Dict[str, Any]] = []
     try:
         for name, step in inp.pipeline.steps:  # sklearn Pipeline API
@@ -168,12 +171,28 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
 
     # Model complexity stats
     n_parameters, extra_stats = _estimate_param_stats(inp.pipeline)
+    kind = inp.kind
+    if kind is None:
+    # Try to infer from model config's `task` attribute (ClassVar or instance)
+        model_cfg = getattr(inp.cfg, "model", None)
+        task_attr = None
+        if model_cfg is not None:
+            task_attr = (
+                getattr(model_cfg.__class__, "task", None)
+                or getattr(model_cfg, "task", None)
+            )
+        if task_attr in ("classification", "regression"):
+            kind = task_attr
+        else:
+            # Defensive fallback – should not normally happen
+                kind = "classification"
+    # -------------------------------------------------
 
     return {
         "uid": str(uuid.uuid4()),
         "created_at": datetime.now(timezone.utc),
         "mender_version": None,
-        "kind": "classification",
+        "kind": kind,
         "n_samples_train": inp.n_train,
         "n_samples_test": inp.n_test,
         "n_features_in": inp.n_features,
