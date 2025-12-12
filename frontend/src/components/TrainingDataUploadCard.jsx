@@ -9,130 +9,305 @@ import {
   Alert,
   Group,
   Badge,
-  FileInput,
+  Tabs,
+  Box,
   Select,
+  FileButton,
 } from '@mantine/core';
+
 import { useDataStore } from '../state/useDataStore.js';
 import { useInspectDataMutation } from '../state/useInspectDataMutation.js';
-import { uploadFile } from '../api/files.js';
+import { uploadFile } from '../api/files';
+
 import TrainingDataSummaryCard from './helpers/TrainingDataSummaryCard.jsx';
 
-export default function TrainingDataUploadCard() {
-  const xPath = useDataStore((s) => s.xPath);
-  const setXPath = useDataStore((s) => s.setXPath);
-  const yPath = useDataStore((s) => s.yPath);
-  const setYPath = useDataStore((s) => s.setYPath);
-  const npzPath = useDataStore((s) => s.npzPath);
-  const setNPZPath = useDataStore((s) => s.setNPZPath);
-  const xKey = useDataStore((s) => s.xKey);
-  const setXKey = useDataStore((s) => s.setXKey);
-  const yKey = useDataStore((s) => s.yKey);
-  const setYKey = useDataStore((s) => s.setYKey);
-  const inspectReport = useDataStore((s) => s.inspectReport);
-  const setInspectReport = useDataStore((s) => s.setInspectReport);
-  const taskSelected = useDataStore((s) => s.taskSelected);
-  const setTaskSelected = useDataStore((s) => s.setTaskSelected);
+// -------------------------
+// Helpers
+// -------------------------
+function displayLocalFilePath(file) {
+  if (!file) return '';
+  // Browsers do NOT expose real absolute local file paths for security.
+  // Use a friendly pseudo-path; if directory upload is used, webkitRelativePath may exist.
+  const rel =
+    file.webkitRelativePath && file.webkitRelativePath.length > 0
+      ? file.webkitRelativePath
+      : file.name;
+  return `local://${rel}`;
+}
 
-  // derived values (used to live in DataContext)
-  const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
-  const taskInferred = inspectReport?.task_inferred || null;
-  const effectiveTask = taskSelected || taskInferred || null;
+// ============================================================
+// Tab 1: Individual files (features & labels)
+// ============================================================
+function IndividualFilesTab({
+  setInspectReportGlobal,
+  setXPathGlobal,
+  setYPathGlobal,
+  setNPZPathGlobal,
+  xKeyGlobal,
+  yKeyGlobal,
+}) {
+  const inspectMutation = useInspectDataMutation();
 
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
-
-  // local file selections for upload (for showing filenames while component is mounted)
+  // Local-only state (dies when tab unmounts)
+  const [xPath, setXPath] = useState('');
+  const [yPath, setYPath] = useState('');
   const [xLocalFile, setXLocalFile] = useState(null);
   const [yLocalFile, setYLocalFile] = useState(null);
 
-  const inspectMutation = useInspectDataMutation();
-
-  function basename(path) {
-    if (!path) return '';
-    const parts = String(path).split(/[\\/]/);
-    return parts[parts.length - 1] || path;
-  }
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
 
   async function handleInspect() {
     setErr(null);
     setLoading(true);
     try {
+      // Upload if local files selected; otherwise use typed server paths
+      let resolvedXPath = xPath?.trim() || null;
+      let resolvedYPath = yPath?.trim() || null;
+
+      if (xLocalFile) {
+        const up = await uploadFile(xLocalFile); // { path, original_name }
+        resolvedXPath = up.path;
+        setXPath(up.path); // replace pseudo-path with server path
+      }
+
+      if (yLocalFile) {
+        const up = await uploadFile(yLocalFile);
+        resolvedYPath = up.path;
+        setYPath(up.path);
+      }
+
       const payload = {
-        x_path: npzPath ? null : xPath,
-        y_path: npzPath ? null : yPath,
-        npz_path: npzPath,
-        x_key: xKey,
-        y_key: yKey,
+        x_path: resolvedXPath,
+        y_path: resolvedYPath,
+        npz_path: null,
+        // keys are ignored for separate-file loads but we keep them consistent
+        x_key: xKeyGlobal || 'X',
+        y_key: yKeyGlobal || 'y',
       };
+
       const report = await inspectMutation.mutateAsync(payload);
-      setInspectReport(report);
-      // We still let the user explicitly override task; no auto-set here.
+
+      // Persist to global store for downstream training
+      setInspectReportGlobal(report);
+      setXPathGlobal(resolvedXPath);
+      setYPathGlobal(resolvedYPath);
+      setNPZPathGlobal(null);
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
-      setInspectReport(null);
+      setInspectReportGlobal(null);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleUploadAndInspect() {
+  return (
+    <Stack gap="sm">
+      <TextInput
+        label="Feature matrix (X)"
+        placeholder="Paste server path (e.g. /data/... or /uploads/...)"
+        value={xPath}
+        onChange={(e) => setXPath(e.currentTarget.value)}
+        rightSectionWidth={44}
+        rightSection={
+          <FileButton
+            onChange={(file) => {
+              setXLocalFile(file);
+              if (file) setXPath(displayLocalFilePath(file));
+            }}
+            accept=".mat,.npz,.npy"
+          >
+            {(props) => (
+              <Button {...props} size="xs" variant="light">
+                …
+              </Button>
+            )}
+          </FileButton>
+        }
+      />
+
+      <TextInput
+        label="Label vector (y)"
+        placeholder="Paste server path (e.g. /data/... or /uploads/...)"
+        value={yPath}
+        onChange={(e) => setYPath(e.currentTarget.value)}
+        rightSectionWidth={44}
+        rightSection={
+          <FileButton
+            onChange={(file) => {
+              setYLocalFile(file);
+              if (file) setYPath(displayLocalFilePath(file));
+            }}
+            accept=".mat,.npz,.npy"
+          >
+            {(props) => (
+              <Button {...props} size="xs" variant="light">
+                …
+              </Button>
+            )}
+          </FileButton>
+        }
+      />
+
+      <Group gap="xs">
+        <Button size="xs" onClick={handleInspect} loading={loading}>
+          Upload & Inspect
+        </Button>
+      </Group>
+
+      {err && (
+        <Alert color="red" variant="light" title="Error">
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {err}
+          </Text>
+        </Alert>
+      )}
+    </Stack>
+  );
+}
+
+// ============================================================
+// Tab 2: Compound file
+// ============================================================
+function CompoundFileTab({
+  setInspectReportGlobal,
+  setXPathGlobal,
+  setYPathGlobal,
+  setNPZPathGlobal,
+  xKey,
+  yKey,
+  setXKey,
+  setYKey,
+}) {
+  const inspectMutation = useInspectDataMutation();
+
+  // Local-only state (dies when tab unmounts)
+  const [npzPath, setNPZPath] = useState('');
+  const [npzLocalFile, setNPZLocalFile] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+
+  async function handleInspect() {
     setErr(null);
     setLoading(true);
     try {
-      // Upload X if provided
-      let newXPath = xPath;
-      if (xLocalFile) {
-        const up = await uploadFile(xLocalFile); // { path, original_name }
-        newXPath = up.path;
-        setXPath(newXPath);
-        setNPZPath(null); // clear npz when providing X/Y separately
+      let resolvedNPZPath = npzPath?.trim() || null;
+
+      if (npzLocalFile) {
+        const up = await uploadFile(npzLocalFile);
+        resolvedNPZPath = up.path;
+        setNPZPath(up.path);
       }
 
-      // Upload y if provided
-      let newYPath = yPath;
-      if (yLocalFile) {
-        const up = await uploadFile(yLocalFile);
-        newYPath = up.path;
-        setYPath(newYPath);
-        setNPZPath(null);
-      }
-
-      // Build inspect payload from whatever we have now
-      const inspectPayload = {
-        x_path: npzPath ? null : newXPath,
-        y_path: npzPath ? null : newYPath,
-        npz_path: npzPath || null,
+      const payload = {
+        x_path: null,
+        y_path: null,
+        npz_path: resolvedNPZPath,
         x_key: xKey || 'X',
         y_key: yKey || 'y',
       };
 
-      const report = await inspectMutation.mutateAsync(inspectPayload);
-      setInspectReport(report);
+      const report = await inspectMutation.mutateAsync(payload);
+
+      setInspectReportGlobal(report);
+      setNPZPathGlobal(resolvedNPZPath);
+      setXPathGlobal(null);
+      setYPathGlobal(null);
     } catch (e) {
-      const status = e?.response?.status;
       const msg = e?.response?.data?.detail || e.message || String(e);
-      if (status === 404 && /files\/upload/.test(e?.config?.url || '')) {
-        setErr(
-          'Upload API not found. In dev, either start the backend with the files router or use the manual X/y path fields above.',
-        );
-      } else {
-        setErr(msg);
-      }
-      setInspectReport(null);
+      setErr(msg);
+      setInspectReportGlobal(null);
     } finally {
       setLoading(false);
     }
   }
 
-  // Filenames to show after navigating away & back
-  const xUploadedName = xLocalFile?.name || basename(xPath);
-  const yUploadedName = yLocalFile?.name || basename(yPath);
+  return (
+    <Stack gap="sm">
+      <TextInput
+        label="Compound dataset (.npz)"
+        placeholder="Paste server path (e.g. /data/... or /uploads/...)"
+        value={npzPath}
+        onChange={(e) => setNPZPath(e.currentTarget.value)}
+        rightSectionWidth={44}
+        rightSection={
+          <FileButton
+            onChange={(file) => {
+              setNPZLocalFile(file);
+              if (file) setNPZPath(displayLocalFilePath(file));
+            }}
+            accept=".npz,.mat"
+          >
+            {(props) => (
+              <Button {...props} size="xs" variant="light">
+                …
+              </Button>
+            )}
+          </FileButton>
+        }
+      />
+
+      <Group grow align="flex-start">
+        <TextInput
+          label="X key (features)"
+          value={xKey || ''}
+          onChange={(e) => setXKey(e.currentTarget.value)}
+          placeholder="X"
+        />
+        <TextInput
+          label="y key (labels)"
+          value={yKey || ''}
+          onChange={(e) => setYKey(e.currentTarget.value)}
+          placeholder="y"
+        />
+      </Group>
+
+      <Group gap="xs">
+        <Button size="xs" onClick={handleInspect} loading={loading}>
+          Upload & Inspect
+        </Button>
+      </Group>
+
+      {err && (
+        <Alert color="red" variant="light" title="Error">
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {err}
+          </Text>
+        </Alert>
+      )}
+    </Stack>
+  );
+}
+
+// ============================================================
+// Main card: TrainingDataUploadCard
+// ============================================================
+export default function TrainingDataUploadCard() {
+  const inspectReport = useDataStore((s) => s.inspectReport);
+  const setInspectReport = useDataStore((s) => s.setInspectReport);
+
+  const taskSelected = useDataStore((s) => s.taskSelected);
+  const setTaskSelected = useDataStore((s) => s.setTaskSelected);
+
+  const xKey = useDataStore((s) => s.xKey);
+  const setXKey = useDataStore((s) => s.setXKey);
+  const yKey = useDataStore((s) => s.yKey);
+  const setYKey = useDataStore((s) => s.setYKey);
+
+  const setXPath = useDataStore((s) => s.setXPath);
+  const setYPath = useDataStore((s) => s.setYPath);
+  const setNPZPath = useDataStore((s) => s.setNPZPath);
+
+  const dataReady = !!inspectReport && (inspectReport?.n_samples ?? 0) > 0;
+  const taskInferred = inspectReport?.task_inferred || null;
+  const effectiveTask = taskSelected || taskInferred || null;
 
   return (
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Stack gap="sm">
+        <Stack gap="md">
           <Group justify="space-between" align="center">
             <Text fw={600}>Training data</Text>
             {dataReady ? (
@@ -142,97 +317,56 @@ export default function TrainingDataUploadCard() {
             )}
           </Group>
 
-          {/* Manual container paths (if not uploading) */}
-          <TextInput
-            label="Feature matrix (X) path (.mat / .npz)"
-            value={xPath}
-            onChange={(e) => setXPath(e.currentTarget.value)}
-            disabled={!!npzPath}
-          />
-          <TextInput
-            label="Label vector (y) path (.mat / .npz)"
-            value={yPath}
-            onChange={(e) => setYPath(e.currentTarget.value)}
-            disabled={!!npzPath}
-          />
-          <TextInput
-            label="npz path (X,y)"
-            value={npzPath || ''}
-            onChange={(e) => setNPZPath(e.currentTarget.value || null)}
-          />
+          <Tabs defaultValue="individual" keepMounted={false}>
+            <Tabs.List grow>
+              <Tabs.Tab value="individual">
+                Individual files (features &amp; labels)
+              </Tabs.Tab>
+              <Tabs.Tab value="compound">Compound file</Tabs.Tab>
+            </Tabs.List>
 
-          <Group grow>
-            <TextInput
-              label="X key"
-              value={xKey}
-              onChange={(e) => setXKey(e.currentTarget.value)}
-            />
-            <TextInput
-              label="y key"
-              value={yKey}
-              onChange={(e) => setYKey(e.currentTarget.value)}
-            />
-          </Group>
+            <Tabs.Panel value="individual" pt="md">
+              <IndividualFilesTab
+                setInspectReportGlobal={setInspectReport}
+                setXPathGlobal={setXPath}
+                setYPathGlobal={setYPath}
+                setNPZPathGlobal={setNPZPath}
+                xKeyGlobal={xKey}
+                yKeyGlobal={yKey}
+              />
+            </Tabs.Panel>
 
-          {/* Task selector (inferred + override) */}
+            <Tabs.Panel value="compound" pt="md">
+              <CompoundFileTab
+                setInspectReportGlobal={setInspectReport}
+                setXPathGlobal={setXPath}
+                setYPathGlobal={setYPath}
+                setNPZPathGlobal={setNPZPath}
+                xKey={xKey}
+                yKey={yKey}
+                setXKey={setXKey}
+                setYKey={setYKey}
+              />
+            </Tabs.Panel>
+          </Tabs>
+
+          {/* Task suggestion under tabs */}
           <Select
-            label="Task"
+            label="Task (suggestion)"
+            description="Overrides inferred task. You can leave it empty."
             data={[
               { value: 'classification', label: 'classification' },
               { value: 'regression', label: 'regression' },
             ]}
-            value={taskSelected || taskInferred || null}
-            placeholder={taskInferred ? `inferred: ${taskInferred}` : 'select'}
+            value={taskSelected || null}
+            placeholder={taskInferred ? `inferred: ${taskInferred}` : 'leave empty'}
             onChange={(v) => setTaskSelected(v)}
             clearable
           />
-
-          <Group gap="xs">
-            <Button size="xs" onClick={handleInspect} loading={loading}>
-              Inspect
-            </Button>
-          </Group>
-
-          <Divider my="xs" label="or upload files" labelPosition="center" />
-
-          {/* Upload area */}
-          <FileInput
-            label="Upload Feature Matrix (X) (.mat / .npz)"
-            placeholder={xUploadedName || 'Pick file (optional)'}
-            value={xLocalFile}
-            onChange={setXLocalFile}
-            accept=".mat,npz,npy"
-            clearable
-          />
-          <FileInput
-            label="Upload Label vector (y) (.mat / .npz)"
-            placeholder={yUploadedName || 'Pick file (optional)'}
-            value={yLocalFile}
-            onChange={setYLocalFile}
-            accept=".mat,npz,npy"
-            clearable
-          />
-          <Group gap="xs">
-            <Button
-              size="xs"
-              variant="light"
-              onClick={handleUploadAndInspect}
-              loading={loading}
-            >
-              Upload & Inspect
-            </Button>
-          </Group>
-
-          {err && (
-            <Alert color="red" variant="light" title="Error">
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                {err}
-              </Text>
-            </Alert>
-          )}
         </Stack>
       </Card>
 
+      {/* Summary underneath */}
       <TrainingDataSummaryCard
         inspectReport={inspectReport}
         effectiveTask={effectiveTask}
