@@ -14,9 +14,10 @@ import {
 } from '@mantine/core';
 import { useDataStore } from '../state/useDataStore.js';
 import { useInspectDataMutation } from '../state/useInspectDataMutation.js';
-import { uploadFile } from '../api/files';
+import { uploadFile } from '../api/files.js';
+import TrainingDataSummaryCard from './helpers/TrainingDataSummaryCard.jsx';
 
-export default function DataSidebar() {
+export default function TrainingDataUploadCard() {
   const xPath = useDataStore((s) => s.xPath);
   const setXPath = useDataStore((s) => s.setXPath);
   const yPath = useDataStore((s) => s.yPath);
@@ -124,11 +125,6 @@ export default function DataSidebar() {
     }
   }
 
-  // Helpers to render y-summary
-  const ySum = inspectReport?.y_summary || null;
-  const isClassification = effectiveTask === 'classification';
-  const isRegression = effectiveTask === 'regression';
-
   // Filenames to show after navigating away & back
   const xUploadedName = xLocalFile?.name || basename(xPath);
   const yUploadedName = yLocalFile?.name || basename(yPath);
@@ -139,7 +135,11 @@ export default function DataSidebar() {
         <Stack gap="sm">
           <Group justify="space-between" align="center">
             <Text fw={600}>Training data</Text>
-            {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
+            {dataReady ? (
+              <Badge color="green">Ready</Badge>
+            ) : (
+              <Badge color="gray">Not loaded</Badge>
+            )}
           </Group>
 
           {/* Manual container paths (if not uploading) */}
@@ -201,7 +201,7 @@ export default function DataSidebar() {
             placeholder={xUploadedName || 'Pick file (optional)'}
             value={xLocalFile}
             onChange={setXLocalFile}
-            accept=".mat,.npz,.npy"
+            accept=".mat,npz,npy"
             clearable
           />
           <FileInput
@@ -209,7 +209,7 @@ export default function DataSidebar() {
             placeholder={yUploadedName || 'Pick file (optional)'}
             value={yLocalFile}
             onChange={setYLocalFile}
-            accept=".mat,.npz,.npy"
+            accept=".mat,npz,npy"
             clearable
           />
           <Group gap="xs">
@@ -233,71 +233,10 @@ export default function DataSidebar() {
         </Stack>
       </Card>
 
-      {/* Quick summary */}
-      <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Text fw={600} mb="xs">
-          Summary
-        </Text>
-        {!inspectReport && (
-          <Text size="sm" c="dimmed">
-            Run Inspect to see data summary.
-          </Text>
-        )}
-        {inspectReport && (
-          <Stack gap={2}>
-            <Text size="sm">n_samples: {inspectReport.n_samples}</Text>
-            <Text size="sm">n_features: {inspectReport.n_features}</Text>
-            <Text size="sm">
-              task (inferred): {inspectReport.task_inferred || '—'}
-            </Text>
-
-            {/* Classification display */}
-            {isClassification && (
-              <>
-                <Text size="sm">
-                  classes:{' '}
-                  {Array.isArray(inspectReport.classes)
-                    ? inspectReport.classes.join(', ')
-                    : String(inspectReport.classes)}
-                </Text>
-                <Text size="sm">
-                  n_classes:{' '}
-                  {Array.isArray(inspectReport.classes)
-                    ? inspectReport.classes.length
-                    : 0}
-                </Text>
-              </>
-            )}
-
-            {/* Regression display */}
-            {isRegression && ySum && (
-              <>
-                <Text size="sm">
-                  y: n={ySum.n}, unique={ySum.n_unique}
-                </Text>
-                <Text size="sm">
-                  min/max: {ySum.min} / {ySum.max}
-                </Text>
-                <Text size="sm">
-                  mean±std: {ySum.mean} ± {ySum.std}
-                </Text>
-              </>
-            )}
-
-            <Text size="sm">
-              missing total: {inspectReport.missingness?.total ?? 0}
-            </Text>
-            {inspectReport.suggestions?.recommend_pca && (
-              <Alert color="blue" variant="light" mt="xs">
-                <Text size="sm">
-                  Suggestion:{' '}
-                  {inspectReport.suggestions.reason || 'consider PCA'}
-                </Text>
-              </Alert>
-            )}
-          </Stack>
-        )}
-      </Card>
+      <TrainingDataSummaryCard
+        inspectReport={inspectReport}
+        effectiveTask={effectiveTask}
+      />
     </Stack>
   );
 }

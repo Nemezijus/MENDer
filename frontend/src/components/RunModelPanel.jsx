@@ -198,6 +198,33 @@ export default function RunModelPanel() {
     setTrainModel(merged);
   }, [getModelDefaults, trainModel?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!enums) return;
+
+    const metricByTask = enums.MetricByTask || null;
+
+    let rawList;
+    if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
+      // Task-specific recommended metrics
+      rawList = metricByTask[effectiveTask];
+    } else if (Array.isArray(enums.MetricName)) {
+      // Fallback: all known metrics
+      rawList = enums.MetricName;
+    } else {
+      // Ultra-fallback: a few safe defaults
+      rawList = ['accuracy', 'balanced_accuracy', 'f1_macro'];
+    }
+
+    if (!rawList || rawList.length === 0) return;
+
+    if (!rawList.includes(metric)) {
+      const first = rawList[0];
+      if (first != null) {
+        setMetric(String(first));
+      }
+    }
+  }, [effectiveTask, enums, metric, setMetric]);
+
   function startProgressPolling(progressId) {
     pollStopRef.current = false;
     async function tick() {

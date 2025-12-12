@@ -3,15 +3,13 @@ import { Container, Box, Stack, Alert, Text, Title } from '@mantine/core';
 
 import SidebarNav from './components/SidebarNav.jsx';
 
-import DataSidebar from './components/DataSidebar.jsx';
+import UploadPanel from './components/UploadPanel.jsx';
 import RunModelPanel from './components/RunModelPanel.jsx';
 import LearningCurvePanel from './components/LearningCurvePanel.jsx';
 import ModelCard from './components/ModelCard.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
 import ApplyModelCard from './components/ApplyModelCard.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
-import ModelLoadCard from './components/ModelLoadCard.jsx';
-import ProductionDataUploadCard from './components/ProductionDataUploadCard.jsx';
 
 import { useDataStore } from './state/useDataStore.js';
 import ValidationCurvePanel from './components/ValidationCurvePanel.jsx';
@@ -48,26 +46,10 @@ export default function App() {
       case 'data':
         return (
           <Stack gap="md">
-            <Title order={3}>Upload your data</Title>
-
-            <Box
-              style={{
-                display: 'flex',
-                gap: COLUMN_GAP,
-                alignItems: 'flex-start',
-              }}
-            >
-              <Box style={{ flex: 11, minWidth: 0 }}>
-                <DataSidebar />
-              </Box>
-
-              <Box style={{ flex: 9, minWidth: 0 }}>
-                <Stack gap="md">
-                  <ModelLoadCard />
-                  <ProductionDataUploadCard />
-                </Stack>
-              </Box>
-            </Box>
+            <Title order={3} align="center">
+              Upload data & models
+            </Title>
+            <UploadPanel />
           </Stack>
         );
 
