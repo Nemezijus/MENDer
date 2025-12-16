@@ -1,4 +1,3 @@
-// frontend/src/components/helpers/helpTexts/ModelHelpText.jsx
 import { Stack, Text, List } from '@mantine/core';
 
 export function ModelIntroText() {
@@ -10,9 +9,9 @@ export function ModelIntroText() {
 
       <Text size="xs" c="dimmed">
         A model is the algorithm that learns patterns from your training data
-        and makes predictions on new data. Different models have different
-        assumptions, strengths and trade-offs in terms of accuracy,
-        interpretability, and training time.
+        and makes predictions on new data. Different models make different
+        assumptions and trade off accuracy, interpretability, robustness, and
+        training speed.
       </Text>
     </Stack>
   );
@@ -65,8 +64,8 @@ export function ModelDetailsText({
             <Text span {...labelStyle('logreg')}>
               Logistic regression
             </Text>{' '}
-            – linear model for classification. Works well when classes are
-            roughly linearly separable and you want interpretable weights.
+            – linear classifier that estimates class probabilities. A strong,
+            interpretable baseline when relationships are approximately linear.
           </List.Item>
         )}
 
@@ -75,8 +74,8 @@ export function ModelDetailsText({
             <Text span {...labelStyle('svm')}>
               Support Vector Machine (SVM)
             </Text>{' '}
-            – flexible classifier with different kernels. Good for
-            medium-sized datasets and non-linear decision boundaries.
+            – powerful classifier that can model complex boundaries using
+            kernels. Works well on medium-sized datasets.
           </List.Item>
         )}
 
@@ -85,9 +84,8 @@ export function ModelDetailsText({
             <Text span {...labelStyle('tree')}>
               Decision tree
             </Text>{' '}
-            – interpretable tree that splits the data by feature thresholds.
-            Can capture non-linear interactions but may overfit if not
-            regularised.
+            – rule-based model that splits data by feature thresholds. Easy to
+            interpret but prone to overfitting if unconstrained.
           </List.Item>
         )}
 
@@ -96,8 +94,8 @@ export function ModelDetailsText({
             <Text span {...labelStyle('forest')}>
               Random forest
             </Text>{' '}
-            – an ensemble of decision trees. More robust than a single tree,
-            often a strong default for many classification problems.
+            – ensemble of decision trees that improves robustness and accuracy.
+            Often a strong default choice.
           </List.Item>
         )}
 
@@ -106,8 +104,8 @@ export function ModelDetailsText({
             <Text span {...labelStyle('knn')}>
               k-Nearest Neighbours (kNN)
             </Text>{' '}
-            – compares new examples to the closest training samples. Simple and
-            non-parametric, but can be slow and sensitive to feature scaling.
+            – predicts based on similarity to nearby samples. Simple but
+            sensitive to feature scaling and dataset size.
           </List.Item>
         )}
 
@@ -116,8 +114,8 @@ export function ModelDetailsText({
             <Text span {...labelStyle('linreg')}>
               Linear regression
             </Text>{' '}
-            – standard baseline for regression. Assumes a linear relationship
-            between features and target.
+            – models a linear relationship between features and target. Useful
+            as a fast, interpretable regression baseline.
           </List.Item>
         )}
       </List>
@@ -145,31 +143,33 @@ export function ModelParamsText({ selectedAlgo }) {
           <List spacing={4} size="xs">
             <List.Item>
               <Text span fw={600}>C</Text>{' '}
-              – inverse regularisation strength. Smaller values mean stronger
-              regularisation.
+              – inverse regularisation strength. Smaller values enforce stronger
+              regularisation and reduce overfitting.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Penalty</Text>{' '}
-              – type of regularisation (e.g. L2, L1, elastic net).
+              – type of regularisation applied to coefficients (L1, L2, or
+              elastic net).
             </List.Item>
             <List.Item>
               <Text span fw={600}>Solver</Text>{' '}
-              – optimisation algorithm. Some solvers support only specific
-              penalties.
+              – optimisation algorithm used to fit the model. Some solvers only
+              support certain penalties.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max iterations</Text>{' '}
-              – maximum number of optimisation iterations before stopping.
+              – maximum number of optimisation steps before stopping. Increase
+              if the model does not converge.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Class weight</Text>{' '}
-              – reweights classes (e.g.{' '}
-              <Text span fw={600}>balanced</Text>
-              ) to handle class imbalance.
+              – adjusts the importance of classes to compensate for imbalance
+              (e.g. balanced).
             </List.Item>
             <List.Item>
               <Text span fw={600}>L1 ratio</Text>{' '}
-              – balance between L1 and L2 when using elastic-net penalty.
+              – controls the mix between L1 and L2 regularisation when using
+              elastic net.
             </List.Item>
           </List>
         </Stack>
@@ -184,62 +184,66 @@ export function ModelParamsText({ selectedAlgo }) {
           <List spacing={4} size="xs">
             <List.Item>
               <Text span fw={600}>Kernel</Text>{' '}
-              – shape of the decision function (linear, RBF, polynomial, etc.).
+              – defines the shape of the decision boundary. Linear is fastest;
+              RBF and polynomial capture non-linear patterns.
             </List.Item>
             <List.Item>
               <Text span fw={600}>C</Text>{' '}
-              – penalty for misclassification. Larger values fit the training
-              data more closely.
+              – penalty for misclassification. Larger values fit training data
+              more closely but may overfit.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Degree</Text>{' '}
-              – polynomial degree for the polynomial kernel.
+              – degree of the polynomial kernel. Higher values increase model
+              complexity and training time.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Gamma</Text>{' '}
-              – controls the influence of individual training points for RBF
-              and related kernels.
+              – controls how far the influence of a single sample reaches.
+              Larger values lead to tighter, more complex boundaries.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Coef0</Text>{' '}
-              – independent term added in polynomial / sigmoid kernels.
+              – constant term used by polynomial and sigmoid kernels. Affects
+              how strongly higher-order terms contribute.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Shrinking</Text>{' '}
-              – whether to use the shrinking heuristic for speed.
+              – enables a heuristic that can speed up optimisation on large
+              datasets.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Probability</Text>{' '}
-              – enables probability estimates (slower training and inference).
+              – enables probability estimates via additional calibration, which
+              slows training and prediction.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Tolerance</Text>{' '}
-              – stopping criterion for optimisation (smaller = more precise,
-              slower).
+              – stopping threshold for optimisation. Smaller values increase
+              precision but slow training.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Cache size</Text>{' '}
-              – size of the kernel cache in MB. Larger values may speed up
-              training.
+              – memory (in MB) used to cache kernel values. Larger caches can
+              improve speed at the cost of RAM.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Class weight</Text>{' '}
-              – balances classes in the loss function (e.g.{' '}
-              <Text span fw={600}>balanced</Text>).
+              – adjusts class importance to mitigate imbalance.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max iterations</Text>{' '}
-              – maximum number of iterations, or -1 for no explicit limit.
+              – upper limit on optimisation steps. Use higher values if
+              convergence warnings appear.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Decision shape</Text>{' '}
-              – multi-class decision function shape (e.g.{' '}
-              <Text span fw={600}>ovr</Text>).
+              – strategy for multi-class problems (e.g. one-vs-rest).
             </List.Item>
             <List.Item>
               <Text span fw={600}>Break ties</Text>{' '}
-              – when enabled, breaks ties between classes more carefully in
-              multi-class problems.
+              – refines tie-breaking between classes in multi-class settings,
+              at a small computational cost.
             </List.Item>
           </List>
         </Stack>
@@ -254,50 +258,52 @@ export function ModelParamsText({ selectedAlgo }) {
           <List spacing={4} size="xs">
             <List.Item>
               <Text span fw={600}>Criterion</Text>{' '}
-              – measure used to split nodes (e.g. gini, entropy).
+              – measure of split quality (e.g. gini or entropy). Affects how
+              class purity is evaluated.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Splitter</Text>{' '}
-              – strategy used to choose the split at each node (best vs.
-              random).
+              – strategy for choosing splits. Random splitting can reduce
+              variance at the cost of interpretability.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max depth</Text>{' '}
-              – maximum depth of the tree. Smaller values reduce overfitting.
+              – maximum tree depth. Larger values increase model complexity and
+              risk overfitting.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Min samples split</Text>{' '}
-              – minimum number of samples needed to split an internal node.
+              – minimum samples required to split a node. Larger values make the
+              tree more conservative.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Min samples leaf</Text>{' '}
-              – minimum number of samples required in a leaf node.
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Min weight fraction</Text>{' '}
-              – minimum weighted fraction of the input samples required at a
-              leaf node.
+              – minimum samples per leaf. Higher values smooth predictions and
+              reduce overfitting.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max features</Text>{' '}
-              – number (or fraction) of features considered at each split
-              (int, float, sqrt, log2 or none).
+              – number of features considered at each split. Smaller values
+              increase randomness and reduce correlation between splits.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max leaf nodes</Text>{' '}
-              – maximum number of leaf nodes. Limits model complexity.
+              – maximum number of terminal nodes. Larger values allow finer
+              decision regions but increase overfitting risk.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Min impurity decrease</Text>{' '}
-              – minimum impurity decrease required for a split.
+              – required reduction in impurity to allow a split. Larger values
+              prevent weak, noisy splits.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Class weight</Text>{' '}
-              – reweights classes to reduce bias for imbalanced data.
+              – balances class importance, useful for imbalanced datasets.
             </List.Item>
             <List.Item>
               <Text span fw={600}>CCP alpha</Text>{' '}
-              – complexity parameter used for minimal cost-complexity pruning.
+              – pruning strength. Higher values produce simpler, more robust
+              trees.
             </List.Item>
           </List>
         </Stack>
@@ -312,74 +318,55 @@ export function ModelParamsText({ selectedAlgo }) {
           <List spacing={4} size="xs">
             <List.Item>
               <Text span fw={600}>Trees (n_estimators)</Text>{' '}
-              – number of trees in the forest.
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Criterion</Text>{' '}
-              – split quality measure (gini, entropy, etc.).
+              – number of trees in the forest. More trees improve stability but
+              increase training time.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max depth</Text>{' '}
-              – maximum depth of each tree.
+              – limits depth of each tree. Smaller values reduce overfitting but
+              may underfit.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Min samples split</Text>{' '}
-              – minimum samples required to split an internal node.
+              – minimum samples required to split a node. Higher values make the
+              forest more conservative.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Min samples leaf</Text>{' '}
-              – minimum samples required in a leaf node.
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Min weight fraction</Text>{' '}
-              – minimum weighted fraction of samples at a leaf node.
+              – minimum samples per leaf. Helps smooth predictions.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max features</Text>{' '}
-              – number (or fraction) of features considered at each split.
+              – number of features tried at each split. Smaller values increase
+              tree diversity.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max leaf nodes</Text>{' '}
-              – maximum number of leaf nodes per tree.
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Min impurity decrease</Text>{' '}
-              – minimum impurity decrease required for a split.
+              – caps tree complexity. Larger values allow more detailed trees
+              but increase variance.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Bootstrap</Text>{' '}
-              – whether each tree is trained on a bootstrap sample of the data.
+              – whether each tree is trained on a random sample with
+              replacement. Improves robustness.
             </List.Item>
             <List.Item>
               <Text span fw={600}>OOB score</Text>{' '}
-              – uses out-of-bag samples to estimate generalisation performance.
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
-              – number of CPU cores used for fitting (if supported).
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Random state</Text>{' '}
-              – random seed for reproducible results.
-            </List.Item>
-            <List.Item>
-              <Text span fw={600}>Warm start</Text>{' '}
-              – when enabled, allows adding more trees to an existing forest.
+              – estimates generalisation error using unused samples during
+              training.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Class weight</Text>{' '}
-              – balances classes (e.g.{' '}
-              <Text span fw={600}>balanced</Text> or{' '}
-              <Text span fw={600}>balanced_subsample</Text>).
+              – adjusts class importance for imbalanced datasets.
             </List.Item>
             <List.Item>
               <Text span fw={600}>CCP alpha</Text>{' '}
-              – complexity parameter for cost-complexity pruning.
+              – pruning strength applied to each tree to control overfitting.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Max samples</Text>{' '}
-              – if set, number (or fraction) of samples used to train each
-              tree.
+              – number or fraction of samples used per tree. Smaller values
+              increase randomness.
             </List.Item>
           </List>
         </Stack>
@@ -394,27 +381,29 @@ export function ModelParamsText({ selectedAlgo }) {
           <List spacing={4} size="xs">
             <List.Item>
               <Text span fw={600}>Neighbours</Text>{' '}
-              – number of neighbours used to make a prediction.
+              – number of nearest samples considered. Small values are sensitive
+              to noise; large values smooth predictions.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Weights</Text>{' '}
-              – how neighbours are weighted (uniform vs. distance).
+              – how neighbours contribute (uniform or distance-based).
             </List.Item>
             <List.Item>
               <Text span fw={600}>Algorithm</Text>{' '}
-              – search strategy for nearest neighbours (auto, ball-tree, etc.).
+              – strategy used to search for neighbours (auto, ball-tree, kd-tree).
             </List.Item>
             <List.Item>
               <Text span fw={600}>Leaf size</Text>{' '}
-              – tree leaf size parameter for tree-based search methods.
+              – affects speed and memory usage of tree-based searches.
             </List.Item>
             <List.Item>
               <Text span fw={600}>p</Text>{' '}
-              – power parameter for the Minkowski metric (e.g. p=2 is Euclidean).
+              – power parameter of the Minkowski distance (p=2 corresponds to
+              Euclidean distance).
             </List.Item>
             <List.Item>
               <Text span fw={600}>Metric</Text>{' '}
-              – distance measure (Minkowski, Euclidean, Manhattan, Chebyshev).
+              – distance function used to compare samples.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
@@ -433,20 +422,21 @@ export function ModelParamsText({ selectedAlgo }) {
           <List spacing={4} size="xs">
             <List.Item>
               <Text span fw={600}>Fit intercept</Text>{' '}
-              – whether to fit an intercept term.
+              – whether to include an intercept term. Disable only if data is
+              already centred.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Copy X</Text>{' '}
-              – whether to copy the input matrix or overwrite it during
-              fitting.
+              – copies the input matrix before fitting to avoid modifying it.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
-              – number of CPU cores used for fitting (if supported).
+              – number of CPU cores used during fitting, if supported.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Positive coefficients</Text>{' '}
-              – if enabled, forces regression coefficients to be non-negative.
+              – constrains coefficients to be non-negative, useful for some
+              physical or interpretability constraints.
             </List.Item>
           </List>
         </Stack>

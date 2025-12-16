@@ -95,6 +95,7 @@ def load_dataset_optional_y(payload) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         payload.y_key,
         payload.x_path,
         payload.y_path,
+        expected_n_features=getattr(payload, "expected_n_features", None),
     )
     return X, y
 

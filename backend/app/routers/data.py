@@ -16,6 +16,7 @@ class InspectRequest(BaseModel):
     npz_path: str | None = None
     x_key: str = "X"
     y_key: str = "y"
+    expected_n_features: int | None = None
 
 
 @router.post("/data/inspect")

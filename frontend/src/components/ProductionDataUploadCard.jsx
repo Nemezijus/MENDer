@@ -46,6 +46,7 @@ function IndividualFilesTab({
   setYPath,
   setNpzPath,
   onInspect,
+  modelArtifact,
 }) {
   const inspectMutation = useInspectProductionDataMutation();
 
@@ -106,6 +107,7 @@ function IndividualFilesTab({
         npz_path: null,
         x_key: 'X',
         y_key: 'y',
+        expected_n_features: modelArtifact?.n_features_in ?? null,
       };
 
       const report = await inspectMutation.mutateAsync(payload);
@@ -199,6 +201,7 @@ function CompoundFileTab({
   setYPath,
   setNpzPath,
   onInspect,
+  modelArtifact,
 }) {
   const inspectMutation = useInspectProductionDataMutation();
 
@@ -236,6 +239,7 @@ function CompoundFileTab({
         npz_path: resolved,
         x_key: 'X',
         y_key: 'y',
+        expected_n_features: modelArtifact?.n_features_in ?? null,
       };
 
       const report = await inspectMutation.mutateAsync(payload);
@@ -351,6 +355,7 @@ export default function ProductionDataUploadCard() {
                 setYPath={setYPath}
                 setNpzPath={setNpzPath}
                 onInspect={setInspectReport}
+                modelArtifact={modelArtifact}
               />
             </Tabs.Panel>
 
@@ -360,6 +365,7 @@ export default function ProductionDataUploadCard() {
                 setYPath={setYPath}
                 setNpzPath={setNpzPath}
                 onInspect={setInspectReport}
+                modelArtifact={modelArtifact}
               />
             </Tabs.Panel>
           </Tabs>

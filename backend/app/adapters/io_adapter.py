@@ -145,6 +145,7 @@ def load_X_optional_y(
     y_key: Optional[str],
     x_path: Optional[str],
     y_path: Optional[str],
+    expected_n_features: Optional[int] = None,
 ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
     """
     Prediction helper: X is required, y is optional.
@@ -189,6 +190,15 @@ def load_X_optional_y(
                 X = X[:, None]
             if X.ndim != 2:
                 raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
+        
+            if expected_n_features is not None:
+                try:
+                    exp = int(expected_n_features)
+                    if X.shape[1] != exp and X.shape[0] == exp:
+                        X = X.T
+                except Exception:
+                    pass
+
             return X, None
 
         # --- MAT pair: both X and y provided ---------------------------------
@@ -205,6 +215,14 @@ def load_X_optional_y(
                 X = X[:, None]
             if X.ndim != 2:
                 raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
+            if expected_n_features is not None:
+                try:
+                    exp = int(expected_n_features)
+                    if X.shape[1] != exp and X.shape[0] == exp:
+                        X = X.T
+                except Exception:
+                    pass
+
             return X, None
 
         raise LoadError(
