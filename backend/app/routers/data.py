@@ -1,13 +1,13 @@
 # backend/app/routers/data.py
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter
 from pydantic import BaseModel
 import os
-import shutil
 
 router = APIRouter()
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "backend", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 # ----- INSPECT -----
 class InspectRequest(BaseModel):
@@ -17,12 +17,23 @@ class InspectRequest(BaseModel):
     x_key: str = "X"
     y_key: str = "y"
 
+
 @router.post("/data/inspect")
 def inspect_endpoint(req: InspectRequest):
+    """
+    TRAINING inspect (strict): requires y for separate-file workflows.
+    """
     from ..services.data_service import inspect_data
-    # data_service.inspect_data expects a single request-like object
+
     return inspect_data(req)
 
-# ----- UPLOAD -----
-UPLOAD_DIR = os.path.join(os.getcwd(), "backend", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/data/inspect_production")
+def inspect_production_endpoint(req: InspectRequest):
+    """
+    PRODUCTION inspect (y optional): allows X-only so users can prepare unseen data
+    without labels.
+    """
+    from ..services.data_service import inspect_data_optional_y
+
+    return inspect_data_optional_y(req)

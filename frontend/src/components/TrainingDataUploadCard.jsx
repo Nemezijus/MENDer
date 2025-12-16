@@ -19,7 +19,12 @@ import { useDataStore } from '../state/useDataStore.js';
 import { useInspectDataMutation } from '../state/useInspectDataMutation.js';
 import { uploadFile } from '../api/files';
 
-import TrainingDataSummaryCard from './helpers/TrainingDataSummaryCard.jsx';
+import DataSummaryCard from './helpers/DataSummaryCard.jsx';
+import {
+  TrainingDataIntroText,
+  TrainingIndividualFilesText,
+  TrainingCompoundFileText,
+} from './helpers/helpTexts/DataFilesHelpTexts.jsx';
 
 // -------------------------
 // Helpers
@@ -61,7 +66,7 @@ function IndividualFilesTab({
     setErr(null);
     setLoading(true);
     try {
-      // Upload if local files selected; otherwise use typed server paths
+      // Upload if local files selected; otherwise use typed paths
       let resolvedXPath = xPath?.trim() || null;
       let resolvedYPath = yPath?.trim() || null;
 
@@ -88,7 +93,6 @@ function IndividualFilesTab({
 
       const report = await inspectMutation.mutateAsync(payload);
 
-      // Persist to global store for downstream training
       setInspectReportGlobal(report);
       setXPathGlobal(resolvedXPath);
       setYPathGlobal(resolvedYPath);
@@ -104,23 +108,25 @@ function IndividualFilesTab({
 
   return (
     <Stack gap="sm">
+      <TrainingIndividualFilesText />
+
       <TextInput
         label="Feature matrix (X)"
-        placeholder="Paste server path (e.g. /data/... or /uploads/...)"
+        placeholder="Paste file path"
         value={xPath}
         onChange={(e) => setXPath(e.currentTarget.value)}
-        rightSectionWidth={44}
+        rightSectionWidth={86}
         rightSection={
           <FileButton
             onChange={(file) => {
               setXLocalFile(file);
               if (file) setXPath(displayLocalFilePath(file));
             }}
-            accept=".mat,.npz,.npy"
+            accept=".mat,.npz,.npy,.csv,.txt"
           >
             {(props) => (
               <Button {...props} size="xs" variant="light">
-                …
+                Browse
               </Button>
             )}
           </FileButton>
@@ -129,21 +135,21 @@ function IndividualFilesTab({
 
       <TextInput
         label="Label vector (y)"
-        placeholder="Paste server path (e.g. /data/... or /uploads/...)"
+        placeholder="Paste file path"
         value={yPath}
         onChange={(e) => setYPath(e.currentTarget.value)}
-        rightSectionWidth={44}
+        rightSectionWidth={86}
         rightSection={
           <FileButton
             onChange={(file) => {
               setYLocalFile(file);
               if (file) setYPath(displayLocalFilePath(file));
             }}
-            accept=".mat,.npz,.npy"
+            accept=".mat,.npz,.npy,.csv,.txt"
           >
             {(props) => (
               <Button {...props} size="xs" variant="light">
-                …
+                Browse
               </Button>
             )}
           </FileButton>
@@ -152,7 +158,7 @@ function IndividualFilesTab({
 
       <Group gap="xs">
         <Button size="xs" onClick={handleInspect} loading={loading}>
-          Upload & Inspect
+          Upload &amp; Inspect
         </Button>
       </Group>
 
@@ -182,7 +188,6 @@ function CompoundFileTab({
 }) {
   const inspectMutation = useInspectDataMutation();
 
-  // Local-only state (dies when tab unmounts)
   const [npzPath, setNPZPath] = useState('');
   const [npzLocalFile, setNPZLocalFile] = useState(null);
 
@@ -226,12 +231,14 @@ function CompoundFileTab({
 
   return (
     <Stack gap="sm">
+      <TrainingCompoundFileText />
+
       <TextInput
         label="Compound dataset (.npz)"
-        placeholder="Paste server path (e.g. /data/... or /uploads/...)"
+        placeholder="Paste file path"
         value={npzPath}
         onChange={(e) => setNPZPath(e.currentTarget.value)}
-        rightSectionWidth={44}
+        rightSectionWidth={86}
         rightSection={
           <FileButton
             onChange={(file) => {
@@ -242,7 +249,7 @@ function CompoundFileTab({
           >
             {(props) => (
               <Button {...props} size="xs" variant="light">
-                …
+                Browse
               </Button>
             )}
           </FileButton>
@@ -266,7 +273,7 @@ function CompoundFileTab({
 
       <Group gap="xs">
         <Button size="xs" onClick={handleInspect} loading={loading}>
-          Upload & Inspect
+          Upload &amp; Inspect
         </Button>
       </Group>
 
@@ -300,6 +307,10 @@ export default function TrainingDataUploadCard() {
   const setYPath = useDataStore((s) => s.setYPath);
   const setNPZPath = useDataStore((s) => s.setNPZPath);
 
+  const xPath = useDataStore((s) => s.xPath);
+  const yPath = useDataStore((s) => s.yPath);
+  const npzPath = useDataStore((s) => s.npzPath);
+
   const dataReady = !!inspectReport && (inspectReport?.n_samples ?? 0) > 0;
   const taskInferred = inspectReport?.task_inferred || null;
   const effectiveTask = taskSelected || taskInferred || null;
@@ -308,8 +319,12 @@ export default function TrainingDataUploadCard() {
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="md">
+          {/* Center title, badge on right */}
           <Group justify="space-between" align="center">
-            <Text fw={600}>Training data</Text>
+            <Box style={{ width: 90 }} /> {/* left spacer */}
+            <Text fw={700} size="lg" align="center" style={{ flex: 1 }}>
+              Training data
+            </Text>
             {dataReady ? (
               <Badge color="green">Ready</Badge>
             ) : (
@@ -317,11 +332,12 @@ export default function TrainingDataUploadCard() {
             )}
           </Group>
 
+          {/* Intro text */}
+          <TrainingDataIntroText />
+
           <Tabs defaultValue="individual" keepMounted={false}>
             <Tabs.List grow>
-              <Tabs.Tab value="individual">
-                Individual files (features &amp; labels)
-              </Tabs.Tab>
+              <Tabs.Tab value="individual">Individual files</Tabs.Tab>
               <Tabs.Tab value="compound">Compound file</Tabs.Tab>
             </Tabs.List>
 
@@ -367,9 +383,12 @@ export default function TrainingDataUploadCard() {
       </Card>
 
       {/* Summary underneath */}
-      <TrainingDataSummaryCard
+      <DataSummaryCard
         inspectReport={inspectReport}
         effectiveTask={effectiveTask}
+        xPath={xPath}
+        yPath={yPath}
+        npzPath={npzPath}
       />
     </Stack>
   );

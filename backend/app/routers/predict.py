@@ -1,3 +1,4 @@
+# backend/app/routers/predict.py
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -15,19 +16,12 @@ from ..adapters.io_adapter import load_X_optional_y, LoadError
 router = APIRouter()
 
 
-@router.post("/models/apply", response_model=ApplyModelResponse)
-def apply_model_endpoint(req: ApplyModelRequest):
+def _load_prediction_data(data):
     """
-    Apply an existing model artifact to a new dataset.
-
-    Flow:
-      1. Load X (and optional y) using a prediction-friendly loader.
-      2. Call prediction_service.apply_model_to_arrays with the cached pipeline.
-      3. Wrap the result in ApplyModelResponse.
+    Load X and (optional) y for prediction/export endpoints.
+    Uses the prediction-friendly IO helper where y is optional.
     """
-    # 1) Load data via prediction-friendly IO helper (y is optional)
     try:
-        data = req.data
         X, y = load_X_optional_y(
             data.npz_path,
             data.x_key,
@@ -35,27 +29,48 @@ def apply_model_endpoint(req: ApplyModelRequest):
             data.x_path,
             data.y_path,
         )
+        return X, y
     except LoadError as e:
-        raise HTTPException(status_code=400, detail=f"Data load failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Data load failed: {e}") from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
-    # 2) Delegate to prediction service (purely array-based)
+
+def _run_apply(req: ApplyModelRequest, *, export: bool = False):
+    """
+    Shared execution for apply/export to keep router endpoints thin and consistent.
+    """
+    X, y = _load_prediction_data(req.data)
+
     try:
-        result = apply_model_to_arrays(
+        if export:
+            return export_predictions_to_csv(
+                artifact_uid=req.artifact_uid,
+                artifact_meta=req.artifact_meta,
+                X=X,
+                y=y,
+                filename=getattr(req, "filename", None),
+            )
+        return apply_model_to_arrays(
             artifact_uid=req.artifact_uid,
             artifact_meta=req.artifact_meta,
             X=X,
             y=y,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
-    # 3) Return typed response
+
+@router.post("/models/apply", response_model=ApplyModelResponse)
+def apply_model_endpoint(req: ApplyModelRequest):
+    """
+    Apply an existing model artifact to a new dataset.
+    """
+    result = _run_apply(req, export=False)
     return ApplyModelResponse(**result)
 
 
@@ -63,40 +78,8 @@ def apply_model_endpoint(req: ApplyModelRequest):
 def export_predictions_endpoint(req: ApplyModelExportRequest):
     """
     Export predictions as CSV for a given artifact + dataset.
-
-    The request body mirrors ApplyModelRequest but adds an optional filename.
-    The response is a streaming CSV file (no JSON envelope).
     """
-    # 1) Load data (X, optional y)
-    try:
-        data = req.data
-        X, y = load_X_optional_y(
-            data.npz_path,
-            data.x_key,
-            data.y_key,
-            data.x_path,
-            data.y_path,
-        )
-    except LoadError as e:
-        raise HTTPException(status_code=400, detail=f"Data load failed: {e}")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    # 2) Run prediction + export
-    try:
-        export_result = export_predictions_to_csv(
-            artifact_uid=req.artifact_uid,
-            artifact_meta=req.artifact_meta,
-            X=X,
-            y=y,
-            filename=req.filename,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    export_result = _run_apply(req, export=True)
 
     headers = {
         "Content-Disposition": f'attachment; filename="{export_result["filename"]}"',

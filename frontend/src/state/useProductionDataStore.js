@@ -8,6 +8,9 @@ export const useProductionDataStore = create((set) => ({
   xKey: 'X',
   yKey: 'y',
 
+  inspectReport: null,
+  // setter for inspectReport
+  setInspectReport: (inspectReport) => set({ inspectReport }),
   // setters
   setXPath: (xPath) => set({ xPath }),
   setYPath: (yPath) => set({ yPath }),

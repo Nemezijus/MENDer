@@ -6,6 +6,11 @@ export async function inspectData(payload) {
   return data;
 }
 
+export async function inspectProductionData(payload) {
+  const { data } = await api.post('/data/inspect_production', payload);
+  return data;
+}
+
 // new upload endpoint (multipart form)
 export async function uploadData(formData) {
   const { data } = await api.post('/data/upload', formData, {
