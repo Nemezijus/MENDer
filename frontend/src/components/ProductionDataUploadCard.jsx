@@ -16,6 +16,7 @@ import {
 import { uploadFile } from '../api/files';
 import { useInspectProductionDataMutation } from '../state/useInspectDataMutation.js';
 import { useProductionDataStore } from '../state/useProductionDataStore.js';
+import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 
 import DataSummaryCard from './helpers/DataSummaryCard.jsx';
 import {
@@ -57,7 +58,7 @@ function StoredAsLine({ uploadInfo }) {
   );
 }
 
-function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal }) {
+function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifact }) {
   const inspectMutation = useInspectProductionDataMutation();
 
   const setInspectReport = useProductionDataStore((s) => s.setInspectReport);
@@ -121,6 +122,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal }) {
         npz_path: null,
         x_key: xKey || 'X',
         y_key: yKey || 'y',
+        expected_n_features: modelArtifact?.n_features_in ?? null,
       };
 
       const report = await inspectMutation.mutateAsync(payload);
@@ -228,7 +230,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal }) {
   );
 }
 
-function CompoundFileTab({ setNpzDisplayGlobal }) {
+function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
   const inspectMutation = useInspectProductionDataMutation();
 
   const setInspectReport = useProductionDataStore((s) => s.setInspectReport);
@@ -274,6 +276,7 @@ function CompoundFileTab({ setNpzDisplayGlobal }) {
         npz_path: resolvedNpzPath,
         x_key: xKey || 'X',
         y_key: yKey || 'y',
+        expected_n_features: modelArtifact?.n_features_in ?? null,
       };
 
       const report = await inspectMutation.mutateAsync(payload);
@@ -368,14 +371,12 @@ export default function ProductionDataUploadCard() {
   const yPath = useProductionDataStore((s) => s.yPath);
   const npzPath = useProductionDataStore((s) => s.npzPath);
 
-  const modelInfo = useProductionDataStore((s) => s.modelInfo || null);
-  const modelArtifact =
-    modelInfo?.model_artifact ||
-    modelInfo?.artifact ||
-    modelInfo ||
-    null;
+  const modelArtifact = useModelArtifactStore((s) =>
+  s?.artifact || s?.activeArtifact || s?.modelArtifact || null
+);
 
-  const effectiveTask = modelInfo?.task || modelArtifact?.kind || null;
+  // Task shown can be inferred from the inspected production data
+  const effectiveTask = inspectReport?.task_inferred || null;
 
   // NEW persisted display
   const xDisplay = useProductionDataStore((s) => s.xDisplay);
@@ -406,11 +407,11 @@ export default function ProductionDataUploadCard() {
             </Tabs.List>
 
             <Tabs.Panel value="individual" pt="md">
-              <IndividualFilesTab setXDisplayGlobal={setXDisplay} setYDisplayGlobal={setYDisplay} />
+              <IndividualFilesTab setXDisplayGlobal={setXDisplay} setYDisplayGlobal={setYDisplay} modelArtifact={modelArtifact}/>
             </Tabs.Panel>
 
             <Tabs.Panel value="compound" pt="md">
-              <CompoundFileTab setNpzDisplayGlobal={setNpzDisplay} />
+              <CompoundFileTab setNpzDisplayGlobal={setNpzDisplay} modelArtifact={modelArtifact} />
             </Tabs.Panel>
           </Tabs>
         </Stack>

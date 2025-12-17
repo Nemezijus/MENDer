@@ -8,7 +8,7 @@ from utils.strategies.data_loaders import _coerce_shapes
 from utils.parse.data_read import load_mat_variable
 
 # Read-only datasets in Docker (typically mounted at /data)
-DATA_ROOT = os.getenv("DATA_ROOT", "/data")
+DATA_ROOT = os.getenv("DATA_ROOT", "/app/data")
 
 # Read-write uploads (Docker: /uploads; Dev: ./uploads)
 # Keep this consistent with backend/app/routers/files.py.
@@ -114,9 +114,24 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
             else:
                 ap = os.path.abspath(p)
 
+        # If user passed "data/..." and it doesn't exist under DATA_ROOT,
+        # fall back to /app/data (image-baked datasets) if different.
+        if up.startswith("data/") and (not os.path.exists(ap)):
+            fallback_root = "/app/data"
+            if data_root_abs != os.path.abspath(fallback_root):
+                ap2 = os.path.abspath(os.path.join(fallback_root, up[len("data/"):]))
+                if os.path.exists(ap2):
+                    ap = ap2
+
         allowed_roots = []
         if data_root_abs:
             allowed_roots.append(data_root_abs)
+
+        # Always allow baked-in datasets location too (image copies into /app/data)
+        app_data = os.path.abspath("/app/data")
+        if app_data and os.path.isdir(app_data) and app_data not in allowed_roots:
+            allowed_roots.append(app_data)
+
         if upload_dir_abs:
             allowed_roots.append(upload_dir_abs)
 
@@ -125,7 +140,7 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
             raise LoadError(f"Path must be under one of: {', '.join(allowed_roots)} (got: {path!r})")
 
         if not os.path.exists(ap):
-            raise LoadError(f"File not found: {path}")
+            raise LoadError(f"File not found: {path} (resolved to: {ap})")
 
         return ap
 

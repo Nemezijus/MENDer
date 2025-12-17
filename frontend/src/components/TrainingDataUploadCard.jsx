@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   Stack,
@@ -73,6 +73,12 @@ function IndividualFilesTab({
   yKeyGlobal,
   setXDisplayGlobal,
   setYDisplayGlobal,
+
+  // NEW: initial values from store (dev quick-start)
+  initialXPath,
+  initialYPath,
+  initialXDisplay,
+  initialYDisplay,
 }) {
   const inspectMutation = useInspectDataMutation();
 
@@ -90,10 +96,38 @@ function IndividualFilesTab({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
+  // Autofill once from store:
+  // - prefer friendly display label if present
+  // - otherwise use the raw default path (dev quick-start)
+  useEffect(() => {
+    if (!xPathDisplay) {
+      const v = (initialXDisplay || initialXPath || '').trim();
+      if (v) {
+        setXPathDisplay(v);
+        // only set backendPath for raw paths; if it's a friendly "[hash] name" label, keep backendPath null
+        setXBackendPath(initialXPath ? initialXPath : null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialXPath, initialXDisplay]);
+
+  useEffect(() => {
+    if (!yPathDisplay) {
+      const v = (initialYDisplay || initialYPath || '').trim();
+      if (v) {
+        setYPathDisplay(v);
+        setYBackendPath(initialYPath ? initialYPath : null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialYPath, initialYDisplay]);
+
   async function handleInspect() {
     setErr(null);
     setLoading(true);
     try {
+      // If user typed a path, we rely on xBackendPath/yBackendPath.
+      // If they browsed a file, we upload and use returned path.
       let resolvedXPath = xBackendPath || xPathDisplay?.trim() || null;
       let resolvedYPath = yBackendPath || yPathDisplay?.trim() || null;
 
@@ -107,6 +141,7 @@ function IndividualFilesTab({
         setXPathDisplay(disp);
         setXDisplayGlobal(disp);
       } else {
+        // If they typed a path, keep the display as-is (path), and persist it as display too.
         setXDisplayGlobal(xPathDisplay?.trim() || '');
       }
 
@@ -134,6 +169,8 @@ function IndividualFilesTab({
       const report = await inspectMutation.mutateAsync(payload);
 
       setInspectReportGlobal(report);
+
+      // Keep store in sync with backend paths (for dev quick-start + for summary + for later runs)
       setXPathGlobal(resolvedXPath);
       setYPathGlobal(resolvedYPath);
       setNpzPathGlobal(null);
@@ -158,7 +195,11 @@ function IndividualFilesTab({
           onChange={(e) => {
             const v = e.currentTarget.value;
             setXPathDisplay(v);
+
+            // Treat typed values as backend paths (dev quick-start is this case)
             setXBackendPath(v?.trim() || null);
+
+            // Clear file-upload state when user types
             setXLocalFile(null);
             setXUploadInfo(null);
           }}
@@ -394,7 +435,7 @@ export default function TrainingDataUploadCard() {
   const yPath = useDataStore((s) => s.yPath);
   const npzPath = useDataStore((s) => s.npzPath);
 
-  // NEW persisted display
+  // persisted display
   const xDisplay = useDataStore((s) => s.xDisplay);
   const yDisplay = useDataStore((s) => s.yDisplay);
   const npzDisplay = useDataStore((s) => s.npzDisplay);
@@ -415,7 +456,11 @@ export default function TrainingDataUploadCard() {
             <Text fw={700} size="lg" align="center" style={{ flex: 1 }}>
               Training data
             </Text>
-            {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
+            {dataReady ? (
+              <Badge color="green">Ready</Badge>
+            ) : (
+              <Badge color="gray">Not loaded</Badge>
+            )}
           </Group>
 
           <TrainingDataIntroText />
@@ -436,6 +481,10 @@ export default function TrainingDataUploadCard() {
                 yKeyGlobal={yKey}
                 setXDisplayGlobal={setXDisplay}
                 setYDisplayGlobal={setYDisplay}
+                initialXPath={xPath}
+                initialYPath={yPath}
+                initialXDisplay={xDisplay}
+                initialYDisplay={yDisplay}
               />
             </Tabs.Panel>
 
