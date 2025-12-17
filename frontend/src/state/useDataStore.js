@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-// Keep the same initial defaults as the old DataContext
 const initialState = {
   xPath: 'data/classical/wine/wine_features.mat',
   yPath: 'data/classical/wine/wine_labels.mat',
@@ -8,7 +7,10 @@ const initialState = {
   xKey: 'X',
   yKey: 'y',
   inspectReport: null,
-  taskSelected: null, // 'classification' | 'regression' | null
+  taskSelected: null,
+  xDisplay: '',
+  yDisplay: '',
+  npzDisplay: '',
 };
 
 export const useDataStore = create((set) => ({
@@ -18,11 +20,15 @@ export const useDataStore = create((set) => ({
   // setters
   setXPath: (xPath) => set({ xPath }),
   setYPath: (yPath) => set({ yPath }),
-  setNPZPath: (npzPath) => set({ npzPath }),
+  setNpzPath: (npzPath) => set({ npzPath }),
   setXKey: (xKey) => set({ xKey }),
   setYKey: (yKey) => set({ yKey }),
   setInspectReport: (inspectReport) => set({ inspectReport }),
   setTaskSelected: (taskSelected) => set({ taskSelected }),
+
+  setXDisplay: (xDisplay) => set({ xDisplay }),
+  setYDisplay: (yDisplay) => set({ yDisplay }),
+  setNpzDisplay: (npzDisplay) => set({ npzDisplay }),
 
   // utility
   reset: () => set({ ...initialState }),

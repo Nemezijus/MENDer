@@ -5,30 +5,25 @@ import {
   Text,
   TextInput,
   Button,
+  Alert,
   Group,
   Badge,
   Tabs,
   Box,
-  Alert,
   FileButton,
 } from '@mantine/core';
 
-import { useProductionDataStore } from '../state/useProductionDataStore.js';
-import { useInspectProductionDataMutation } from '../state/useInspectDataMutation.js';
-import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { uploadFile } from '../api/files';
+import { useInspectProductionDataMutation } from '../state/useInspectDataMutation.js';
+import { useProductionDataStore } from '../state/useProductionDataStore.js';
 
 import DataSummaryCard from './helpers/DataSummaryCard.jsx';
-
 import {
   ProductionDataIntroText,
   ProductionIndividualFilesText,
   ProductionCompoundFileText,
 } from './helpers/helpTexts/DataFilesHelpTexts.jsx';
 
-// -------------------------
-// Helpers
-// -------------------------
 function displayLocalFilePath(file) {
   if (!file) return '';
   const rel =
@@ -38,89 +33,108 @@ function displayLocalFilePath(file) {
   return `local://${rel}`;
 }
 
-// ============================================================
-// Tab 1: Individual files
-// ============================================================
-function IndividualFilesTab({
-  setXPath,
-  setYPath,
-  setNpzPath,
-  onInspect,
-  modelArtifact,
-}) {
+function shortHashFromSavedName(savedName, n = 7) {
+  if (!savedName) return '';
+  const dot = savedName.lastIndexOf('.');
+  const base = dot >= 0 ? savedName.slice(0, dot) : savedName;
+  return base.slice(0, n);
+}
+
+function formatDisplayNameFromUpload(up) {
+  if (!up) return '';
+  const sh = shortHashFromSavedName(up.saved_name, 7);
+  const name = up.original_name || up.saved_name;
+  return sh ? `[${sh}] ${name}` : name;
+}
+
+function StoredAsLine({ uploadInfo }) {
+  if (!uploadInfo?.saved_name) return null;
+  const sh = shortHashFromSavedName(uploadInfo.saved_name, 7);
+  return (
+    <Text size="xs" c="dimmed">
+      Stored as: [{sh}] {uploadInfo.saved_name}
+    </Text>
+  );
+}
+
+function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal }) {
   const inspectMutation = useInspectProductionDataMutation();
 
-  // local-only state (dies when tab unmounts)
-  const [xPath, setXPathLocal] = useState('');
-  const [yPath, setYPathLocal] = useState('');
+  const setInspectReport = useProductionDataStore((s) => s.setInspectReport);
+  const setXPath = useProductionDataStore((s) => s.setXPath);
+  const setYPath = useProductionDataStore((s) => s.setYPath);
+  const setNpzPath = useProductionDataStore((s) => s.setNpzPath);
+
+  const xKey = useProductionDataStore((s) => s.xKey);
+  const yKey = useProductionDataStore((s) => s.yKey);
+
+  const [xPathDisplay, setXPathDisplay] = useState('');
+  const [yPathDisplay, setYPathDisplay] = useState('');
+  const [xBackendPath, setXBackendPath] = useState(null);
+  const [yBackendPath, setYBackendPath] = useState(null);
+
   const [xLocalFile, setXLocalFile] = useState(null);
   const [yLocalFile, setYLocalFile] = useState(null);
 
-  const [uploading, setUploading] = useState(false);
+  const [xUploadInfo, setXUploadInfo] = useState(null);
+  const [yUploadInfo, setYUploadInfo] = useState(null);
+
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  async function handleUploadAndInspect() {
+  async function handleInspect() {
     setErr(null);
-    setUploading(true);
+    setLoading(true);
     try {
-      let resolvedX = xPath?.trim() || null;
-      let resolvedY = yPath?.trim() || null;
+      let resolvedXPath = xBackendPath || xPathDisplay?.trim() || null;
+      let resolvedYPath = yBackendPath || yPathDisplay?.trim() || null;
 
       if (xLocalFile) {
-        const res = await uploadFile(xLocalFile);
-        const npzPathFromApi = res?.npz_path || null;
-        const pathFromApi = res?.path || null;
+        const up = await uploadFile(xLocalFile);
+        resolvedXPath = up.path;
+        setXBackendPath(up.path);
+        setXUploadInfo(up);
 
-        // Preserve existing behavior: if API returns an npz_path, treat as compound.
-        if (npzPathFromApi) {
-          setNpzPath(npzPathFromApi);
-          setXPath('');
-          setYPath('');
-          onInspect?.(null);
-          return; // switched to compound mode
-        }
-
-        if (pathFromApi) {
-          resolvedX = pathFromApi;
-          setXPathLocal(pathFromApi);
-        }
+        const disp = formatDisplayNameFromUpload(up);
+        setXPathDisplay(disp);
+        setXDisplayGlobal(disp);
+      } else {
+        setXDisplayGlobal(xPathDisplay?.trim() || '');
       }
 
       if (yLocalFile) {
-        const res = await uploadFile(yLocalFile);
-        const pathFromApi = res?.path || null;
-        if (pathFromApi) {
-          resolvedY = pathFromApi;
-          setYPathLocal(pathFromApi);
-        }
+        const up = await uploadFile(yLocalFile);
+        resolvedYPath = up.path;
+        setYBackendPath(up.path);
+        setYUploadInfo(up);
+
+        const disp = formatDisplayNameFromUpload(up);
+        setYPathDisplay(disp);
+        setYDisplayGlobal(disp);
+      } else {
+        setYDisplayGlobal(yPathDisplay?.trim() || '');
       }
 
-      // Individual mode clears compound
-      setNpzPath('');
-      setXPath(resolvedX || '');
-      setYPath(resolvedY || '');
-
-      // Inspect (labels optional)
       const payload = {
-        x_path: resolvedX,
-        y_path: resolvedY || null,
+        x_path: resolvedXPath,
+        y_path: resolvedYPath,
         npz_path: null,
-        x_key: 'X',
-        y_key: 'y',
-        expected_n_features: modelArtifact?.n_features_in ?? null,
+        x_key: xKey || 'X',
+        y_key: yKey || 'y',
       };
 
       const report = await inspectMutation.mutateAsync(payload);
-      onInspect?.(report);
+
+      setInspectReport(report);
+      setXPath(resolvedXPath);
+      setYPath(resolvedYPath);
+      setNpzPath(null);
     } catch (e) {
-      const msg =
-        e?.response?.data?.detail ||
-        e?.message ||
-        'Failed to upload/inspect production data';
+      const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
-      onInspect?.(null);
+      setInspectReport(null);
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   }
 
@@ -128,58 +142,79 @@ function IndividualFilesTab({
     <Stack gap="sm">
       <ProductionIndividualFilesText />
 
-      <TextInput
-        label="Production features (X)"
-        placeholder="Paste file path"
-        value={xPath}
-        onChange={(e) => setXPathLocal(e.currentTarget.value)}
-        rightSectionWidth={86}
-        rightSection={
-          <FileButton
-            onChange={(file) => {
-              setXLocalFile(file);
-              if (file) setXPathLocal(displayLocalFilePath(file));
-            }}
-            accept=".mat,.npz,.npy,.csv,.txt"
-          >
-            {(props) => (
-              <Button {...props} size="xs" variant="light">
-                Browse
-              </Button>
-            )}
-          </FileButton>
-        }
-        disabled={uploading}
-      />
+      <Stack gap={4}>
+        <TextInput
+          label="Feature matrix (X)"
+          placeholder="Paste file path"
+          value={xPathDisplay}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setXPathDisplay(v);
+            setXBackendPath(v?.trim() || null);
+            setXLocalFile(null);
+            setXUploadInfo(null);
+          }}
+          rightSectionWidth={86}
+          rightSection={
+            <FileButton
+              onChange={(file) => {
+                setXLocalFile(file);
+                setXUploadInfo(null);
+                setXBackendPath(null);
+                if (file) setXPathDisplay(displayLocalFilePath(file));
+              }}
+              accept=".mat,.npz,.npy,.csv,.txt"
+            >
+              {(props) => (
+                <Button {...props} size="xs" variant="light">
+                  Browse
+                </Button>
+              )}
+            </FileButton>
+          }
+        />
+        <StoredAsLine uploadInfo={xUploadInfo} />
+      </Stack>
 
-      <TextInput
-        label="Production labels (y, optional)"
-        placeholder="Paste file path"
-        value={yPath}
-        onChange={(e) => setYPathLocal(e.currentTarget.value)}
-        rightSectionWidth={86}
-        rightSection={
-          <FileButton
-            onChange={(file) => {
-              setYLocalFile(file);
-              if (file) setYPathLocal(displayLocalFilePath(file));
-            }}
-            accept=".mat,.npz,.npy,.csv,.txt"
-          >
-            {(props) => (
-              <Button {...props} size="xs" variant="light">
-                Browse
-              </Button>
-            )}
-          </FileButton>
-        }
-        disabled={uploading}
-      />
+      <Stack gap={4}>
+        <TextInput
+          label="Label vector (y) (optional)"
+          placeholder="Paste file path"
+          value={yPathDisplay}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setYPathDisplay(v);
+            setYBackendPath(v?.trim() || null);
+            setYLocalFile(null);
+            setYUploadInfo(null);
+          }}
+          rightSectionWidth={86}
+          rightSection={
+            <FileButton
+              onChange={(file) => {
+                setYLocalFile(file);
+                setYUploadInfo(null);
+                setYBackendPath(null);
+                if (file) setYPathDisplay(displayLocalFilePath(file));
+              }}
+              accept=".mat,.npz,.npy,.csv,.txt"
+            >
+              {(props) => (
+                <Button {...props} size="xs" variant="light">
+                  Browse
+                </Button>
+              )}
+            </FileButton>
+          }
+        />
+        <StoredAsLine uploadInfo={yUploadInfo} />
+      </Stack>
 
       <Group gap="xs">
-        <Button size="xs" onClick={handleUploadAndInspect} loading={uploading}>
+        <Button size="xs" onClick={handleInspect} loading={loading}>
           Upload &amp; Inspect
         </Button>
+        <Badge color="gray">Labels optional</Badge>
       </Group>
 
       {err && (
@@ -193,66 +228,66 @@ function IndividualFilesTab({
   );
 }
 
-// ============================================================
-// Tab 2: Compound file
-// ============================================================
-function CompoundFileTab({
-  setXPath,
-  setYPath,
-  setNpzPath,
-  onInspect,
-  modelArtifact,
-}) {
+function CompoundFileTab({ setNpzDisplayGlobal }) {
   const inspectMutation = useInspectProductionDataMutation();
 
-  const [npzPath, setNpzPathLocal] = useState('');
-  const [npzLocalFile, setNpzLocalFile] = useState(null);
+  const setInspectReport = useProductionDataStore((s) => s.setInspectReport);
+  const setXPath = useProductionDataStore((s) => s.setXPath);
+  const setYPath = useProductionDataStore((s) => s.setYPath);
+  const setNpzPath = useProductionDataStore((s) => s.setNpzPath);
 
-  const [uploading, setUploading] = useState(false);
+  const xKey = useProductionDataStore((s) => s.xKey);
+  const yKey = useProductionDataStore((s) => s.yKey);
+  const setXKey = useProductionDataStore((s) => s.setXKey);
+  const setYKey = useProductionDataStore((s) => s.setYKey);
+
+  const [npzPathDisplay, setNpzPathDisplay] = useState('');
+  const [npzBackendPath, setNpzBackendPath] = useState(null);
+  const [npzLocalFile, setNpzLocalFile] = useState(null);
+  const [npzUploadInfo, setNpzUploadInfo] = useState(null);
+
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  async function handleUploadAndInspect() {
+  async function handleInspect() {
     setErr(null);
-    setUploading(true);
+    setLoading(true);
     try {
-      let resolved = npzPath?.trim() || null;
+      let resolvedNpzPath = npzBackendPath || npzPathDisplay?.trim() || null;
 
       if (npzLocalFile) {
-        const res = await uploadFile(npzLocalFile);
-        const npzPathFromApi = res?.npz_path || null;
-        const pathFromApi = res?.path || null;
+        const up = await uploadFile(npzLocalFile);
+        resolvedNpzPath = up.path;
+        setNpzBackendPath(up.path);
+        setNpzUploadInfo(up);
 
-        // Preserve existing behavior: prefer npz_path if backend provides it.
-        resolved = npzPathFromApi || pathFromApi || resolved;
-        if (resolved) setNpzPathLocal(resolved);
+        const disp = formatDisplayNameFromUpload(up);
+        setNpzPathDisplay(disp);
+        setNpzDisplayGlobal(disp);
+      } else {
+        setNpzDisplayGlobal(npzPathDisplay?.trim() || '');
       }
 
-      // Compound mode clears separate X/Y
-      setXPath('');
-      setYPath('');
-      setNpzPath(resolved || '');
-
-      // Inspect (labels optional; depends on file contents / keys)
       const payload = {
         x_path: null,
         y_path: null,
-        npz_path: resolved,
-        x_key: 'X',
-        y_key: 'y',
-        expected_n_features: modelArtifact?.n_features_in ?? null,
+        npz_path: resolvedNpzPath,
+        x_key: xKey || 'X',
+        y_key: yKey || 'y',
       };
 
       const report = await inspectMutation.mutateAsync(payload);
-      onInspect?.(report);
+
+      setInspectReport(report);
+      setNpzPath(resolvedNpzPath);
+      setXPath(null);
+      setYPath(null);
     } catch (e) {
-      const msg =
-        e?.response?.data?.detail ||
-        e?.message ||
-        'Failed to upload/inspect production data';
+      const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
-      onInspect?.(null);
+      setInspectReport(null);
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   }
 
@@ -260,32 +295,57 @@ function CompoundFileTab({
     <Stack gap="sm">
       <ProductionCompoundFileText />
 
-      <TextInput
-        label="Production compound file (.npz)"
-        placeholder="Paste file path"
-        value={npzPath}
-        onChange={(e) => setNpzPathLocal(e.currentTarget.value)}
-        rightSectionWidth={86}
-        rightSection={
-          <FileButton
-            onChange={(file) => {
-              setNpzLocalFile(file);
-              if (file) setNpzPathLocal(displayLocalFilePath(file));
-            }}
-            accept=".npz,.mat"
-          >
-            {(props) => (
-              <Button {...props} size="xs" variant="light">
-                Browse
-              </Button>
-            )}
-          </FileButton>
-        }
-        disabled={uploading}
-      />
+      <Stack gap={4}>
+        <TextInput
+          label="Compound dataset (.npz)"
+          placeholder="Paste file path"
+          value={npzPathDisplay}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setNpzPathDisplay(v);
+            setNpzBackendPath(v?.trim() || null);
+            setNpzLocalFile(null);
+            setNpzUploadInfo(null);
+          }}
+          rightSectionWidth={86}
+          rightSection={
+            <FileButton
+              onChange={(file) => {
+                setNpzLocalFile(file);
+                setNpzUploadInfo(null);
+                setNpzBackendPath(null);
+                if (file) setNpzPathDisplay(displayLocalFilePath(file));
+              }}
+              accept=".npz,.mat"
+            >
+              {(props) => (
+                <Button {...props} size="xs" variant="light">
+                  Browse
+                </Button>
+              )}
+            </FileButton>
+          }
+        />
+        <StoredAsLine uploadInfo={npzUploadInfo} />
+      </Stack>
+
+      <Group grow align="flex-start">
+        <TextInput
+          label="X key (features)"
+          value={xKey || ''}
+          onChange={(e) => setXKey(e.currentTarget.value)}
+          placeholder="X"
+        />
+        <TextInput
+          label="y key (labels) (optional)"
+          value={yKey || ''}
+          onChange={(e) => setYKey(e.currentTarget.value)}
+          placeholder="y"
+        />
+      </Group>
 
       <Group gap="xs">
-        <Button size="xs" onClick={handleUploadAndInspect} loading={uploading}>
+        <Button size="xs" onClick={handleInspect} loading={loading}>
           Upload &amp; Inspect
         </Button>
       </Group>
@@ -301,44 +361,34 @@ function CompoundFileTab({
   );
 }
 
-// ============================================================
-// Main component
-// ============================================================
 export default function ProductionDataUploadCard() {
-  const {
-    setXPath,
-    setYPath,
-    setNpzPath,
-    xPath,
-    yPath,
-    npzPath,
-    inspectReport,
-    setInspectReport,
-  } = useProductionDataStore();
+  const inspectReport = useProductionDataStore((s) => s.inspectReport);
 
-  // Current model artifact (for compatibility warning in summary)
-  const modelArtifact = useModelArtifactStore((s) =>
-    s?.artifact || s?.activeArtifact || s?.modelArtifact || null
-  );
+  const xPath = useProductionDataStore((s) => s.xPath);
+  const yPath = useProductionDataStore((s) => s.yPath);
+  const npzPath = useProductionDataStore((s) => s.npzPath);
 
-  const ready = !!(npzPath || xPath);
-  const effectiveTask = inspectReport?.task_inferred || null;
+  const modelInfo = useProductionDataStore((s) => s.modelInfo || null);
+  const effectiveTask = modelInfo?.task || null;
+
+  // NEW persisted display
+  const xDisplay = useProductionDataStore((s) => s.xDisplay);
+  const yDisplay = useProductionDataStore((s) => s.yDisplay);
+  const npzDisplay = useProductionDataStore((s) => s.npzDisplay);
+  const setXDisplay = useProductionDataStore((s) => s.setXDisplay);
+  const setYDisplay = useProductionDataStore((s) => s.setYDisplay);
+  const setNpzDisplay = useProductionDataStore((s) => s.setNpzDisplay);
 
   return (
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="md">
-          {/* Center title, badge on right */}
           <Group justify="space-between" align="center">
             <Box style={{ width: 90 }} />
             <Text fw={700} size="lg" align="center" style={{ flex: 1 }}>
               Production data
             </Text>
-            {ready ? (
-              <Badge color="green">Ready</Badge>
-            ) : (
-              <Badge color="gray">Not loaded</Badge>
-            )}
+            {inspectReport ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
           </Group>
 
           <ProductionDataIntroText />
@@ -350,29 +400,13 @@ export default function ProductionDataUploadCard() {
             </Tabs.List>
 
             <Tabs.Panel value="individual" pt="md">
-              <IndividualFilesTab
-                setXPath={setXPath}
-                setYPath={setYPath}
-                setNpzPath={setNpzPath}
-                onInspect={setInspectReport}
-                modelArtifact={modelArtifact}
-              />
+              <IndividualFilesTab setXDisplayGlobal={setXDisplay} setYDisplayGlobal={setYDisplay} />
             </Tabs.Panel>
 
             <Tabs.Panel value="compound" pt="md">
-              <CompoundFileTab
-                setXPath={setXPath}
-                setYPath={setYPath}
-                setNpzPath={setNpzPath}
-                onInspect={setInspectReport}
-                modelArtifact={modelArtifact}
-              />
+              <CompoundFileTab setNpzDisplayGlobal={setNpzDisplay} />
             </Tabs.Panel>
           </Tabs>
-
-          <Text size="xs" c="dimmed">
-            X (or a compound file containing X) is required to run predictions. y is optional.
-          </Text>
         </Stack>
       </Card>
 
@@ -382,8 +416,9 @@ export default function ProductionDataUploadCard() {
         xPath={xPath}
         yPath={yPath}
         npzPath={npzPath}
-        showSuggestion={false}
-        modelArtifact={modelArtifact}
+        xDisplay={xDisplay}
+        yDisplay={yDisplay}
+        npzDisplay={npzDisplay}
       />
     </Stack>
   );

@@ -7,8 +7,16 @@ from utils.factories.data_loading_factory import make_data_loader
 from utils.strategies.data_loaders import _coerce_shapes
 from utils.parse.data_read import load_mat_variable
 
-DATA_ROOT = os.getenv("DATA_ROOT", "/data")       # RO datasets in Docker
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads") # RW uploads (Docker:/uploads; Dev: ./uploads)
+# Read-only datasets in Docker (typically mounted at /data)
+DATA_ROOT = os.getenv("DATA_ROOT", "/data")
+
+# Read-write uploads (Docker: /uploads; Dev: ./uploads)
+# Keep this consistent with backend/app/routers/files.py.
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
+
+# Normalize to absolute paths early so downstream checks are consistent.
+DATA_ROOT = os.path.abspath(DATA_ROOT) if DATA_ROOT else DATA_ROOT
+UPLOAD_DIR = os.path.abspath(UPLOAD_DIR) if UPLOAD_DIR else UPLOAD_DIR
 
 
 class LoadError(Exception):
@@ -53,13 +61,27 @@ def _is_running_in_docker() -> bool:
     return False
 
 
+def _looks_like_windows_abs(p: str) -> bool:
+    # e.g. "C:\\..." or "D:/..."
+    return len(p) >= 2 and p[1] == ":" and p[0].isalpha()
+
+
 def _normalize_and_check(path: Optional[str]) -> Optional[str]:
     """
     Normalize user paths.
-    - In Docker (when DATA_ROOT or UPLOAD_DIR exist): only allow files under
-      DATA_ROOT (e.g. /data) or UPLOAD_DIR (e.g. /uploads). Also map 'data/...'
-      to '/data/...'.
-    - In dev (no container mounts): accept absolute paths and repo-relative 'data/...'.
+    Rules
+    -----
+    Docker/containers:
+      - Only allow files under DATA_ROOT (e.g. /data) or UPLOAD_DIR (e.g. /uploads).
+      - Accept convenient shorthands:
+          * "data/<...>"    -> "{DATA_ROOT}/<...>"
+          * "uploads/<...>" -> "{UPLOAD_DIR}/<...>"
+          * "<filename>"    -> "{UPLOAD_DIR}/<filename>" (default)
+
+    Dev/local:
+      - Accept absolute paths.
+      - Map repo-relative "data/<...>" -> "<repo>/data/<...>".
+      - If a relative path doesn't exist as-is, also try "{UPLOAD_DIR}/<...>".
     """
     if not path:
         return None
@@ -68,20 +90,35 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
     if not p:
         return None
 
-    # running_in_docker = os.path.isdir(DATA_ROOT) or os.path.isdir(UPLOAD_DIR)
     running_in_docker = _is_running_in_docker()
+    data_root_abs = os.path.abspath(DATA_ROOT) if DATA_ROOT else ""
+    upload_dir_abs = os.path.abspath(UPLOAD_DIR) if UPLOAD_DIR else ""
 
     if running_in_docker:
+        # In Docker, only allow reads from mounted roots.
+        # Also support convenient relative shorthands like:
+        #   - "data/foo/bar.mat"      -> "${DATA_ROOT}/foo/bar.mat"
+        #   - "uploads/abc.mat"       -> "${UPLOAD_DIR}/abc.mat"
+        #   - "abc.mat"               -> "${UPLOAD_DIR}/abc.mat" (default)
         up = p.replace("\\", "/")
-        if up.startswith("data/"):
-            up = "/" + up  # -> "/data/..."
-        ap = os.path.abspath(up)
+
+        if up.startswith("data/") and data_root_abs:
+            ap = os.path.abspath(os.path.join(data_root_abs, up[len("data/"):]))
+        elif up.startswith("uploads/") and upload_dir_abs:
+            ap = os.path.abspath(os.path.join(upload_dir_abs, up[len("uploads/"):]))
+        else:
+            # If the user passed a relative path, treat it as relative to UPLOAD_DIR.
+            # This makes the API more robust if callers store only the saved filename.
+            if (not os.path.isabs(p)) and (not _looks_like_windows_abs(p)) and upload_dir_abs:
+                ap = os.path.abspath(os.path.join(upload_dir_abs, p))
+            else:
+                ap = os.path.abspath(p)
 
         allowed_roots = []
-        if DATA_ROOT:
-            allowed_roots.append(os.path.abspath(DATA_ROOT))
-        if UPLOAD_DIR:
-            allowed_roots.append(os.path.abspath(UPLOAD_DIR))
+        if data_root_abs:
+            allowed_roots.append(data_root_abs)
+        if upload_dir_abs:
+            allowed_roots.append(upload_dir_abs)
 
         # must be inside at least one allowed root
         if not any(ap == root or ap.startswith(root + os.sep) for root in allowed_roots):
@@ -93,10 +130,19 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
         return ap
 
     # Dev mode
+    # - accept absolute paths
+    # - accept repo-relative "data/..." -> "<repo>/data/..."
+    # - accept bare filenames/relative paths as "<UPLOAD_DIR>/<name>" if present
     ap = os.path.abspath(_coerce_dev_relative(p))
-    if not os.path.exists(ap):
-        raise LoadError(f"File not found: {path}")
-    return ap
+    if os.path.exists(ap):
+        return ap
+
+    if (not os.path.isabs(p)) and (not _looks_like_windows_abs(p)) and upload_dir_abs:
+        ap2 = os.path.abspath(os.path.join(upload_dir_abs, p))
+        if os.path.exists(ap2):
+            return ap2
+
+    raise LoadError(f"File not found: {path}")
 
 
 def build_data_config(

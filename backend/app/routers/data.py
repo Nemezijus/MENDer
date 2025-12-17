@@ -5,7 +5,7 @@ import os
 
 router = APIRouter()
 
-UPLOAD_DIR = os.path.join(os.getcwd(), "backend", "uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 

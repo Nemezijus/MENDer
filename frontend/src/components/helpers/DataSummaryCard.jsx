@@ -1,8 +1,34 @@
 import { Card, Stack, Text, Alert, Group, Box, Divider } from '@mantine/core';
 
+const SHORT_HASH_LEN = 7;
+
 function formatMaybePath(p) {
   if (!p) return '—';
   return String(p);
+}
+
+function basename(path) {
+  if (!path) return '';
+  const p = String(path).replaceAll('\\', '/');
+  const i = p.lastIndexOf('/');
+  return i >= 0 ? p.slice(i + 1) : p;
+}
+
+function shortHashFromCanonicalFilename(fileName, n = SHORT_HASH_LEN) {
+  // canonical stored uploads look like "<hex>.<ext>" where hex is sha256 (64),
+  // but we allow 40+ to be tolerant.
+  const m = String(fileName).match(/^([0-9a-f]{40,64})\.[A-Za-z0-9]+$/i);
+  if (!m) return null;
+  return m[1].slice(0, n);
+}
+
+function formatFallbackUploadLabelFromPath(path) {
+  // If we only have a backend path, try to show a short hash + the canonical filename.
+  // Example: "E:\...\uploads\<sha>.mat" -> "[04012af] <sha>.mat"
+  if (!path) return '—';
+  const file = basename(path);
+  const sh = shortHashFromCanonicalFilename(file);
+  return sh ? `[${sh}] ${file}` : String(path);
 }
 
 function formatClasses(classes, limit = 10) {
@@ -171,7 +197,13 @@ export default function DataSummaryCard({
   xPath = null,
   yPath = null,
   npzPath = null,
-  // new:
+
+  // NEW (persisted display names from stores)
+  xDisplay = '',
+  yDisplay = '',
+  npzDisplay = '',
+
+  // existing:
   showSuggestion = true,
   modelArtifact = null,
 }) {
@@ -195,6 +227,25 @@ export default function DataSummaryCard({
     inspectReport,
     effectiveTask: taskShown === '—' ? null : taskShown,
   });
+
+  // Prefer friendly display strings (persisted), otherwise fall back to a readable label from the backend path.
+  const xShown = xDisplay?.trim()
+    ? xDisplay.trim()
+    : xPath
+      ? formatFallbackUploadLabelFromPath(xPath)
+      : '—';
+
+  const yShown = yDisplay?.trim()
+    ? yDisplay.trim()
+    : yPath
+      ? formatFallbackUploadLabelFromPath(yPath)
+      : '—';
+
+  const npzShown = npzDisplay?.trim()
+    ? npzDisplay.trim()
+    : npzPath
+      ? formatFallbackUploadLabelFromPath(npzPath)
+      : '—';
 
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -233,15 +284,15 @@ export default function DataSummaryCard({
 
               {npzPath ? (
                 <>
-                  <KeyValue k="Compound file" v={formatMaybePath(npzPath)} />
+                  <KeyValue k="Compound file" v={formatMaybePath(npzShown)} />
                   <Text size="xs" c="dimmed">
                     (This file is expected to contain both features (X) and labels (y), using the selected keys.)
                   </Text>
                 </>
               ) : (
                 <>
-                  <KeyValue k="Features (X)" v={formatMaybePath(xPath)} />
-                  <KeyValue k="Labels (y)" v={formatMaybePath(yPath)} />
+                  <KeyValue k="Features (X)" v={formatMaybePath(xShown)} />
+                  <KeyValue k="Labels (y)" v={formatMaybePath(yShown)} />
                   <Text size="xs" c="dimmed">
                     (Labels are optional for production/unseen data.)
                   </Text>

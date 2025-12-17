@@ -5,7 +5,6 @@ import {
   Text,
   TextInput,
   Button,
-  Divider,
   Alert,
   Group,
   Badge,
@@ -31,8 +30,6 @@ import {
 // -------------------------
 function displayLocalFilePath(file) {
   if (!file) return '';
-  // Browsers do NOT expose real absolute local file paths for security.
-  // Use a friendly pseudo-path; if directory upload is used, webkitRelativePath may exist.
   const rel =
     file.webkitRelativePath && file.webkitRelativePath.length > 0
       ? file.webkitRelativePath
@@ -40,24 +37,55 @@ function displayLocalFilePath(file) {
   return `local://${rel}`;
 }
 
+function shortHashFromSavedName(savedName, n = 7) {
+  if (!savedName) return '';
+  const dot = savedName.lastIndexOf('.');
+  const base = dot >= 0 ? savedName.slice(0, dot) : savedName;
+  return base.slice(0, n);
+}
+
+function formatDisplayNameFromUpload(up) {
+  if (!up) return '';
+  const sh = shortHashFromSavedName(up.saved_name, 7);
+  const name = up.original_name || up.saved_name;
+  return sh ? `[${sh}] ${name}` : name;
+}
+
+function StoredAsLine({ uploadInfo }) {
+  if (!uploadInfo?.saved_name) return null;
+  const sh = shortHashFromSavedName(uploadInfo.saved_name, 7);
+  return (
+    <Text size="xs" c="dimmed">
+      Stored as: [{sh}] {uploadInfo.saved_name}
+    </Text>
+  );
+}
+
 // ============================================================
-// Tab 1: Individual files (features & labels)
+// Tab 1: Individual files
 // ============================================================
 function IndividualFilesTab({
   setInspectReportGlobal,
   setXPathGlobal,
   setYPathGlobal,
-  setNPZPathGlobal,
+  setNpzPathGlobal,
   xKeyGlobal,
   yKeyGlobal,
+  setXDisplayGlobal,
+  setYDisplayGlobal,
 }) {
   const inspectMutation = useInspectDataMutation();
 
-  // Local-only state (dies when tab unmounts)
-  const [xPath, setXPath] = useState('');
-  const [yPath, setYPath] = useState('');
+  const [xPathDisplay, setXPathDisplay] = useState('');
+  const [yPathDisplay, setYPathDisplay] = useState('');
+  const [xBackendPath, setXBackendPath] = useState(null);
+  const [yBackendPath, setYBackendPath] = useState(null);
+
   const [xLocalFile, setXLocalFile] = useState(null);
   const [yLocalFile, setYLocalFile] = useState(null);
+
+  const [xUploadInfo, setXUploadInfo] = useState(null);
+  const [yUploadInfo, setYUploadInfo] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -66,27 +94,39 @@ function IndividualFilesTab({
     setErr(null);
     setLoading(true);
     try {
-      // Upload if local files selected; otherwise use typed paths
-      let resolvedXPath = xPath?.trim() || null;
-      let resolvedYPath = yPath?.trim() || null;
+      let resolvedXPath = xBackendPath || xPathDisplay?.trim() || null;
+      let resolvedYPath = yBackendPath || yPathDisplay?.trim() || null;
 
       if (xLocalFile) {
-        const up = await uploadFile(xLocalFile); // { path, original_name }
+        const up = await uploadFile(xLocalFile);
         resolvedXPath = up.path;
-        setXPath(up.path); // replace pseudo-path with server path
+        setXBackendPath(up.path);
+        setXUploadInfo(up);
+
+        const disp = formatDisplayNameFromUpload(up);
+        setXPathDisplay(disp);
+        setXDisplayGlobal(disp);
+      } else {
+        setXDisplayGlobal(xPathDisplay?.trim() || '');
       }
 
       if (yLocalFile) {
         const up = await uploadFile(yLocalFile);
         resolvedYPath = up.path;
-        setYPath(up.path);
+        setYBackendPath(up.path);
+        setYUploadInfo(up);
+
+        const disp = formatDisplayNameFromUpload(up);
+        setYPathDisplay(disp);
+        setYDisplayGlobal(disp);
+      } else {
+        setYDisplayGlobal(yPathDisplay?.trim() || '');
       }
 
       const payload = {
         x_path: resolvedXPath,
         y_path: resolvedYPath,
         npz_path: null,
-        // keys are ignored for separate-file loads but we keep them consistent
         x_key: xKeyGlobal || 'X',
         y_key: yKeyGlobal || 'y',
       };
@@ -96,7 +136,7 @@ function IndividualFilesTab({
       setInspectReportGlobal(report);
       setXPathGlobal(resolvedXPath);
       setYPathGlobal(resolvedYPath);
-      setNPZPathGlobal(null);
+      setNpzPathGlobal(null);
     } catch (e) {
       const msg = e?.response?.data?.detail || e.message || String(e);
       setErr(msg);
@@ -110,51 +150,73 @@ function IndividualFilesTab({
     <Stack gap="sm">
       <TrainingIndividualFilesText />
 
-      <TextInput
-        label="Feature matrix (X)"
-        placeholder="Paste file path"
-        value={xPath}
-        onChange={(e) => setXPath(e.currentTarget.value)}
-        rightSectionWidth={86}
-        rightSection={
-          <FileButton
-            onChange={(file) => {
-              setXLocalFile(file);
-              if (file) setXPath(displayLocalFilePath(file));
-            }}
-            accept=".mat,.npz,.npy,.csv,.txt"
-          >
-            {(props) => (
-              <Button {...props} size="xs" variant="light">
-                Browse
-              </Button>
-            )}
-          </FileButton>
-        }
-      />
+      <Stack gap={4}>
+        <TextInput
+          label="Feature matrix (X)"
+          placeholder="Paste file path"
+          value={xPathDisplay}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setXPathDisplay(v);
+            setXBackendPath(v?.trim() || null);
+            setXLocalFile(null);
+            setXUploadInfo(null);
+          }}
+          rightSectionWidth={86}
+          rightSection={
+            <FileButton
+              onChange={(file) => {
+                setXLocalFile(file);
+                setXUploadInfo(null);
+                setXBackendPath(null);
+                if (file) setXPathDisplay(displayLocalFilePath(file));
+              }}
+              accept=".mat,.npz,.npy,.csv,.txt"
+            >
+              {(props) => (
+                <Button {...props} size="xs" variant="light">
+                  Browse
+                </Button>
+              )}
+            </FileButton>
+          }
+        />
+        <StoredAsLine uploadInfo={xUploadInfo} />
+      </Stack>
 
-      <TextInput
-        label="Label vector (y)"
-        placeholder="Paste file path"
-        value={yPath}
-        onChange={(e) => setYPath(e.currentTarget.value)}
-        rightSectionWidth={86}
-        rightSection={
-          <FileButton
-            onChange={(file) => {
-              setYLocalFile(file);
-              if (file) setYPath(displayLocalFilePath(file));
-            }}
-            accept=".mat,.npz,.npy,.csv,.txt"
-          >
-            {(props) => (
-              <Button {...props} size="xs" variant="light">
-                Browse
-              </Button>
-            )}
-          </FileButton>
-        }
-      />
+      <Stack gap={4}>
+        <TextInput
+          label="Label vector (y)"
+          placeholder="Paste file path"
+          value={yPathDisplay}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setYPathDisplay(v);
+            setYBackendPath(v?.trim() || null);
+            setYLocalFile(null);
+            setYUploadInfo(null);
+          }}
+          rightSectionWidth={86}
+          rightSection={
+            <FileButton
+              onChange={(file) => {
+                setYLocalFile(file);
+                setYUploadInfo(null);
+                setYBackendPath(null);
+                if (file) setYPathDisplay(displayLocalFilePath(file));
+              }}
+              accept=".mat,.npz,.npy,.csv,.txt"
+            >
+              {(props) => (
+                <Button {...props} size="xs" variant="light">
+                  Browse
+                </Button>
+              )}
+            </FileButton>
+          }
+        />
+        <StoredAsLine uploadInfo={yUploadInfo} />
+      </Stack>
 
       <Group gap="xs">
         <Button size="xs" onClick={handleInspect} loading={loading}>
@@ -180,16 +242,19 @@ function CompoundFileTab({
   setInspectReportGlobal,
   setXPathGlobal,
   setYPathGlobal,
-  setNPZPathGlobal,
+  setNpzPathGlobal,
   xKey,
   yKey,
   setXKey,
   setYKey,
+  setNpzDisplayGlobal,
 }) {
   const inspectMutation = useInspectDataMutation();
 
-  const [npzPath, setNPZPath] = useState('');
-  const [npzLocalFile, setNPZLocalFile] = useState(null);
+  const [npzPathDisplay, setNpzPathDisplay] = useState('');
+  const [npzBackendPath, setNpzBackendPath] = useState(null);
+  const [npzLocalFile, setNpzLocalFile] = useState(null);
+  const [npzUploadInfo, setNpzUploadInfo] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -198,18 +263,25 @@ function CompoundFileTab({
     setErr(null);
     setLoading(true);
     try {
-      let resolvedNPZPath = npzPath?.trim() || null;
+      let resolvedNpzPath = npzBackendPath || npzPathDisplay?.trim() || null;
 
       if (npzLocalFile) {
         const up = await uploadFile(npzLocalFile);
-        resolvedNPZPath = up.path;
-        setNPZPath(up.path);
+        resolvedNpzPath = up.path;
+        setNpzBackendPath(up.path);
+        setNpzUploadInfo(up);
+
+        const disp = formatDisplayNameFromUpload(up);
+        setNpzPathDisplay(disp);
+        setNpzDisplayGlobal(disp);
+      } else {
+        setNpzDisplayGlobal(npzPathDisplay?.trim() || '');
       }
 
       const payload = {
         x_path: null,
         y_path: null,
-        npz_path: resolvedNPZPath,
+        npz_path: resolvedNpzPath,
         x_key: xKey || 'X',
         y_key: yKey || 'y',
       };
@@ -217,7 +289,7 @@ function CompoundFileTab({
       const report = await inspectMutation.mutateAsync(payload);
 
       setInspectReportGlobal(report);
-      setNPZPathGlobal(resolvedNPZPath);
+      setNpzPathGlobal(resolvedNpzPath);
       setXPathGlobal(null);
       setYPathGlobal(null);
     } catch (e) {
@@ -233,28 +305,39 @@ function CompoundFileTab({
     <Stack gap="sm">
       <TrainingCompoundFileText />
 
-      <TextInput
-        label="Compound dataset (.npz)"
-        placeholder="Paste file path"
-        value={npzPath}
-        onChange={(e) => setNPZPath(e.currentTarget.value)}
-        rightSectionWidth={86}
-        rightSection={
-          <FileButton
-            onChange={(file) => {
-              setNPZLocalFile(file);
-              if (file) setNPZPath(displayLocalFilePath(file));
-            }}
-            accept=".npz,.mat"
-          >
-            {(props) => (
-              <Button {...props} size="xs" variant="light">
-                Browse
-              </Button>
-            )}
-          </FileButton>
-        }
-      />
+      <Stack gap={4}>
+        <TextInput
+          label="Compound dataset (.npz)"
+          placeholder="Paste file path"
+          value={npzPathDisplay}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setNpzPathDisplay(v);
+            setNpzBackendPath(v?.trim() || null);
+            setNpzLocalFile(null);
+            setNpzUploadInfo(null);
+          }}
+          rightSectionWidth={86}
+          rightSection={
+            <FileButton
+              onChange={(file) => {
+                setNpzLocalFile(file);
+                setNpzUploadInfo(null);
+                setNpzBackendPath(null);
+                if (file) setNpzPathDisplay(displayLocalFilePath(file));
+              }}
+              accept=".npz,.mat"
+            >
+              {(props) => (
+                <Button {...props} size="xs" variant="light">
+                  Browse
+                </Button>
+              )}
+            </FileButton>
+          }
+        />
+        <StoredAsLine uploadInfo={npzUploadInfo} />
+      </Stack>
 
       <Group grow align="flex-start">
         <TextInput
@@ -289,7 +372,7 @@ function CompoundFileTab({
 }
 
 // ============================================================
-// Main card: TrainingDataUploadCard
+// Main card
 // ============================================================
 export default function TrainingDataUploadCard() {
   const inspectReport = useDataStore((s) => s.inspectReport);
@@ -305,11 +388,19 @@ export default function TrainingDataUploadCard() {
 
   const setXPath = useDataStore((s) => s.setXPath);
   const setYPath = useDataStore((s) => s.setYPath);
-  const setNPZPath = useDataStore((s) => s.setNPZPath);
+  const setNpzPath = useDataStore((s) => s.setNpzPath);
 
   const xPath = useDataStore((s) => s.xPath);
   const yPath = useDataStore((s) => s.yPath);
   const npzPath = useDataStore((s) => s.npzPath);
+
+  // NEW persisted display
+  const xDisplay = useDataStore((s) => s.xDisplay);
+  const yDisplay = useDataStore((s) => s.yDisplay);
+  const npzDisplay = useDataStore((s) => s.npzDisplay);
+  const setXDisplay = useDataStore((s) => s.setXDisplay);
+  const setYDisplay = useDataStore((s) => s.setYDisplay);
+  const setNpzDisplay = useDataStore((s) => s.setNpzDisplay);
 
   const dataReady = !!inspectReport && (inspectReport?.n_samples ?? 0) > 0;
   const taskInferred = inspectReport?.task_inferred || null;
@@ -319,20 +410,14 @@ export default function TrainingDataUploadCard() {
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="md">
-          {/* Center title, badge on right */}
           <Group justify="space-between" align="center">
-            <Box style={{ width: 90 }} /> {/* left spacer */}
+            <Box style={{ width: 90 }} />
             <Text fw={700} size="lg" align="center" style={{ flex: 1 }}>
               Training data
             </Text>
-            {dataReady ? (
-              <Badge color="green">Ready</Badge>
-            ) : (
-              <Badge color="gray">Not loaded</Badge>
-            )}
+            {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
           </Group>
 
-          {/* Intro text */}
           <TrainingDataIntroText />
 
           <Tabs defaultValue="individual" keepMounted={false}>
@@ -346,9 +431,11 @@ export default function TrainingDataUploadCard() {
                 setInspectReportGlobal={setInspectReport}
                 setXPathGlobal={setXPath}
                 setYPathGlobal={setYPath}
-                setNPZPathGlobal={setNPZPath}
+                setNpzPathGlobal={setNpzPath}
                 xKeyGlobal={xKey}
                 yKeyGlobal={yKey}
+                setXDisplayGlobal={setXDisplay}
+                setYDisplayGlobal={setYDisplay}
               />
             </Tabs.Panel>
 
@@ -357,16 +444,16 @@ export default function TrainingDataUploadCard() {
                 setInspectReportGlobal={setInspectReport}
                 setXPathGlobal={setXPath}
                 setYPathGlobal={setYPath}
-                setNPZPathGlobal={setNPZPath}
+                setNpzPathGlobal={setNpzPath}
                 xKey={xKey}
                 yKey={yKey}
                 setXKey={setXKey}
                 setYKey={setYKey}
+                setNpzDisplayGlobal={setNpzDisplay}
               />
             </Tabs.Panel>
           </Tabs>
 
-          {/* Task suggestion under tabs */}
           <Select
             label="Task (suggestion)"
             description="Overrides inferred task. You can leave it empty."
@@ -382,13 +469,15 @@ export default function TrainingDataUploadCard() {
         </Stack>
       </Card>
 
-      {/* Summary underneath */}
       <DataSummaryCard
         inspectReport={inspectReport}
         effectiveTask={effectiveTask}
         xPath={xPath}
         yPath={yPath}
         npzPath={npzPath}
+        xDisplay={xDisplay}
+        yDisplay={yDisplay}
+        npzDisplay={npzDisplay}
       />
     </Stack>
   );
