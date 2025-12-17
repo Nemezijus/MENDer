@@ -369,7 +369,13 @@ export default function ProductionDataUploadCard() {
   const npzPath = useProductionDataStore((s) => s.npzPath);
 
   const modelInfo = useProductionDataStore((s) => s.modelInfo || null);
-  const effectiveTask = modelInfo?.task || null;
+  const modelArtifact =
+    modelInfo?.model_artifact ||
+    modelInfo?.artifact ||
+    modelInfo ||
+    null;
+
+  const effectiveTask = modelInfo?.task || modelArtifact?.kind || null;
 
   // NEW persisted display
   const xDisplay = useProductionDataStore((s) => s.xDisplay);
@@ -419,6 +425,8 @@ export default function ProductionDataUploadCard() {
         xDisplay={xDisplay}
         yDisplay={yDisplay}
         npzDisplay={npzDisplay}
+        modelArtifact={modelArtifact}
+        showSuggestion={false}
       />
     </Stack>
   );
