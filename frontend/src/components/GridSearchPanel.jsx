@@ -55,6 +55,7 @@ export default function GridSearchPanel() {
 
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
+  const setMetric = useSettingsStore((s) => s.setMetric);
 
   const gsState = useTuningStore((s) => s.gridSearch);
   const setGsState = useTuningStore((s) => s.setGridSearch);
@@ -84,6 +85,15 @@ export default function GridSearchPanel() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
+  const taskInferred = inspectReport?.task_inferred || null;
+  const defaultMetric = taskInferred === 'regression' ? 'r2' : 'accuracy';
+  const effectiveMetric = metric || defaultMetric;
+
+  useEffect(() => {
+    if (!metric && taskInferred) {
+      setMetric(defaultMetric);
+    }
+}, [metric, taskInferred, defaultMetric, setMetric]);
 
   // Initialize GS model once
   useEffect(() => {
@@ -160,7 +170,7 @@ export default function GridSearchPanel() {
         },
         model: gsModel,
         eval: {
-          metric,
+          metric: effectiveMetric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
         },
         param_grid: paramGrid,
@@ -169,7 +179,7 @@ export default function GridSearchPanel() {
 
       const data = await requestGridSearch(payload);
       // expect backend to include metric_used & 2D grid info; we store metric here as well
-      setGsState({ result: { ...data, metric_used: metric } });
+      setGsState({ result: { ...data, metric_used: effectiveMetric } });
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);

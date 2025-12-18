@@ -33,6 +33,30 @@ export default function ValidationCurvePanel() {
   const yKey = useDataStore((s) => s.yKey);
   const inspectReport = useDataStore((s) => s.inspectReport);
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
+  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+
+  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
+  const metric = useSettingsStore((s) => s.metric);
+  const setMetric = useSettingsStore((s) => s.setMetric);
+
+  const vcState = useTuningStore((s) => s.validationCurve);
+  const setVcState = useTuningStore((s) => s.setValidationCurve);
+
+  // Persisted hyperparameter selection (in tuning store)
+  const hyperParam = vcState.hyperParam ?? { paramName: '', values: [] };
+  const handleHyperParamChange = (next) => setVcState({ hyperParam: next });
+
+  // Per-panel model config (validation curve slice)
+  const vcModel = useModelConfigStore((s) => s.validationCurve);
+  const setVcModel = useModelConfigStore((s) => s.setValidationCurveModel);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const taskInferred = inspectReport?.task_inferred || null;
+
+  const defaultMetric = taskInferred === 'regression' ? 'r2' : 'accuracy';
+  const effectiveMetric = metric || defaultMetric;
 
   const {
     method,
@@ -49,14 +73,6 @@ export default function ValidationCurvePanel() {
     sfs_n_jobs,
   } = useFeatureStore();
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
-
-  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
-  const metric = useSettingsStore((s) => s.metric);
-
-  const vcState = useTuningStore((s) => s.validationCurve);
-  const setVcState = useTuningStore((s) => s.setValidationCurve);
-
   const {
     nSplits,
     stratified,
@@ -66,16 +82,12 @@ export default function ValidationCurvePanel() {
     result: validationResult,
   } = vcState;
 
-  // Persisted hyperparameter selection (in tuning store)
-  const hyperParam = vcState.hyperParam ?? { paramName: '', values: [] };
-  const handleHyperParamChange = (next) => setVcState({ hyperParam: next });
 
-  // Per-panel model config (validation curve slice)
-  const vcModel = useModelConfigStore((s) => s.validationCurve);
-  const setVcModel = useModelConfigStore((s) => s.setValidationCurveModel);
-
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
+  useEffect(() => {
+    if (!metric && taskInferred) {
+      setMetric(defaultMetric);
+    }
+  }, [metric, taskInferred, defaultMetric, setMetric]);
 
   // Initialize VC model once
   useEffect(() => {
@@ -142,7 +154,7 @@ export default function ValidationCurvePanel() {
         },
         model: vcModel,
         eval: {
-          metric,
+          metric: effectiveMetric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
         },
         param_name: name,
@@ -151,7 +163,7 @@ export default function ValidationCurvePanel() {
       };
 
       const data = await requestValidationCurve(payload);
-      setVcState({ result: { ...data, metric_used: metric } });
+      setVcState({ result: { ...data, metric_used: effectiveMetric } });
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);

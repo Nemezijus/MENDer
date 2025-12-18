@@ -55,6 +55,7 @@ export default function RandomSearchPanel() {
 
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
+  const setMetric = useSettingsStore((s) => s.setMetric);
 
   const rsState = useTuningStore((s) => s.randomSearch);
   const setRsState = useTuningStore((s) => s.setRandomSearch);
@@ -84,6 +85,16 @@ export default function RandomSearchPanel() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
+
+  const taskInferred = inspectReport?.task_inferred || null;
+  const defaultMetric = taskInferred === 'regression' ? 'r2' : 'accuracy';
+  const effectiveMetric = metric || defaultMetric;
+
+  useEffect(() => {
+    if (!metric && taskInferred) {
+      setMetric(defaultMetric);
+    }
+  }, [metric, taskInferred, defaultMetric, setMetric]);
 
   // Initialize RS model once
   useEffect(() => {
@@ -163,7 +174,7 @@ export default function RandomSearchPanel() {
         },
         model: rsModel,
         eval: {
-          metric,
+          metric: effectiveMetric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
         },
         param_distributions: paramDistributions,
@@ -172,7 +183,7 @@ export default function RandomSearchPanel() {
       };
 
       const data = await requestRandomSearch(payload);
-      setRsState({ result: { ...data, metric_used: metric } });
+      setRsState({ result: { ...data, metric_used: effectiveMetric } });
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export const useSettingsStore = create((set) => ({
   // Global / project-wide defaults
   scaleMethod: 'standard',
-  metric: 'accuracy',
+  metric: null,
 
   setScaleMethod: (scaleMethod) =>
     set({
@@ -12,6 +12,6 @@ export const useSettingsStore = create((set) => ({
 
   setMetric: (metric) =>
     set({
-      metric: metric || 'accuracy',
+      metric: metric || null,
     }),
 }));

@@ -34,6 +34,39 @@ export default function LearningCurvePanel() {
   const yKey = useDataStore((s) => s.yKey);
   const inspectReport = useDataStore((s) => s.inspectReport);
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
+  const taskInferred = inspectReport?.task_inferred || null;
+
+  const setLearningCurveResult = useResultsStore((s) => s.setLearningCurveResult);
+  const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
+  const setLearningCurveNSplits = useResultsStore((s) => s.setLearningCurveNSplits);
+  const learningCurveWithinPct = useResultsStore((s) => s.learningCurveWithinPct);
+  const setLearningCurveWithinPct = useResultsStore((s) => s.setLearningCurveWithinPct);
+
+  const lcState = useTuningStore((s) => s.learningCurve);
+  const setLcState = useTuningStore((s) => s.setLearningCurve);
+
+  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+
+  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
+  const metric = useSettingsStore((s) => s.metric);
+  const setMetric = useSettingsStore((s) => s.setMetric);
+
+  // Per-panel model config (learning curve slice)
+  const lcModel = useModelConfigStore((s) => s.learningCurve);
+  const setLcModel = useModelConfigStore((s) => s.setLearningCurveModel);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const defaultMetric = taskInferred === 'regression' ? 'r2' : 'accuracy';
+  const effectiveMetric = metric || defaultMetric;
+
+useEffect(() => {
+  // If metric is unset, set a sensible default based on inferred task.
+  if (!metric && taskInferred) {
+    setMetric(defaultMetric);
+  }
+}, [metric, taskInferred, defaultMetric, setMetric]);
 
   const {
     method,
@@ -50,14 +83,6 @@ export default function LearningCurvePanel() {
     sfs_n_jobs,
   } = useFeatureStore();
 
-  const setLearningCurveResult = useResultsStore((s) => s.setLearningCurveResult);
-  const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
-  const setLearningCurveNSplits = useResultsStore((s) => s.setLearningCurveNSplits);
-  const learningCurveWithinPct = useResultsStore((s) => s.learningCurveWithinPct);
-  const setLearningCurveWithinPct = useResultsStore((s) => s.setLearningCurveWithinPct);
-
-  const lcState = useTuningStore((s) => s.learningCurve);
-  const setLcState = useTuningStore((s) => s.setLearningCurve);
 
   const {
     stratified,
@@ -68,17 +93,7 @@ export default function LearningCurvePanel() {
     nJobs,
   } = lcState;
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
 
-  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
-  const metric = useSettingsStore((s) => s.metric);
-
-  // Per-panel model config (learning curve slice)
-  const lcModel = useModelConfigStore((s) => s.learningCurve);
-  const setLcModel = useModelConfigStore((s) => s.setLearningCurveModel);
-
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
 
   // Initialize LC model once
   useEffect(() => {
@@ -147,7 +162,7 @@ export default function LearningCurvePanel() {
         },
         model: lcModel,
         eval: {
-          metric,
+          metric: effectiveMetric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
         },
         train_sizes,
@@ -156,7 +171,7 @@ export default function LearningCurvePanel() {
       };
 
       const data = await requestLearningCurve(payload);
-      setLearningCurveResult({ ...data, metric_used: metric });
+      setLearningCurveResult({ ...data, metric_used: effectiveMetric });
     } catch (e) {
       const raw = e?.response?.data?.detail ?? e.message ?? String(e);
       const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
