@@ -98,7 +98,8 @@ useEffect(() => {
   // Initialize LC model once
   useEffect(() => {
     if (!defsLoading && !lcModel) {
-      const init = getModelDefaults('logreg') || { algo: 'logreg' };
+      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
+      const init = getModelDefaults(defaultAlgo) || { algo: defaultAlgo };
       setLcModel(init);
     }
   }, [defsLoading, getModelDefaults, lcModel, setLcModel]);

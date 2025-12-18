@@ -7,16 +7,12 @@ from utils.factories.data_loading_factory import make_data_loader
 from utils.strategies.data_loaders import _coerce_shapes
 from utils.parse.data_read import load_mat_variable
 
-# Read-only datasets in Docker (typically mounted at /data)
-DATA_ROOT = os.getenv("DATA_ROOT", "/app/data")
+# Read-only datasets inside the container image (and/or optionally overridden by env)
+DATA_ROOT = os.path.abspath(os.getenv("DATA_ROOT", "/app/data"))
 
 # Read-write uploads (Docker: /uploads; Dev: ./uploads)
 # Keep this consistent with backend/app/routers/files.py.
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
-
-# Normalize to absolute paths early so downstream checks are consistent.
-DATA_ROOT = os.path.abspath(DATA_ROOT) if DATA_ROOT else DATA_ROOT
-UPLOAD_DIR = os.path.abspath(UPLOAD_DIR) if UPLOAD_DIR else UPLOAD_DIR
+UPLOAD_DIR = os.path.abspath(os.getenv("UPLOAD_DIR", os.path.abspath("./uploads")))
 
 
 class LoadError(Exception):
@@ -27,38 +23,21 @@ def _repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
 
-def _coerce_dev_relative(p: str) -> str:
-    # For dev: turn "data/..." into "<repo>/data/..."
-    norm = p.replace("\\", "/")
-    if norm.startswith("data/"):
-        return os.path.join(_repo_root(), norm)
-    return p
-
-
 def _is_running_in_docker() -> bool:
     """
-    More reliable detection for containerized runs:
+    Detect containerized runs:
       - check for /.dockerenv
       - inspect /proc/1/cgroup for docker/container indicators
-    Fallback to existing directory checks on platforms where /proc may not exist (e.g., Windows).
     """
     try:
         if os.path.exists("/.dockerenv"):
             return True
         if os.path.exists("/proc/1/cgroup"):
-            try:
-                with open("/proc/1/cgroup", "rt", encoding="utf-8", errors="ignore") as fh:
-                    cgroup = fh.read()
-                if any(tok in cgroup for tok in ("docker", "kubepod", "containerd")):
-                    return True
-            except Exception:
-                # ignore read errors and fall back to directory checks
-                pass
+            with open("/proc/1/cgroup", "rt", encoding="utf-8", errors="ignore") as fh:
+                cgroup = fh.read()
+            return any(tok in cgroup for tok in ("docker", "kubepod", "containerd"))
     except Exception:
-        # ignore platform-specific errors and fall back
-        pass
-
-    return False
+        return False
 
 
 def _looks_like_windows_abs(p: str) -> bool:
@@ -69,14 +48,13 @@ def _looks_like_windows_abs(p: str) -> bool:
 def _normalize_and_check(path: Optional[str]) -> Optional[str]:
     """
     Normalize user paths.
-    Rules
-    -----
+
     Docker/containers:
-      - Only allow files under DATA_ROOT (e.g. /data) or UPLOAD_DIR (e.g. /uploads).
+      - Only allow files under DATA_ROOT (/app/data by default) or UPLOAD_DIR (/uploads).
       - Accept convenient shorthands:
-          * "data/<...>"    -> "{DATA_ROOT}/<...>"
+          * "data/<...>"    -> "{DATA_ROOT}/<...>"  (and fall back to /app/data if DATA_ROOT differs)
           * "uploads/<...>" -> "{UPLOAD_DIR}/<...>"
-          * "<filename>"    -> "{UPLOAD_DIR}/<filename>" (default)
+          * "<filename>"    -> "{UPLOAD_DIR}/<filename>" (default for relative paths)
 
     Dev/local:
       - Accept absolute paths.
@@ -91,53 +69,43 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
         return None
 
     running_in_docker = _is_running_in_docker()
-    data_root_abs = os.path.abspath(DATA_ROOT) if DATA_ROOT else ""
-    upload_dir_abs = os.path.abspath(UPLOAD_DIR) if UPLOAD_DIR else ""
 
     if running_in_docker:
-        # In Docker, only allow reads from mounted roots.
-        # Also support convenient relative shorthands like:
-        #   - "data/foo/bar.mat"      -> "${DATA_ROOT}/foo/bar.mat"
-        #   - "uploads/abc.mat"       -> "${UPLOAD_DIR}/abc.mat"
-        #   - "abc.mat"               -> "${UPLOAD_DIR}/abc.mat" (default)
         up = p.replace("\\", "/")
 
-        if up.startswith("data/") and data_root_abs:
-            ap = os.path.abspath(os.path.join(data_root_abs, up[len("data/"):]))
-        elif up.startswith("uploads/") and upload_dir_abs:
-            ap = os.path.abspath(os.path.join(upload_dir_abs, up[len("uploads/"):]))
+        # Resolve shorthand paths
+        if up.startswith("data/"):
+            ap = os.path.abspath(os.path.join(DATA_ROOT, up[len("data/"):]))
+            # If DATA_ROOT is overridden (e.g. /data) but image datasets are in /app/data, fall back.
+            if not os.path.exists(ap) and DATA_ROOT != os.path.abspath("/app/data"):
+                ap2 = os.path.abspath(os.path.join("/app/data", up[len("data/"):]))
+                if os.path.exists(ap2):
+                    ap = ap2
+        elif up.startswith("uploads/"):
+            ap = os.path.abspath(os.path.join(UPLOAD_DIR, up[len("uploads/"):]))
         else:
-            # If the user passed a relative path, treat it as relative to UPLOAD_DIR.
-            # This makes the API more robust if callers store only the saved filename.
-            if (not os.path.isabs(p)) and (not _looks_like_windows_abs(p)) and upload_dir_abs:
-                ap = os.path.abspath(os.path.join(upload_dir_abs, p))
+            # Relative path defaults to UPLOAD_DIR
+            if (not os.path.isabs(p)) and (not _looks_like_windows_abs(p)):
+                ap = os.path.abspath(os.path.join(UPLOAD_DIR, p))
             else:
                 ap = os.path.abspath(p)
 
-        # If user passed "data/..." and it doesn't exist under DATA_ROOT,
-        # fall back to /app/data (image-baked datasets) if different.
-        if up.startswith("data/") and (not os.path.exists(ap)):
-            fallback_root = "/app/data"
-            if data_root_abs != os.path.abspath(fallback_root):
-                ap2 = os.path.abspath(os.path.join(fallback_root, up[len("data/"):]))
-                if os.path.exists(ap2):
-                    ap = ap2
-
+        # Allowed roots
         allowed_roots = []
-        if data_root_abs:
-            allowed_roots.append(data_root_abs)
+        if DATA_ROOT:
+            allowed_roots.append(DATA_ROOT)
 
-        # Always allow baked-in datasets location too (image copies into /app/data)
         app_data = os.path.abspath("/app/data")
-        if app_data and os.path.isdir(app_data) and app_data not in allowed_roots:
+        if os.path.isdir(app_data) and app_data not in allowed_roots:
             allowed_roots.append(app_data)
 
-        if upload_dir_abs:
-            allowed_roots.append(upload_dir_abs)
+        if UPLOAD_DIR:
+            allowed_roots.append(UPLOAD_DIR)
 
-        # must be inside at least one allowed root
         if not any(ap == root or ap.startswith(root + os.sep) for root in allowed_roots):
-            raise LoadError(f"Path must be under one of: {', '.join(allowed_roots)} (got: {path!r})")
+            raise LoadError(
+                f"Path must be under one of: {', '.join(allowed_roots)} (got: {path!r})"
+            )
 
         if not os.path.exists(ap):
             raise LoadError(f"File not found: {path} (resolved to: {ap})")
@@ -145,15 +113,17 @@ def _normalize_and_check(path: Optional[str]) -> Optional[str]:
         return ap
 
     # Dev mode
-    # - accept absolute paths
-    # - accept repo-relative "data/..." -> "<repo>/data/..."
-    # - accept bare filenames/relative paths as "<UPLOAD_DIR>/<name>" if present
-    ap = os.path.abspath(_coerce_dev_relative(p))
+    norm = p.replace("\\", "/")
+    if norm.startswith("data/"):
+        ap = os.path.abspath(os.path.join(_repo_root(), norm))
+    else:
+        ap = os.path.abspath(p)
+
     if os.path.exists(ap):
         return ap
 
-    if (not os.path.isabs(p)) and (not _looks_like_windows_abs(p)) and upload_dir_abs:
-        ap2 = os.path.abspath(os.path.join(upload_dir_abs, p))
+    if (not os.path.isabs(p)) and (not _looks_like_windows_abs(p)):
+        ap2 = os.path.abspath(os.path.join(UPLOAD_DIR, p))
         if os.path.exists(ap2):
             return ap2
 
@@ -251,7 +221,7 @@ def load_X_optional_y(
                 X = X[:, None]
             if X.ndim != 2:
                 raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
-        
+
             if expected_n_features is not None:
                 try:
                     exp = int(expected_n_features)
@@ -264,7 +234,7 @@ def load_X_optional_y(
 
         # --- MAT pair: both X and y provided ---------------------------------
         if cfg.x_path and cfg.y_path:
-            loader = make_data_loader(cfg)  # AutoLoader -> MatPairLoader or NPZLoader
+            loader = make_data_loader(cfg)
             X, y = loader.load()
             return X, y
 
@@ -276,6 +246,7 @@ def load_X_optional_y(
                 X = X[:, None]
             if X.ndim != 2:
                 raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
+
             if expected_n_features is not None:
                 try:
                     exp = int(expected_n_features)
@@ -286,9 +257,7 @@ def load_X_optional_y(
 
             return X, None
 
-        raise LoadError(
-            "You must provide at least one feature source (npz_path or x_path) for prediction."
-        )
+        raise LoadError("You must provide at least one feature source (npz_path or x_path) for prediction.")
 
     except LoadError:
         raise
