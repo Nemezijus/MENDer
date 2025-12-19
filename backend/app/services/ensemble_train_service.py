@@ -16,6 +16,10 @@ from utils.postprocessing.scoring import PROBA_METRICS
 
 from ..adapters.io_adapter import LoadError
 
+from sklearn.ensemble import VotingClassifier
+from shared_schemas.ensemble_configs import VotingEnsembleConfig
+from utils.postprocessing.ensemble_reporting import VotingEnsembleReportAccumulator
+
 
 def _safe_float_list(arr) -> list[float]:
     """Convert array-like to a JSON-safe list of finite floats."""
@@ -76,6 +80,10 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
 
     last_model = None
 
+    # --- Accumulator setup (for ensemble reports) ------------------------
+    voting_acc: VotingEnsembleReportAccumulator | None = None
+    is_voting_report = eval_kind == "classification" and isinstance(cfg.ensemble, VotingEnsembleConfig)
+
     for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
         model = ensemble_strategy.fit(
             Xtr,
@@ -86,6 +94,62 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         last_model = model
 
         y_pred = model.predict(Xte)
+
+        if is_voting_report and isinstance(model, VotingClassifier):
+            try:
+                if voting_acc is None:
+                    est_names = [n for n, _ in getattr(model, "estimators", [])]
+                    est_algos = [getattr(s.model, "algo", "model") for s in cfg.ensemble.estimators]
+                    if len(est_algos) != len(est_names):
+                        est_algos = (est_algos + ["model"] * len(est_names))[: len(est_names)]
+
+                    voting_acc = VotingEnsembleReportAccumulator.create(
+                        estimator_names=est_names,
+                        estimator_algos=est_algos,
+                        metric_name=str(cfg.eval.metric),
+                        weights=getattr(model, "weights", None),
+                        voting=str(getattr(cfg.ensemble, "voting", "hard")),
+                    )
+
+                base_preds: Dict[str, Any] = {}
+                base_scores: Dict[str, float] = {}
+
+                est_pairs = list(zip(getattr(model, "estimators", []), getattr(model, "estimators_", [])))
+                for (name, _unfitted), fitted in est_pairs:
+                    yp = fitted.predict(Xte)
+                    base_preds[name] = yp
+
+                    y_proba_i = None
+                    y_score_i = None
+                    if hasattr(fitted, "predict_proba"):
+                        try:
+                            y_proba_i = fitted.predict_proba(Xte)
+                        except Exception:
+                            y_proba_i = None
+                    if y_proba_i is None and hasattr(fitted, "decision_function"):
+                        try:
+                            y_score_i = fitted.decision_function(Xte)
+                        except Exception:
+                            y_score_i = None
+
+                    base_scores[name] = float(
+                        evaluator.score(
+                            yte,
+                            y_pred=yp,
+                            y_proba=y_proba_i,
+                            y_score=y_score_i,
+                        )
+                    )
+
+                if voting_acc is not None:
+                    voting_acc.add_fold(
+                        y_true=np.asarray(yte),
+                        y_ensemble_pred=np.asarray(y_pred),
+                        base_preds={k: np.asarray(v) for k, v in base_preds.items()},
+                        base_scores=base_scores,
+                    )
+            except Exception:
+                pass
 
         metric_name = cfg.eval.metric
         y_proba = None
@@ -299,6 +363,10 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         "notes": [],
     }
 
+    ensemble_report = None
+    if voting_acc is not None:
+        ensemble_report = voting_acc.finalize()
+        result["ensemble_report"] = ensemble_report
     # --- Feature-related notes ----------------------------------------------
     if cfg.features.method == "pca":
         result["notes"].append("Model trained on PCA-transformed features.")
@@ -326,6 +394,21 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             "std_score": result["std_score"],
             "n_splits": result["n_splits"],
             "notes": result.get("notes", []),
+            "extra_stats": (
+                {
+                    "ensemble_kind": "voting",
+                    "ensemble_n_estimators": ensemble_report.get("n_estimators") if ensemble_report else None,
+                    "ensemble_all_agree_rate": ensemble_report.get("agreement", {}).get("all_agree_rate") if ensemble_report else None,
+                    "ensemble_pairwise_agreement": ensemble_report.get("agreement", {}).get("pairwise_mean_agreement") if ensemble_report else None,
+                    "ensemble_tie_rate": ensemble_report.get("vote", {}).get("tie_rate") if ensemble_report else None,
+                    "ensemble_mean_margin": ensemble_report.get("vote", {}).get("mean_margin") if ensemble_report else None,
+                    "ensemble_best_estimator": ensemble_report.get("best_estimator", {}).get("name") if ensemble_report else None,
+                    "ensemble_corrected_vs_best": ensemble_report.get("change_vs_best", {}).get("corrected") if ensemble_report else None,
+                    "ensemble_harmed_vs_best": ensemble_report.get("change_vs_best", {}).get("harmed") if ensemble_report else None,
+                }
+                if ensemble_report
+                else None
+            ),
         },
     )
 

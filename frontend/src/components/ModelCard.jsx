@@ -32,12 +32,30 @@ function inferEnsembleKindFromClassPath(classPath) {
 
 function inferPrimaryLabel(artifact) {
   const algo = artifact?.model?.algo ?? null;
+
+  // If artifact explicitly records an ensemble, prefer ensemble_kind.
+  if (algo === 'ensemble') {
+    const kind =
+      artifact?.model?.ensemble_kind ??
+      artifact?.model?.ensemble?.kind ??
+      inferEnsembleKindFromClassPath(
+        Array.isArray(artifact?.pipeline) && artifact.pipeline.length
+          ? artifact.pipeline[artifact.pipeline.length - 1]?.class_path
+          : null
+      ) ??
+      'ensemble';
+
+    return { label: kind, isEnsemble: true, ensembleKind: kind };
+  }
+
+  // Normal single model: show algo from config
   if (algo) return { label: algo, isEnsemble: false, ensembleKind: null };
 
   // Fall back to pipeline last step class name
-  const lastStep = Array.isArray(artifact?.pipeline) && artifact.pipeline.length
-    ? artifact.pipeline[artifact.pipeline.length - 1]
-    : null;
+  const lastStep =
+    Array.isArray(artifact?.pipeline) && artifact.pipeline.length
+      ? artifact.pipeline[artifact.pipeline.length - 1]
+      : null;
 
   const ensembleKind = inferEnsembleKindFromClassPath(lastStep?.class_path);
   if (ensembleKind) return { label: ensembleKind, isEnsemble: true, ensembleKind };
@@ -55,7 +73,7 @@ function HyperparamSummary({ modelCfg }) {
   }
 
   const entries = Object.entries(modelCfg)
-    .filter(([k, v]) => k !== 'algo' && v !== undefined && v !== null)
+    .filter(([k, v]) => !['algo', 'ensemble_kind', 'ensemble'].includes(k) && v !== undefined && v !== null)
     .slice(0, 6);
 
   if (!entries.length) {
@@ -109,11 +127,10 @@ export default function ModelCard() {
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
-  const [info, setInfo] = useState(null); // transient messages
+  const [info, setInfo] = useState(null);
 
   // 'none' | 'trained' | 'loaded' | 'incompatible'
   const [status, setStatus] = useState('none');
-
   const lastUidRef = useRef(null);
 
   /** ---------- compatibility checks ---------- **/
@@ -150,11 +167,7 @@ export default function ModelCard() {
     }
   }
 
-  const visualStatus = !artifact
-    ? 'none'
-    : !compatible
-    ? 'incompatible'
-    : status;
+  const visualStatus = !artifact ? 'none' : !compatible ? 'incompatible' : status;
 
   const borderColor =
     visualStatus === 'trained'
@@ -174,7 +187,7 @@ export default function ModelCard() {
       ? 'red'
       : 'dimmed';
 
-  /** ---------- detect artifact changes (train vs external load) ---------- **/
+  /** ---------- detect artifact changes ---------- **/
   useEffect(() => {
     if (!artifact) {
       setStatus('none');
@@ -206,6 +219,7 @@ export default function ModelCard() {
         artifactMeta: artifact,
         filename: suggested,
       });
+
       const usedInteractive = await saveBlobInteractive(blob, filename);
       if (!usedInteractive) {
         setInfo(`Saved to your browser's default Downloads as "${filename}".`);
@@ -222,9 +236,7 @@ export default function ModelCard() {
   if (!artifact) {
     statusText = 'No model yet. Run training or load a saved model.';
   } else if (visualStatus === 'incompatible') {
-    statusText =
-      compatReason ||
-      'Model is not compatible with the currently loaded data.';
+    statusText = compatReason || 'Model is not compatible with the currently loaded data.';
   } else if (visualStatus === 'trained') {
     statusText = 'Model trained on current data.';
   } else if (visualStatus === 'loaded') {
@@ -233,7 +245,6 @@ export default function ModelCard() {
     statusText = 'Model present.';
   }
 
-  // Convenience for stats; tolerate old artifacts that don't have these fields.
   const nParameters =
     artifact && Object.prototype.hasOwnProperty.call(artifact, 'n_parameters')
       ? artifact.n_parameters
@@ -244,12 +255,34 @@ export default function ModelCard() {
       ? artifact.extra_stats
       : {};
 
+  const inferred = inferPrimaryLabel(artifact);
+  const primaryLabel = inferred.label;
+  const isEnsemble = inferred.isEnsemble;
+
+  const ensembleCfg = artifact?.model?.algo === 'ensemble' ? artifact?.model?.ensemble : null;
+  const ensembleKind =
+    artifact?.model?.algo === 'ensemble'
+      ? artifact?.model?.ensemble_kind ?? ensembleCfg?.kind ?? inferred.ensembleKind
+      : null;
+
+  const ensembleVoting = ensembleCfg?.voting ?? null;
+  const ensembleNEstimators =
+    Array.isArray(ensembleCfg?.estimators) ? ensembleCfg.estimators.length : null;
+
   const hasAnyExtraStat =
     extraStats.n_support_vectors != null ||
     extraStats.n_trees != null ||
     extraStats.total_tree_nodes != null ||
     extraStats.max_tree_depth != null ||
-    extraStats.pca_n_components != null;
+    extraStats.pca_n_components != null ||
+    // Ensemble extras (optional; only if you merged them into artifact.extra_stats)
+    extraStats.ensemble_all_agree_rate != null ||
+    extraStats.ensemble_pairwise_agreement != null ||
+    extraStats.ensemble_tie_rate != null ||
+    extraStats.ensemble_mean_margin != null ||
+    extraStats.ensemble_best_estimator != null ||
+    extraStats.ensemble_corrected_vs_best != null ||
+    extraStats.ensemble_harmed_vs_best != null;
 
   // Feature section: show PCA components if we can
   const featureCfg = artifact?.features ?? null;
@@ -283,11 +316,6 @@ export default function ModelCard() {
       featuresText = 'pca';
     }
   }
-
-  const inferred = inferPrimaryLabel(artifact);
-  const primaryLabel = inferred.label;
-  const isEnsemble = inferred.isEnsemble;
-  const ensembleKind = inferred.ensembleKind;
 
   const lastPipelineStep =
     Array.isArray(artifact?.pipeline) && artifact.pipeline.length
@@ -351,18 +379,17 @@ export default function ModelCard() {
               ) : null}
             </Group>
 
-            {isEnsemble && (
-              <Text size="sm" c="dimmed">
-                Ensemble configuration is not fully serialized into the artifact yet.
-                The estimator type is inferred from the pipeline.
+            {isEnsemble && ensembleKind && (
+              <Text size="sm">
+                <strong>Ensemble:</strong> {ensembleKind}
+                {ensembleVoting ? ` (${ensembleVoting})` : ''}
+                {ensembleNEstimators != null ? ` • ${ensembleNEstimators} estimators` : ''}
               </Text>
             )}
 
             <Text size="sm">
               <strong>Created:</strong>{' '}
-              {artifact.created_at
-                ? new Date(artifact.created_at).toLocaleString()
-                : '—'}
+              {artifact.created_at ? new Date(artifact.created_at).toLocaleString() : '—'}
             </Text>
 
             <Text size="sm">
@@ -401,8 +428,7 @@ export default function ModelCard() {
             </Text>
 
             <Text size="sm">
-              <strong>Parameters:</strong>{' '}
-              {nParameters != null ? fmt(nParameters, 0) : 'not available'}
+              <strong>Parameters:</strong> {nParameters != null ? fmt(nParameters, 0) : 'not available'}
             </Text>
 
             {extraStats.n_support_vectors != null && (
@@ -429,23 +455,58 @@ export default function ModelCard() {
               </Text>
             )}
 
+            {/* Optional ensemble extras (only show if present) */}
+            {isEnsemble && extraStats.ensemble_all_agree_rate != null && (
+              <Text size="sm">
+                <strong>All-agree rate:</strong> {fmt(Number(extraStats.ensemble_all_agree_rate) * 100, 2)}%
+              </Text>
+            )}
+
+            {isEnsemble && extraStats.ensemble_pairwise_agreement != null && (
+              <Text size="sm">
+                <strong>Avg pairwise agreement:</strong>{' '}
+                {fmt(Number(extraStats.ensemble_pairwise_agreement) * 100, 2)}%
+              </Text>
+            )}
+
+            {isEnsemble && extraStats.ensemble_tie_rate != null && (
+              <Text size="sm">
+                <strong>Tie rate:</strong> {fmt(Number(extraStats.ensemble_tie_rate) * 100, 2)}%
+              </Text>
+            )}
+
+            {isEnsemble && extraStats.ensemble_mean_margin != null && (
+              <Text size="sm">
+                <strong>Mean vote margin:</strong> {fmt(extraStats.ensemble_mean_margin, 3)}
+              </Text>
+            )}
+
+            {isEnsemble && extraStats.ensemble_best_estimator != null && (
+              <Text size="sm">
+                <strong>Best estimator:</strong> {String(extraStats.ensemble_best_estimator)}
+              </Text>
+            )}
+
+            {isEnsemble &&
+              (extraStats.ensemble_corrected_vs_best != null || extraStats.ensemble_harmed_vs_best != null) && (
+                <Text size="sm">
+                  <strong>Vs best:</strong>{' '}
+                  corrected {fmt(extraStats.ensemble_corrected_vs_best, 0)}, harmed {fmt(extraStats.ensemble_harmed_vs_best, 0)}
+                </Text>
+              )}
+
             {!hasAnyExtraStat && nParameters == null && (
               <Text size="sm" c="dimmed">
                 Additional stats not available for this artifact.
               </Text>
             )}
 
-            {/* Hyperparameters / estimator params */}
             <Divider my="xs" />
             <Text size="sm" fw={500}>
               {artifact?.model ? 'Hyperparameters' : 'Estimator parameters'}
             </Text>
 
-            {artifact?.model ? (
-              <HyperparamSummary modelCfg={artifact.model} />
-            ) : (
-              <StepParamSummary step={lastPipelineStep} />
-            )}
+            {artifact?.model ? <HyperparamSummary modelCfg={artifact.model} /> : <StepParamSummary step={lastPipelineStep} />}
 
             <Divider my="xs" />
 
@@ -472,20 +533,8 @@ export default function ModelCard() {
         )}
 
         <Group justify="flex-end" mt="sm">
-          <Tooltip
-            label={
-              artifact
-                ? 'Save to a chosen location'
-                : 'Run or load a model first'
-            }
-          >
-            <Button
-              size="xs"
-              variant="light"
-              onClick={onSave}
-              disabled={!artifact}
-              loading={saving}
-            >
+          <Tooltip label={artifact ? 'Save to a chosen location' : 'Run or load a model first'}>
+            <Button size="xs" variant="light" onClick={onSave} disabled={!artifact} loading={saving}>
               Save model
             </Button>
           </Tooltip>

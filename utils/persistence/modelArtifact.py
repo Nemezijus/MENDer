@@ -184,6 +184,11 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
 
     # Model complexity stats
     n_parameters, extra_stats = _estimate_param_stats(inp.pipeline)
+    extra_from_summary = inp.summary.get("extra_stats") if isinstance(inp.summary, dict) else None
+    if isinstance(extra_from_summary, dict):
+        for k, v in extra_from_summary.items():
+            if isinstance(v, (str, int, float, bool)) or v is None:
+                extra_stats[k] = v
     kind = inp.kind
     if kind is None:
     # Try to infer from model config's `task` attribute (ClassVar or instance)

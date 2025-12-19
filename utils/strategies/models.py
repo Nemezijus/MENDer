@@ -23,15 +23,23 @@ def _filtered_kwargs(estimator_cls: type, cfg_obj: Any, *, exclude: set[str] = {
     allowed = set(sig.parameters.keys())
     return {k: v for k, v in raw.items() if k in allowed}
 
+def _maybe_set_random_state(estimator_cls: type, kw: Dict[str, Any], seed: Optional[int]) -> None:
+    if seed is None:
+        return
+    sig = inspect.signature(estimator_cls)
+    if "random_state" in sig.parameters and "random_state" not in kw:
+        kw["random_state"] = int(seed)
+
 
 @dataclass
 class LogRegBuilder(ModelBuilder):
     cfg: LogRegConfig
+    seed: Optional[int] = None
 
     def make_estimator(self) -> Any:
         # Start from filtered kwargs
         kw = _filtered_kwargs(LogisticRegression, self.cfg)
-
+        _maybe_set_random_state(LogisticRegression, kw, self.seed)
         # sklearn quirks: penalty/solver/l1_ratio interplay
         penalty = self.cfg.penalty
         solver = self.cfg.solver
@@ -72,9 +80,10 @@ class LogRegBuilder(ModelBuilder):
 @dataclass
 class SVMBuilder(ModelBuilder):
     cfg: SVMConfig
-
+    seed: Optional[int] = None
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(SVC, self.cfg)
+        _maybe_set_random_state(SVC, kw, self.seed)
         return SVC(**kw)
 
     def build(self) -> Any:
@@ -84,9 +93,11 @@ class SVMBuilder(ModelBuilder):
 @dataclass
 class DecisionTreeBuilder(ModelBuilder):
     cfg: TreeConfig
+    seed: Optional[int] = None
 
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(DecisionTreeClassifier, self.cfg)
+        _maybe_set_random_state(DecisionTreeClassifier, kw, self.seed)
         return DecisionTreeClassifier(**kw)
 
     def build(self) -> Any:
@@ -96,9 +107,10 @@ class DecisionTreeBuilder(ModelBuilder):
 @dataclass
 class RandomForestBuilder(ModelBuilder):
     cfg: ForestConfig
-
+    seed: Optional[int] = None
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(RandomForestClassifier, self.cfg)
+        _maybe_set_random_state(RandomForestClassifier, kw, self.seed)
         return RandomForestClassifier(**kw)
 
     def build(self) -> Any:

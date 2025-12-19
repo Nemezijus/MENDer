@@ -7,11 +7,11 @@ from utils.strategies.models import (
   LinRegBuilder
 )
 
-def make_model(cfg: ModelConfig):
-    if isinstance(cfg, LogRegConfig):         return LogRegBuilder(cfg)
-    if isinstance(cfg, SVMConfig):            return SVMBuilder(cfg)
-    if isinstance(cfg, TreeConfig):           return DecisionTreeBuilder(cfg)
-    if isinstance(cfg, ForestConfig):         return RandomForestBuilder(cfg)
+def make_model(cfg: ModelConfig, *, seed: int | None = None):
+    if isinstance(cfg, LogRegConfig):         return LogRegBuilder(cfg, seed=seed)
+    if isinstance(cfg, SVMConfig):            return SVMBuilder(cfg, seed=seed)
+    if isinstance(cfg, TreeConfig):           return DecisionTreeBuilder(cfg, seed=seed)
+    if isinstance(cfg, ForestConfig):         return RandomForestBuilder(cfg, seed=seed)
     if isinstance(cfg, KNNConfig):            return KNNBuilder(cfg)
     if isinstance(cfg, LinearRegConfig):      return LinRegBuilder(cfg)
     raise ValueError(f"Unsupported algo: {getattr(cfg, 'algo', None)}")

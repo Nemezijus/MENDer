@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
 from pydantic import BaseModel, Field
 
@@ -46,3 +46,6 @@ class EnsembleTrainResponse(BaseModel):
 
     # Optional artifact metadata (same shape as single-model for now)
     artifact: Optional[ModelArtifactMeta] = None
+
+    # Ensemble-specific insights (present for some ensemble kinds, e.g. voting)
+    ensemble_report: Optional[Dict[str, Any]] = None

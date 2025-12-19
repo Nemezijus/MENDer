@@ -17,7 +17,8 @@ def make_pipeline(cfg: RunConfig, rngm: RngManager, *, stream: str = "real") -> 
 
     scaler_strategy  = make_scaler(cfg.scale)
     feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=cfg.eval)
-    model_builder    = make_model(cfg.model)
+    model_seed = rngm.child_seed(f"{stream}/model")
+    model_builder = make_model(cfg.model, seed=model_seed)
 
     return Pipeline(steps=[
         ("scale", scaler_strategy.make_transformer()),
@@ -55,7 +56,8 @@ def make_pipeline_for_model_cfg(
 
     scaler_strategy  = make_scaler(scale)
     feature_strategy = make_features(features, seed=features_seed, model_cfg=model_cfg, eval_cfg=eval_cfg)
-    model_builder    = make_model(model_cfg)
+    model_seed = rngm.child_seed(f"{stream}/model")
+    model_builder = make_model(model_cfg, seed=model_seed)
 
     return Pipeline(steps=[
         ("scale", scaler_strategy.make_transformer()),

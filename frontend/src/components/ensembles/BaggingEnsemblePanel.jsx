@@ -107,7 +107,7 @@ export default function BaggingEnsemblePanel() {
 
   const bagging = useEnsembleStore((s) => s.bagging);
   const setBagging = useEnsembleStore((s) => s.setBagging);
-  const setBaggingBaseModel = useEnsembleStore((s) => s.setBaggingBaseModel);
+  const setBaggingBaseEstimator = useEnsembleStore((s) => s.setBaggingBaseEstimator);
   const resetBagging = useEnsembleStore((s) => s.resetBagging);
 
   const [loading, setLoading] = useState(false);
@@ -130,13 +130,13 @@ export default function BaggingEnsemblePanel() {
     if (initializedRef.current) return;
     if (defsLoading) return;
 
-    if (bagging.base_model && bagging.base_model.algo) {
+    if (bagging.base_estimator && bagging.base_estimator.algo) {
       initializedRef.current = true;
       return;
     }
 
     const algo = compatibleAlgos[0] || 'tree';
-    setBaggingBaseModel(getModelDefaults?.(algo) || { algo });
+    setBaggingBaseEstimator(getModelDefaults?.(algo) || { algo });
 
     const defaults = getEnsembleDefaults?.('bagging') || null;
     if (defaults) {
@@ -201,7 +201,7 @@ export default function BaggingEnsemblePanel() {
 
     const ensemble = {
       kind: 'bagging',
-      base_model: bagging.base_model,
+      base_estimator: bagging.base_estimator,
       n_estimators: Number(bagging.n_estimators) || 10,
       max_samples: bagging.max_samples === '' ? null : bagging.max_samples,
       max_features: bagging.max_features === '' ? null : bagging.max_features,
@@ -223,7 +223,7 @@ export default function BaggingEnsemblePanel() {
       return;
     }
 
-    if (!bagging.base_model || !bagging.base_model.algo) {
+    if (!bagging.base_estimator || !bagging.base_estimator.algo) {
       setErr('Please select a base estimator.');
       return;
     }
@@ -275,17 +275,17 @@ export default function BaggingEnsemblePanel() {
               {bagging.mode === 'simple' ? (
                 <Select
                   label="Base estimator"
-                  value={bagging.base_model?.algo || null}
+                  value={bagging.base_estimator?.algo || null}
                   onChange={(v) =>
-                    setBaggingBaseModel(getModelDefaults?.(v) || { algo: v || 'tree' })
+                    setBaggingBaseEstimator(getModelDefaults?.(v) || { algo: v || 'tree' })
                   }
                   data={algoOptions}
                 />
               ) : (
                 <Box>
                   <ModelSelectionCard
-                    model={bagging.base_model}
-                    onChange={(next) => setBaggingBaseModel(next)}
+                    model={bagging.base_estimator}
+                    onChange={(next) => setBaggingBaseEstimator(next)}
                     schema={models?.schema}
                     enums={enums}
                     models={models}

@@ -34,6 +34,8 @@ import EnsembleHelpText, {
   VotingIntroText,
 } from '../helpers/helpTexts/EnsembleHelpText.jsx';
 
+import VotingEnsembleResults from './VotingEnsembleResults.jsx';
+
 /** ---------- helpers ---------- **/
 
 function toErrorText(e) {
@@ -127,6 +129,7 @@ export default function VotingEnsemblePanel() {
   } = useSchemaDefaults();
 
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const trainResult = useResultsStore((s) => s.trainResult);
   const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
@@ -267,7 +270,7 @@ export default function VotingEnsemblePanel() {
   };
 
   const clampEstimatorCount = (n) => {
-    const target = Math.max(2, Math.min(5, Number(n) || 2));
+    const target = Math.max(2, Number(n) || 2);
 
     const cur = Array.isArray(voting.estimators) ? voting.estimators : [];
     if (cur.length === target) return;
@@ -293,7 +296,6 @@ export default function VotingEnsemblePanel() {
 
   const addEstimator = () => {
     const cur = Array.isArray(voting.estimators) ? voting.estimators : [];
-    if (cur.length >= 5) return;
 
     const algo = compatibleAlgos[Math.min(cur.length, compatibleAlgos.length - 1)] || 'logreg';
 
@@ -393,6 +395,28 @@ export default function VotingEnsemblePanel() {
     }
   };
 
+  const renderSimpleEstimatorRow = (s, idx) => (
+  <Group key={idx} align="flex-end" wrap="nowrap">
+    <Select
+      style={{ flex: 1, minWidth: 180, maxWidth: 360 }}
+      label={`Estimator ${idx + 1}`}
+      value={s?.model?.algo || null}
+      onChange={(v) => updateEstimatorAlgoSimple(idx, v || 'logreg')}
+      data={algoOptions}
+    />
+
+    <ActionIcon
+      variant="subtle"
+      color="red"
+      onClick={() => removeVotingEstimatorAt(idx)}
+      disabled={estimators.length <= 2}
+      title="Remove estimator"
+    >
+      <IconTrash size={18} />
+    </ActionIcon>
+  </Group>
+);
+
   // ----------------- render -----------------
 
   const estimators = Array.isArray(voting.estimators) ? voting.estimators : [];
@@ -421,6 +445,11 @@ export default function VotingEnsemblePanel() {
               />
             </Group>
           </Group>
+          <Group justify="flex-end">
+            <Button onClick={handleRun} loading={loading}>
+                Train voting ensemble
+            </Button>
+        </Group>
 
           {/* First row: left A+B stacked, right C help preview */}
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
@@ -446,7 +475,6 @@ export default function VotingEnsemblePanel() {
                 <NumberInput
                   label="Number of models"
                   min={2}
-                  max={5}
                   step={1}
                   value={estimators.length}
                   onChange={clampEstimatorCount}
@@ -456,7 +484,6 @@ export default function VotingEnsemblePanel() {
                   leftSection={<IconPlus size={16} />}
                   variant="light"
                   onClick={addEstimator}
-                  disabled={estimators.length >= 5}
                 >
                   Add estimator
                 </Button>
@@ -513,27 +540,23 @@ export default function VotingEnsemblePanel() {
                 and set weights.
               </Text>
 
-              {estimators.map((s, idx) => (
-                <Group key={idx} align="flex-end" wrap="wrap">
-                  <Select
-                    style={{ flex: 1, minWidth: 220 }}
-                    label={`Estimator ${idx + 1}`}
-                    value={s?.model?.algo || null}
-                    onChange={(v) => updateEstimatorAlgoSimple(idx, v || 'logreg')}
-                    data={algoOptions}
-                  />
+              
+                <Group align="flex-start" wrap="nowrap" gap="md">
+                    <Stack style={{ flex: 1 }} gap="sm">
+                        {estimators
+                        .map((s, idx) => ({ s, idx }))
+                        .filter((x) => x.idx % 2 === 0)
+                        .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
+                    </Stack>
 
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    onClick={() => removeVotingEstimatorAt(idx)}
-                    disabled={estimators.length <= 2}
-                    title="Remove estimator"
-                  >
-                    <IconTrash size={18} />
-                  </ActionIcon>
+                    <Stack style={{ flex: 1 }} gap="sm">
+                        {estimators
+                        .map((s, idx) => ({ s, idx }))
+                        .filter((x) => x.idx % 2 === 1)
+                        .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
+                    </Stack>
                 </Group>
-              ))}
+              
             </Stack>
           )}
 
@@ -613,7 +636,9 @@ export default function VotingEnsemblePanel() {
         seed={voting.seed}
         onSeedChange={(v) => setVoting({ seed: v })}
       />
-
+        {trainResult?.ensemble_report?.kind === 'voting' && (
+        <VotingEnsembleResults report={trainResult.ensemble_report} />
+        )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>
