@@ -137,3 +137,28 @@ class MetricsComputer(Protocol):
         labels: Optional[Sequence] = None,
     ) -> Any:
         ...
+
+class EnsembleBuilder(Protocol):
+    """
+    Builder/strategy for an ensemble estimator (Voting/Bagging/AdaBoost/XGBoost).
+
+    - `make_estimator()` returns an unfitted ensemble estimator.
+    - `fit()` trains it on the provided data and returns the fitted estimator.
+    - `expected_kind()` is derived from config (authoritative), and can be used
+      by orchestrators/services to route evaluation logic.
+    """
+    def expected_kind(self) -> Literal["classification", "regression"]:
+        ...
+
+    def make_estimator(self, *, rngm: Optional[Any] = None, stream: str = "ensemble") -> Any:
+        ...
+
+    def fit(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        *,
+        rngm: Optional[Any] = None,
+        stream: str = "ensemble",
+    ) -> Any:
+        ...

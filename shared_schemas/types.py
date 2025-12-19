@@ -59,3 +59,6 @@ LDASolver: TypeAlias = Literal["svd", "lsqr", "eigen"]
 KNNWeights: TypeAlias = Literal["uniform", "distance"]
 KNNAlgorithm: TypeAlias = Literal["auto", "ball_tree", "kd_tree", "brute"]
 KNNMetric: TypeAlias = Literal["minkowski", "euclidean", "manhattan", "chebyshev"]
+
+# Ensembles
+EnsembleKind: TypeAlias = Literal["voting", "bagging", "adaboost", "xgboost"]
