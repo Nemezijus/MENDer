@@ -8,12 +8,13 @@ import { getAllDefaults } from '../api/schema';
  *
  * Backend returns roughly:
  * {
- *   models: { schema, defaults, meta },
- *   scale: { schema, defaults },
- *   features: { schema, defaults },
- *   split: { schema, defaults },
- *   eval: { schema, defaults },
- *   enums: { ... }
+ *   models:     { schema, defaults, meta },
+ *   ensembles:  { schema, defaults },
+ *   scale:      { schema, defaults },
+ *   features:   { schema, defaults },
+ *   split:      { ... },
+ *   eval:       { schema, defaults },
+ *   enums:      { ... }
  * }
  */
 
@@ -21,10 +22,9 @@ function useSchemaDefaultsQuery() {
   return useQuery({
     queryKey: ['schema-defaults'],
     queryFn: getAllDefaults,
-    // tweak as you like; these are reasonable starting points:
-    staleTime: 5 * 60 * 1000,     // 5 minutes: treat as "fresh"
-    cacheTime: 60 * 60 * 1000,    // 1 hour cache
-    refetchOnWindowFocus: false,  // no surprise refetch on tab focus
+    staleTime: 5 * 60 * 1000, // 5 minutes: treat as "fresh"
+    cacheTime: 60 * 60 * 1000, // 1 hour cache
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -35,46 +35,57 @@ export function useSchemaDefaults() {
     if (!data) {
       return {
         raw: null,
+
         models: null,
+        ensembles: null,
+
         scale: null,
         features: null,
         split: null,
         eval: null,
+
         enums: {},
         loading: isLoading,
         error: isError ? (error ?? null) : null,
+
         getModelDefaults: () => null,
         getModelMeta: () => null,
         getCompatibleAlgos: () => [],
+
+        getEnsembleDefaults: () => null,
+        getCompatibleEnsembles: () => [],
       };
     }
 
     const models = data.models ?? null;
+    const ensembles = data.ensembles ?? null;
+
     const scale = data.scale ?? null;
     const features = data.features ?? null;
     const split = data.split ?? null;
     const evalCfg = data.eval ?? null;
     const enums = data.enums ?? {};
 
-    const defaults = models?.defaults ?? {};
-    const meta = models?.meta ?? {};
+    // ---- models helpers ----------------------------------------------------
+    const modelDefaults = models?.defaults ?? {};
+    const modelMeta = models?.meta ?? {};
 
     const getModelDefaults = (algo) => {
       if (!algo) return null;
-      return defaults[algo] ?? null;
+      return modelDefaults[algo] ?? null;
     };
 
     const getModelMeta = (algo) => {
       if (!algo) return null;
-      return meta[algo] ?? null;
+      return modelMeta[algo] ?? null;
     };
 
     const getCompatibleAlgos = (task) => {
-      const all = Object.keys(defaults);
+      const all = Object.keys(modelDefaults);
       if (!task) return all;
 
       return all.filter((name) => {
-        const m = meta[name];
+        const m = modelMeta[name];
         if (!m) return true; // if no meta, don't exclude
         const t = m.task;
         if (!t) return true;
@@ -83,19 +94,39 @@ export function useSchemaDefaults() {
       });
     };
 
+    // ---- ensembles helpers -------------------------------------------------
+    const ensembleDefaults = ensembles?.defaults ?? {};
+
+    const getEnsembleDefaults = (kind) => {
+      if (!kind) return null;
+      return ensembleDefaults[kind] ?? null;
+    };
+
+    // For now all ensembles are “compatible”; later we can filter by task
+    // if we add metadata like { kind: { task: ... } }.
+    const getCompatibleEnsembles = (_task) => Object.keys(ensembleDefaults);
+
     return {
       raw: data,
+
       models,
+      ensembles,
+
       scale,
       features,
       split,
       eval: evalCfg,
+
       enums,
       loading: isLoading,
       error: isError ? (error ?? null) : null,
+
       getModelDefaults,
       getModelMeta,
       getCompatibleAlgos,
+
+      getEnsembleDefaults,
+      getCompatibleEnsembles,
     };
   }, [data, isLoading, isError, error]);
 

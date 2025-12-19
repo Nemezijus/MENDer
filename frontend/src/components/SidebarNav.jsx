@@ -30,6 +30,11 @@ const SECTION_GROUPS = [
         label: 'Train a model',
         description: 'Choose algorithm and fit on current data',
       },
+      {
+        id: 'train-ensemble',
+        label: 'Train an Ensemble',
+        description: 'Perform ensemble model training',
+      },
     ],
   },
   {

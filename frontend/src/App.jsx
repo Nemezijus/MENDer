@@ -15,6 +15,7 @@ import { useDataStore } from './state/useDataStore.js';
 import ValidationCurvePanel from './components/ValidationCurvePanel.jsx';
 import GridSearchPanel from './components/GridSearchPanel.jsx';
 import RandomSearchPanel from './components/RandomSearchPanel.jsx';
+import EnsembleTrainingPanel from './components/EnsembleTrainingPanel.jsx';
 
 const COLUMN_GAP = 'var(--mantine-spacing-lg)';
 
@@ -72,7 +73,17 @@ export default function App() {
             </DataGuard>
           </Stack>
         );
-
+      case 'train-ensemble':
+        return (
+          <Stack gap="md">
+            <Title order={3} align="center">
+              Ensemble training
+            </Title>
+            <DataGuard>
+              <EnsembleTrainingPanel />
+            </DataGuard>
+          </Stack>
+        );
       case 'learning-curve':
         return (
           <Stack gap="md">

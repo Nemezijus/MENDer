@@ -1,3 +1,4 @@
+// frontend/src/components/ModelCard.jsx
 import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Group, Stack, Divider, Badge, Button, Tooltip } from '@mantine/core';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
@@ -17,6 +18,37 @@ function friendlyClassName(classPath) {
   return parts[parts.length - 1] || classPath;
 }
 
+function inferEnsembleKindFromClassPath(classPath) {
+  if (!classPath) return null;
+  const name = friendlyClassName(classPath);
+
+  if (name === 'VotingClassifier' || name === 'VotingRegressor') return 'voting';
+  if (name === 'BaggingClassifier' || name === 'BaggingRegressor') return 'bagging';
+  if (name === 'AdaBoostClassifier' || name === 'AdaBoostRegressor') return 'adaboost';
+  if (name === 'XGBClassifier' || name === 'XGBRegressor') return 'xgboost';
+
+  return null;
+}
+
+function inferPrimaryLabel(artifact) {
+  const algo = artifact?.model?.algo ?? null;
+  if (algo) return { label: algo, isEnsemble: false, ensembleKind: null };
+
+  // Fall back to pipeline last step class name
+  const lastStep = Array.isArray(artifact?.pipeline) && artifact.pipeline.length
+    ? artifact.pipeline[artifact.pipeline.length - 1]
+    : null;
+
+  const ensembleKind = inferEnsembleKindFromClassPath(lastStep?.class_path);
+  if (ensembleKind) return { label: ensembleKind, isEnsemble: true, ensembleKind };
+
+  // If not recognized, still show last estimator class (better than 'unknown')
+  const lastCls = lastStep?.class_path ? friendlyClassName(lastStep.class_path) : null;
+  if (lastCls) return { label: lastCls, isEnsemble: true, ensembleKind: null };
+
+  return { label: 'unknown', isEnsemble: false, ensembleKind: null };
+}
+
 function HyperparamSummary({ modelCfg }) {
   if (!modelCfg || typeof modelCfg !== 'object') {
     return <Text size="sm" c="dimmed">No hyperparameters recorded.</Text>;
@@ -28,6 +60,30 @@ function HyperparamSummary({ modelCfg }) {
 
   if (!entries.length) {
     return <Text size="sm" c="dimmed">No hyperparameters recorded.</Text>;
+  }
+
+  return (
+    <Text size="sm">
+      {entries.map(([k, v], idx) => (
+        <span key={k}>
+          {k}={String(v)}
+          {idx < entries.length - 1 ? ', ' : ''}
+        </span>
+      ))}
+    </Text>
+  );
+}
+
+function StepParamSummary({ step }) {
+  const params = step?.params && typeof step.params === 'object' ? step.params : null;
+  if (!params) return <Text size="sm" c="dimmed">No estimator parameters recorded.</Text>;
+
+  const entries = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .slice(0, 6);
+
+  if (!entries.length) {
+    return <Text size="sm" c="dimmed">No estimator parameters recorded.</Text>;
   }
 
   return (
@@ -128,9 +184,7 @@ export default function ModelCard() {
     }
 
     if (artifact.uid && artifact.uid !== lastUidRef.current) {
-      // Artifact changed (e.g. after a new training run or an external load)
       setStatus('trained');
-      // no extra info message here to avoid duplicate text
       setInfo(null);
       lastUidRef.current = artifact.uid;
     }
@@ -143,7 +197,10 @@ export default function ModelCard() {
     setInfo(null);
     setSaving(true);
     try {
-      const suggested = `model-${artifact?.model?.algo || 'unknown'}-${artifact.uid?.slice(0, 8) || 'artifact'}.mend`;
+      const inferred = inferPrimaryLabel(artifact);
+      const nameForFile = inferred?.label || 'unknown';
+      const suggested = `model-${nameForFile}-${artifact.uid?.slice(0, 8) || 'artifact'}.mend`;
+
       const { blob, filename } = await saveModel({
         artifactUid: artifact.uid,
         artifactMeta: artifact,
@@ -181,6 +238,7 @@ export default function ModelCard() {
     artifact && Object.prototype.hasOwnProperty.call(artifact, 'n_parameters')
       ? artifact.n_parameters
       : null;
+
   const extraStats =
     artifact && artifact.extra_stats && typeof artifact.extra_stats === 'object'
       ? artifact.extra_stats
@@ -200,19 +258,16 @@ export default function ModelCard() {
   let featuresText = featuresMethod;
 
   if (featuresMethod === 'pca') {
-    // 1) Actual fitted components (if backend ever adds this into extra_stats)
     const pcaNFromStats =
       extraStats && Object.prototype.hasOwnProperty.call(extraStats, 'pca_n_components')
         ? extraStats.pca_n_components
         : null;
 
-    // 2) Configured pca_n (manual)
     const pcaNFromCfg =
       featureCfg && Object.prototype.hasOwnProperty.call(featureCfg, 'pca_n')
         ? featureCfg.pca_n
         : null;
 
-    // 3) Variance-based PCA
     const pcaVarFromCfg =
       featureCfg && Object.prototype.hasOwnProperty.call(featureCfg, 'pca_var')
         ? featureCfg.pca_var
@@ -229,6 +284,16 @@ export default function ModelCard() {
     }
   }
 
+  const inferred = inferPrimaryLabel(artifact);
+  const primaryLabel = inferred.label;
+  const isEnsemble = inferred.isEnsemble;
+  const ensembleKind = inferred.ensembleKind;
+
+  const lastPipelineStep =
+    Array.isArray(artifact?.pipeline) && artifact.pipeline.length
+      ? artifact.pipeline[artifact.pipeline.length - 1]
+      : null;
+
   return (
     <Card
       withBorder
@@ -242,12 +307,10 @@ export default function ModelCard() {
           Model
         </Text>
 
-        {/* Status line */}
         <Text size="xs" c={statusColor} style={{ whiteSpace: 'pre-wrap' }}>
           {statusText}
         </Text>
 
-        {/* Transient info (save/load) */}
         {info && (
           <Text size="xs" c="teal" style={{ whiteSpace: 'pre-wrap' }}>
             {info}
@@ -267,20 +330,33 @@ export default function ModelCard() {
         ) : (
           <Stack gap="xs">
             <Group gap="sm">
-              <Badge variant="light">
-                {artifact?.model?.algo ?? 'unknown'}
-              </Badge>
+              <Badge variant="light">{primaryLabel}</Badge>
+
+              {isEnsemble && (
+                <Badge color="cyan" variant="light">
+                  ensemble
+                </Badge>
+              )}
+
               {artifact?.kind && (
                 <Badge color="gray" variant="light">
                   {artifact.kind}
                 </Badge>
               )}
+
               {artifact?.n_splits ? (
                 <Badge color="grape" variant="light">
                   {artifact.n_splits} splits
                 </Badge>
               ) : null}
             </Group>
+
+            {isEnsemble && (
+              <Text size="sm" c="dimmed">
+                Ensemble configuration is not fully serialized into the artifact yet.
+                The estimator type is inferred from the pipeline.
+              </Text>
+            )}
 
             <Text size="sm">
               <strong>Created:</strong>{' '}
@@ -291,14 +367,12 @@ export default function ModelCard() {
 
             <Text size="sm">
               <strong>Metric:</strong>{' '}
-              {artifact.metric_name ?? '—'} (
-              {fmt(artifact.mean_score)} ± {fmt(artifact.std_score)})
+              {artifact.metric_name ?? '—'} ({fmt(artifact.mean_score)} ± {fmt(artifact.std_score)})
             </Text>
 
             <Text size="sm">
               <strong>Data:</strong>{' '}
-              train {fmt(artifact.n_samples_train, 0)}, test{' '}
-              {fmt(artifact.n_samples_test, 0)}, features{' '}
+              train {fmt(artifact.n_samples_train, 0)}, test {fmt(artifact.n_samples_test, 0)}, features{' '}
               {fmt(artifact.n_features_in, 0)}
             </Text>
 
@@ -320,53 +394,57 @@ export default function ModelCard() {
               <strong>Split:</strong> {artifact?.split?.mode ?? '—'}
             </Text>
 
-            {/* Model stats */}
             <Divider my="xs" />
+
             <Text size="sm" fw={500}>
               Model stats
             </Text>
+
             <Text size="sm">
               <strong>Parameters:</strong>{' '}
               {nParameters != null ? fmt(nParameters, 0) : 'not available'}
             </Text>
+
             {extraStats.n_support_vectors != null && (
               <Text size="sm">
-                <strong>Support vectors:</strong>{' '}
-                {fmt(extraStats.n_support_vectors, 0)}
+                <strong>Support vectors:</strong> {fmt(extraStats.n_support_vectors, 0)}
               </Text>
             )}
+
             {extraStats.n_trees != null && (
               <Text size="sm">
                 <strong>Trees:</strong> {fmt(extraStats.n_trees, 0)}
               </Text>
             )}
+
             {extraStats.total_tree_nodes != null && (
               <Text size="sm">
-                <strong>Total tree nodes:</strong>{' '}
-                {fmt(extraStats.total_tree_nodes, 0)}
+                <strong>Total tree nodes:</strong> {fmt(extraStats.total_tree_nodes, 0)}
               </Text>
             )}
+
             {extraStats.max_tree_depth != null && (
               <Text size="sm">
-                <strong>Max tree depth:</strong>{' '}
-                {fmt(extraStats.max_tree_depth, 0)}
+                <strong>Max tree depth:</strong> {fmt(extraStats.max_tree_depth, 0)}
               </Text>
             )}
+
             {!hasAnyExtraStat && nParameters == null && (
               <Text size="sm" c="dimmed">
                 Additional stats not available for this artifact.
               </Text>
             )}
 
-            {/* Hyperparameters */}
-            {artifact?.model && (
-              <>
-                <Divider my="xs" />
-                <Text size="sm" fw={500}>
-                  Hyperparameters
-                </Text>
-                <HyperparamSummary modelCfg={artifact.model} />
-              </>
+            {/* Hyperparameters / estimator params */}
+            <Divider my="xs" />
+            <Text size="sm" fw={500}>
+              {artifact?.model ? 'Hyperparameters' : 'Estimator parameters'}
+            </Text>
+
+            {artifact?.model ? (
+              <HyperparamSummary modelCfg={artifact.model} />
+            ) : (
+              <StepParamSummary step={lastPipelineStep} />
             )}
 
             <Divider my="xs" />
@@ -374,8 +452,8 @@ export default function ModelCard() {
             <Text size="sm" fw={500}>
               Pipeline
             </Text>
-            {Array.isArray(artifact.pipeline) &&
-            artifact.pipeline.length > 0 ? (
+
+            {Array.isArray(artifact.pipeline) && artifact.pipeline.length > 0 ? (
               <ul style={{ margin: 0, paddingInlineStart: 18 }}>
                 {artifact.pipeline.map((s, i) => (
                   <li key={`${s.name}-${i}`}>
@@ -393,7 +471,6 @@ export default function ModelCard() {
           </Stack>
         )}
 
-        {/* Buttons at the bottom */}
         <Group justify="flex-end" mt="sm">
           <Tooltip
             label={
