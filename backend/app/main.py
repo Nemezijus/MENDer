@@ -31,6 +31,7 @@ from .routers.models import router as models_router
 from .routers.schema import router as schema_router
 from .routers.predict import router as predict_router
 from .routers.tuning import router as tuning_router
+from .routers.ensembles import router as ensembles_router
 
 app = FastAPI(
     title="MENDer Local API",
@@ -87,6 +88,7 @@ app.include_router(models_router,        prefix="/api/v1",        tags=["models"
 app.include_router(predict_router,       prefix="/api/v1",        tags=["predict"])
 app.include_router(schema_router,        prefix="/api/v1/schema", tags=["schema"])
 app.include_router(tuning_router,        prefix="/api/v1/tuning", tags=["tuning"])
+app.include_router(ensembles_router,     prefix="/api/v1",        tags=["ensembles"])
 
 if os.path.isdir("frontend_dist"):
     app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="static")

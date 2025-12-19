@@ -15,6 +15,14 @@ from shared_schemas.scale_configs import ScaleModel
 from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.eval_configs import EvalModel
 
+from shared_schemas.ensemble_configs import (
+    EnsembleConfig,
+    VotingEnsembleConfig,
+    BaggingEnsembleConfig,
+    AdaBoostEnsembleConfig,
+    XGBoostEnsembleConfig,
+)
+
 router = APIRouter()
 
 # ---------- helpers ----------
@@ -79,9 +87,31 @@ def _model_union_schema_and_defaults():
 
     return {"schema": schema, "defaults": defaults}
 
+
+def _ensemble_union_schema_and_defaults():
+    """
+    Special-cased for the discriminated union EnsembleConfig:
+    - Build schema via TypeAdapter(EnsembleConfig)
+    - Build per-kind defaults by instantiating each concrete config class
+    """
+    ta = TypeAdapter(EnsembleConfig)
+    schema = ta.json_schema()
+
+    defaults = {}
+    for cls in (VotingEnsembleConfig, BaggingEnsembleConfig, AdaBoostEnsembleConfig, XGBoostEnsembleConfig):
+        try:
+            inst = cls()
+            defaults[inst.kind] = inst.model_dump()
+        except Exception:
+            continue
+
+    return {"schema": schema, "defaults": defaults}
+
+
 def _schema_defaults(pyd_model):
     """Return defaults by instantiating a concrete Pydantic model."""
     return pyd_model().model_dump()
+
 
 def _enums_payload():
     """Centralized enum lists for dropdowns — single source of truth."""
@@ -109,6 +139,9 @@ def _enums_payload():
         "ScaleName":            safe(getattr(T, "ScaleName", None)),
         "FeatureName":          safe(getattr(T, "FeatureName", None)),
         "MetricName":           safe(getattr(T, "MetricName", None)),
+
+        # ensembles
+        "EnsembleKind":         safe(getattr(T, "EnsembleKind", None)),
     }
     cls = safe(getattr(T, "ClassificationMetricName", None))
     reg = safe(getattr(T, "RegressionMetricName", None))
@@ -118,6 +151,7 @@ def _enums_payload():
     if metric_by_task:
         enums["MetricByTask"] = metric_by_task
     return {k: v for k, v in enums.items() if v is not None}
+
 
 def _model_defaults_and_meta():
     """
@@ -140,6 +174,8 @@ def _model_defaults_and_meta():
         }
 
     return defaults, meta
+
+
 # ---------- routes ----------
 
 @router.get("/defaults")
@@ -149,12 +185,17 @@ def get_all_defaults():
     Use this to remove hardcoded DEFAULTS and static option lists on the frontend.
     """
     model_defaults, model_meta = _model_defaults_and_meta()
+    ensemble_defaults = _ensemble_union_schema_and_defaults()
 
     payload = {
         "models": {
             "schema": TypeAdapter(ModelConfig).json_schema(),  # union schema (oneOf + discriminator)
             "defaults": model_defaults,
             "meta": model_meta,
+        },
+        "ensembles": {
+            "schema": TypeAdapter(EnsembleConfig).json_schema(),
+            "defaults": ensemble_defaults["defaults"],
         },
         "scale": {
             "schema": TypeAdapter(ScaleModel).json_schema(),
@@ -183,54 +224,24 @@ def get_all_defaults():
     }
     return payload
 
+
 @router.get("/enums")
 def get_enums():
     """Expose centralized enum values defined in shared_schemas/types.py."""
     enums = _enums_payload()
     return {"enums": enums}
-# @router.get("/enums")
-# def get_enums():
-#     """
-#     Expose centralized enum values defined in shared_schemas/types.py.
-#     Safe: a missing or non-Literal alias won’t 500 the endpoint.
-#     """
-#     def safe(alias):
-#         return _flatten_literal_alias(alias) if alias is not None else None
-
-#     enums = {
-#         # modeling
-#         "PenaltyName":          safe(T.PenaltyName),
-#         "LogRegSolver":         safe(getattr(T, "LogRegSolver", None)),
-#         "SVMKernel":            safe(T.SVMKernel),
-#         "SVMDecisionShape":     safe(T.SVMDecisionShape),
-#         "TreeCriterion":        safe(T.TreeCriterion),
-#         "TreeSplitter":         safe(T.TreeSplitter),
-#         "MaxFeaturesName":      safe(T.MaxFeaturesName),
-
-#         # class weights
-#         "ClassWeightBalanced":  safe(getattr(T, "ClassWeightBalanced", None)),
-#         "ForestClassWeight":    safe(getattr(T, "ForestClassWeight", None)),
-
-#         # KNN
-#         "KNNWeights":           safe(getattr(T, "KNNWeights", None)),
-#         "KNNAlgorithm":         safe(getattr(T, "KNNAlgorithm", None)),
-#         "KNNMetric":            safe(getattr(T, "KNNMetric", None)),
-
-#         # pipeline-wide
-#         "ScaleName":            safe(T.ScaleName),
-#         "FeatureName":          safe(T.FeatureName),
-#         "MetricName":           safe(T.MetricName),
-#     }
-
-#     # Drop any None entries (types not present or not Literal-based)
-#     enums = {k: v for k, v in enums.items() if v is not None}
-#     return {"enums": enums}
 
 
 @router.get("/model")
 def get_model_schema():
     # ModelConfig is a union → use the special-cased helper
     return _model_union_schema_and_defaults()
+
+
+@router.get("/ensemble")
+def get_ensemble_schema():
+    # EnsembleConfig is a union → use the special-cased helper
+    return _ensemble_union_schema_and_defaults()
 
 
 @router.get("/features")
