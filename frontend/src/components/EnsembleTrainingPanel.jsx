@@ -2,6 +2,9 @@
 import { Tabs, Stack, Card, Text } from '@mantine/core';
 
 import VotingEnsemblePanel from './ensembles/VotingEnsemblePanel.jsx';
+import BaggingEnsemblePanel from './ensembles/BaggingEnsemblePanel.jsx';
+import AdaBoostEnsemblePanel from './ensembles/AdaBoostEnsemblePanel.jsx';
+import XGBoostEnsemblePanel from './ensembles/XGBoostEnsemblePanel.jsx';    
 
 export default function EnsembleTrainingPanel() {
   return (
@@ -19,27 +22,15 @@ export default function EnsembleTrainingPanel() {
         </Tabs.Panel>
 
         <Tabs.Panel value="bagging" pt="md">
-          <Card withBorder radius="md" p="md">
-            <Text size="sm">
-              Bagging ensemble training will be added after Voting is complete.
-            </Text>
-          </Card>
+            <BaggingEnsemblePanel />
         </Tabs.Panel>
 
         <Tabs.Panel value="adaboost" pt="md">
-          <Card withBorder radius="md" p="md">
-            <Text size="sm">
-              AdaBoost ensemble training will be added after Voting is complete.
-            </Text>
-          </Card>
+          <AdaBoostEnsemblePanel />
         </Tabs.Panel>
 
         <Tabs.Panel value="xgboost" pt="md">
-          <Card withBorder radius="md" p="md">
-            <Text size="sm">
-              XGBoost ensemble training will be added after Voting is complete.
-            </Text>
-          </Card>
+            <XGBoostEnsemblePanel />
         </Tabs.Panel>
       </Tabs>
     </Stack>

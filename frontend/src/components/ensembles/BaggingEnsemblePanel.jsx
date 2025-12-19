@@ -1,0 +1,427 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Card,
+  Stack,
+  Group,
+  Text,
+  Button,
+  Select,
+  NumberInput,
+  SegmentedControl,
+  Divider,
+  Alert,
+  Box,
+  ActionIcon,
+  Switch,
+} from '@mantine/core';
+import { IconRefresh } from '@tabler/icons-react';
+
+import { useDataStore } from '../../state/useDataStore.js';
+import { useSettingsStore } from '../../state/useSettingsStore.js';
+import { useFeatureStore } from '../../state/useFeatureStore.js';
+import { useResultsStore } from '../../state/useResultsStore.js';
+import { useModelArtifactStore } from '../../state/useModelArtifactStore.js';
+import { useSchemaDefaults } from '../../state/SchemaDefaultsContext.jsx';
+import { useEnsembleStore } from '../../state/useEnsembleStore.js';
+
+import SplitOptionsCard from '../SplitOptionsCard.jsx';
+import ModelSelectionCard from '../ModelSelectionCard.jsx';
+
+import { runEnsembleTrainRequest } from '../../api/ensembles.js';
+
+import EnsembleHelpText, { BaggingIntroText } from '../helpers/helpTexts/EnsembleHelpText.jsx';
+
+function toErrorText(e) {
+  if (typeof e === 'string') return e;
+  const data = e?.response?.data;
+  const detail = data?.detail ?? e?.detail;
+  const pick = detail ?? data ?? e?.message ?? e;
+  if (typeof pick === 'string') return pick;
+
+  if (Array.isArray(pick)) {
+    return pick
+      .map((it) => {
+        if (typeof it === 'string') return it;
+        if (it && typeof it === 'object') {
+          const loc = Array.isArray(it.loc) ? it.loc.join('.') : it.loc;
+          return it.msg ? `${loc ? loc + ': ' : ''}${it.msg}` : JSON.stringify(it);
+        }
+        return String(it);
+      })
+      .join('\n');
+  }
+
+  try {
+    return JSON.stringify(pick);
+  } catch {
+    return String(pick);
+  }
+}
+
+function buildFeaturesPayload(fctx) {
+  return {
+    method: fctx.method,
+    pca_n: fctx.pca_n,
+    pca_var: fctx.pca_var,
+    pca_whiten: fctx.pca_whiten,
+    lda_n: fctx.lda_n,
+    lda_solver: fctx.lda_solver,
+    lda_shrinkage: fctx.lda_shrinkage,
+    lda_tol: fctx.lda_tol,
+    sfs_k: fctx.sfs_k,
+    sfs_direction: fctx.sfs_direction,
+    sfs_cv: fctx.sfs_cv,
+    sfs_n_jobs: fctx.sfs_n_jobs,
+  };
+}
+
+export default function BaggingEnsemblePanel() {
+  const inspectReport = useDataStore((s) => s.inspectReport);
+
+  const xPath = useDataStore((s) => s.xPath);
+  const yPath = useDataStore((s) => s.yPath);
+  const npzPath = useDataStore((s) => s.npzPath);
+  const xKey = useDataStore((s) => s.xKey);
+  const yKey = useDataStore((s) => s.yKey);
+
+  const effectiveTask = useDataStore(
+    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
+  );
+
+  const fctx = useFeatureStore();
+  const scaleMethod = useSettingsStore((s) => s.scaleMethod);
+  const metric = useSettingsStore((s) => s.metric);
+
+  const {
+    loading: defsLoading,
+    models,
+    enums,
+    getModelDefaults,
+    getCompatibleAlgos,
+    getEnsembleDefaults,
+  } = useSchemaDefaults();
+
+  const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
+  const setArtifact = useModelArtifactStore((s) => s.setArtifact);
+
+  const bagging = useEnsembleStore((s) => s.bagging);
+  const setBagging = useEnsembleStore((s) => s.setBagging);
+  const setBaggingBaseModel = useEnsembleStore((s) => s.setBaggingBaseModel);
+  const resetBagging = useEnsembleStore((s) => s.resetBagging);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
+
+  const initializedRef = useRef(false);
+
+  const compatibleAlgos = useMemo(() => {
+    const list = getCompatibleAlgos?.(effectiveTask) || [];
+    return list.length ? list : ['logreg', 'svm', 'tree', 'forest', 'knn', 'linreg'];
+  }, [getCompatibleAlgos, effectiveTask]);
+
+  const algoOptions = useMemo(
+    () => compatibleAlgos.map((a) => ({ value: a, label: a })),
+    [compatibleAlgos],
+  );
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    if (defsLoading) return;
+
+    if (bagging.base_model && bagging.base_model.algo) {
+      initializedRef.current = true;
+      return;
+    }
+
+    const algo = compatibleAlgos[0] || 'tree';
+    setBaggingBaseModel(getModelDefaults?.(algo) || { algo });
+
+    const defaults = getEnsembleDefaults?.('bagging') || null;
+    if (defaults) {
+      setBagging({
+        n_estimators: defaults.n_estimators ?? bagging.n_estimators,
+        max_samples: defaults.max_samples ?? bagging.max_samples,
+        max_features: defaults.max_features ?? bagging.max_features,
+        bootstrap: defaults.bootstrap ?? bagging.bootstrap,
+        bootstrap_features: defaults.bootstrap_features ?? bagging.bootstrap_features,
+        oob_score: defaults.oob_score ?? bagging.oob_score,
+        n_jobs: defaults.n_jobs ?? bagging.n_jobs,
+        random_state: defaults.random_state ?? bagging.random_state,
+      });
+    }
+
+    if (effectiveTask === 'regression' && bagging.stratified) {
+      setBagging({ stratified: false });
+    }
+
+    initializedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defsLoading, compatibleAlgos, getModelDefaults, getEnsembleDefaults]);
+
+  const handleReset = () => {
+    resetBagging(effectiveTask);
+    setErr(null);
+  };
+
+  const buildPayload = () => {
+    const data = {
+      x_path: xPath || null,
+      y_path: yPath || null,
+      npz_path: npzPath || null,
+      x_key: xKey || null,
+      y_key: yKey || null,
+    };
+
+    const split =
+      bagging.splitMode === 'kfold'
+        ? {
+            mode: 'kfold',
+            n_splits: Number(bagging.nSplits) || 5,
+            stratified: effectiveTask === 'regression' ? false : !!bagging.stratified,
+            shuffle: !!bagging.shuffle,
+          }
+        : {
+            mode: 'holdout',
+            train_frac: Number(bagging.trainFrac) || 0.75,
+            stratified: effectiveTask === 'regression' ? false : !!bagging.stratified,
+            shuffle: !!bagging.shuffle,
+          };
+
+    const scale = { method: scaleMethod || 'standard' };
+    const features = buildFeaturesPayload(fctx);
+
+    const evalCfg = {
+      metric: metric || (effectiveTask === 'regression' ? 'r2' : 'accuracy'),
+      seed: bagging.seed === '' || bagging.seed == null ? null : Number(bagging.seed),
+      n_shuffles: 0,
+      progress_id: null,
+    };
+
+    const ensemble = {
+      kind: 'bagging',
+      base_model: bagging.base_model,
+      n_estimators: Number(bagging.n_estimators) || 10,
+      max_samples: bagging.max_samples === '' ? null : bagging.max_samples,
+      max_features: bagging.max_features === '' ? null : bagging.max_features,
+      bootstrap: !!bagging.bootstrap,
+      bootstrap_features: !!bagging.bootstrap_features,
+      oob_score: !!bagging.oob_score,
+      n_jobs: bagging.n_jobs === '' ? null : Number(bagging.n_jobs),
+      random_state: bagging.random_state === '' ? null : Number(bagging.random_state),
+    };
+
+    return { data, split, scale, features, ensemble, eval: evalCfg };
+  };
+
+  const handleRun = async () => {
+    setErr(null);
+
+    if (!inspectReport || inspectReport?.n_samples <= 0) {
+      setErr('No inspected training data. Please upload and inspect your data first.');
+      return;
+    }
+
+    if (!bagging.base_model || !bagging.base_model.algo) {
+      setErr('Please select a base estimator.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = buildPayload();
+      const result = await runEnsembleTrainRequest(payload);
+
+      setTrainResult(result);
+      setActiveResultKind('train');
+      if (result?.artifact) setArtifact(result.artifact);
+
+      setLoading(false);
+    } catch (e) {
+      setLoading(false);
+      setErr(toErrorText(e));
+    }
+  };
+
+  return (
+    <Stack gap="md">
+      <Card withBorder shadow="sm" radius="md" padding="lg">
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Text fw={700} size="lg">
+              Bagging ensemble
+            </Text>
+
+            <Group gap="xs">
+              <ActionIcon variant="subtle" onClick={handleReset} title="Reset to defaults">
+                <IconRefresh size={18} />
+              </ActionIcon>
+
+              <SegmentedControl
+                value={bagging.mode}
+                onChange={(v) => setBagging({ mode: v })}
+                data={[
+                  { value: 'simple', label: 'Simple' },
+                  { value: 'advanced', label: 'Advanced' },
+                ]}
+              />
+            </Group>
+          </Group>
+
+          {/* First row: left A+B stacked, right C help preview */}
+          <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
+            <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
+              {bagging.mode === 'simple' ? (
+                <Select
+                  label="Base estimator"
+                  value={bagging.base_model?.algo || null}
+                  onChange={(v) =>
+                    setBaggingBaseModel(getModelDefaults?.(v) || { algo: v || 'tree' })
+                  }
+                  data={algoOptions}
+                />
+              ) : (
+                <Box>
+                  <ModelSelectionCard
+                    model={bagging.base_model}
+                    onChange={(next) => setBaggingBaseModel(next)}
+                    schema={models?.schema}
+                    enums={enums}
+                    models={models}
+                    showHelp={false}
+                  />
+                </Box>
+              )}
+
+              <NumberInput
+                label="n_estimators"
+                min={1}
+                step={1}
+                value={bagging.n_estimators}
+                onChange={(v) => setBagging({ n_estimators: v })}
+              />
+            </Stack>
+
+            <Box style={{ flex: 1, minWidth: 260 }}>
+              <Stack justify="space-between" style={{ height: '100%' }} gap="xs">
+                <Box>
+                  <BaggingIntroText effectiveTask={effectiveTask} />
+                </Box>
+
+                <Group justify="flex-end">
+                  <Button size="xs" variant="subtle" onClick={() => setShowHelp((p) => !p)}>
+                    {showHelp ? 'Show less' : 'Show more'}
+                  </Button>
+                </Group>
+              </Stack>
+            </Box>
+          </Group>
+
+          {showHelp && (
+            <Box>
+              <EnsembleHelpText kind="bagging" effectiveTask={effectiveTask} mode={bagging.mode} />
+            </Box>
+          )}
+
+          <Divider />
+
+          <Group grow align="flex-end" wrap="wrap">
+            <NumberInput
+              label="max_samples (fraction)"
+              step={0.1}
+              min={0}
+              max={1}
+              value={bagging.max_samples}
+              onChange={(v) => setBagging({ max_samples: v })}
+              placeholder="default"
+            />
+
+            <NumberInput
+              label="max_features (fraction)"
+              step={0.1}
+              min={0}
+              max={1}
+              value={bagging.max_features}
+              onChange={(v) => setBagging({ max_features: v })}
+              placeholder="default"
+            />
+
+            <NumberInput
+              label="n_jobs"
+              step={1}
+              value={bagging.n_jobs}
+              onChange={(v) => setBagging({ n_jobs: v })}
+              placeholder="default"
+            />
+
+            <NumberInput
+              label="random_state"
+              step={1}
+              value={bagging.random_state}
+              onChange={(v) => setBagging({ random_state: v })}
+              placeholder="default"
+            />
+          </Group>
+
+          <Group grow align="center" wrap="wrap">
+            <Switch
+              label="bootstrap"
+              checked={!!bagging.bootstrap}
+              onChange={(e) => setBagging({ bootstrap: e.currentTarget.checked })}
+            />
+            <Switch
+              label="bootstrap_features"
+              checked={!!bagging.bootstrap_features}
+              onChange={(e) => setBagging({ bootstrap_features: e.currentTarget.checked })}
+            />
+            <Switch
+              label="oob_score"
+              checked={!!bagging.oob_score}
+              onChange={(e) => setBagging({ oob_score: e.currentTarget.checked })}
+            />
+          </Group>
+        </Stack>
+      </Card>
+
+      <SplitOptionsCard
+        title="Data split"
+        allowedModes={['holdout', 'kfold']}
+        mode={bagging.splitMode}
+        onModeChange={(m) => setBagging({ splitMode: m })}
+        trainFrac={bagging.trainFrac}
+        onTrainFracChange={(v) => setBagging({ trainFrac: v })}
+        nSplits={bagging.nSplits}
+        onNSplitsChange={(v) => setBagging({ nSplits: v })}
+        stratified={bagging.stratified}
+        onStratifiedChange={(v) => setBagging({ stratified: v })}
+        shuffle={bagging.shuffle}
+        onShuffleChange={(v) => setBagging({ shuffle: v })}
+        seed={bagging.seed}
+        onSeedChange={(v) => setBagging({ seed: v })}
+      />
+
+      {err && (
+        <Alert color="red" variant="light">
+          <Text fw={600}>Training failed</Text>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {err}
+          </Text>
+        </Alert>
+      )}
+
+      <Group justify="flex-end">
+        <Button onClick={handleRun} loading={loading}>
+          Train bagging ensemble
+        </Button>
+      </Group>
+
+      <Alert color="blue" variant="light">
+        <Text size="sm">
+          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings
+          section.
+        </Text>
+      </Alert>
+    </Stack>
+  );
+}

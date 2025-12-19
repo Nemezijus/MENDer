@@ -169,6 +169,19 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
     model_dict = model_dict.model_dump(exclude_none=True) if model_dict is not None else None
     eval_dict = eval_dict.model_dump(exclude_none=True) if eval_dict is not None else None
 
+    ensemble_cfg = getattr(inp.cfg, "ensemble", None)
+    ensemble_dict = (
+        ensemble_cfg.model_dump(exclude_none=True) if ensemble_cfg is not None else None
+    )
+
+    # If this is an ensemble run config, cfg.model doesn't exist -> make a valid dict
+    if model_dict is None and ensemble_dict is not None:
+        model_dict = {
+            "algo": "ensemble",
+            "ensemble_kind": ensemble_dict.get("kind"),
+            "ensemble": ensemble_dict,
+        }
+
     # Model complexity stats
     n_parameters, extra_stats = _estimate_param_stats(inp.pipeline)
     kind = inp.kind
