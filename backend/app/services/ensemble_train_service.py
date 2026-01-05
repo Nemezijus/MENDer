@@ -33,6 +33,63 @@ def _safe_float_scalar(x: float) -> float:
     return float(np.nan_to_num(float(x), nan=0.0, posinf=1.0, neginf=0.0))
 
 
+def _friendly_ensemble_training_error(
+    e: Exception, cfg: EnsembleRunConfig, *, fold_id: int | None = None
+) -> ValueError:
+    """
+    Convert common low-level sklearn/3rd-party errors into actionable, user-friendly messages.
+
+    We return ValueError so the router can surface a 400 with a clear explanation.
+    """
+    kind = getattr(cfg.ensemble, "kind", "ensemble")
+    msg = (str(e) or e.__class__.__name__).strip()
+    fold_txt = f" (fold {fold_id})" if fold_id is not None else ""
+
+    # --- Bagging / bootstrap: single-class resample -------------------------------
+    if "needs samples of at least 2 classes" in msg and "only one class" in msg:
+        return ValueError(
+            "Bagging training failed because at least one bootstrap sample contained only a single class"
+            f"{fold_txt}.\n"
+            "Some base estimators (e.g., Logistic Regression, SVM) cannot be fit on single-class data.\n\n"
+            "Try one of the following:\n"
+            "• Enable Balanced bagging (recommended)\n"
+            "• Increase max_samples (use larger bags)\n"
+            "• Disable bootstrap (bootstrap=false)\n"
+            "• Use a tree-based base estimator\n\n"
+            f"Raw error: {msg}"
+        )
+
+    # --- Balanced bagging dependency missing --------------------------------------
+    if isinstance(e, ImportError) or "imbalanced-learn" in msg.lower():
+        return ValueError(
+            "Balanced bagging requires the optional dependency `imbalanced-learn`.\n"
+            "Install it in your environment (and rebuild Docker if applicable), then retry.\n\n"
+            f"Raw error: {msg}"
+        )
+
+    # --- AdaBoost + pipeline sample_weight routing --------------------------------
+    if "Pipeline doesn't support sample_weight" in msg:
+        return ValueError(
+            "AdaBoost training failed because the current preprocessing pipeline cannot accept sample weights.\n"
+            "AdaBoost reweights samples at each boosting stage and requires the estimator fit() to support "
+            "sample_weight.\n"
+            "In MENDer, we address this by fitting preprocessing once, transforming X, then boosting on "
+            "transformed features.\n\n"
+            f"Raw error: {msg}"
+        )
+
+    # --- XGBoost label encoding ----------------------------------------------------
+    if "Invalid classes inferred from unique values of `y`" in msg:
+        return ValueError(
+            "XGBoost classification requires class labels encoded as 0..K-1.\n"
+            "MENDer encodes labels internally for training and decodes predictions back to original labels.\n\n"
+            f"Raw error: {msg}"
+        )
+
+    # Fallback: keep original message but add context.
+    return ValueError(f"{kind} training failed{fold_txt}: {msg}")
+
+
 def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     # --- Load data -----------------------------------------------------------
     try:
@@ -85,15 +142,18 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     is_voting_report = eval_kind == "classification" and isinstance(cfg.ensemble, VotingEnsembleConfig)
 
     for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
-        model = ensemble_strategy.fit(
-            Xtr,
-            ytr,
-            rngm=rngm,
-            stream=f"{mode}/fold{fold_id}",
-        )
-        last_model = model
+        try:
+            model = ensemble_strategy.fit(
+                Xtr,
+                ytr,
+                rngm=rngm,
+                stream=f"{mode}/fold{fold_id}",
+            )
+            last_model = model
 
-        y_pred = model.predict(Xte)
+            y_pred = model.predict(Xte)
+        except Exception as e:
+            raise _friendly_ensemble_training_error(e, cfg, fold_id=fold_id) from e
 
         if is_voting_report and isinstance(model, VotingClassifier):
             try:
@@ -156,10 +216,14 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         y_score = None
 
         if eval_kind == "classification":
-            if hasattr(model, "predict_proba"):
-                y_proba = model.predict_proba(Xte)
-            elif hasattr(model, "decision_function"):
-                y_score = model.decision_function(Xte)
+            # Guard proba/decision extraction so we can surface good errors.
+            try:
+                if hasattr(model, "predict_proba"):
+                    y_proba = model.predict_proba(Xte)
+                elif hasattr(model, "decision_function"):
+                    y_score = model.decision_function(Xte)
+            except Exception as e:
+                raise _friendly_ensemble_training_error(e, cfg, fold_id=fold_id) from e
 
             if metric_name in PROBA_METRICS and y_proba is None and y_score is None:
                 raise ValueError(
@@ -189,12 +253,16 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
 
     refit_model = None
     if mode == "kfold":
-        refit_model = ensemble_strategy.fit(
-            X,
-            y,
-            rngm=rngm,
-            stream="kfold/refit",
-        )
+        try:
+            refit_model = ensemble_strategy.fit(
+                X,
+                y,
+                rngm=rngm,
+                stream="kfold/refit",
+            )
+        except Exception as e:
+            # No fold id for refit; keep message friendly.
+            raise _friendly_ensemble_training_error(e, cfg, fold_id=None) from e
 
     effective_model = refit_model if refit_model is not None else last_model
 
@@ -367,6 +435,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     if voting_acc is not None:
         ensemble_report = voting_acc.finalize()
         result["ensemble_report"] = ensemble_report
+
     # --- Feature-related notes ----------------------------------------------
     if cfg.features.method == "pca":
         result["notes"].append("Model trained on PCA-transformed features.")

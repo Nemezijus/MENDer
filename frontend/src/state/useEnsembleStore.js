@@ -31,6 +31,11 @@ const makeBaggingInitial = () => ({
   n_jobs: '',
   random_state: '',
 
+  // Balanced bagging (new)
+  balanced: false,
+  sampling_strategy: 'auto',
+  replacement: false,
+
   ...baseSplit(),
 });
 

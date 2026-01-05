@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Optional, cast
+from typing import Any, Optional, cast
 
 import numpy as np
 
@@ -18,7 +18,12 @@ from utils.permutations.rng import RngManager
 from utils.preprocessing.general.task_kind import EvalKind, ensure_uniform_model_task
 
 from utils.ensembles.voting import build_voting_ensemble, fit_voting_ensemble
-from utils.ensembles.bagging import build_bagging_ensemble, fit_bagging_ensemble
+from utils.ensembles.bagging import (
+    build_bagging_ensemble,
+    fit_bagging_ensemble,
+    build_balanced_bagging_ensemble,
+    fit_balanced_bagging_ensemble,
+)
 from utils.ensembles.adaboost import build_adaboost_ensemble, fit_adaboost_ensemble
 from utils.ensembles.xgboost import build_xgboost_ensemble, fit_xgboost_ensemble
 
@@ -56,9 +61,19 @@ class BaggingEnsembleStrategy(EnsembleBuilder):
         if not isinstance(self.cfg.ensemble, BaggingEnsembleConfig):
             raise TypeError("BaggingEnsembleStrategy requires BaggingEnsembleConfig.")
         bcfg = cast(BaggingEnsembleConfig, self.cfg.ensemble)
+
+        if bcfg.balanced and bcfg.problem_kind != "classification":
+            raise ValueError("Balanced bagging is only supported for classification (problem_kind='classification').")
+
         return "classification" if bcfg.problem_kind == "classification" else "regression"
 
     def make_estimator(self, *, rngm: Optional[RngManager] = None, stream: str = "bagging") -> Any:
+        bcfg = cast(BaggingEnsembleConfig, self.cfg.ensemble)
+
+        if bcfg.balanced:
+            est, _kind = build_balanced_bagging_ensemble(self.cfg, rngm=rngm, stream=stream, kind="auto")
+            return est
+
         est, _kind = build_bagging_ensemble(self.cfg, rngm=rngm, stream=stream, kind="auto")
         return est
 
@@ -70,7 +85,14 @@ class BaggingEnsembleStrategy(EnsembleBuilder):
         rngm: Optional[RngManager] = None,
         stream: str = "bagging",
     ) -> Any:
+        bcfg = cast(BaggingEnsembleConfig, self.cfg.ensemble)
+
+        if bcfg.balanced:
+            return fit_balanced_bagging_ensemble(self.cfg, X_train, y_train, rngm=rngm, stream=stream, kind="auto")
+
         return fit_bagging_ensemble(self.cfg, X_train, y_train, rngm=rngm, stream=stream, kind="auto")
+
+
 
 
 @dataclass

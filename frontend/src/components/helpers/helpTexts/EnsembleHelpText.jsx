@@ -36,7 +36,7 @@ export function BaggingIntroText({ effectiveTask }) {
       </Text>
 
       <Text size="xs" c="dimmed">
-        Trains many copies of the same estimator on bootstrap samples and averages/votes.
+        Trains many copies of the same estimator on resampled data and averages/votes.
       </Text>
 
       <Text size="xs" c="dimmed">
@@ -103,29 +103,42 @@ function VotingDetailsText({ effectiveTask, votingType }) {
 
       <List spacing={4} size="xs">
         <List.Item>
-          <Text span fw={600}>Simple vs Advanced</Text> – Simple uses default hyperparameters. Advanced lets you tune
-          estimators and optionally set weights.
+          <Text span fw={600}>
+            Simple vs Advanced
+          </Text>{' '}
+          – Simple uses default hyperparameters. Advanced lets you tune estimators and optionally set weights.
         </List.Item>
 
         {!isReg && (
           <List.Item>
-            <Text span fw={600}>Hard vs Soft</Text> – Hard voting combines labels. Soft voting averages probabilities.
+            <Text span fw={600}>
+              Hard vs Soft
+            </Text>{' '}
+            – Hard voting combines labels. Soft voting averages probabilities.
           </List.Item>
         )}
 
         {!isReg && votingType === 'soft' && (
           <List.Item>
-            <Text span fw={600}>Soft voting requirement</Text> – all estimators must support{' '}
-            <Text span fw={600}>predict_proba</Text>.
+            <Text span fw={600}>
+              Soft voting requirement
+            </Text>{' '}
+            – all estimators must support <Text span fw={600}>predict_proba</Text>.
           </List.Item>
         )}
 
         <List.Item>
-          <Text span fw={600}>Prefer diversity</Text> – mixing model families often improves results.
+          <Text span fw={600}>
+            Prefer diversity
+          </Text>{' '}
+          – mixing model families often improves results.
         </List.Item>
 
         <List.Item>
-          <Text span fw={600}>Duplicates</Text> – identical estimators act like implicit weighting; prefer explicit weights.
+          <Text span fw={600}>
+            Duplicates
+          </Text>{' '}
+          – identical estimators act like implicit weighting; prefer explicit weights.
         </List.Item>
       </List>
     </Stack>
@@ -139,18 +152,103 @@ function BaggingDetailsText() {
         How to choose settings
       </Text>
 
-      <List spacing={4} size="xs">
+      <List spacing={6} size="xs">
         <List.Item>
-          <Text span fw={600}>n_estimators</Text> – more estimators usually increases stability but costs time.
+          <Text span fw={600}>
+            Number of estimators
+          </Text>{' '}
+          – how many base models you train. More estimators usually reduce variance and make results more stable, but
+          increase training time. Typical range: <Text span fw={600}>25–200</Text>. If results look noisy, increase this.
         </List.Item>
+
         <List.Item>
-          <Text span fw={600}>max_samples / max_features</Text> – smaller values add randomness and can reduce overfitting.
+          <Text span fw={600}>
+            Max samples (fraction)
+          </Text>{' '}
+          – fraction of the training fold used to train each estimator.{' '}
+          <Text span fw={600}>1.0</Text> means “same size as the training fold” (with replacement if Bootstrap is on).
+          Smaller values (e.g. <Text span fw={600}>0.5–0.9</Text>) increase diversity between estimators and can reduce
+          overfitting, but each estimator learns from less data.
         </List.Item>
+
         <List.Item>
-          <Text span fw={600}>bootstrap</Text> – classic bagging uses bootstrap sampling.
+          <Text span fw={600}>
+            Max features (fraction)
+          </Text>{' '}
+          – fraction of input features used per estimator (feature subsampling / random subspace). Lower values increase
+          estimator diversity and can improve generalization in high-dimensional problems, but may reduce accuracy if too
+          low. Common starting points: <Text span fw={600}>0.5–1.0</Text>.
         </List.Item>
+
         <List.Item>
-          <Text span fw={600}>oob_score</Text> – out-of-bag scoring can estimate generalization without a separate split.
+          <Text span fw={600}>
+            Bootstrap
+          </Text>{' '}
+          – when enabled, each estimator trains on a bootstrap sample (sampling <Text span fw={600}>with replacement</Text>
+          ). This is classic bagging and adds randomness. If disabled, sampling is{' '}
+          <Text span fw={600}>without replacement</Text>. With Bootstrap off and Max samples = 1.0, every estimator sees
+          the same rows (so only Max features adds randomness).
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Bootstrap features
+          </Text>{' '}
+          – when enabled, each estimator also trains on a resampled subset of features. This can further increase
+          diversity, especially when you have many correlated features. If you already use Max features &lt; 1.0, this may
+          be redundant.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Out-of-bag score
+          </Text>{' '}
+          – only meaningful when <Text span fw={600}>Bootstrap</Text> is enabled. For each estimator, some training samples
+          are not selected into its bootstrap sample (“out-of-bag” samples). The out-of-bag score evaluates predictions on
+          those left-out samples and gives a built-in generalization estimate without creating a separate validation set.
+          This is most useful for quick feedback and sanity checks; for reporting, prefer your chosen holdout / k-fold
+          split.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Balanced bagging
+          </Text>{' '}
+          – uses an imbalanced-learn variant that tries to reduce class imbalance inside each estimator’s training sample.
+          Recommended when classes are noticeably imbalanced or when you see bagging failures due to class sparsity. If
+          your dataset is only mildly imbalanced, you usually don’t need it.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Sampling strategy (Balanced bagging)
+          </Text>{' '}
+          – controls how classes are balanced inside each bag.{' '}
+          <Text span fw={600}>Auto</Text> is the safe default. Options like “majority”, “not minority”, etc. decide which
+          classes are down-sampled. If you’re unsure, keep <Text span fw={600}>Auto</Text>.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Replacement (Balanced bagging)
+          </Text>{' '}
+          – whether the class-balancing sampler is allowed to sample with replacement. Turning this on can help when some
+          classes have few samples, but may increase duplicate rows inside a bag.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Number of jobs
+          </Text>{' '}
+          – parallelism. Higher values use more CPU cores to train estimators faster. If supported,{' '}
+          <Text span fw={600}>-1</Text> means “use all cores”. If your machine becomes unresponsive, reduce this.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Random state
+          </Text>{' '}
+          – seed for reproducibility. Set it to a fixed value (e.g. 42) to make results repeatable across runs.
         </List.Item>
       </List>
     </Stack>
@@ -168,18 +266,29 @@ function AdaBoostDetailsText({ effectiveTask }) {
 
       <List spacing={4} size="xs">
         <List.Item>
-          <Text span fw={600}>Base estimator</Text> – usually a weak learner (e.g. shallow trees). Too-strong learners can
-          overfit quickly.
+          <Text span fw={600}>
+            Base estimator
+          </Text>{' '}
+          – usually a weak learner (e.g. shallow trees). Too-strong learners can overfit quickly.
         </List.Item>
         <List.Item>
-          <Text span fw={600}>n_estimators</Text> – more rounds can improve performance but increase overfitting risk.
+          <Text span fw={600}>
+            n_estimators
+          </Text>{' '}
+          – more rounds can improve performance but increase overfitting risk.
         </List.Item>
         <List.Item>
-          <Text span fw={600}>learning_rate</Text> – smaller values are more conservative; you may need more estimators.
+          <Text span fw={600}>
+            learning_rate
+          </Text>{' '}
+          – smaller values are more conservative; you may need more estimators.
         </List.Item>
         {!isReg && (
           <List.Item>
-            <Text span fw={600}>algorithm</Text> – leave default unless you specifically need SAMME/SAMME.R.
+            <Text span fw={600}>
+              algorithm
+            </Text>{' '}
+            – leave default unless you specifically need SAMME/SAMME.R.
           </List.Item>
         )}
       </List>
@@ -196,20 +305,34 @@ function XGBoostDetailsText() {
 
       <List spacing={4} size="xs">
         <List.Item>
-          <Text span fw={600}>n_estimators + learning_rate</Text> – classic tradeoff: smaller learning_rate usually needs
-          more trees.
+          <Text span fw={600}>
+            n_estimators + learning_rate
+          </Text>{' '}
+          – classic tradeoff: smaller learning_rate usually needs more trees.
         </List.Item>
         <List.Item>
-          <Text span fw={600}>max_depth</Text> – deeper trees fit more complex patterns but can overfit.
+          <Text span fw={600}>
+            max_depth
+          </Text>{' '}
+          – deeper trees fit more complex patterns but can overfit.
         </List.Item>
         <List.Item>
-          <Text span fw={600}>subsample / colsample_bytree</Text> – subsampling can improve generalization.
+          <Text span fw={600}>
+            subsample / colsample_bytree
+          </Text>{' '}
+          – subsampling can improve generalization.
         </List.Item>
         <List.Item>
-          <Text span fw={600}>reg_alpha / reg_lambda</Text> – L1/L2 regularization; increase to reduce overfitting.
+          <Text span fw={600}>
+            reg_alpha / reg_lambda
+          </Text>{' '}
+          – L1/L2 regularization; increase to reduce overfitting.
         </List.Item>
         <List.Item>
-          <Text span fw={600}>gamma / min_child_weight</Text> – control split conservativeness and minimum leaf “strength”.
+          <Text span fw={600}>
+            gamma / min_child_weight
+          </Text>{' '}
+          – control split conservativeness and minimum leaf “strength”.
         </List.Item>
       </List>
 

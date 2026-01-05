@@ -126,6 +126,17 @@ export default function BaggingEnsemblePanel() {
     [compatibleAlgos],
   );
 
+  const samplingStrategyOptions = useMemo(
+    () => [
+      { value: 'auto', label: 'Auto (recommended)' },
+      { value: 'majority', label: 'Majority' },
+      { value: 'not minority', label: 'Not minority' },
+      { value: 'not majority', label: 'Not majority' },
+      { value: 'all', label: 'All' },
+    ],
+    [],
+  );
+
   useEffect(() => {
     if (initializedRef.current) return;
     if (defsLoading) return;
@@ -149,6 +160,18 @@ export default function BaggingEnsemblePanel() {
         oob_score: defaults.oob_score ?? bagging.oob_score,
         n_jobs: defaults.n_jobs ?? bagging.n_jobs,
         random_state: defaults.random_state ?? bagging.random_state,
+
+        // Balanced bagging (new)
+        balanced: defaults.balanced ?? bagging.balanced ?? false,
+        sampling_strategy: defaults.sampling_strategy ?? bagging.sampling_strategy ?? 'auto',
+        replacement: defaults.replacement ?? bagging.replacement ?? false,
+      });
+    } else {
+      // Ensure stable defaults even when schema defaults not loaded
+      setBagging({
+        balanced: bagging.balanced ?? false,
+        sampling_strategy: bagging.sampling_strategy ?? 'auto',
+        replacement: bagging.replacement ?? false,
       });
     }
 
@@ -199,6 +222,8 @@ export default function BaggingEnsemblePanel() {
       progress_id: null,
     };
 
+    const useBalanced = !!bagging.balanced;
+
     const ensemble = {
       kind: 'bagging',
       base_estimator: bagging.base_estimator,
@@ -210,6 +235,11 @@ export default function BaggingEnsemblePanel() {
       oob_score: !!bagging.oob_score,
       n_jobs: bagging.n_jobs === '' ? null : Number(bagging.n_jobs),
       random_state: bagging.random_state === '' ? null : Number(bagging.random_state),
+
+      // Balanced bagging
+      balanced: !!bagging.balanced,
+      sampling_strategy: bagging.sampling_strategy || 'auto',
+      replacement: !!bagging.replacement,
     };
 
     return { data, split, scale, features, ensemble, eval: evalCfg };
@@ -295,7 +325,7 @@ export default function BaggingEnsemblePanel() {
               )}
 
               <NumberInput
-                label="n_estimators"
+                label="Number of estimators"
                 min={1}
                 step={1}
                 value={bagging.n_estimators}
@@ -328,7 +358,7 @@ export default function BaggingEnsemblePanel() {
 
           <Group grow align="flex-end" wrap="wrap">
             <NumberInput
-              label="max_samples (fraction)"
+              label="Max samples (fraction)"
               step={0.1}
               min={0}
               max={1}
@@ -338,7 +368,7 @@ export default function BaggingEnsemblePanel() {
             />
 
             <NumberInput
-              label="max_features (fraction)"
+              label="Max features (fraction)"
               step={0.1}
               min={0}
               max={1}
@@ -348,7 +378,7 @@ export default function BaggingEnsemblePanel() {
             />
 
             <NumberInput
-              label="n_jobs"
+              label="Number of jobs"
               step={1}
               value={bagging.n_jobs}
               onChange={(v) => setBagging({ n_jobs: v })}
@@ -356,7 +386,7 @@ export default function BaggingEnsemblePanel() {
             />
 
             <NumberInput
-              label="random_state"
+              label="Random state"
               step={1}
               value={bagging.random_state}
               onChange={(v) => setBagging({ random_state: v })}
@@ -366,21 +396,53 @@ export default function BaggingEnsemblePanel() {
 
           <Group grow align="center" wrap="wrap">
             <Switch
-              label="bootstrap"
+              label="Bootstrap"
               checked={!!bagging.bootstrap}
               onChange={(e) => setBagging({ bootstrap: e.currentTarget.checked })}
             />
             <Switch
-              label="bootstrap_features"
+              label="Bootstrap features"
               checked={!!bagging.bootstrap_features}
               onChange={(e) => setBagging({ bootstrap_features: e.currentTarget.checked })}
             />
             <Switch
-              label="oob_score"
+              label="Out-of-bag score"
               checked={!!bagging.oob_score}
               onChange={(e) => setBagging({ oob_score: e.currentTarget.checked })}
             />
+            <Switch
+              label="Balanced bagging"
+              checked={!!bagging.balanced}
+              onChange={(e) => {
+                const next = e.currentTarget.checked;
+                // When enabling, ensure sensible defaults are present.
+                setBagging({
+                  balanced: next,
+                  sampling_strategy: next ? bagging.sampling_strategy || 'auto' : bagging.sampling_strategy,
+                  replacement: next ? !!bagging.replacement : bagging.replacement,
+                });
+              }}
+            />
           </Group>
+
+          {!!bagging.balanced && (
+            <Box mt="xs">
+              <Group grow align="flex-end" wrap="wrap">
+                <Select
+                  label="Sampling strategy"
+                  value={bagging.sampling_strategy || 'auto'}
+                  onChange={(v) => setBagging({ sampling_strategy: v || 'auto' })}
+                  data={samplingStrategyOptions}
+                  placeholder="auto"
+                />
+                <Switch
+                  label="Replacement"
+                  checked={!!bagging.replacement}
+                  onChange={(e) => setBagging({ replacement: e.currentTarget.checked })}
+                />
+              </Group>
+            </Box>
+          )}
         </Stack>
       </Card>
 

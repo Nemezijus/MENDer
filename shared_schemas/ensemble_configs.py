@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .model_configs import ModelConfig
 from .types import EnsembleKind
@@ -57,6 +57,26 @@ class BaggingEnsembleConfig(BaseModel):
     warm_start: bool = False
     n_jobs: Optional[int] = None
     random_state: Optional[int] = None
+
+    # ---- Balanced bagging (classification-only) ----
+    # Uses imbalanced-learn's BalancedBaggingClassifier, which applies a sampler
+    # inside each bag to help mitigate class imbalance and reduce single-class bags.
+    balanced: bool = False
+
+    # imbalanced-learn accepts many forms (str, dict, callable). Keep as str for now.
+    sampling_strategy: str = "auto"
+
+    # Whether the sampler is allowed to sample with replacement.
+    # (This is NOT the same as sklearn bagging's `bootstrap`.)
+    replacement: bool = False
+
+    @field_validator("max_samples", "max_features", mode="before")
+    @classmethod
+    def _coerce_int_one_to_float(cls, v):
+        # UI uses fractions; avoid sklearn interpreting 1 as "1 sample"
+        if isinstance(v, int) and v == 1:
+            return 1.0
+        return v
 
 
 # -----------------------------
