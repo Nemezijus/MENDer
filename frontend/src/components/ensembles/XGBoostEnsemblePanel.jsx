@@ -250,26 +250,33 @@ export default function XGBoostEnsemblePanel() {
             </Group>
           </Group>
 
+          <Group justify="flex-end">
+            <Button onClick={handleRun} loading={loading}>
+              Train XGBoost ensemble
+            </Button>
+          </Group>
+
           {/* First row: left parameters, right help preview */}
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
             <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
+              {/* Core */}
               <Group grow align="flex-end" wrap="wrap">
                 <NumberInput
-                  label="n_estimators"
+                  label="Estimators"
                   min={1}
                   step={10}
                   value={xgb.n_estimators}
                   onChange={(v) => setXGBoost({ n_estimators: v })}
                 />
                 <NumberInput
-                  label="learning_rate"
+                  label="Learning rate"
                   step={0.01}
                   min={0}
                   value={xgb.learning_rate}
                   onChange={(v) => setXGBoost({ learning_rate: v })}
                 />
                 <NumberInput
-                  label="max_depth"
+                  label="Max depth"
                   step={1}
                   min={1}
                   value={xgb.max_depth}
@@ -277,9 +284,10 @@ export default function XGBoostEnsemblePanel() {
                 />
               </Group>
 
+              {/* Sampling */}
               <Group grow align="flex-end" wrap="wrap">
                 <NumberInput
-                  label="subsample"
+                  label="Subsample"
                   step={0.05}
                   min={0}
                   max={1}
@@ -287,7 +295,7 @@ export default function XGBoostEnsemblePanel() {
                   onChange={(v) => setXGBoost({ subsample: v })}
                 />
                 <NumberInput
-                  label="colsample_bytree"
+                  label="Column sample by tree"
                   step={0.05}
                   min={0}
                   max={1}
@@ -320,48 +328,51 @@ export default function XGBoostEnsemblePanel() {
 
           <Divider />
 
-          {/* Regularization + misc */}
-          <Group grow align="flex-end" wrap="wrap">
-            <NumberInput
-              label="reg_lambda"
-              step={0.1}
-              min={0}
-              value={xgb.reg_lambda}
-              onChange={(v) => setXGBoost({ reg_lambda: v })}
-            />
-            <NumberInput
-              label="reg_alpha"
-              step={0.1}
-              min={0}
-              value={xgb.reg_alpha}
-              onChange={(v) => setXGBoost({ reg_alpha: v })}
-            />
-            <NumberInput
-              label="min_child_weight"
-              step={0.5}
-              min={0}
-              value={xgb.min_child_weight}
-              onChange={(v) => setXGBoost({ min_child_weight: v })}
-            />
-            <NumberInput
-              label="gamma"
-              step={0.1}
-              min={0}
-              value={xgb.gamma}
-              onChange={(v) => setXGBoost({ gamma: v })}
-            />
-          </Group>
+          {/* Advanced-only: Regularization / constraints */}
+          {xgb.mode === 'advanced' && (
+            <Group grow align="flex-end" wrap="wrap">
+              <NumberInput
+                label="L2 (λ)"
+                step={0.1}
+                min={0}
+                value={xgb.reg_lambda}
+                onChange={(v) => setXGBoost({ reg_lambda: v })}
+              />
+              <NumberInput
+                label="L1 (α)"
+                step={0.1}
+                min={0}
+                value={xgb.reg_alpha}
+                onChange={(v) => setXGBoost({ reg_alpha: v })}
+              />
+              <NumberInput
+                label="Min child weight"
+                step={0.5}
+                min={0}
+                value={xgb.min_child_weight}
+                onChange={(v) => setXGBoost({ min_child_weight: v })}
+              />
+              <NumberInput
+                label="Gamma"
+                step={0.1}
+                min={0}
+                value={xgb.gamma}
+                onChange={(v) => setXGBoost({ gamma: v })}
+              />
+            </Group>
+          )}
 
+          {/* Misc */}
           <Group grow align="flex-end" wrap="wrap">
             <NumberInput
-              label="n_jobs"
+              label="Number of jobs"
               step={1}
               value={xgb.n_jobs}
               onChange={(v) => setXGBoost({ n_jobs: v })}
               placeholder="default"
             />
             <NumberInput
-              label="random_state"
+              label="Random state"
               step={1}
               value={xgb.random_state}
               onChange={(v) => setXGBoost({ random_state: v })}
@@ -405,8 +416,8 @@ export default function XGBoostEnsemblePanel() {
 
       <Alert color="blue" variant="light">
         <Text size="sm">
-          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings
-          section.
+          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the
+          Settings section.
         </Text>
       </Alert>
     </Stack>

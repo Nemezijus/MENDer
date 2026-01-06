@@ -298,7 +298,11 @@ export default function BaggingEnsemblePanel() {
               />
             </Group>
           </Group>
-
+          <Group justify="flex-end">
+            <Button onClick={handleRun} loading={loading}>
+              Train bagging ensemble
+            </Button>
+          </Group>
           {/* First row: left A+B stacked, right C help preview */}
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
             <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">

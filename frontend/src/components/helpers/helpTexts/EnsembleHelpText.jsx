@@ -58,7 +58,7 @@ export function AdaBoostIntroText({ effectiveTask }) {
       </Text>
 
       <Text size="xs" c="dimmed">
-        Sequentially adds weak learners, focusing more on previous errors.
+        Adds weak learners sequentially, focusing more on the samples it previously got wrong.
       </Text>
 
       <Text size="xs" c="dimmed">
@@ -264,33 +264,65 @@ function AdaBoostDetailsText({ effectiveTask }) {
         How to choose settings
       </Text>
 
-      <List spacing={4} size="xs">
+      <List spacing={6} size="xs">
         <List.Item>
           <Text span fw={600}>
             Base estimator
           </Text>{' '}
-          – usually a weak learner (e.g. shallow trees). Too-strong learners can overfit quickly.
+          – AdaBoost works best with <Text span fw={600}>weak learners</Text>. The classic choice is a decision stump
+          (a very shallow tree). If you use a strong learner (deep trees, complex models), AdaBoost can overfit quickly
+          and become unstable.
+          {!isReg && (
+            <Text size="xs" c="dimmed">
+              Tip: for classification, start with a shallow tree-like base learner.
+            </Text>
+          )}
         </List.Item>
+
         <List.Item>
           <Text span fw={600}>
-            n_estimators
+            Number of estimators
           </Text>{' '}
-          – more rounds can improve performance but increase overfitting risk.
+          – number of boosting rounds (how many weak learners are added sequentially). Higher values can improve
+          performance, but also increase training time and overfitting risk. Typical range:{' '}
+          <Text span fw={600}>50–500</Text>. If you reduce the learning rate, you usually need more estimators.
         </List.Item>
+
         <List.Item>
           <Text span fw={600}>
-            learning_rate
+            Learning rate
           </Text>{' '}
-          – smaller values are more conservative; you may need more estimators.
+          – scales how much each new learner contributes. Smaller values make boosting more conservative and often
+          improve generalization, but you typically need more estimators. Good starting points:{' '}
+          <Text span fw={600}>0.05–0.5</Text>. If results are unstable, try lowering it.
         </List.Item>
+
         {!isReg && (
           <List.Item>
             <Text span fw={600}>
-              algorithm
+              Algorithm
             </Text>{' '}
-            – leave default unless you specifically need SAMME/SAMME.R.
+            – controls the boosting variant. If you’re unsure, keep the default. Older sklearn versions used
+            SAMME/SAMME.R; newer versions have changed defaults and may deprecate some options. Only change this if you
+            know you need it.
           </List.Item>
         )}
+
+        <List.Item>
+          <Text span fw={600}>
+            Random state
+          </Text>{' '}
+          – seed for reproducibility. Set to a fixed value (e.g. 42) to make results repeatable across runs (especially
+          with stochastic base estimators).
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Practical tuning recipe
+          </Text>{' '}
+          – if you see overfitting: reduce the learning rate, reduce base estimator complexity, and/or add more data.
+          If you see underfitting: increase estimators and/or allow slightly stronger base learners.
+        </List.Item>
       </List>
     </Stack>
   );
@@ -303,36 +335,98 @@ function XGBoostDetailsText() {
         How to choose settings
       </Text>
 
-      <List spacing={4} size="xs">
+      <List spacing={6} size="xs">
         <List.Item>
           <Text span fw={600}>
-            n_estimators + learning_rate
+            Number of estimators
           </Text>{' '}
-          – classic tradeoff: smaller learning_rate usually needs more trees.
+          – number of boosted trees. More trees can improve performance, but increase training time and overfitting risk.
+          Typical range: <Text span fw={600}>200–2000</Text> (depends heavily on learning rate and dataset size).
         </List.Item>
+
         <List.Item>
           <Text span fw={600}>
-            max_depth
+            Learning rate
           </Text>{' '}
-          – deeper trees fit more complex patterns but can overfit.
+          – how aggressively each tree updates the model. Smaller values are safer and often generalize better, but need
+          more trees. Common starting points: <Text span fw={600}>0.03–0.2</Text>.
         </List.Item>
+
         <List.Item>
           <Text span fw={600}>
-            subsample / colsample_bytree
+            Max depth
           </Text>{' '}
-          – subsampling can improve generalization.
+          – maximum depth of each tree. Deeper trees can capture more complex patterns but overfit more easily. Typical
+          range: <Text span fw={600}>3–10</Text>. If you see overfitting, reduce this.
         </List.Item>
+
         <List.Item>
           <Text span fw={600}>
-            reg_alpha / reg_lambda
+            Subsample
           </Text>{' '}
-          – L1/L2 regularization; increase to reduce overfitting.
+          – fraction of rows used to grow each tree. Values &lt; 1.0 add randomness and often improve generalization
+          (especially on noisy data). Try <Text span fw={600}>0.6–0.9</Text> as a starting range.
         </List.Item>
+
         <List.Item>
           <Text span fw={600}>
-            gamma / min_child_weight
+            Column sample by tree
           </Text>{' '}
-          – control split conservativeness and minimum leaf “strength”.
+          – fraction of features considered per tree. Reducing this (e.g. <Text span fw={600}>0.5–0.9</Text>) can reduce
+          overfitting and help with high-dimensional inputs.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            L2 regularization (lambda)
+          </Text>{' '}
+          – larger values penalize large weights and can reduce overfitting. If your model overfits, try increasing it.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            L1 regularization (alpha)
+          </Text>{' '}
+          – encourages sparsity in leaf weights. Can help when many features are noisy or redundant.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Min child weight
+          </Text>{' '}
+          – minimum “amount of information” needed in a leaf. Higher values make the algorithm more conservative (fewer,
+          simpler splits), which can help reduce overfitting.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Gamma
+          </Text>{' '}
+          – minimum loss reduction required to make a split. Higher values make splitting more conservative (often helps
+          with overfitting).
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Number of jobs
+          </Text>{' '}
+          – parallelism. Higher values use more CPU cores. If supported, <Text span fw={600}>-1</Text> means “use all
+          cores”.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Random state
+          </Text>{' '}
+          – seed for reproducibility. Set to a fixed value (e.g. 42) for repeatable runs.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Practical tuning recipe
+          </Text>{' '}
+          – start with learning_rate 0.1, max_depth 4–6, subsample/colsample 0.8, then tune depth/regularization to
+          control overfitting. If underfitting, add trees or increase depth slightly.
         </List.Item>
       </List>
 

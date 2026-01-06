@@ -281,8 +281,13 @@ export default function AdaBoostEnsemblePanel() {
               />
             </Group>
           </Group>
+          <Group justify="flex-end">
+            <Button onClick={handleRun} loading={loading}>
+              Train AdaBoost ensemble
+            </Button>
+          </Group>
 
-          {/* First row: left A+B stacked, right C help preview */}
+          {/* First row: left settings stack, right help preview */}
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
             <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
               {adaboost.mode === 'simple' ? (
@@ -309,7 +314,7 @@ export default function AdaBoostEnsemblePanel() {
 
               <Group grow align="flex-end" wrap="wrap">
                 <NumberInput
-                  label="n_estimators"
+                  label="Number of estimators"
                   min={1}
                   step={1}
                   value={adaboost.n_estimators}
@@ -317,7 +322,7 @@ export default function AdaBoostEnsemblePanel() {
                 />
 
                 <NumberInput
-                  label="learning_rate"
+                  label="Learning rate"
                   step={0.1}
                   min={0}
                   value={adaboost.learning_rate}
@@ -351,20 +356,15 @@ export default function AdaBoostEnsemblePanel() {
 
           <Group grow align="flex-end" wrap="wrap">
             <Select
-              label="algorithm (classification only)"
+              label="Algorithm (classification only)"
               value={adaboost.algorithm ?? '__default__'}
               onChange={(v) => setAdaBoost({ algorithm: v || '__default__' })}
               data={algorithmOptions}
               disabled={effectiveTask === 'regression'}
-              description={
-                effectiveTask === 'regression'
-                  ? 'AdaBoostRegressor ignores classifier algorithm.'
-                  : 'Leave default unless you know you need a specific variant.'
-              }
             />
 
             <NumberInput
-              label="random_state"
+              label="Random state"
               step={1}
               value={adaboost.random_state}
               onChange={(v) => setAdaBoost({ random_state: v })}
@@ -408,8 +408,7 @@ export default function AdaBoostEnsemblePanel() {
 
       <Alert color="blue" variant="light">
         <Text size="sm">
-          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings
-          section.
+          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings section.
         </Text>
       </Alert>
     </Stack>

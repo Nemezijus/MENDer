@@ -14,49 +14,25 @@ from shared_schemas.ensemble_run_config import EnsembleRunConfig
 from shared_schemas.model_configs import get_model_task
 
 from utils.permutations.rng import RngManager
-from utils.factories.pipeline_factory import make_pipeline_for_model_cfg
-from utils.factories.scale_factory import make_scaler
-from utils.factories.feature_factory import make_features
+from utils.factories.pipeline_factory import make_preproc_pipeline_for_model_cfg
+from utils.factories.model_factory import make_model
 from utils.preprocessing.general.task_kind import EvalKind, infer_kind_from_y
 
 
-def _make_default_stump_pipeline(
+def _make_default_stump(
     *,
-    run_cfg: EnsembleRunConfig,
     rngm: RngManager,
     stream: str,
     kind: EvalKind,
-) -> Pipeline:
+) -> Any:
     """
-    Build a (scale -> features -> decision stump) pipeline when cfg.base_estimator is None.
-
     Classic AdaBoost default is a decision stump (max_depth=1).
-    We keep preprocessing consistent with MENDer by wrapping it in the same pipeline style.
+    We return the *bare* estimator (no preprocessing) so AdaBoost can pass sample_weight.
     """
-    features_seed = rngm.child_seed(f"{stream}/features")
-
-    scaler_strategy = make_scaler(run_cfg.scale)
-    feature_strategy = make_features(
-        run_cfg.features,
-        seed=features_seed,
-        model_cfg=None,  # type: ignore[arg-type]
-        eval_cfg=run_cfg.eval,
-    )
-
     rs = rngm.child_seed(f"{stream}/default_stump")
-
     if kind == "classification":
-        stump = DecisionTreeClassifier(max_depth=1, random_state=rs)
-    else:
-        stump = DecisionTreeRegressor(max_depth=1, random_state=rs)
-
-    return Pipeline(
-        steps=[
-            ("scale", scaler_strategy.make_transformer()),
-            ("feat", feature_strategy.make_transformer()),
-            ("clf", stump),
-        ]
-    )
+        return DecisionTreeClassifier(max_depth=1, random_state=rs)
+    return DecisionTreeRegressor(max_depth=1, random_state=rs)
 
 
 def build_adaboost_ensemble(
@@ -67,10 +43,14 @@ def build_adaboost_ensemble(
     kind: Literal["auto", "classification", "regression"] = "auto",
 ) -> Tuple[Any, EvalKind]:
     """
-    Build an unfitted sklearn AdaBoostClassifier/AdaBoostRegressor based on EnsembleRunConfig.
+    Build an unfitted AdaBoost ensemble, wrapped in an outer preprocessing pipeline:
 
-    Returns: (estimator, expected_kind)
-      - expected_kind is derived from cfg.problem_kind (and validated against base_estimator if provided)
+        (scale -> features) -> AdaBoost(estimator=<bare base estimator>)
+
+    This avoids the common sklearn error:
+        "Pipeline doesn't support sample_weight"
+
+    because AdaBoost passes sample_weight to the *base estimator*, not to a Pipeline.
     """
     if not isinstance(run_cfg.ensemble, AdaBoostEnsembleConfig):
         raise TypeError(
@@ -90,7 +70,19 @@ def build_adaboost_ensemble(
                 f"Ensemble kind override ({requested_kind}) conflicts with adaboost problem_kind ({expected_kind})."
             )
 
-    # Build base estimator (AdaBoost calls it `estimator` in sklearn)
+    # ----- Build preprocessing (shared for the whole ensemble) -----
+    # We pass model_cfg when available so feature strategies (e.g., SFS) can configure consistently.
+    model_cfg_for_features = cfg.base_estimator
+    preproc = make_preproc_pipeline_for_model_cfg(
+        scale=run_cfg.scale,
+        features=run_cfg.features,
+        model_cfg=model_cfg_for_features,
+        eval_cfg=run_cfg.eval,
+        rngm=rngm,
+        stream=f"{stream}/pre",
+    )
+
+    # ----- Build bare base estimator (AdaBoost will pass sample_weight here) -----
     if cfg.base_estimator is not None:
         task = get_model_task(cfg.base_estimator)
         if expected_kind == "classification" and task != "classification":
@@ -102,21 +94,11 @@ def build_adaboost_ensemble(
                 f"AdaBoost (regression) cannot use a classification base estimator (task={task})."
             )
 
-        base_est = make_pipeline_for_model_cfg(
-            scale=run_cfg.scale,
-            features=run_cfg.features,
-            model_cfg=cfg.base_estimator,
-            eval_cfg=run_cfg.eval,
-            rngm=rngm,
-            stream=f"{stream}/base",
-        )
+        model_seed = rngm.child_seed(f"{stream}/base/model")
+        base_builder = make_model(cfg.base_estimator, seed=model_seed)
+        base_est = base_builder.make_estimator()
     else:
-        base_est = _make_default_stump_pipeline(
-            run_cfg=run_cfg,
-            rngm=rngm,
-            stream=f"{stream}/base",
-            kind=expected_kind,
-        )
+        base_est = _make_default_stump(rngm=rngm, stream=f"{stream}/base", kind=expected_kind)
 
     rs = cfg.random_state if cfg.random_state is not None else rngm.child_seed(f"{stream}/adaboost")
 
@@ -126,23 +108,23 @@ def build_adaboost_ensemble(
         if cfg.algorithm is not None:
             kwargs["algorithm"] = cfg.algorithm
 
-        est = AdaBoostClassifier(
+        boost = AdaBoostClassifier(
             estimator=base_est,
             n_estimators=cfg.n_estimators,
             learning_rate=cfg.learning_rate,
             random_state=rs,
             **kwargs,
         )
-        return est, expected_kind
+        # Outer pipeline handles preprocessing once; AdaBoost sees transformed X.
+        return Pipeline([("pre", preproc), ("clf", boost)]), expected_kind
 
-    # Regression variant does not accept algorithm
-    est = AdaBoostRegressor(
+    boost = AdaBoostRegressor(
         estimator=base_est,
         n_estimators=cfg.n_estimators,
         learning_rate=cfg.learning_rate,
         random_state=rs,
     )
-    return est, expected_kind
+    return Pipeline([("pre", preproc), ("clf", boost)]), expected_kind
 
 
 def fit_adaboost_ensemble(

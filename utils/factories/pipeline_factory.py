@@ -64,3 +64,34 @@ def make_pipeline_for_model_cfg(
         ("feat",  feature_strategy.make_transformer()),
         ("clf",   model_builder.make_estimator()),
     ])
+
+def make_preproc_pipeline_for_model_cfg(
+    scale: ScaleModel,
+    features: FeaturesModel,
+    model_cfg: ModelConfig | None,
+    eval_cfg: EvalModel,
+    rngm: RngManager,
+    *,
+    stream: str = "real",
+) -> Pipeline:
+    """Build a preprocessing-only pipeline: (scale -> features).
+
+    Used by boosting-style ensembles (e.g. AdaBoost) where the ensemble needs to
+    pass `sample_weight` into the base estimator. If the base estimator were a
+    full sklearn Pipeline, AdaBoost would pass `sample_weight` to Pipeline.fit()
+    which is not supported, causing:
+        "Pipeline doesn't support sample_weight".
+
+    `model_cfg` is provided so feature strategies (e.g. SFS) can configure themselves
+    consistently with the estimator family. For default cases it may be None; if a
+    feature strategy requires `model_cfg`, it should raise a clear error.
+    """
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy  = make_scaler(scale)
+    feature_strategy = make_features(features, seed=features_seed, model_cfg=model_cfg, eval_cfg=eval_cfg)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat",  feature_strategy.make_transformer()),
+    ])
