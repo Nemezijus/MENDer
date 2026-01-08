@@ -11,6 +11,7 @@ import {
   Alert,
   Box,
   ActionIcon,
+  Switch,
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 
@@ -27,6 +28,7 @@ import SplitOptionsCard from '../SplitOptionsCard.jsx';
 import { runEnsembleTrainRequest } from '../../api/ensembles.js';
 
 import EnsembleHelpText, { XGBoostIntroText } from '../helpers/helpTexts/EnsembleHelpText.jsx';
+import XGBoostEnsembleResults from './XGBoostEnsembleResults.jsx';
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -103,6 +105,7 @@ export default function XGBoostEnsemblePanel() {
   const { getEnsembleDefaults } = useSchemaDefaults();
 
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const trainResult = useResultsStore((s) => s.trainResult);
   const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
@@ -134,6 +137,9 @@ export default function XGBoostEnsemblePanel() {
       gamma: defs.gamma ?? xgb.gamma,
       n_jobs: defs.n_jobs ?? xgb.n_jobs,
       random_state: defs.random_state ?? xgb.random_state,
+      use_early_stopping: defs.use_early_stopping ?? xgb.use_early_stopping,
+      early_stopping_rounds: defs.early_stopping_rounds ?? xgb.early_stopping_rounds,
+      eval_set_fraction: defs.eval_set_fraction ?? xgb.eval_set_fraction,
       __hydrated: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,6 +199,10 @@ export default function XGBoostEnsemblePanel() {
 
       min_child_weight: num(xgb.min_child_weight, 1.0),
       gamma: num(xgb.gamma, 0.0),
+
+      use_early_stopping: !!xgb.use_early_stopping,
+      early_stopping_rounds: numOrNull(xgb.early_stopping_rounds),
+      eval_set_fraction: num(xgb.eval_set_fraction, 0.2),
 
       n_jobs: numOrNull(xgb.n_jobs),
       random_state: numOrNull(xgb.random_state),
@@ -328,38 +338,77 @@ export default function XGBoostEnsemblePanel() {
 
           <Divider />
 
-          {/* Advanced-only: Regularization / constraints */}
+          {/* Advanced-only: Regularization / constraints + training diagnostics */}
           {xgb.mode === 'advanced' && (
-            <Group grow align="flex-end" wrap="wrap">
-              <NumberInput
-                label="L2 (λ)"
-                step={0.1}
-                min={0}
-                value={xgb.reg_lambda}
-                onChange={(v) => setXGBoost({ reg_lambda: v })}
-              />
-              <NumberInput
-                label="L1 (α)"
-                step={0.1}
-                min={0}
-                value={xgb.reg_alpha}
-                onChange={(v) => setXGBoost({ reg_alpha: v })}
-              />
-              <NumberInput
-                label="Min child weight"
-                step={0.5}
-                min={0}
-                value={xgb.min_child_weight}
-                onChange={(v) => setXGBoost({ min_child_weight: v })}
-              />
-              <NumberInput
-                label="Gamma"
-                step={0.1}
-                min={0}
-                value={xgb.gamma}
-                onChange={(v) => setXGBoost({ gamma: v })}
-              />
-            </Group>
+            <Stack gap="sm">
+              <Group grow align="flex-end" wrap="wrap">
+                <NumberInput
+                  label="L2 (λ)"
+                  step={0.1}
+                  min={0}
+                  value={xgb.reg_lambda}
+                  onChange={(v) => setXGBoost({ reg_lambda: v })}
+                />
+                <NumberInput
+                  label="L1 (α)"
+                  step={0.1}
+                  min={0}
+                  value={xgb.reg_alpha}
+                  onChange={(v) => setXGBoost({ reg_alpha: v })}
+                />
+                <NumberInput
+                  label="Min child weight"
+                  step={0.5}
+                  min={0}
+                  value={xgb.min_child_weight}
+                  onChange={(v) => setXGBoost({ min_child_weight: v })}
+                />
+                <NumberInput
+                  label="Gamma"
+                  step={0.1}
+                  min={0}
+                  value={xgb.gamma}
+                  onChange={(v) => setXGBoost({ gamma: v })}
+                />
+              </Group>
+
+              <Divider />
+
+              <Group align="flex-end" wrap="wrap" gap="md">
+                <Switch
+                  label="Use early stopping"
+                  checked={!!xgb.use_early_stopping}
+                  onChange={(e) => setXGBoost({ use_early_stopping: e.currentTarget.checked })}
+                />
+
+                <NumberInput
+                  label="Early stopping rounds (patience)"
+                  min={1}
+                  step={1}
+                  value={xgb.early_stopping_rounds}
+                  onChange={(v) => setXGBoost({ early_stopping_rounds: v })}
+                  placeholder="auto"
+                  disabled={!xgb.use_early_stopping}
+                />
+
+                <NumberInput
+                  label="Eval set fraction"
+                  min={0.05}
+                  max={0.5}
+                  step={0.05}
+                  precision={2}
+                  value={xgb.eval_set_fraction}
+                  onChange={(v) => setXGBoost({ eval_set_fraction: v })}
+                  placeholder="0.20"
+                  disabled={!xgb.use_early_stopping}
+                />
+              </Group>
+
+              <Text size="xs" c="dimmed">
+                Early stopping uses an internal validation split (from training data) to select the best
+                boosting round and enable learning curves. This does not change your external train/test split.
+              </Text>
+            </Stack>
           )}
 
           {/* Misc */}
@@ -398,7 +447,9 @@ export default function XGBoostEnsemblePanel() {
         seed={xgb.seed}
         onSeedChange={(v) => setXGBoost({ seed: v })}
       />
-
+      {trainResult?.ensemble_report?.kind === 'xgboost' && (
+        <XGBoostEnsembleResults report={trainResult.ensemble_report} />
+        )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>

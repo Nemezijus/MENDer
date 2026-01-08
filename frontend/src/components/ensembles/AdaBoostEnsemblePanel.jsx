@@ -31,6 +31,7 @@ import { runEnsembleTrainRequest } from '../../api/ensembles.js';
 import EnsembleHelpText, {
   AdaBoostIntroText,
 } from '../helpers/helpTexts/EnsembleHelpText.jsx';
+import AdaBoostEnsembleResults from './AdaBoostEnsembleResults.jsx';
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -109,6 +110,7 @@ export default function AdaBoostEnsemblePanel() {
   } = useSchemaDefaults();
 
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const trainResult = useResultsStore((s) => s.trainResult);
   const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
@@ -390,7 +392,9 @@ export default function AdaBoostEnsemblePanel() {
         seed={adaboost.seed}
         onSeedChange={(v) => setAdaBoost({ seed: v })}
       />
-
+      {trainResult?.ensemble_report?.kind === 'adaboost' && (
+        <AdaBoostEnsembleResults report={trainResult.ensemble_report} />
+        )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>

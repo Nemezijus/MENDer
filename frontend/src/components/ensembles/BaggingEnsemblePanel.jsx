@@ -31,6 +31,8 @@ import { runEnsembleTrainRequest } from '../../api/ensembles.js';
 
 import EnsembleHelpText, { BaggingIntroText } from '../helpers/helpTexts/EnsembleHelpText.jsx';
 
+import BaggingEnsembleResults from './BaggingEnsembleResults.jsx';
+
 function toErrorText(e) {
   if (typeof e === 'string') return e;
   const data = e?.response?.data;
@@ -102,6 +104,7 @@ export default function BaggingEnsemblePanel() {
   } = useSchemaDefaults();
 
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const trainResult = useResultsStore((s) => s.trainResult);
   const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
@@ -466,7 +469,9 @@ export default function BaggingEnsemblePanel() {
         seed={bagging.seed}
         onSeedChange={(v) => setBagging({ seed: v })}
       />
-
+      {trainResult?.ensemble_report?.kind === 'bagging' && (
+        <BaggingEnsembleResults report={trainResult.ensemble_report} />
+        )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>

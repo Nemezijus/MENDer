@@ -123,6 +123,10 @@ class XGBoostEnsembleConfig(BaseModel):
     min_child_weight: float = 1.0
     gamma: float = 0.0
 
+    use_early_stopping: bool = True
+    early_stopping_rounds: Optional[int] = None
+    eval_set_fraction: float = 0.2
+
     n_jobs: Optional[int] = None
     random_state: Optional[int] = None
 

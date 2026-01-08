@@ -1,4 +1,3 @@
-// frontend/src/components/ensembles/VotingEnsembleResults.jsx
 import {
   Box,
   Card,
@@ -9,14 +8,24 @@ import {
   Text,
   Tooltip,
 } from '@mantine/core';
+import { useMantineTheme } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-// Confusion-matrix-inspired blue scale (white → blue)
-const BLUE_MAIN = 'hsl(210, 80%, 45%)';
-const BLUE_DARK = 'hsl(210, 80%, 35%)';
+// Confusion-matrix-inspired blue ramp (same logic as ConfusionMatrixResults.jsx)
+// t in [0..1] => white -> deeper blue
+function cmBlue(t) {
+  const tt = Math.max(0, Math.min(1, Number(t) || 0));
+  const lightness = 100 - 55 * tt; // 100% -> 45%
+  return `hsl(210, 80%, ${lightness}%)`;
+}
+
+// Smooth heatmap colorscale (white -> blue), similar to confusion matrix ramp
 const HEATMAP_COLORSCALE = [
-  [0.0, '#ffffff'],
-  [1.0, BLUE_MAIN],
+  [0.0, cmBlue(0.0)],
+  [0.25, cmBlue(0.25)],
+  [0.5, cmBlue(0.5)],
+  [0.75, cmBlue(0.75)],
+  [1.0, cmBlue(1.0)],
 ];
 
 function safeNum(x) {
@@ -99,6 +108,55 @@ function computeBarRange(means, stds) {
   return [0, upper];
 }
 
+function normalize01(vals) {
+  const nums = (vals || [])
+    .map((v) => safeNum(v))
+    .filter((v) => typeof v === 'number' && Number.isFinite(v));
+  if (!nums.length) return (vals || []).map(() => 0.5);
+
+  const minV = Math.min(...nums);
+  const maxV = Math.max(...nums);
+  const denom = maxV - minV;
+
+  return (vals || []).map((v) => {
+    const n = safeNum(v);
+    if (n == null) return 0.5;
+    return denom > 0 ? (n - minV) / denom : 0.5;
+  });
+}
+
+/**
+ * Rebin a histogram defined by (edges, counts) onto a new set of equally spaced bins.
+ * Counts are distributed by overlap length (assumes uniform density within each old bin).
+ */
+function rebinHistogram(edges, counts, newEdges) {
+  const oldEdges = edges.map(Number);
+  const oldCounts = counts.map(Number);
+  const outCounts = new Array(newEdges.length - 1).fill(0);
+
+  for (let i = 0; i < oldCounts.length; i++) {
+    const a0 = oldEdges[i];
+    const a1 = oldEdges[i + 1];
+    const c = oldCounts[i];
+    if (!Number.isFinite(a0) || !Number.isFinite(a1) || !Number.isFinite(c)) continue;
+
+    const aLen = a1 - a0;
+    if (aLen <= 0) continue;
+
+    for (let j = 0; j < outCounts.length; j++) {
+      const b0 = newEdges[j];
+      const b1 = newEdges[j + 1];
+      const overlap = Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+      if (overlap > 0) {
+        outCounts[j] += c * (overlap / aLen);
+      }
+    }
+  }
+
+  // keep counts as "counts" (not densities); rounding can be applied if you prefer integers
+  return outCounts;
+}
+
 export default function VotingEnsembleResults({ report }) {
   if (!report || report.kind !== 'voting') return null;
 
@@ -114,10 +172,7 @@ export default function VotingEnsembleResults({ report }) {
   const agreement = report.agreement || {};
   const matrix = Array.isArray(agreement.matrix) ? agreement.matrix : null;
 
-  const labelsRaw = Array.isArray(agreement.labels)
-    ? agreement.labels
-    : namesRaw;
-
+  const labelsRaw = Array.isArray(agreement.labels) ? agreement.labels : namesRaw;
   const labelsPretty = makeUniqueLabels(labelsRaw.map((n) => prettyEstimatorName(n)));
 
   const vote = report.vote || {};
@@ -126,6 +181,8 @@ export default function VotingEnsembleResults({ report }) {
 
   const change = report.change_vs_best || {};
   const bestNamePretty = prettyEstimatorName(change.best_name || '');
+
+  const theme = useMantineTheme();
 
   // ------------------------
   // Summary metrics “table”
@@ -182,6 +239,10 @@ export default function VotingEnsembleResults({ report }) {
   const hasEstimatorScores =
     means.filter((v) => typeof v === 'number' && Number.isFinite(v)).length > 0;
 
+  // Base estimator bar colors: darker for higher mean score (all in same blue family)
+  const meanT = normalize01(means);
+  const barColors = meanT.map((t) => cmBlue(0.25 + 0.75 * t));
+
   const barTrace = {
     type: 'bar',
     x: namesPretty,
@@ -191,7 +252,7 @@ export default function VotingEnsembleResults({ report }) {
       array: stds.map((s) => (s == null ? 0 : s)),
       visible: true,
     },
-    marker: { color: BLUE_MAIN },
+    marker: { color: barColors },
     hovertemplate: `<b>%{x}</b><br>${metricName}: %{y:.4f}<extra></extra>`,
   };
 
@@ -203,7 +264,8 @@ export default function VotingEnsembleResults({ report }) {
       safeNum(change.harmed) ?? 0,
       safeNum(change.net) ?? 0,
     ],
-    marker: { color: [BLUE_MAIN, 'var(--mantine-color-gray-5)', BLUE_DARK] },
+    // keep all within CM-blue family (and a muted gray for "harmed" if you prefer)
+    marker: { color: [cmBlue(0.65), theme.colors.gray[5], cmBlue(0.9)] },
     hovertemplate: '<b>%{x}</b><br>count: %{y}<extra></extra>',
   };
 
@@ -219,10 +281,12 @@ export default function VotingEnsembleResults({ report }) {
         showscale: true,
         // pull colorbar closer + reduce whitespace
         colorbar: {
-          x: 1.02,
-          xpad: 6,
+          x: 0.75,
+          xanchor: 'right',
+          xpad: 0,
           thickness: 12,
           len: 0.92,
+          outlinewidth: 0,
         },
         text: matrix.map((row) =>
           row.map((v) => (typeof v === 'number' ? v.toFixed(2) : '')),
@@ -233,32 +297,86 @@ export default function VotingEnsembleResults({ report }) {
       }
     : null;
 
-  const marginTrace = (() => {
+  // Vote margins (already binned) -> bar chart; add a tick per bar
+  const marginPlot = (() => {
     const edges = Array.isArray(marginHist.edges) ? marginHist.edges : null;
     const counts = Array.isArray(marginHist.counts) ? marginHist.counts : null;
     if (!edges || !counts || edges.length < 2 || counts.length < 1) return null;
-    const mids = edges.slice(0, -1).map((a, i) => (a + edges[i + 1]) / 2);
-    return {
+
+    const e = edges.map((v) => safeNum(v)).filter((v) => v != null);
+    if (e.length !== edges.length) return null;
+
+    const binW = e.length >= 2 ? e[1] - e[0] : null;
+    const mids = e.slice(0, -1).map((a, i) => (a + e[i + 1]) / 2);
+
+    const trace = {
       type: 'bar',
       x: mids,
       y: counts,
-      marker: { color: BLUE_MAIN },
+      marker: { color: cmBlue(0.75) },
+      // make bars visually consistent on numeric axis
+      width:
+        typeof binW === 'number' && Number.isFinite(binW) ? mids.map(() => binW * 0.9) : undefined,
       hovertemplate: 'margin bin: %{x}<br>count: %{y}<extra></extra>',
     };
+
+    const axis = {
+      tickmode: 'linear',
+      tick0: typeof binW === 'number' && Number.isFinite(binW) ? mids[0] : undefined,
+      dtick: typeof binW === 'number' && Number.isFinite(binW) ? binW : undefined,
+    };
+
+    return { trace, axis, xRange: [e[0], e[e.length - 1]] };
   })();
 
-  const strengthTrace = (() => {
+  // Vote strength: if bins are coarse, re-bin to finer (0..1, step 0.05) for nicer visualization
+  const strengthPlot = (() => {
     const edges = Array.isArray(strengthHist.edges) ? strengthHist.edges : null;
     const counts = Array.isArray(strengthHist.counts) ? strengthHist.counts : null;
     if (!edges || !counts || edges.length < 2 || counts.length < 1) return null;
-    const mids = edges.slice(0, -1).map((a, i) => (a + edges[i + 1]) / 2);
-    return {
+
+    const e = edges.map((v) => safeNum(v));
+    if (e.some((v) => v == null)) return null;
+
+    const binCount = counts.length;
+    // If too few bins, rebin to 0..1 step 0.05 (20 bins)
+    const wantRebin = binCount <= 6;
+
+    let edgesUse = e;
+    let countsUse = counts;
+
+    if (wantRebin) {
+      const step = 0.05;
+      const newEdges = [];
+      for (let x = 0; x <= 1 + 1e-9; x += step) newEdges.push(Number(x.toFixed(10)));
+      countsUse = rebinHistogram(e, counts, newEdges);
+      edgesUse = newEdges;
+    }
+
+    const binW =
+      edgesUse.length >= 2 ? edgesUse[1] - edgesUse[0] : null;
+    const mids = edgesUse.slice(0, -1).map((a, i) => (a + edgesUse[i + 1]) / 2);
+
+    const N = Number(report.n_estimators) || 0;
+
+    const kOutOfN = mids.map((s) => {
+      if (!N) return '—';
+      const k = Math.max(0, Math.min(N, Math.round(s * N)));
+      return `${k} votes out of ${N}`;
+    });
+
+    const trace = {
       type: 'bar',
       x: mids,
-      y: counts,
-      marker: { color: BLUE_MAIN },
-      hovertemplate: 'strength bin: %{x}<br>count: %{y}<extra></extra>',
+      y: countsUse,
+      customdata: kOutOfN,
+      marker: { color: cmBlue(0.75) },
+      width:
+        typeof binW === 'number' && Number.isFinite(binW) ? mids.map(() => binW * 0.9) : undefined,
+      hovertemplate: '%{customdata}<br>strength: %{x:.3f}<br>count: %{y:.2f}<extra></extra>',
     };
+
+    return { trace, binW };
   })();
 
   return (
@@ -286,19 +404,12 @@ export default function VotingEnsembleResults({ report }) {
                 <Table.Tr
                   key={i}
                   style={{
-                    // lighter alternate tint (less "highlighty")
                     backgroundColor:
                       i % 2 === 1 ? 'var(--mantine-color-gray-0)' : 'white',
                   }}
                 >
-                  {/* metric 1 */}
                   <Table.Td style={{ width: '25%' }}>
-                    <Tooltip
-                      label={pair[0].tooltip}
-                      multiline
-                      maw={320}
-                      withArrow
-                    >
+                    <Tooltip label={pair[0].tooltip} multiline maw={320} withArrow>
                       <Text size="sm" fw={600}>
                         {pair[0].label}
                       </Text>
@@ -310,14 +421,8 @@ export default function VotingEnsembleResults({ report }) {
                     </Text>
                   </Table.Td>
 
-                  {/* metric 2 */}
                   <Table.Td style={{ width: '25%' }}>
-                    <Tooltip
-                      label={pair[1].tooltip}
-                      multiline
-                      maw={320}
-                      withArrow
-                    >
+                    <Tooltip label={pair[1].tooltip} multiline maw={320} withArrow>
                       <Text size="sm" fw={600}>
                         {pair[1].label}
                       </Text>
@@ -360,7 +465,6 @@ export default function VotingEnsembleResults({ report }) {
               </Text>
             </Tooltip>
 
-            {/* Invisible subtitle line to match header height of the right panel (baseline alignment) */}
             <Text
               size="sm"
               c="dimmed"
@@ -377,17 +481,16 @@ export default function VotingEnsembleResults({ report }) {
                 layout={{
                   autosize: true,
                   height: 280,
-                  // keep same top margin as the right plot so plot baselines align
                   margin: { l: 60, r: 12, t: 10, b: 90 },
                   xaxis: {
                     tickangle: -25,
-                    title: 'Estimator',
+                    title: { text: 'Estimator' },
                     automargin: true,
                     showgrid: false,
                     zeroline: false,
                   },
                   yaxis: {
-                    title: metricName,
+                    title: { text: metricName },
                     range: yRange || undefined,
                     automargin: true,
                     showgrid: true,
@@ -431,13 +534,13 @@ export default function VotingEnsembleResults({ report }) {
                 height: 280,
                 margin: { l: 60, r: 12, t: 10, b: 60 },
                 xaxis: {
-                  title: 'Outcome',
+                  title: { text: 'Outcome' },
                   automargin: true,
                   showgrid: false,
                   zeroline: false,
                 },
                 yaxis: {
-                  title: 'Count',
+                  title: { text: 'Count' },
                   automargin: true,
                   showgrid: true,
                   zeroline: false,
@@ -472,10 +575,10 @@ export default function VotingEnsembleResults({ report }) {
               layout={{
                 autosize: true,
                 height: 360,
-                // tighter margins so y labels sit closer, and colorbar is closer
-                margin: { l: 70, r: 55, t: 10, b: 90 },
+                // reduce right margin so the colorbar sits close without a big whitespace strip
+                margin: { l: 70, r: 28, t: 10, b: 90 },
                 xaxis: {
-                  title: 'Estimator',
+                  title: { text: 'Estimator' },
                   tickangle: -30,
                   side: 'top',
                   automargin: true,
@@ -484,7 +587,7 @@ export default function VotingEnsembleResults({ report }) {
                   constrain: 'domain',
                 },
                 yaxis: {
-                  title: 'Estimator',
+                  title: { text: 'Estimator' },
                   autorange: 'reversed',
                   automargin: true,
                   showgrid: false,
@@ -522,21 +625,24 @@ export default function VotingEnsembleResults({ report }) {
               </Text>
             </Tooltip>
 
-            {marginTrace ? (
+            {marginPlot?.trace ? (
               <Plot
-                data={[marginTrace]}
+                data={[marginPlot.trace]}
                 layout={{
                   autosize: true,
                   height: 220,
                   margin: { l: 60, r: 12, t: 10, b: 60 },
                   xaxis: {
-                    title: 'Margin (top − runner-up)',
+                    title: { text: 'Margin (top − runner-up)' },
                     automargin: true,
                     showgrid: false,
                     zeroline: false,
+                    // tick for every bar/bin
+                    ...(marginPlot.axis || {}),
+                    range: marginPlot.xRange || undefined,
                   },
                   yaxis: {
-                    title: 'Count',
+                    title: { text: 'Count' },
                     automargin: true,
                     showgrid: true,
                     zeroline: false,
@@ -567,21 +673,25 @@ export default function VotingEnsembleResults({ report }) {
               </Text>
             </Tooltip>
 
-            {strengthTrace ? (
+            {strengthPlot?.trace ? (
               <Plot
-                data={[strengthTrace]}
+                data={[strengthPlot.trace]}
                 layout={{
                   autosize: true,
                   height: 220,
                   margin: { l: 60, r: 12, t: 10, b: 60 },
                   xaxis: {
-                    title: 'Strength (top / total)',
+                    title: { text: 'Strength (top / total)' },
                     automargin: true,
                     showgrid: false,
                     zeroline: false,
+                    range: [0, 1],
+                    tickmode: 'linear',
+                    tick0: 0,
+                    dtick: 0.1,
                   },
                   yaxis: {
-                    title: 'Count',
+                    title: { text: 'Count' },
                     automargin: true,
                     showgrid: true,
                     zeroline: false,
