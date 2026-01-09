@@ -515,6 +515,12 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 w = getattr(boost, "estimator_weights_", None)
                 errs = getattr(boost, "estimator_errors_", None)
 
+                m = len(ests) if ests is not None else 0
+                if w is not None and m > 0:
+                    w = np.asarray(w, dtype=float)[:m]
+                if errs is not None and m > 0:
+                    errs = np.asarray(errs, dtype=float)[:m]
+
                 if ests is not None and len(ests) > 0 and w is not None:
                     if adaboost_acc is None:
                         base_algo = _extract_base_estimator_algo_from_cfg(cfg, default="default")
@@ -526,9 +532,11 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                             algorithm=str(getattr(cfg.ensemble, "algorithm", None) or None),
                         )
 
-                    classes_arr = _get_classes_arr(boost) or _get_classes_arr(model)
+                    classes_arr = _get_classes_arr(boost)
+                    if classes_arr is None:
+                        classes_arr = _get_classes_arr(model)
                     yte_arr = np.asarray(yte)
-                    yte_enc = _encode_y_true_to_index(yte_arr, classes_arr)
+                    yte_enc = _encode_y_true_to_index(yte_arr, classes_arr) if classes_arr is not None else None
 
                     base_pred_cols = []
                     base_scores_list: list[float] = []
@@ -597,12 +605,39 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                     if base_pred_cols:
                         base_preds_mat = np.column_stack(base_pred_cols)
 
+                        # ---- stage/weight diagnostics (configured vs fitted vs effective) ----
+                        w_arr = np.asarray(w, dtype=float)
+                        weight_eps = 1e-6
+
+                        n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_mat.shape[1])
+                        n_nonzero_weights = int(np.sum(w_arr > 0))
+                        n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
+
+                        weight_mass_topk = None
+                        try:
+                            s = float(np.sum(w_arr))
+                            if s > 0:
+                                w_sorted = np.sort(w_arr)[::-1]
+                                c = np.cumsum(w_sorted) / s
+                                topks = [5, 10, 20]
+                                weight_mass_topk = {k: float(c[min(k, len(c)) - 1]) for k in topks if len(c) > 0}
+                        except Exception:
+                            weight_mass_topk = None
+
                         adaboost_acc.add_fold(
                             base_preds=base_preds_mat,
                             estimator_weights=np.asarray(w, dtype=float)[: base_preds_mat.shape[1]],
                             estimator_errors=np.asarray(errs, dtype=float)[: base_preds_mat.shape[1]] if errs is not None else None,
                             base_estimator_scores=base_scores_list if base_scores_list else None,
+
+                            # ---- NEW fields ----
+                            n_estimators_fitted=n_estimators_fitted,
+                            n_nonzero_weights=n_nonzero_weights,
+                            n_nontrivial_weights=n_nontrivial_weights,
+                            weight_eps=weight_eps,
+                            weight_mass_topk=weight_mass_topk,
                         )
+                        
             except Exception:
                 pass
 

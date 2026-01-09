@@ -104,16 +104,15 @@ def build_adaboost_ensemble(
 
     # NOTE: algorithm only applies to classifier historically; keep it optional and guarded.
     if expected_kind == "classification":
-        kwargs: dict[str, Any] = {}
-        if cfg.algorithm is not None:
-            kwargs["algorithm"] = cfg.algorithm
+        # Default to SAMME (SAMME.R is deprecated in sklearn and also requires predict_proba)
+        algo = cfg.algorithm if cfg.algorithm is not None else "SAMME"
 
         boost = AdaBoostClassifier(
             estimator=base_est,
             n_estimators=cfg.n_estimators,
             learning_rate=cfg.learning_rate,
             random_state=rs,
-            **kwargs,
+            algorithm=algo,
         )
         # Outer pipeline handles preprocessing once; AdaBoost sees transformed X.
         return Pipeline([("pre", preproc), ("clf", boost)]), expected_kind

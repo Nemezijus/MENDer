@@ -97,6 +97,13 @@ class AdaBoostEnsembleReportAccumulator:
     _errors_all: List[float] = None
     _eff_n_all: List[float] = None
 
+    # ---- diagnostics about fitted stages and weight concentration ----
+    _n_estimators_fitted_all: List[int] = None
+    _n_nonzero_weights_all: List[int] = None
+    _n_nontrivial_weights_all: List[int] = None
+    _weight_eps: float = 1e-6
+    _weight_mass_topk_all: Dict[int, List[float]] = None
+
     _weight_hist_edges: np.ndarray = None
     _weight_hist_counts: np.ndarray = None
     _error_hist_edges: np.ndarray = None
@@ -145,6 +152,11 @@ class AdaBoostEnsembleReportAccumulator:
             _margin_hist_counts=_hist_init(edges01),
             _strength_hist_edges=edges01,
             _strength_hist_counts=_hist_init(edges01),
+            _n_estimators_fitted_all=[],
+            _n_nonzero_weights_all=[],
+            _n_nontrivial_weights_all=[],
+            _weight_eps=1e-6,
+            _weight_mass_topk_all={5: [], 10: [], 20: []},
             _weight_hist_edges=weight_edges,
             _weight_hist_counts=_hist_init(weight_edges),
             _error_hist_edges=error_edges,
@@ -160,6 +172,12 @@ class AdaBoostEnsembleReportAccumulator:
         estimator_weights: Sequence[float],
         estimator_errors: Optional[Sequence[float]] = None,
         base_estimator_scores: Optional[Sequence[float]] = None,
+
+        n_estimators_fitted: Optional[int] = None,
+        n_nonzero_weights: Optional[int] = None,
+        n_nontrivial_weights: Optional[int] = None,
+        weight_eps: Optional[float] = None,
+        weight_mass_topk: Optional[Dict[int, float]] = None,
     ) -> None:
         """Add fold data.
 
@@ -169,6 +187,21 @@ class AdaBoostEnsembleReportAccumulator:
         base_estimator_scores: optional per-estimator scores on eval set (distribution)
         """
         self._n_folds += 1
+
+        if n_estimators_fitted is not None:
+            self._n_estimators_fitted_all.append(int(n_estimators_fitted))
+        if n_nonzero_weights is not None:
+            self._n_nonzero_weights_all.append(int(n_nonzero_weights))
+        if n_nontrivial_weights is not None:
+            self._n_nontrivial_weights_all.append(int(n_nontrivial_weights))
+        if weight_eps is not None:
+            self._weight_eps = float(weight_eps)
+        if weight_mass_topk:
+            for k, v in weight_mass_topk.items():
+                kk = int(k)
+                if self._weight_mass_topk_all is None:
+                    self._weight_mass_topk_all = {}
+                self._weight_mass_topk_all.setdefault(kk, []).append(float(v))
 
         P = np.asarray(base_preds)
         if P.ndim != 2:
@@ -231,17 +264,44 @@ class AdaBoostEnsembleReportAccumulator:
                 _hist_add(self._base_score_hist_counts, s_clip, self._base_score_hist_edges)
 
     def finalize(self) -> Dict[str, Any]:
-        denom = float(self._n_eval_total) if self._n_eval_total > 0 else 1.0
-
-        mean_margin = float(self._margin_sum / denom)
-        mean_strength = float(self._strength_sum / denom)
-        tie_rate = float(self._tie_count / denom)
+        if self._n_eval_total <= 0:
+            mean_margin = None
+            mean_strength = None
+            tie_rate = None
+            margin_hist = None
+            strength_hist = None
+        else:
+            denom = float(self._n_eval_total)
+            mean_margin = float(self._margin_sum / denom)
+            mean_strength = float(self._strength_sum / denom)
+            tie_rate = float(self._tie_count / denom)
+            margin_hist = {
+                "edges": [float(x) for x in self._margin_hist_edges.tolist()],
+                "counts": [float(x) for x in self._margin_hist_counts.tolist()],
+            }
+            strength_hist = {
+                "edges": [float(x) for x in self._strength_hist_edges.tolist()],
+                "counts": [float(x) for x in self._strength_hist_counts.tolist()],
+            }
 
         w_mean, w_std = _mean_std(self._weights_all or [])
         e_mean, e_std = _mean_std(self._errors_all or [])
         eff_mean, eff_std = _mean_std(self._eff_n_all or [])
 
         bs_mean, bs_std = _mean_std(self._base_scores_all or [])
+
+        fitted_mean, fitted_std = _mean_std(self._n_estimators_fitted_all or [])
+        nz_mean, nz_std = _mean_std(self._n_nonzero_weights_all or [])
+        nt_mean, nt_std = _mean_std(self._n_nontrivial_weights_all or [])
+
+        topk_mean: Dict[int, float] = {}
+        topk_std: Dict[int, float] = {}
+        if self._weight_mass_topk_all:
+            for k, vals in self._weight_mass_topk_all.items():
+                m_k, s_k = _mean_std(vals or [])
+                if vals:
+                    topk_mean[int(k)] = float(m_k)
+                    topk_std[int(k)] = float(s_k)
 
         return {
             "kind": "adaboost",
@@ -253,17 +313,11 @@ class AdaBoostEnsembleReportAccumulator:
                 "algorithm": self.algorithm,
             },
             "vote": {
-                "mean_margin": _safe_float(mean_margin),
-                "mean_strength": _safe_float(mean_strength),
-                "tie_rate": _safe_float(tie_rate),
-                "margin_hist": {
-                    "edges": [float(x) for x in self._margin_hist_edges.tolist()],
-                    "counts": [float(x) for x in self._margin_hist_counts.tolist()],
-                },
-                "strength_hist": {
-                    "edges": [float(x) for x in self._strength_hist_edges.tolist()],
-                    "counts": [float(x) for x in self._strength_hist_counts.tolist()],
-                },
+                "mean_margin": _safe_float(mean_margin) if mean_margin is not None else None,
+                "mean_strength": _safe_float(mean_strength) if mean_strength is not None else None,
+                "tie_rate": _safe_float(tie_rate) if tie_rate is not None else None,
+                "margin_hist": margin_hist,
+                "strength_hist": strength_hist,
             },
             "weights": {
                 "mean": _safe_float(w_mean) if self._weights_all else None,
@@ -276,6 +330,18 @@ class AdaBoostEnsembleReportAccumulator:
                 }
                 if self._weights_all
                 else None,
+            },
+            "stages": {
+                "n_estimators_configured": _safe_int(self.n_estimators),
+                "n_estimators_fitted_mean": _safe_float(fitted_mean) if self._n_estimators_fitted_all else None,
+                "n_estimators_fitted_std": _safe_float(fitted_std) if self._n_estimators_fitted_all else None,
+                "n_nonzero_weights_mean": _safe_float(nz_mean) if self._n_nonzero_weights_all else None,
+                "n_nonzero_weights_std": _safe_float(nz_std) if self._n_nonzero_weights_all else None,
+                "n_nontrivial_weights_mean": _safe_float(nt_mean) if self._n_nontrivial_weights_all else None,
+                "n_nontrivial_weights_std": _safe_float(nt_std) if self._n_nontrivial_weights_all else None,
+                "weight_eps": _safe_float(self._weight_eps),
+                "weight_mass_topk_mean": {str(k): _safe_float(v) for k, v in (topk_mean or {}).items()} or None,
+                "weight_mass_topk_std": {str(k): _safe_float(v) for k, v in (topk_std or {}).items()} or None,
             },
             "errors": {
                 "mean": _safe_float(e_mean) if self._errors_all else None,

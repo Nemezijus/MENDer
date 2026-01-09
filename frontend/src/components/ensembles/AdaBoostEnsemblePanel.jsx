@@ -144,6 +144,9 @@ export default function AdaBoostEnsemblePanel() {
     [],
   );
 
+  const baseAlgo = adaboost.base_estimator?.algo || null;
+  const isKnnBase = baseAlgo === 'knn';
+
   useEffect(() => {
     if (initializedRef.current) return;
     if (defsLoading) return;
@@ -231,6 +234,11 @@ export default function AdaBoostEnsemblePanel() {
   };
 
   const handleRun = async () => {
+    // Reset results immediately so old results don't linger after a failed run
+    setTrainResult(null);
+    setActiveResultKind(null);
+    setArtifact(null);
+
     setErr(null);
 
     if (!inspectReport || inspectReport?.n_samples <= 0) {
@@ -240,6 +248,14 @@ export default function AdaBoostEnsemblePanel() {
 
     if (!adaboost.base_estimator?.algo) {
       setErr('Please select a base estimator.');
+      return;
+    }
+
+    // Guardrail: KNN can't be used for AdaBoost (no sample_weight support)
+    if (adaboost.base_estimator?.algo === 'knn') {
+      setErr(
+        "KNN can't be used as an AdaBoost base estimator because it doesn't support sample_weight. Choose another base estimator (e.g., tree/logreg/svm) or use Bagging/Voting for KNN.",
+      );
       return;
     }
 
@@ -283,6 +299,7 @@ export default function AdaBoostEnsemblePanel() {
               />
             </Group>
           </Group>
+
           <Group justify="flex-end">
             <Button onClick={handleRun} loading={loading}>
               Train AdaBoost ensemble
@@ -312,6 +329,16 @@ export default function AdaBoostEnsemblePanel() {
                     showHelp={false}
                   />
                 </Box>
+              )}
+
+              {isKnnBase && (
+                <Alert color="yellow" variant="light">
+                  <Text fw={600}>KNN is not supported for AdaBoost</Text>
+                  <Text size="sm">
+                    AdaBoost requires base estimators to support <b>sample_weight</b>. KNN does not,
+                    so training will fail. Use Bagging/Voting if you want KNN in an ensemble.
+                  </Text>
+                </Alert>
               )}
 
               <Group grow align="flex-end" wrap="wrap">
@@ -392,9 +419,11 @@ export default function AdaBoostEnsemblePanel() {
         seed={adaboost.seed}
         onSeedChange={(v) => setAdaBoost({ seed: v })}
       />
+
       {trainResult?.ensemble_report?.kind === 'adaboost' && (
         <AdaBoostEnsembleResults report={trainResult.ensemble_report} />
-        )}
+      )}
+
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>

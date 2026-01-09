@@ -26,6 +26,7 @@ const HEATMAP_COLORSCALE = [
 ];
 
 function safeNum(x) {
+  if (x === null || x === undefined || x === '') return null;
   const n = Number(x);
   return Number.isFinite(n) ? n : null;
 }
@@ -92,6 +93,12 @@ function histToBarTrace(edges, counts, opts = {}) {
   };
 }
 
+function fmtIntish(x) {
+  const n = safeNum(x);
+  if (n == null) return '—';
+  return String(Math.round(n));
+}
+
 export default function AdaBoostEnsembleResults({ report }) {
   if (!report || report.kind !== 'adaboost') return null;
 
@@ -101,13 +108,26 @@ export default function AdaBoostEnsembleResults({ report }) {
   const weights = report.weights || {};
   const errors = report.errors || {};
   const baseScores = report.base_estimator_scores || {};
+  const stages = report.stages || {};
 
   const baseAlgo = ada.base_algo ? titleCase(ada.base_algo) : '—';
-  const nEstimators = safeNum(ada.n_estimators);
+  const nEstimatorsConfigured = safeNum(ada.n_estimators);
   const learningRate = safeNum(ada.learning_rate);
   const algorithm = ada.algorithm ? String(ada.algorithm) : null;
 
-  const hideDenseLabels = nEstimators != null && nEstimators > 20;
+  const nEstimatorsFittedMean = safeNum(stages.n_estimators_fitted_mean);
+  const nNontrivialMean = safeNum(stages.n_nontrivial_weights_mean);
+  const weightEps = safeNum(stages.weight_eps);
+
+  const topkMean = stages.weight_mass_topk_mean || null; // keys are strings like "5","10","20"
+  const top10Mass = topkMean ? safeNum(topkMean['10']) : null;
+  const top20Mass = topkMean ? safeNum(topkMean['20']) : null;
+
+  const hideDenseLabels =
+    (nEstimatorsConfigured != null && nEstimatorsConfigured > 20) ||
+    (nEstimatorsFittedMean != null && nEstimatorsFittedMean > 20);
+
+  const effectiveN = safeNum(weights.effective_n_mean);
 
   const summaryItems = [
     {
@@ -127,7 +147,7 @@ export default function AdaBoostEnsembleResults({ report }) {
     },
     {
       label: 'Eff. # estimators',
-      value: weights.effective_n_mean == null ? '—' : fmt(weights.effective_n_mean, 2),
+      value: effectiveN == null ? '—' : fmt(effectiveN, 2),
       tooltip:
         'Effective number of estimators (ESS) derived from estimator weights. Lower means a few stages dominate.',
     },
@@ -187,6 +207,11 @@ export default function AdaBoostEnsembleResults({ report }) {
           xRange: [0, 1],
         })
       : null;
+
+  const showConcentrationHint =
+    effectiveN != null &&
+    ((nEstimatorsConfigured != null && effectiveN < 0.25 * nEstimatorsConfigured) ||
+      (nEstimatorsFittedMean != null && effectiveN < 0.25 * nEstimatorsFittedMean));
 
   return (
     <Card withBorder radius="md" p="md">
@@ -248,7 +273,7 @@ export default function AdaBoostEnsembleResults({ report }) {
 
           <Text size="sm" c="dimmed" mt="xs" align="center">
             Base estimator: <b>{baseAlgo}</b> • Estimators:{' '}
-            <b>{nEstimators == null ? '—' : String(nEstimators)}</b> • Learning rate:{' '}
+            <b>{nEstimatorsConfigured == null ? '—' : String(nEstimatorsConfigured)}</b> • Learning rate:{' '}
             <b>{learningRate == null ? '—' : fmt(learningRate, 3)}</b>
             {algorithm ? (
               <>
@@ -257,6 +282,53 @@ export default function AdaBoostEnsembleResults({ report }) {
               </>
             ) : null}
           </Text>
+
+          <Text size="sm" c="dimmed" mt={6} align="center">
+            <Tooltip
+              label="Configured = requested n_estimators. Fitted = actual number of stage estimators trained. Non-trivial weight counts how many stages have weight greater than ε (default 1e-6)."
+              multiline
+              maw={520}
+              withArrow
+            >
+              <span>
+                Stages: configured <b>{fmtIntish(nEstimatorsConfigured)}</b>
+                {nEstimatorsFittedMean != null ? (
+                  <>
+                    {' '}
+                    • fitted <b>{fmtIntish(nEstimatorsFittedMean)}</b>
+                  </>
+                ) : null}
+                {nNontrivialMean != null ? (
+                  <>
+                    {' '}
+                    • non-trivial weight{' '}
+                    <b>
+                      {fmtIntish(nNontrivialMean)}
+                      {weightEps != null ? ` (ε=${weightEps})` : ''}
+                    </b>
+                  </>
+                ) : null}
+                {top10Mass != null ? (
+                  <>
+                    {' '}
+                    • top-10 weight mass <b>{fmtPct(top10Mass, 1)}</b>
+                  </>
+                ) : null}
+                {top20Mass != null ? (
+                  <>
+                    {' '}
+                    • top-20 weight mass <b>{fmtPct(top20Mass, 1)}</b>
+                  </>
+                ) : null}
+              </span>
+            </Tooltip>
+          </Text>
+
+          {showConcentrationHint ? (
+            <Text size="sm" c="dimmed" mt={6} align="center">
+              Note: weights are highly concentrated (effective # is much smaller than configured). Some histograms may collapse into few bins.
+            </Text>
+          ) : null}
         </Box>
 
         <Divider my="xs" />
@@ -348,7 +420,7 @@ export default function AdaBoostEnsembleResults({ report }) {
         <Group align="stretch" grow wrap="wrap">
           <Box style={{ flex: 1, minWidth: 340 }}>
             <Tooltip
-              label="Distribution of boosting stage weights. If weights concentrate early/late, effective estimator count decreases."
+              label="Distribution of boosting stage weights. If weights concentrate, effective estimator count decreases."
               multiline
               maw={380}
               withArrow

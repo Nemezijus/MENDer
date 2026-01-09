@@ -1,6 +1,6 @@
 import { Stack, Text, List } from '@mantine/core';
 
-/* ---------- short previews (used in the “C” area) ---------- */
+/* ---------- short previews ---------- */
 
 export function VotingIntroText({ effectiveTask, votingType }) {
   const isReg = effectiveTask === 'regression';
@@ -404,6 +404,42 @@ function XGBoostDetailsText() {
           </Text>{' '}
           – minimum loss reduction required to make a split. Higher values make splitting more conservative (often helps
           with overfitting).
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Use early stopping (Advanced)
+          </Text>{' '}
+          – enables an <Text span fw={600}>internal validation split</Text> from the training data, and stops adding trees
+          once the validation metric stops improving. This is also what allows MENDer to show{' '}
+          <Text span fw={600}>learning curves</Text> (training vs validation over boosting rounds). Turning this off is
+          fine if you only care about the final held-out / k-fold metric, but then “best iteration/score” and learning
+          curves may be unavailable.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Early stopping rounds (patience)
+          </Text>{' '}
+          – how many rounds XGBoost will wait without improvement before stopping. Smaller values stop sooner (faster,
+          less overfitting risk); larger values are more permissive. If left blank, MENDer chooses a reasonable default.
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Eval set fraction (Advanced)
+          </Text>{' '}
+          – fraction of the training fold reserved for internal early-stopping evaluation (typical range:{' '}
+          <Text span fw={600}>0.1–0.3</Text>). Higher values give a more stable validation signal but leave fewer samples
+          to fit the trees. This does <Text span fw={600}>not</Text> change your main train/test split (holdout/k-fold).
+        </List.Item>
+
+        <List.Item>
+          <Text span fw={600}>
+            Internal eval metric vs final metric
+          </Text>{' '}
+          – learning curves and “best score” are based on an internal training metric (e.g. logloss/mlogloss/rmse),
+          chosen for stability. Your model card and confusion/ROC use your selected final metric (e.g. accuracy).
         </List.Item>
 
         <List.Item>
