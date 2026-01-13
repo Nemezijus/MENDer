@@ -1,3 +1,4 @@
+# shared_schemas/types.py
 from __future__ import annotations
 from typing import Literal, TypeAlias, Union
 
@@ -59,6 +60,37 @@ LDASolver: TypeAlias = Literal["svd", "lsqr", "eigen"]
 KNNWeights: TypeAlias = Literal["uniform", "distance"]
 KNNAlgorithm: TypeAlias = Literal["auto", "ball_tree", "kd_tree", "brute"]
 KNNMetric: TypeAlias = Literal["minkowski", "euclidean", "manhattan", "chebyshev"]
+
+# RidgeClassifier helpers
+RidgeSolver: TypeAlias = Literal[
+    "auto",
+    "svd",
+    "cholesky",
+    "lsqr",
+    "sparse_cg",
+    "sag",
+    "saga",
+    "lbfgs",
+]
+
+# SGDClassifier helpers
+SGDLoss: TypeAlias = Literal[
+    "hinge",
+    "log_loss",
+    "modified_huber",
+    "squared_hinge",
+    "perceptron",
+    # Additional losses supported by sklearn (kept for completeness / UI dropdowns)
+    "squared_error",
+    "huber",
+    "epsilon_insensitive",
+    "squared_epsilon_insensitive",
+]
+SGDPenalty: TypeAlias = Literal["l2", "l1", "elasticnet"]
+SGDLearningRate: TypeAlias = Literal["constant", "optimal", "invscaling", "adaptive"]
+
+# HistGradientBoostingClassifier helpers
+HGBLoss: TypeAlias = Literal["log_loss"]
 
 # Ensembles
 EnsembleKind: TypeAlias = Literal["voting", "bagging", "adaboost", "xgboost"]

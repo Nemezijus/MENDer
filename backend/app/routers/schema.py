@@ -8,6 +8,11 @@ from shared_schemas import types as T
 from shared_schemas.model_configs import (
     ModelConfig,           # ← discriminated union
     LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,
+    GaussianNBConfig,
+    RidgeClassifierConfig,
+    SGDClassifierConfig,
+    ExtraTreesConfig,
+    HistGradientBoostingConfig,
     LinearRegConfig,
 )
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
@@ -77,7 +82,19 @@ def _model_union_schema_and_defaults():
     schema = ta.json_schema()
 
     defaults = {}
-    for cls in (LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig):
+    for cls in (
+        LogRegConfig,
+        SVMConfig,
+        TreeConfig,
+        ForestConfig,
+        KNNConfig,
+        GaussianNBConfig,
+        RidgeClassifierConfig,
+        SGDClassifierConfig,
+        ExtraTreesConfig,
+        HistGradientBoostingConfig,
+        LinearRegConfig,
+    ):
         try:
             inst = cls()
             defaults[inst.algo] = inst.model_dump()
@@ -135,6 +152,17 @@ def _enums_payload():
         "KNNAlgorithm":         safe(getattr(T, "KNNAlgorithm", None)),
         "KNNMetric":            safe(getattr(T, "KNNMetric", None)),
 
+        # RidgeClassifier
+        "RidgeSolver":          safe(getattr(T, "RidgeSolver", None)),
+
+        # SGDClassifier
+        "SGDLoss":              safe(getattr(T, "SGDLoss", None)),
+        "SGDPenalty":           safe(getattr(T, "SGDPenalty", None)),
+        "SGDLearningRate":      safe(getattr(T, "SGDLearningRate", None)),
+
+        # HistGradientBoostingClassifier
+        "HGBLoss":              safe(getattr(T, "HGBLoss", None)),
+
         # pipeline-wide
         "ScaleName":            safe(getattr(T, "ScaleName", None)),
         "FeatureName":          safe(getattr(T, "FeatureName", None)),
@@ -160,7 +188,19 @@ def _model_defaults_and_meta():
       - meta: {algo: {task: 'classification'|'regression'|'nn', family: 'svm'|'tree'|...}}
     For now, categorize existing algos as classification; expand as you add regressors/NNs.
     """
-    algo_classes = [LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig, LinearRegConfig]
+    algo_classes = [
+        LogRegConfig,
+        SVMConfig,
+        TreeConfig,
+        ForestConfig,
+        KNNConfig,
+        GaussianNBConfig,
+        RidgeClassifierConfig,
+        SGDClassifierConfig,
+        ExtraTreesConfig,
+        HistGradientBoostingConfig,
+        LinearRegConfig,
+    ]
     defaults = {}
     meta = {}
 

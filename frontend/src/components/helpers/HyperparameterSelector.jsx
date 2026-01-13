@@ -64,13 +64,74 @@ function collectEnumValues(p) {
   if (!p) return null;
   if (Array.isArray(p.enum)) return p.enum;
 
-  const list = (p.anyOf ?? p.oneOf ?? []).flatMap((x) => {
-    if (Array.isArray(x.enum)) return x.enum;
-    if (x.const != null) return [x.const];
-    if (x.type === 'null') return [null];
-    return [];
-  });
-  return list.length ? list : null;
+  // Pydantic frequently represents Optional[...] as anyOf: [{type: <real>}, {type: 'null'}].
+  // We only want to treat a parameter as an enum if there are *actual* concrete values.
+  // Otherwise, Optional[int] would become a bogus enum of [null] in the UI.
+  const unions = [...(p.anyOf ?? []), ...(p.oneOf ?? [])];
+  const list = [];
+  for (const x of unions) {
+    if (Array.isArray(x.enum)) list.push(...x.enum);
+    else if (x.const != null) list.push(x.const);
+    else if (x.type === 'null') list.push(null);
+  }
+
+  // de-duplicate while preserving order (also handles null correctly)
+  const uniq = [];
+  for (const v of list) {
+    if (!uniq.some((u) => Object.is(u, v))) uniq.push(v);
+  }
+
+  // Ignore "enum" lists that are only [null]
+  if (uniq.length === 1 && uniq[0] === null) return null;
+
+  return uniq.length ? uniq : null;
+}
+
+function humanizeParamName(key) {
+  if (!key) return '';
+
+  const map = {
+    // common / shared
+    n_estimators: 'Number of estimators',
+    max_iter: 'Max iterations',
+    n_jobs: 'N jobs',
+    class_weight: 'Class weight',
+    random_state: 'Random state',
+    warm_start: 'Warm start',
+    tol: 'Tolerance',
+
+    // trees / forests
+    max_depth: 'Max depth',
+    min_samples_split: 'Min samples split',
+    min_samples_leaf: 'Min samples leaf',
+    min_impurity_decrease: 'Min impurity decrease',
+    max_leaf_nodes: 'Max leaf nodes',
+    min_weight_fraction_leaf: 'Min weight fraction leaf',
+    max_features: 'Max features',
+    max_samples: 'Max samples',
+    oob_score: 'OOB score',
+    ccp_alpha: 'CCP alpha',
+
+    // linear models
+    fit_intercept: 'Fit intercept',
+    l1_ratio: 'L1 ratio',
+    learning_rate: 'Learning rate schedule',
+    eta0: 'Initial learning rate (eta0)',
+    power_t: 'Power t',
+
+    // HGB
+    max_bins: 'Max bins',
+    validation_fraction: 'Validation fraction',
+    n_iter_no_change: 'N iter no change',
+    l2_regularization: 'L2 regularization',
+  };
+
+  if (map[key]) return map[key];
+
+  // Generic fallback: snake_case -> Title case
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function getParamInfo(sub, key) {
@@ -86,11 +147,7 @@ function getParamInfo(sub, key) {
   }
   if (enums) {
     const uniq = Array.from(new Set(enums));
-    if (
-      uniq.length === 2 &&
-      uniq.includes(true) &&
-      uniq.includes(false)
-    ) {
+    if (uniq.length === 2 && uniq.includes(true) && uniq.includes(false)) {
       return { kind: 'boolean', allowedValues: [true, false] };
     }
     return { kind: 'enum', allowedValues: enums };
@@ -159,13 +216,16 @@ export default function HyperparameterSelector({
     const props = sub?.properties ?? {};
     return Object.keys(props)
       .filter((key) => key !== 'algo')
-      .map((key) => ({ value: key, label: key }));
+      .map((key) => ({ value: key, label: humanizeParamName(key) }));
   }, [sub]);
 
   const selectedName = value?.paramName ?? '';
 
   const paramInfo = useMemo(
-    () => (selectedName ? getParamInfo(sub, selectedName) : { kind: 'other', allowedValues: null }),
+    () =>
+      selectedName
+        ? getParamInfo(sub, selectedName)
+        : { kind: 'other', allowedValues: null },
     [sub, selectedName],
   );
 
@@ -324,7 +384,8 @@ export default function HyperparameterSelector({
     setDisplayPrecision(null);
   }
 
-  const showNumericControls = paramInfo.kind === 'numeric' || paramInfo.kind === 'other';
+  const showNumericControls = paramInfo.kind === 'numeric';
+  const showListOnlyControls = paramInfo.kind === 'other';
   const showEnumControls = paramInfo.kind === 'enum';
   const showBooleanNote = paramInfo.kind === 'boolean';
 
@@ -349,12 +410,7 @@ export default function HyperparameterSelector({
   return (
     <Stack gap="sm">
       <Select
-        label={
-          label ||
-          (paramOptions.length
-            ? 'Hyperparameter to vary'
-            : 'Hyperparameter to vary')
-        }
+        label={label || 'Hyperparameter to vary'}
         placeholder={
           paramOptions.length
             ? 'Pick a parameter (e.g. C, max_depth)'
@@ -383,7 +439,7 @@ export default function HyperparameterSelector({
             {paramInfo.allowedValues.map((v) => (
               <Checkbox
                 key={String(v)}
-                label={String(v)}
+                label={v === null ? 'None' : String(v)}
                 checked={enumSelection.includes(v)}
                 onChange={() => toggleEnumValue(v)}
               />
@@ -406,31 +462,30 @@ export default function HyperparameterSelector({
 
           {mode === 'range' && (
             <Group align="flex-end">
-                <Box style={{ flex: 1 }}>
+              <Box style={{ flex: 1 }}>
                 <NumberInput
-                    label="From"
-                    value={rangeFrom}
-                    onChange={(v) => updateFromRange(String(v ?? ''), rangeTo, rangeStep)}
+                  label="From"
+                  value={rangeFrom}
+                  onChange={(v) => updateFromRange(String(v ?? ''), rangeTo, rangeStep)}
                 />
-                </Box>
-                <Box style={{ flex: 1 }}>
+              </Box>
+              <Box style={{ flex: 1 }}>
                 <NumberInput
-                    label="Step"
-                    placeholder="auto"
-                    value={rangeStep}
-                    onChange={(v) => updateFromRange(rangeFrom, rangeTo, String(v ?? ''))}
+                  label="Step"
+                  placeholder="auto"
+                  value={rangeStep}
+                  onChange={(v) => updateFromRange(rangeFrom, rangeTo, String(v ?? ''))}
                 />
-                </Box>
-                <Box style={{ flex: 1 }}>
+              </Box>
+              <Box style={{ flex: 1 }}>
                 <NumberInput
-                    label="To"
-                    value={rangeTo}
-                    onChange={(v) => updateFromRange(rangeFrom, String(v ?? ''), rangeStep)}
+                  label="To"
+                  value={rangeTo}
+                  onChange={(v) => updateFromRange(rangeFrom, String(v ?? ''), rangeStep)}
                 />
-                </Box>
+              </Box>
             </Group>
-            )}
-
+          )}
 
           {mode === 'list' && (
             <Textarea
@@ -446,6 +501,18 @@ export default function HyperparameterSelector({
         </Stack>
       )}
 
+      {selectedName && showListOnlyControls && (
+        <Textarea
+          label="Parameter values"
+          description="Whitespace or comma-separated. Examples: sag saga lsqr   or   sqrt log2"
+          minRows={2}
+          autosize
+          value={rawList}
+          onChange={(e) => updateFromList(e.currentTarget.value)}
+          placeholder="e.g. value1 value2 value3"
+        />
+      )}
+
       {helperError && (
         <Text size="xs" c="red">
           {helperError}
@@ -454,8 +521,7 @@ export default function HyperparameterSelector({
 
       {selectedName && effectiveValues.length >= 2 && (
         <Text size="xs" c="dimmed">
-          Effective values:{' '}
-          {displayValues.map((v) => formatValueForDisplay(v)).join(', ')}
+          Effective values: {displayValues.map((v) => formatValueForDisplay(v)).join(', ')}
         </Text>
       )}
     </Stack>

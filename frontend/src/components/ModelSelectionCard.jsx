@@ -10,6 +10,7 @@ import {
   SimpleGrid,
   Box,
   Button,
+  TextInput,
 } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useDataStore } from '../state/useDataStore.js';
@@ -82,6 +83,26 @@ function fromSelectNullable(v) {
   return v === 'none' ? null : v;
 }
 
+function parseCsvFloats(s) {
+  if (s == null) return null;
+  const txt = String(s).trim();
+  if (!txt) return null;
+  const parts = txt
+    .split(',')
+    .map((x) => x.trim())
+    .filter((x) => x.length);
+  if (!parts.length) return null;
+  const vals = parts
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x));
+  return vals.length ? vals : null;
+}
+
+function formatCsvFloats(arr) {
+  if (!Array.isArray(arr) || !arr.length) return '';
+  return arr.map((x) => String(x)).join(', ');
+}
+
 function maxFeatToModeVal(v) {
   if (v == null) return { mode: 'none', value: null };
   if (v === 'sqrt' || v === 'log2') return { mode: v, value: null };
@@ -99,6 +120,27 @@ function modeValToMaxFeat(mode, value) {
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+// User-friendly names for the Algorithm dropdown.
+// Values must remain the internal algo keys used by the backend.
+const ALGO_LABELS = {
+  logreg: 'Logistic Regression',
+  ridge: 'Ridge Classifier',
+  sgd: 'SGD Classifier',
+  svm: 'Support Vector Machine (SVC)',
+  tree: 'Decision Tree',
+  forest: 'Random Forest',
+  extratrees: 'Extra Trees Classifier',
+  hgb: 'Histogram Gradient Boosting',
+  knn: 'k-Nearest Neighbors',
+  gnb: 'Gaussian Naive Bayes',
+  linreg: 'Linear Regression',
+};
+
+function algoKeyToLabel(algo) {
+  if (!algo) return '';
+  return ALGO_LABELS[algo] ?? String(algo);
 }
 
 function algoListFromSchema(schema) {
@@ -133,7 +175,30 @@ export default function ModelSelectionCard({
   showHelp = false,
 }) {
   const m = model || {};
+  // IMPORTANT:
+  // - set(patch) merges into the current model.
+  // - replace(next) fully replaces the model.
+  //   We use replace() when switching algorithms to avoid "parameter leakage"
+  //   across models that share field names (e.g. LogisticRegression.solver -> RidgeClassifier.solver,
+  //   or Forest.max_features -> HistGradientBoosting.max_features).
   const set = (patch) => onChange?.({ ...m, ...patch });
+  const replace = (next) => onChange?.({ ...(next || {}) });
+
+  const cloneDefaults = (obj) => {
+    if (!obj) return obj;
+    // Prefer structuredClone when available (keeps numbers as numbers), else JSON clone.
+    if (typeof structuredClone === 'function') return structuredClone(obj);
+    return JSON.parse(JSON.stringify(obj));
+  };
+
+  const applyAlgo = (algo) => {
+    const def = models?.defaults?.[algo];
+    if (def && typeof def === 'object') {
+      replace(cloneDefaults(def));
+    } else {
+      replace({ algo });
+    }
+  };
 
   const effectiveTask = useDataStore(
     (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
@@ -143,11 +208,37 @@ export default function ModelSelectionCard({
   const schemaAlgos = algoListFromSchema(schema);
   const defaultsAlgos = models?.defaults ? Object.keys(models.defaults) : null;
   const available = new Set(
-    schemaAlgos || defaultsAlgos || ['logreg', 'svm', 'tree', 'forest', 'knn', 'linreg'],
+    schemaAlgos ||
+      defaultsAlgos ||
+      [
+        'logreg',
+        'ridge',
+        'sgd',
+        'svm',
+        'tree',
+        'forest',
+        'extratrees',
+        'hgb',
+        'knn',
+        'gnb',
+        'linreg',
+      ],
   );
 
   // Preferred ordering, append any extras after
-  const preferred = ['logreg', 'svm', 'tree', 'forest', 'knn', 'linreg'];
+  const preferred = [
+    'logreg',
+    'ridge',
+    'sgd',
+    'svm',
+    'tree',
+    'forest',
+    'extratrees',
+    'hgb',
+    'knn',
+    'gnb',
+    'linreg',
+  ];
   const orderedAll = [
     ...preferred.filter((a) => available.has(a)),
     ...Array.from(available).filter((a) => !preferred.includes(a)),
@@ -165,7 +256,10 @@ export default function ModelSelectionCard({
 
   // Final visible algo list for this card
   const visibleAlgos = ordered.length ? ordered : orderedAll;
-  const algoData = toSelectData(visibleAlgos);
+  const algoData = (visibleAlgos ?? []).map((a) => ({
+    value: String(a),
+    label: algoKeyToLabel(a),
+  }));
 
   // Ensure selection is valid when task / availability changes
   useEffect(() => {
@@ -174,7 +268,7 @@ export default function ModelSelectionCard({
     const isValid =
       current && visibleAlgos.includes(current) && matchesTask(current);
     if (!isValid) {
-      set({ algo: visibleAlgos[0] });
+      applyAlgo(visibleAlgos[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTask, JSON.stringify(visibleAlgos), JSON.stringify(meta)]);
@@ -253,12 +347,56 @@ export default function ModelSelectionCard({
     enumFromSubSchema(sub, 'metric', enums?.KNNMetric),
   );
 
+  // GaussianNB (no enums, but keep consistent)
+
+  // RidgeClassifier enums
+  const ridgeSolver = toSelectData(
+    enumFromSubSchema(sub, 'solver', enums?.RidgeSolver),
+  );
+  const ridgeClassWeight = toSelectData(
+    enumFromSubSchema(
+      sub,
+      'class_weight',
+      enums?.ClassWeightBalanced ?? ['balanced', null],
+    ),
+    { includeNoneLabel: true },
+  );
+
+  // SGDClassifier enums
+  const sgdLoss = toSelectData(enumFromSubSchema(sub, 'loss', enums?.SGDLoss));
+  const sgdPenalty = toSelectData(
+    enumFromSubSchema(sub, 'penalty', enums?.SGDPenalty),
+  );
+  const sgdLR = toSelectData(
+    enumFromSubSchema(sub, 'learning_rate', enums?.SGDLearningRate),
+  );
+  const sgdClassWeight = toSelectData(
+    enumFromSubSchema(
+      sub,
+      'class_weight',
+      enums?.ClassWeightBalanced ?? ['balanced', null],
+    ),
+    { includeNoneLabel: true },
+  );
+
+  // HistGradientBoostingClassifier enums
+  const hgbLoss = toSelectData(enumFromSubSchema(sub, 'loss', enums?.HGBLoss));
+
   const gammaMode =
     typeof m.gamma === 'number' ? 'numeric' : (m.gamma ?? 'scale');
   const gammaValue = typeof m.gamma === 'number' ? m.gamma : 0.1;
 
   const tMF = maxFeatToModeVal(m.max_features);
   const fMF = maxFeatToModeVal(m.max_features);
+
+  const sgdAvgMode =
+    typeof m.average === 'number' ? 'int' : m.average ? 'true' : 'false';
+  const sgdAvgValue = typeof m.average === 'number' ? m.average : 10;
+
+  const hgbES =
+    m.early_stopping === 'auto' ? 'auto' : m.early_stopping ? 'true' : 'false';
+  const hgbMaxFeaturesValue =
+    typeof m.max_features === 'number' ? m.max_features : 1.0;
 
   // Toggle for showing/hiding detailed help (block C) when help is enabled
   const [showDetails, setShowDetails] = useState(false);
@@ -271,7 +409,7 @@ export default function ModelSelectionCard({
         data={algoData}
         value={m.algo ?? (algoData[0]?.value ?? 'logreg')}
         onChange={(algo) => {
-          if (algo) set({ algo });
+          if (algo) applyAlgo(algo);
         }}
       />
 
@@ -721,6 +859,422 @@ export default function ModelSelectionCard({
               label="Jobs (n_jobs)"
               value={m.n_jobs ?? null}
               onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Gaussian Naive Bayes */}
+      {m.algo === 'gnb' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Variance smoothing"
+              value={m.var_smoothing ?? 1e-9}
+              onChange={(v) => set({ var_smoothing: v })}
+              step={1e-9}
+              min={0}
+            />
+            <TextInput
+              label="Priors (comma-separated)"
+              placeholder="e.g. 0.2, 0.8"
+              value={formatCsvFloats(m.priors)}
+              onChange={(e) => set({ priors: parseCsvFloats(e.currentTarget.value) })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Ridge Classifier */}
+      {m.algo === 'ridge' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Alpha (regularization)"
+              value={m.alpha ?? 1.0}
+              onChange={(v) => set({ alpha: v })}
+              min={0}
+              step={0.1}
+            />
+            <Select
+              label="Solver"
+              data={ridgeSolver}
+              value={m.solver ?? 'auto'}
+              onChange={(v) => set({ solver: v })}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <Select
+              label="Class weight"
+              data={ridgeClassWeight}
+              value={m.class_weight == null ? 'none' : String(m.class_weight)}
+              onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? null}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* SGD Classifier */}
+      {m.algo === 'sgd' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <Select
+              label="Loss"
+              data={sgdLoss}
+              value={m.loss ?? 'hinge'}
+              onChange={(v) => set({ loss: v })}
+            />
+            <Select
+              label="Penalty"
+              data={sgdPenalty}
+              value={m.penalty ?? 'l2'}
+              onChange={(v) => set({ penalty: v })}
+            />
+            <NumberInput
+              label="Alpha"
+              value={m.alpha ?? 0.0001}
+              onChange={(v) => set({ alpha: v })}
+              min={0}
+              step={0.0001}
+            />
+            <NumberInput
+              label="L1 ratio"
+              value={m.l1_ratio ?? 0.15}
+              onChange={(v) => set({ l1_ratio: v })}
+              min={0}
+              max={1}
+              step={0.01}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 1000}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-3}
+              onChange={(v) => set({ tol: v })}
+              step={0.0001}
+              min={0}
+            />
+            <Checkbox
+              label="Shuffle"
+              checked={m.shuffle ?? true}
+              onChange={(e) => set({ shuffle: e.currentTarget.checked })}
+            />
+            <Select
+              label="Learning rate"
+              data={sgdLR}
+              value={m.learning_rate ?? 'optimal'}
+              onChange={(v) => set({ learning_rate: v })}
+            />
+            <NumberInput
+              label="Eta0"
+              value={m.eta0 ?? 0.0}
+              onChange={(v) => set({ eta0: v })}
+              min={0}
+              step={0.01}
+            />
+            <NumberInput
+              label="Power t"
+              value={m.power_t ?? 0.5}
+              onChange={(v) => set({ power_t: v })}
+              step={0.01}
+            />
+            <Checkbox
+              label="Early stopping"
+              checked={!!m.early_stopping}
+              onChange={(e) => set({ early_stopping: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Validation fraction"
+              value={m.validation_fraction ?? 0.1}
+              onChange={(v) => set({ validation_fraction: v })}
+              min={0}
+              max={1}
+              step={0.01}
+            />
+            <NumberInput
+              label="No-change rounds"
+              value={m.n_iter_no_change ?? 5}
+              onChange={(v) => set({ n_iter_no_change: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Class weight"
+              data={sgdClassWeight}
+              value={m.class_weight == null ? 'none' : String(m.class_weight)}
+              onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+            />
+            <Select
+              label="Average"
+              data={[
+                { value: 'false', label: 'false' },
+                { value: 'true', label: 'true' },
+                { value: 'int', label: 'int' },
+              ]}
+              value={sgdAvgMode}
+              onChange={(mode) => {
+                if (mode === 'int') set({ average: sgdAvgValue });
+                else if (mode === 'true') set({ average: true });
+                else set({ average: false });
+              }}
+            />
+            {sgdAvgMode === 'int' && (
+              <NumberInput
+                label="Average window"
+                value={sgdAvgValue}
+                onChange={(v) => set({ average: v })}
+                allowDecimal={false}
+                min={1}
+              />
+            )}
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Extra Trees */}
+      {m.algo === 'extratrees' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Trees (n_estimators)"
+              value={m.n_estimators ?? 100}
+              onChange={(v) => set({ n_estimators: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Criterion"
+              data={forestCriterion}
+              value={m.criterion ?? 'gini'}
+              onChange={(v) => set({ criterion: v })}
+            />
+            <NumberInput
+              label="Max depth"
+              value={m.max_depth ?? null}
+              onChange={(v) => set({ max_depth: v })}
+            />
+            <NumberInput
+              label="Min samples split"
+              value={m.min_samples_split ?? 2}
+              onChange={(v) => set({ min_samples_split: v })}
+            />
+            <NumberInput
+              label="Min samples leaf"
+              value={m.min_samples_leaf ?? 1}
+              onChange={(v) => set({ min_samples_leaf: v })}
+            />
+            <Select
+              label="Max features mode"
+              data={[
+                { value: 'sqrt', label: 'sqrt' },
+                { value: 'log2', label: 'log2' },
+                { value: 'int', label: 'int' },
+                { value: 'float', label: 'float' },
+                { value: 'none', label: 'none' },
+              ]}
+              value={fMF.mode}
+              onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, fMF.value) })}
+            />
+            {(fMF.mode === 'int' || fMF.mode === 'float') && (
+              <NumberInput
+                label="Max features value"
+                value={fMF.value ?? null}
+                onChange={(v) => set({ max_features: modeValToMaxFeat(fMF.mode, v) })}
+                step={fMF.mode === 'int' ? 1 : 0.01}
+                allowDecimal={fMF.mode === 'float'}
+              />
+            )}
+            <NumberInput
+              label="Max leaf nodes"
+              value={m.max_leaf_nodes ?? null}
+              onChange={(v) => set({ max_leaf_nodes: v })}
+              allowDecimal={false}
+            />
+            <Select
+              label="Class weight"
+              data={forestClassWeight}
+              value={m.class_weight == null ? 'none' : String(m.class_weight)}
+              onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+            />
+            <Checkbox
+              label="Use bootstrap"
+              checked={!!m.bootstrap}
+              onChange={(e) => set({ bootstrap: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="OOB score"
+              checked={!!m.oob_score}
+              onChange={(e) => set({ oob_score: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* HistGradientBoosting */}
+      {m.algo === 'hgb' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <Select
+              label="Loss"
+              data={hgbLoss}
+              value={m.loss ?? 'log_loss'}
+              onChange={(v) => set({ loss: v })}
+            />
+            <NumberInput
+              label="Learning rate"
+              value={m.learning_rate ?? 0.1}
+              onChange={(v) => set({ learning_rate: v })}
+              min={0}
+              step={0.01}
+            />
+            <NumberInput
+              label="Iterations (max_iter)"
+              value={m.max_iter ?? 100}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Max leaf nodes"
+              value={m.max_leaf_nodes ?? 31}
+              onChange={(v) => set({ max_leaf_nodes: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <NumberInput
+              label="Max depth"
+              value={m.max_depth ?? null}
+              onChange={(v) => set({ max_depth: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Min samples leaf"
+              value={m.min_samples_leaf ?? 20}
+              onChange={(v) => set({ min_samples_leaf: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="L2 regularization"
+              value={m.l2_regularization ?? 0.0}
+              onChange={(v) => set({ l2_regularization: v })}
+              min={0}
+              step={0.01}
+            />
+            <NumberInput
+              label="Max features (fraction)"
+              value={hgbMaxFeaturesValue}
+              onChange={(v) => {
+                // Mantine NumberInput may provide a string; backend expects a number.
+                if (v == null || v === '') set({ max_features: null });
+                else set({ max_features: typeof v === 'number' ? v : Number(v) });
+              }}
+              min={0}
+              max={1}
+              step={0.01}
+            />
+            <NumberInput
+              label="Max bins"
+              value={m.max_bins ?? 255}
+              onChange={(v) => set({ max_bins: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <Select
+              label="Early stopping"
+              data={[
+                { value: 'auto', label: 'auto' },
+                { value: 'true', label: 'true' },
+                { value: 'false', label: 'false' },
+              ]}
+              value={hgbES}
+              onChange={(v) => {
+                if (v === 'auto') set({ early_stopping: 'auto' });
+                else if (v === 'true') set({ early_stopping: true });
+                else set({ early_stopping: false });
+              }}
+            />
+            <TextInput
+              label="Scoring"
+              placeholder="loss"
+              value={m.scoring ?? 'loss'}
+              onChange={(e) => {
+                const t = e.currentTarget.value;
+                set({ scoring: t === '' ? null : t });
+              }}
+            />
+            <NumberInput
+              label="Validation fraction"
+              value={m.validation_fraction ?? 0.1}
+              onChange={(v) => set({ validation_fraction: v })}
+              min={0}
+              max={1}
+              step={0.01}
+            />
+            <NumberInput
+              label="No-change rounds"
+              value={m.n_iter_no_change ?? 10}
+              onChange={(v) => set({ n_iter_no_change: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-7}
+              onChange={(v) => set({ tol: v })}
+              step={1e-7}
+              min={0}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
               allowDecimal={false}
             />
           </SimpleGrid>

@@ -69,6 +69,26 @@ export function ModelDetailsText({
           </List.Item>
         )}
 
+        {isVisible('ridge') && (
+          <List.Item>
+            <Text span {...labelStyle('ridge')}>
+              Ridge classifier
+            </Text>{' '}
+            – linear classifier with L2 regularisation. Often a strong, stable baseline
+            when you want something fast and robust.
+          </List.Item>
+        )}
+
+        {isVisible('sgd') && (
+          <List.Item>
+            <Text span {...labelStyle('sgd')}>
+              SGD classifier
+            </Text>{' '}
+            – fast linear model trained with stochastic gradient descent. Useful for
+            larger datasets and hyperparameter sweeps.
+          </List.Item>
+        )}
+
         {isVisible('svm') && (
           <List.Item>
             <Text span {...labelStyle('svm')}>
@@ -99,6 +119,26 @@ export function ModelDetailsText({
           </List.Item>
         )}
 
+        {isVisible('extratrees') && (
+          <List.Item>
+            <Text span {...labelStyle('extratrees')}>
+              Extra Trees
+            </Text>{' '}
+            – like random forest, but with extra randomness in splits. Often very strong
+            on tabular numeric data.
+          </List.Item>
+        )}
+
+        {isVisible('hgb') && (
+          <List.Item>
+            <Text span {...labelStyle('hgb')}>
+              HistGradientBoosting
+            </Text>{' '}
+            – modern boosting model for tabular data. Captures non-linear patterns and
+            interactions with strong default performance.
+          </List.Item>
+        )}
+
         {isVisible('knn') && (
           <List.Item>
             <Text span {...labelStyle('knn')}>
@@ -106,6 +146,17 @@ export function ModelDetailsText({
             </Text>{' '}
             – predicts based on similarity to nearby samples. Simple but
             sensitive to feature scaling and dataset size.
+          </List.Item>
+        )}
+
+        {isVisible('gnb') && (
+          <List.Item>
+            <Text span {...labelStyle('gnb')}>
+              Gaussian Naive Bayes
+            </Text>{' '}
+            – simple probabilistic classifier that assumes features are (approximately)
+            normally distributed within each class. Very fast and can work surprisingly well
+            on some lab-style numeric data.
           </List.Item>
         )}
 
@@ -169,7 +220,141 @@ export function ModelParamsText({ selectedAlgo }) {
             <List.Item>
               <Text span fw={600}>L1 ratio</Text>{' '}
               – controls the mix between L1 and L2 regularisation when using
-              elastic net.
+              elastic net (0 = pure L2, 1 = pure L1). Ignored for other penalties.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'ridge':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            Ridge classifier parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>Alpha</Text>{' '}
+              – regularisation strength. Larger values shrink coefficients more and
+              can improve generalisation, but may underfit.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Fit intercept</Text>{' '}
+              – include a bias/intercept term. Disable only if data is already centred.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Class weight</Text>{' '}
+              – balances class importance for imbalanced datasets.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Solver</Text>{' '}
+              – method used to fit the model. "auto" chooses a reasonable default.
+              Iterative solvers can be faster on large datasets; direct solvers are often
+              more accurate for smaller problems.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max iterations</Text>{' '}
+              – only used by iterative solvers. Increase if you see convergence warnings.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Tolerance</Text>{' '}
+              – stopping threshold for iterative solvers. Smaller values can yield a more
+              accurate solution but may take longer.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'sgd':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            SGD classifier parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>Loss</Text>{' '}
+              – the objective (e.g. hinge for linear SVM, log_loss for logistic-style probabilities).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Penalty</Text>{' '}
+              – regularisation type (L2/L1/elasticnet). Helps prevent overfitting.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Alpha</Text>{' '}
+              – regularisation strength. Larger values make the model more conservative.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>L1 ratio</Text>{' '}
+              – only used for elasticnet penalty. Higher values favour L1 (sparser coefficients);
+              lower values favour L2 (more stable coefficients).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Fit intercept</Text>{' '}
+              – include a bias term. Disable only if your features are already centred.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Learning rate / eta0</Text>{' '}
+              – controls the step size schedule.
+              <Text span fw={600}> Learning rate</Text> chooses how the step size changes over time;
+              <Text span fw={600}> eta0</Text> is the initial step size for some schedules.
+              Too high can diverge; too low can train slowly.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Power t</Text>{' '}
+              – used for the "invscaling" learning-rate schedule. Larger values decrease the
+              step size faster.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max iterations / tolerance</Text>{' '}
+              – training stops when improvement stalls.
+              <Text span fw={600}> Max iterations</Text> is the maximum number of passes;
+              <Text span fw={600}> tolerance</Text> sets how small the improvement must be before stopping.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Shuffle</Text>{' '}
+              – shuffles training data each epoch. Usually improves convergence; disable for reproducibility
+              experiments.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Verbose</Text>{' '}
+              – prints training progress. Useful for debugging but can be noisy.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Epsilon</Text>{' '}
+              – only relevant for some loss functions (e.g. Huber / epsilon-insensitive). Controls the width
+              of the “no-penalty” region around the margin.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
+              – number of CPU cores used where supported.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Early stopping</Text>{' '}
+              – uses a validation split to stop automatically if performance stops improving.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Validation fraction</Text>{' '}
+              – fraction of training data held out for early stopping.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>n_iter_no_change</Text>{' '}
+              – how many epochs with no improvement are allowed before stopping (when early stopping is on).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Class weight</Text>{' '}
+              – balances class importance for imbalanced datasets.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Warm start</Text>{' '}
+              – continues training from the previous solution when refitting. Useful for iterative workflows,
+              but can be confusing if you expect a fresh fit.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Average</Text>{' '}
+              – averaged SGD weights can reduce variance and improve stability.
+              Can be <Text span fw={600}>true</Text> (start averaging immediately) or an integer (start averaging
+              after that many updates).
             </List.Item>
           </List>
         </Stack>
@@ -282,6 +467,11 @@ export function ModelParamsText({ selectedAlgo }) {
               reduce overfitting.
             </List.Item>
             <List.Item>
+              <Text span fw={600}>Min weight fraction leaf</Text>{' '}
+              – minimum weighted fraction of the total sample weight required at a leaf.
+              Mostly relevant when using sample weights; larger values make the tree more conservative.
+            </List.Item>
+            <List.Item>
               <Text span fw={600}>Max features</Text>{' '}
               – number of features considered at each split. Smaller values
               increase randomness and reduce correlation between splits.
@@ -322,6 +512,10 @@ export function ModelParamsText({ selectedAlgo }) {
               increase training time.
             </List.Item>
             <List.Item>
+              <Text span fw={600}>Criterion</Text>{' '}
+              – measure used to evaluate split quality (e.g. gini/entropy/log_loss).
+            </List.Item>
+            <List.Item>
               <Text span fw={600}>Max depth</Text>{' '}
               – limits depth of each tree. Smaller values reduce overfitting but
               may underfit.
@@ -336,6 +530,10 @@ export function ModelParamsText({ selectedAlgo }) {
               – minimum samples per leaf. Helps smooth predictions.
             </List.Item>
             <List.Item>
+              <Text span fw={600}>Min weight fraction leaf</Text>{' '}
+              – minimum weighted fraction of total sample weight at a leaf (mostly relevant with sample weights).
+            </List.Item>
+            <List.Item>
               <Text span fw={600}>Max features</Text>{' '}
               – number of features tried at each split. Smaller values increase
               tree diversity.
@@ -346,6 +544,10 @@ export function ModelParamsText({ selectedAlgo }) {
               but increase variance.
             </List.Item>
             <List.Item>
+              <Text span fw={600}>Min impurity decrease</Text>{' '}
+              – minimum impurity improvement required to split. Larger values prevent weak/noisy splits.
+            </List.Item>
+            <List.Item>
               <Text span fw={600}>Bootstrap</Text>{' '}
               – whether each tree is trained on a random sample with
               replacement. Improves robustness.
@@ -353,7 +555,19 @@ export function ModelParamsText({ selectedAlgo }) {
             <List.Item>
               <Text span fw={600}>OOB score</Text>{' '}
               – estimates generalisation error using unused samples during
-              training.
+              training (requires bootstrap=true).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
+              – number of CPU cores used for training/prediction.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Random state</Text>{' '}
+              – seed for reproducibility.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Warm start</Text>{' '}
+              – reuses the existing fitted forest and adds more trees when refitting.
             </List.Item>
             <List.Item>
               <Text span fw={600}>Class weight</Text>{' '}
@@ -366,7 +580,158 @@ export function ModelParamsText({ selectedAlgo }) {
             <List.Item>
               <Text span fw={600}>Max samples</Text>{' '}
               – number or fraction of samples used per tree. Smaller values
-              increase randomness.
+              increase randomness (only used when bootstrap=true).
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'extratrees':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            Extra Trees parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>Trees (n_estimators)</Text>{' '}
+              – number of trees. More trees improve stability but increase training time.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Criterion</Text>{' '}
+              – measure used to evaluate split quality (e.g. gini/entropy/log_loss).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max depth</Text>{' '}
+              – limits depth of each tree. Smaller values reduce overfitting but may underfit.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Min samples split / min samples leaf</Text>{' '}
+              – minimum samples required to split a node / to form a leaf. Larger values make trees more conservative.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Min weight fraction leaf</Text>{' '}
+              – minimum weighted fraction of total sample weight at a leaf (mostly relevant with sample weights).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max features</Text>{' '}
+              – number of features tried at each split. Smaller values increase randomness/diversity.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max leaf nodes</Text>{' '}
+              – caps tree complexity. Larger values allow finer partitions but increase variance.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Min impurity decrease</Text>{' '}
+              – minimum impurity improvement required to split. Larger values prevent weak/noisy splits.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Bootstrap</Text>{' '}
+              – optional sampling with replacement (default is usually off for Extra Trees).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>OOB score</Text>{' '}
+              – out-of-bag score estimate using unused samples (requires bootstrap=true).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
+              – number of CPU cores used for training/prediction.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Random state</Text>{' '}
+              – seed for reproducibility.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Warm start</Text>{' '}
+              – reuses the existing fitted ensemble and adds more trees when refitting.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Class weight</Text>{' '}
+              – balances class importance for imbalanced datasets.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>CCP alpha</Text>{' '}
+              – pruning strength applied to each tree.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max samples</Text>{' '}
+              – number or fraction of samples used per tree (only used when bootstrap=true).
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'hgb':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            HistGradientBoosting parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>Loss</Text>{' '}
+              – objective function. For classification this is typically log_loss (cross-entropy).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Learning rate</Text>{' '}
+              – step size of boosting. Smaller values often generalise better but need more iterations.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Iterations (max_iter)</Text>{' '}
+              – number of boosting stages. More stages can improve fit but may overfit.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max leaf nodes / max depth</Text>{' '}
+              – controls complexity of each tree. Larger values capture interactions but increase overfitting risk.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Min samples leaf</Text>{' '}
+              – minimum samples per leaf. Larger values smooth the model and reduce overfitting.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max features (fraction)</Text>{' '}
+              – fraction of features used per split (0–1]. Smaller values add randomness.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Max bins</Text>{' '}
+              – number of discrete bins used when histogram-binning continuous features.
+              More bins can capture finer detail but increase memory/time.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Early stopping</Text>{' '}
+              – stops training when the validation score stops improving.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Scoring</Text>{' '}
+              – metric used for early stopping / validation monitoring. "loss" means stop when validation loss stops improving.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Validation fraction</Text>{' '}
+              – fraction of training data held out for early stopping.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>No-change rounds</Text>{' '}
+              – how many iterations without improvement are allowed before stopping.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Tolerance</Text>{' '}
+              – minimum improvement considered “progress” for early stopping. Smaller values make stopping less sensitive.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>L2 regularisation</Text>{' '}
+              – shrinks leaf values to reduce overfitting.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Verbose</Text>{' '}
+              – prints training progress.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Random state</Text>{' '}
+              – seed for reproducibility.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Class weight</Text>{' '}
+              – balances class importance for imbalanced datasets.
             </List.Item>
           </List>
         </Stack>
@@ -408,6 +773,25 @@ export function ModelParamsText({ selectedAlgo }) {
             <List.Item>
               <Text span fw={600}>Jobs (n_jobs)</Text>{' '}
               – number of CPU cores used for neighbour searches.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'gnb':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            Gaussian Naive Bayes parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>Variance smoothing</Text>{' '}
+              – adds a small value to variances for numerical stability. Increase if you see numerical issues.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>Priors</Text>{' '}
+              – optional class prior probabilities. Leave empty to estimate from the training data.
             </List.Item>
           </List>
         </Stack>

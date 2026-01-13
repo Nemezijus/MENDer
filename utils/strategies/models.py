@@ -5,13 +5,25 @@ from typing import Any, Dict, Optional
 import inspect
 
 from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.linear_model import RidgeClassifier, SGDClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
 
 from shared_schemas.model_configs import (
-    LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig, LinearRegConfig
+    LogRegConfig,
+    SVMConfig,
+    TreeConfig,
+    ForestConfig,
+    KNNConfig,
+    GaussianNBConfig,
+    RidgeClassifierConfig,
+    SGDClassifierConfig,
+    ExtraTreesConfig,
+    HistGradientBoostingConfig,
+    LinearRegConfig,
 )
 from utils.strategies.interfaces import ModelBuilder
 
@@ -22,6 +34,7 @@ def _filtered_kwargs(estimator_cls: type, cfg_obj: Any, *, exclude: set[str] = {
     sig = inspect.signature(estimator_cls)
     allowed = set(sig.parameters.keys())
     return {k: v for k, v in raw.items() if k in allowed}
+
 
 def _maybe_set_random_state(estimator_cls: type, kw: Dict[str, Any], seed: Optional[int]) -> None:
     if seed is None:
@@ -81,6 +94,7 @@ class LogRegBuilder(ModelBuilder):
 class SVMBuilder(ModelBuilder):
     cfg: SVMConfig
     seed: Optional[int] = None
+
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(SVC, self.cfg)
         _maybe_set_random_state(SVC, kw, self.seed)
@@ -108,6 +122,7 @@ class DecisionTreeBuilder(ModelBuilder):
 class RandomForestBuilder(ModelBuilder):
     cfg: ForestConfig
     seed: Optional[int] = None
+
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(RandomForestClassifier, self.cfg)
         _maybe_set_random_state(RandomForestClassifier, kw, self.seed)
@@ -124,6 +139,74 @@ class KNNBuilder(ModelBuilder):
     def make_estimator(self) -> Any:
         kw = _filtered_kwargs(KNeighborsClassifier, self.cfg)
         return KNeighborsClassifier(**kw)
+
+    def build(self) -> Any:
+        return self.make_estimator()
+
+
+@dataclass
+class GaussianNBBuilder(ModelBuilder):
+    cfg: GaussianNBConfig
+
+    def make_estimator(self) -> Any:
+        kw = _filtered_kwargs(GaussianNB, self.cfg)
+        return GaussianNB(**kw)
+
+    def build(self) -> Any:
+        return self.make_estimator()
+
+
+@dataclass
+class RidgeClassifierBuilder(ModelBuilder):
+    cfg: RidgeClassifierConfig
+    seed: Optional[int] = None
+
+    def make_estimator(self) -> Any:
+        kw = _filtered_kwargs(RidgeClassifier, self.cfg)
+        _maybe_set_random_state(RidgeClassifier, kw, self.seed)
+        return RidgeClassifier(**kw)
+
+    def build(self) -> Any:
+        return self.make_estimator()
+
+
+@dataclass
+class SGDClassifierBuilder(ModelBuilder):
+    cfg: SGDClassifierConfig
+    seed: Optional[int] = None
+
+    def make_estimator(self) -> Any:
+        kw = _filtered_kwargs(SGDClassifier, self.cfg)
+        _maybe_set_random_state(SGDClassifier, kw, self.seed)
+        return SGDClassifier(**kw)
+
+    def build(self) -> Any:
+        return self.make_estimator()
+
+
+@dataclass
+class ExtraTreesBuilder(ModelBuilder):
+    cfg: ExtraTreesConfig
+    seed: Optional[int] = None
+
+    def make_estimator(self) -> Any:
+        kw = _filtered_kwargs(ExtraTreesClassifier, self.cfg)
+        _maybe_set_random_state(ExtraTreesClassifier, kw, self.seed)
+        return ExtraTreesClassifier(**kw)
+
+    def build(self) -> Any:
+        return self.make_estimator()
+
+
+@dataclass
+class HistGradientBoostingBuilder(ModelBuilder):
+    cfg: HistGradientBoostingConfig
+    seed: Optional[int] = None
+
+    def make_estimator(self) -> Any:
+        kw = _filtered_kwargs(HistGradientBoostingClassifier, self.cfg)
+        _maybe_set_random_state(HistGradientBoostingClassifier, kw, self.seed)
+        return HistGradientBoostingClassifier(**kw)
 
     def build(self) -> Any:
         return self.make_estimator()
