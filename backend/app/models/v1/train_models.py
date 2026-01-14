@@ -10,6 +10,7 @@ from shared_schemas.eval_configs import EvalModel
 
 from .model_artifact import ModelArtifactMeta
 from .metrics_models import ConfusionMatrix, RocMetrics
+from .decoder_models import DecoderOutputs
 
 
 class TrainRequest(BaseModel):
@@ -46,3 +47,6 @@ class TrainResponse(BaseModel):
 
     # Model description
     artifact: Optional[ModelArtifactMeta] = None
+
+    # Optional: per-sample decoder outputs (classification only)
+    decoder_outputs: Optional[DecoderOutputs] = None

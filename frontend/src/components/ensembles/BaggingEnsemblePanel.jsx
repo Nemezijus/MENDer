@@ -223,6 +223,17 @@ export default function BaggingEnsemblePanel() {
       seed: bagging.seed === '' || bagging.seed == null ? null : Number(bagging.seed),
       n_shuffles: 0,
       progress_id: null,
+      decoder: {
+        enabled: true,
+        include_decision_scores: true,
+        include_probabilities: true,
+        include_margin: true,
+        positive_class_label: null,
+        calibrate_probabilities: false,
+        calibration_method: 'sigmoid',
+        calibration_cv: 5,
+        enable_export: true,
+  },
     };
 
     const useBalanced = !!bagging.balanced;

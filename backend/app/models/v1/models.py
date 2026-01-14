@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from .model_artifact import ModelArtifactMeta
 from .data_models import DataInspectRequest, Label
+from .decoder_models import DecoderOutputs
 
 
 class SaveModelRequest(BaseModel):
@@ -73,6 +74,9 @@ class ApplyModelResponse(BaseModel):
     metric_value: Optional[float] = None
     preview: List[PredictionRow]
     notes: List[str] = []
+
+    # Optional: per-sample decoder outputs preview (classification only)
+    decoder_outputs: Optional[DecoderOutputs] = None
 
 class ApplyModelExportRequest(ApplyModelRequest):
     """

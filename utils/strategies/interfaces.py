@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Protocol, Tuple, Any, Optional, Literal, Sequence, Iterator, Union
+from typing import Protocol, Tuple, Any, Optional, Literal, Sequence, Iterator, Union, Dict
 
 import numpy as np
 
@@ -82,6 +82,30 @@ class Predictor(Protocol):
         kind: Literal["auto", "proba", "decision"] = "auto",
     ) -> Tuple[np.ndarray, str]:
         """Return per-sample scores and which method was used ('proba'/'decision'/'predict')."""
+        ...
+
+    def predict_decoder_outputs(
+        self,
+        model: Any,
+        X_test: np.ndarray,
+        *,
+        positive_class_label: Optional[Any] = None,
+        want_decision_scores: bool = True,
+        want_proba: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Return decoder-style per-sample outputs for classification:
+
+        - y_pred: hard predictions
+        - classes: class ordering (if available)
+        - decision_scores: decision_function(X) (if available and want_decision_scores)
+        - proba: predict_proba(X) (if available and want_proba)
+        - positive_class_index / positive_score / positive_proba when positive_class_label is provided
+        - margin: simple confidence proxy
+
+        Implementations must be robust to Pipelines and gracefully return None fields
+        if a capability is not available.
+        """
         ...
 
 class Evaluator(Protocol):

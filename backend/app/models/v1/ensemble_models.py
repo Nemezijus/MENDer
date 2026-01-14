@@ -12,6 +12,7 @@ from shared_schemas.eval_configs import EvalModel
 
 from .model_artifact import ModelArtifactMeta
 from .metrics_models import ConfusionMatrix, RocMetrics
+from .decoder_models import DecoderOutputs
 
 
 class EnsembleTrainRequest(BaseModel):
@@ -49,3 +50,6 @@ class EnsembleTrainResponse(BaseModel):
 
     # Ensemble-specific insights (present for some ensemble kinds, e.g. voting)
     ensemble_report: Optional[Dict[str, Any]] = None
+
+    # Optional: per-sample decoder outputs (classification only)
+    decoder_outputs: Optional[DecoderOutputs] = None

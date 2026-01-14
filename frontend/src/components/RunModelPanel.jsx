@@ -272,6 +272,7 @@ export default function RunModelPanel() {
     }
 
     try {
+      const evalDefaults = models?.eval?.defaults || {};
       const payload = {
         data: {
           x_path: npzPath ? null : xPath,
@@ -315,10 +316,19 @@ export default function RunModelPanel() {
         })(),
         model: trainModel, // ← union payload as-is
         eval: {
+          ...evalDefaults,
           metric,
           seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
           n_shuffles: wantProgress ? Number(nShuffles) : 0,
           ...(wantProgress ? { progress_id: progressId } : {}),
+
+          // Ensure decoder config is present even if older defaults are missing it.
+          decoder: {
+            ...(evalDefaults.decoder || {}),
+            // For now, enable by default so the new Results panel renders.
+            // Later we can wire this to a SettingsPanel toggle.
+            enabled: true,
+          },
         },
         split:
           splitMode === 'holdout'
@@ -327,6 +337,7 @@ export default function RunModelPanel() {
       };
 
       const data = await runTrainRequest(payload);
+      
       setTrainResult(data);
       setActiveResultKind('train');
       if (data?.artifact) setArtifact(data.artifact);

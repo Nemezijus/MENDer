@@ -94,3 +94,6 @@ HGBLoss: TypeAlias = Literal["log_loss"]
 
 # Ensembles
 EnsembleKind: TypeAlias = Literal["voting", "bagging", "adaboost", "xgboost"]
+
+# Decoder / probability calibration
+CalibrationMethod: TypeAlias = Literal["sigmoid", "isotonic"]

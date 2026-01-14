@@ -346,6 +346,17 @@ export default function VotingEnsemblePanel() {
       seed: voting.seed === '' || voting.seed == null ? null : Number(voting.seed),
       n_shuffles: 0,
       progress_id: null,
+      decoder: {
+        enabled: true,
+        include_decision_scores: true,
+        include_probabilities: true,
+        include_margin: true,
+        positive_class_label: null,
+        calibrate_probabilities: false,
+        calibration_method: 'sigmoid',
+        calibration_cv: 5,
+        enable_export: true,
+      },      
     };
 
     const estimators = (voting.estimators || []).map((s) => ({

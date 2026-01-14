@@ -4,6 +4,7 @@ import GeneralSummary from './visualizations/GeneralSummary.jsx';
 import KFoldResults from './visualizations/KFoldResults.jsx';
 import BaselineShufflingResults from './visualizations/BaselineShufflingResults.jsx';
 import ClassificationResultsPanel from './ClassificationResultsPanel.jsx';
+import DecoderOutputsResults from './visualizations/DecoderOutputsResults.jsx';
 
 export default function ModelTrainingResultsPanel() {
   const trainResult = useResultsStore((s) => s.trainResult);
@@ -56,7 +57,10 @@ export default function ModelTrainingResultsPanel() {
         )}
 
         {isClassification && (
-          <ClassificationResultsPanel trainResult={trainResult} />
+          <>
+            <ClassificationResultsPanel trainResult={trainResult} />
+            <DecoderOutputsResults trainResult={trainResult} />
+          </>
         )}
 
         {Array.isArray(trainResult.shuffled_scores) &&

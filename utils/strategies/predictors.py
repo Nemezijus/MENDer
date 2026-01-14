@@ -1,10 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Tuple, Literal
+from typing import Any, Tuple, Literal, Optional, Dict
 import numpy as np
 
 from utils.strategies.interfaces import Predictor
 from utils.postprocessing.predicting import predict_labels, predict_scores
+from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 
 @dataclass
 class SklearnPredictor(Predictor):
@@ -24,3 +25,20 @@ class SklearnPredictor(Predictor):
         kind: Literal["auto", "proba", "decision"] = "auto",
     ) -> Tuple[np.ndarray, str]:
         return predict_scores(model, X_test, kind=kind)
+
+    def predict_decoder_outputs(
+        self,
+        model: Any,
+        X_test: np.ndarray,
+        *,
+        positive_class_label: Optional[Any] = None,
+        want_decision_scores: bool = True,
+        want_proba: bool = True,
+    ) -> Dict[str, Any]:
+        return compute_decoder_outputs(
+            model,
+            X_test,
+            positive_class_label=positive_class_label,
+            want_decision_scores=want_decision_scores,
+            want_proba=want_proba,
+        )

@@ -29,6 +29,10 @@ from utils.postprocessing.ensembles.bagging_ensemble_reporting import BaggingEns
 from utils.postprocessing.ensembles.adaboost_ensemble_reporting import AdaBoostEnsembleReportAccumulator
 from utils.postprocessing.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
 
+from utils.postprocessing.decoder_outputs import compute_decoder_outputs
+from utils.predicting.prediction_results import build_decoder_output_table
+
+
 
 def _safe_float_list(arr) -> list[float]:
     """Convert array-like to a JSON-safe list of finite floats."""
@@ -237,6 +241,28 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     # --- RNG -----------------------------------------------------------------
     rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
 
+    # --- Decoder outputs (per-sample decision scores / probabilities) -------
+    decoder_cfg = getattr(cfg.eval, "decoder", None)
+    decoder_enabled = bool(getattr(decoder_cfg, "enabled", False)) if decoder_cfg is not None else False
+    decoder_positive_label = getattr(decoder_cfg, "positive_class_label", None) if decoder_cfg is not None else None
+
+    # Optional toggles (default True if missing)
+    decoder_include_scores = bool(getattr(decoder_cfg, "include_decision_scores", True)) if decoder_cfg is not None else True
+    decoder_include_probabilities = bool(getattr(decoder_cfg, "include_probabilities", True)) if decoder_cfg is not None else True
+    decoder_include_margin = bool(getattr(decoder_cfg, "include_margin", True)) if decoder_cfg is not None else True
+    decoder_calibrate_probabilities = bool(getattr(decoder_cfg, "calibrate_probabilities", False)) if decoder_cfg is not None else False
+
+    # Preview row cap for UI payload (full export is handled separately)
+    decoder_max_preview_rows = int(getattr(decoder_cfg, "max_preview_rows", 200) or 200) if decoder_cfg is not None else 0
+
+    # Accumulators
+    decoder_scores_all: list[np.ndarray] = []
+    decoder_proba_all: list[np.ndarray] = []
+    decoder_margin_all: list[np.ndarray] = []
+    decoder_notes: list[str] = []
+    decoder_classes: Optional[np.ndarray] = None
+    decoder_positive_index: Optional[int] = None
+
     # --- Split (hold-out or k-fold) -----------------------------------------
     split_seed = rngm.child_seed("ensemble/train/split")
 
@@ -294,6 +320,34 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             last_model = model
 
             y_pred = model.predict(Xte)
+
+            # --- Optional decoder outputs (classification only) ----------------
+            if decoder_enabled and eval_kind == "classification":
+                try:
+                    dec = compute_decoder_outputs(
+                        model,
+                        Xte,
+                        positive_class_label=decoder_positive_label,
+                        include_decision_scores=decoder_include_scores,
+                        include_probabilities=decoder_include_probabilities,
+                        calibrate_probabilities=decoder_calibrate_probabilities,
+                    )
+                    if decoder_classes is None and dec.classes is not None:
+                        decoder_classes = np.asarray(dec.classes)
+                    # Store positive index if available
+                    if decoder_positive_index is None and dec.positive_class_index is not None:
+                        decoder_positive_index = int(dec.positive_class_index)
+
+                    if dec.decision_scores is not None:
+                        decoder_scores_all.append(np.asarray(dec.decision_scores))
+                    if dec.proba is not None:
+                        decoder_proba_all.append(np.asarray(dec.proba))
+                    if decoder_include_margin and dec.margin is not None:
+                        decoder_margin_all.append(np.asarray(dec.margin))
+                    if dec.notes:
+                        decoder_notes.extend([str(x) for x in dec.notes])
+                except Exception as e:
+                    decoder_notes.append(f"decoder outputs failed on fold {fold_id}: {type(e).__name__}: {e}")
         except Exception as e:
             raise _friendly_ensemble_training_error(e, cfg, fold_id=fold_id) from e
 
@@ -779,6 +833,49 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     y_proba_all_arr = np.concatenate(y_proba_all, axis=0) if y_proba_all else None
     y_score_all_arr = np.concatenate(y_score_all, axis=0) if y_score_all else None
 
+    # --- Aggregate decoder outputs across folds (out-of-sample) -------------
+    decoder_payload = None
+    if decoder_enabled and eval_kind == "classification":
+        try:
+            ds_arr = np.concatenate(decoder_scores_all, axis=0) if decoder_scores_all else None
+            pr_arr = np.concatenate(decoder_proba_all, axis=0) if decoder_proba_all else None
+            mg_arr = np.concatenate(decoder_margin_all, axis=0) if decoder_margin_all else None
+
+            preview_rows = build_decoder_output_table(
+                indices=list(range(len(y_pred_all_arr))),
+                y_pred=y_pred_all_arr,
+                classes=decoder_classes,
+                decision_scores=ds_arr,
+                proba=pr_arr,
+                margin=mg_arr,
+                positive_class_label=decoder_positive_label,
+                positive_class_index=decoder_positive_index,
+                y_true=y_true_all_arr,
+                max_rows=decoder_max_preview_rows if decoder_max_preview_rows > 0 else None,
+            )
+
+            decoder_payload = {
+                "classes": decoder_classes.tolist() if decoder_classes is not None else None,
+                "positive_class_label": decoder_positive_label,
+                "positive_class_index": decoder_positive_index,
+                "has_decision_scores": ds_arr is not None,
+                "has_proba": pr_arr is not None,
+                "notes": decoder_notes,
+                "n_rows_total": int(len(y_pred_all_arr)),
+                "preview_rows": preview_rows,
+            }
+        except Exception as e:
+            decoder_payload = {
+                "classes": decoder_classes.tolist() if decoder_classes is not None else None,
+                "positive_class_label": decoder_positive_label,
+                "positive_class_index": decoder_positive_index,
+                "has_decision_scores": False,
+                "has_proba": False,
+                "notes": decoder_notes + [f"decoder aggregation failed: {type(e).__name__}: {e}"],
+                "n_rows_total": int(len(y_pred_all_arr)) if y_pred_all_arr is not None else None,
+                "preview_rows": [],
+            }
+
     if eval_kind == "classification" and y_true_all_arr.size and y_pred_all_arr.size:
         metrics_result = metrics_computer.compute(
             y_true_all_arr,
@@ -930,6 +1027,9 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         "n_test": n_test_out,
         "notes": [],
     }
+
+    if decoder_payload is not None:
+        result["decoder_outputs"] = decoder_payload
 
     ensemble_report = None
     if voting_acc is not None:

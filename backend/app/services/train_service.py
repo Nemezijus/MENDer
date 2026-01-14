@@ -14,6 +14,8 @@ from utils.factories.baseline_factory import make_baseline
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
 from utils.persistence.artifact_cache import artifact_cache
 from utils.postprocessing.scoring import PROBA_METRICS
+from utils.postprocessing.decoder_outputs import compute_decoder_outputs
+from utils.predicting.prediction_results import build_decoder_output_table
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
@@ -76,6 +78,16 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     y_proba_all, y_score_all = [], []
     n_train_sizes, n_test_sizes = [], []
 
+    # --- Optional decoder outputs (classification only) ---------------------
+    decoder_cfg = getattr(cfg.eval, "decoder", None)
+    decoder_enabled = bool(getattr(decoder_cfg, "enabled", False)) if decoder_cfg is not None else False
+    decoder_positive_label = getattr(decoder_cfg, "positive_class_label", None) if decoder_cfg is not None else None
+    decoder_include_scores = bool(getattr(decoder_cfg, "include_decision_scores", True)) if decoder_cfg is not None else True
+    decoder_include_probabilities = bool(getattr(decoder_cfg, "include_probabilities", True)) if decoder_cfg is not None else True
+    decoder_calibrate_probabilities = bool(getattr(decoder_cfg, "calibrate_probabilities", False)) if decoder_cfg is not None else False
+
+    X_test_all = []  # only used when decoder outputs are enabled
+
     for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
         pipeline = make_pipeline(cfg, rngm, stream=f"{mode}/fold{fold_id}")
         pipeline.fit(Xtr, ytr)
@@ -113,6 +125,9 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             y_proba_all.append(y_proba)
         if y_score is not None:
             y_score_all.append(y_score)
+
+        if decoder_enabled and eval_kind == "classification":
+            X_test_all.append(Xte)
         n_train_sizes.append(int(Xtr.shape[0]))
         n_test_sizes.append(int(Xte.shape[0]))
 
@@ -311,6 +326,49 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         "n_test": n_test_out,
         "notes": [],
     }
+
+    # --- Decoder outputs (optional) -----------------------------------------
+    if decoder_enabled and eval_kind == "classification" and X_test_all:
+        try:
+            X_test_all_arr = np.concatenate([np.asarray(a) for a in X_test_all], axis=0)
+            dec = compute_decoder_outputs(
+                effective_pipeline,
+                X_test_all_arr,
+                positive_class_label=decoder_positive_label,
+                include_decision_scores=decoder_include_scores,
+                include_probabilities=decoder_include_probabilities,
+                calibrate_probabilities=decoder_calibrate_probabilities,
+            )
+
+            # Build export/preview rows (JSON-friendly list[dict])
+            rows = build_decoder_output_table(
+                indices=list(range(len(dec.y_pred))),
+                y_pred=dec.y_pred,
+                y_true=y_true_all_arr if y_true_all_arr.size else None,
+                classes=dec.classes,
+                decision_scores=dec.decision_scores,
+                proba=dec.proba,
+                margin=dec.margin,
+                positive_class_label=dec.positive_class_label,
+                positive_class_index=dec.positive_class_index,
+            )
+
+            max_rows = int(getattr(decoder_cfg, "max_preview_rows", 200)) if decoder_cfg is not None else 200
+
+            decoder_payload = dec.to_dict()
+            decoder_payload["preview_rows"] = rows[:max_rows]
+            decoder_payload["n_rows_total"] = len(rows)
+
+            result["decoder_outputs"] = decoder_payload
+
+            # Surface any extraction notes in the main notes list as well.
+            for n in (dec.notes or []):
+                result["notes"].append(f"Decoder outputs: {n}")
+        except Exception as e:
+            result["decoder_outputs"] = None
+            result["notes"].append(
+                f"Decoder outputs could not be computed ({type(e).__name__}: {e})."
+            )
 
     # --- Feature-related notes ----------------------------------------------
     if cfg.features.method == "pca":
