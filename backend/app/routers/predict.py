@@ -7,6 +7,7 @@ from ..models.v1.models import (
     ApplyModelResponse,
     ApplyModelExportRequest,
 )
+from ..models.v1.model_artifact import ModelArtifactMeta
 from ..services.prediction_service import (
     apply_model_to_arrays,
     export_predictions_to_csv,
@@ -44,18 +45,26 @@ def _run_apply(req: ApplyModelRequest, *, export: bool = False):
     """
     X, y = _load_prediction_data(req.data)
 
+    # Allow apply/export to override evaluation/decoder settings without
+    # mutating the stored artifact meta.
+    artifact_meta = req.artifact_meta
+    if getattr(req, "eval", None) is not None:
+        meta_dict = req.artifact_meta.model_dump()
+        meta_dict["eval"] = req.eval.model_dump()
+        artifact_meta = ModelArtifactMeta(**meta_dict)
+
     try:
         if export:
             return export_predictions_to_csv(
                 artifact_uid=req.artifact_uid,
-                artifact_meta=req.artifact_meta,
+                artifact_meta=artifact_meta,
                 X=X,
                 y=y,
                 filename=getattr(req, "filename", None),
             )
         return apply_model_to_arrays(
             artifact_uid=req.artifact_uid,
-            artifact_meta=req.artifact_meta,
+            artifact_meta=artifact_meta,
             X=X,
             y=y,
         )

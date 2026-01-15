@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, Iterable, List, Mapping, Optional
+import math
+import re
 
 try:
     import numpy as np  # type: ignore
@@ -21,6 +23,28 @@ def _to_1d_array(x: Any) -> Any:
             arr = arr.reshape(1)
         if arr.ndim > 1:
             arr = arr.reshape(-1)
+        return arr
+    except Exception:
+        return x
+
+
+
+def _to_2d_array(x: Any) -> Any:
+    """
+    Best-effort coercion of input to a 2D numpy array when numpy is available.
+
+    - Scalars become shape (1, 1)
+    - 1D arrays become shape (n, 1)
+    Falls back to the original object if coercion fails.
+    """
+    if np is None:
+        return x
+    try:
+        arr = np.asarray(x)
+        if arr.ndim == 0:
+            return arr.reshape(1, 1)
+        if arr.ndim == 1:
+            return arr.reshape(-1, 1)
         return arr
     except Exception:
         return x
@@ -155,10 +179,47 @@ def build_prediction_table(
 
 
 def _sanitize_col_suffix(label: Any) -> str:
-    """Make a stable, CSV/JSON-friendly column suffix from a class label."""
-    s = str(label).strip()
+    """Make a stable, CSV/JSON-friendly column suffix from a class label.
+
+    Notes
+    -----
+    - If labels come back as float-y strings like "-10.0", we normalize them to "-10"
+      so decoder columns become `p_-10` instead of `p_-10.0`.
+    - For non-integer floats (e.g. 0.5) we keep the original representation.
+    """
+    # unwrap numpy scalars
+    try:
+        if np is not None and isinstance(label, np.generic):
+            label = label.item()
+    except Exception:
+        pass
+
+    # numeric normalization
+    try:
+        if isinstance(label, bool):
+            s = "true" if label else "false"
+        elif isinstance(label, int):
+            s = str(label)
+        elif isinstance(label, float):
+            if math.isfinite(label) and abs(label - round(label)) < 1e-9:
+                s = str(int(round(label)))
+            else:
+                s = str(label)
+        else:
+            s = str(label).strip()
+            # normalize int-like float strings (e.g. "-10.0" -> "-10")
+            if re.fullmatch(r"-?\d+\.0+", s):
+                try:
+                    s = str(int(float(s)))
+                except Exception:
+                    pass
+    except Exception:
+        s = str(label).strip()
+
+    s = s.strip()
     if not s:
         return "empty"
+
     # conservative sanitation: spaces to underscores, drop slashes/commas
     for ch in [" ", "/", "\\", ",", ";", ":", "\t", "\n", "\r"]:
         s = s.replace(ch, "_")
@@ -166,19 +227,6 @@ def _sanitize_col_suffix(label: Any) -> str:
     while "__" in s:
         s = s.replace("__", "_")
     return s
-
-
-def _to_2d_array(x: Any) -> Any:
-    """Best-effort coercion of input to a 2D numpy array when numpy is available."""
-    if x is None or np is None:
-        return x
-    try:
-        arr = np.asarray(x)
-        if arr.ndim == 1:
-            return arr.reshape(-1, 1)
-        return arr
-    except Exception:
-        return x
 
 
 def build_decoder_output_table(
@@ -404,3 +452,44 @@ def build_decoder_output_table(
         rows.append(row)
 
     return rows
+
+def merge_prediction_and_decoder_tables(
+    *,
+    prediction_rows: List[Mapping[str, Any]],
+    decoder_rows: List[Mapping[str, Any]],
+    index_key: str = "index",
+    overwrite: bool = False,
+) -> List[Mapping[str, Any]]:
+    """Merge per-sample prediction rows with decoder-output rows by `index`.
+
+    This is primarily used for CSV export, where we want a single wide table
+    that contains both the base prediction columns and decoder columns
+    (`p_*`, `score_*`, `positive_*`, `margin`, ...).
+
+    By default we do NOT overwrite keys already present in the prediction row.
+    """
+    dec_by_idx: dict[Any, Mapping[str, Any]] = {}
+    for r in decoder_rows:
+        try:
+            dec_by_idx[r.get(index_key)] = r
+        except Exception:
+            continue
+
+    merged: List[Mapping[str, Any]] = []
+    for prow in prediction_rows:
+        idx = prow.get(index_key)
+        drow = dec_by_idx.get(idx)
+        if not drow:
+            merged.append(prow)
+            continue
+
+        out: dict[str, Any] = dict(prow)
+        for k, v in drow.items():
+            if k == index_key:
+                continue
+            if not overwrite and k in out:
+                continue
+            out[k] = v
+        merged.append(out)
+
+    return merged

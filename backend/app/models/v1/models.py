@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from .model_artifact import ModelArtifactMeta
 from .data_models import DataInspectRequest, Label
 from .decoder_models import DecoderOutputs
+from shared_schemas.eval_configs import EvalModel
 
 
 class SaveModelRequest(BaseModel):
@@ -32,6 +33,10 @@ class ApplyModelRequest(BaseModel):
     artifact_uid: str
     artifact_meta: ModelArtifactMeta
     data: DataInspectRequest
+
+    # Optional override for evaluation/decoder settings during apply/export.
+    # If provided, this will be used instead of artifact_meta.eval.
+    eval: Optional[EvalModel] = None
 
 
 class PredictionRow(BaseModel):

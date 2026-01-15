@@ -12,7 +12,7 @@ from utils.factories.eval_factory import make_evaluator
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.persistence.artifact_cache import artifact_cache
 from utils.factories.export_factory import make_exporter
-from utils.predicting.prediction_results import build_prediction_table, build_decoder_output_table
+from utils.predicting.prediction_results import build_prediction_table, build_decoder_output_table, merge_prediction_and_decoder_tables
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 from utils.io.export.result_export import ExportResult
 
@@ -328,6 +328,63 @@ def export_predictions_to_csv(
         max_rows=None,  # no preview truncation here
     )
 
+
+    # --- Optional decoder outputs columns in export (classification-only) ----
+    decoder_cfg = getattr(ev, "decoder", None)
+    decoder_enabled = bool(getattr(decoder_cfg, "enabled", False)) if decoder_cfg is not None else False
+    decoder_export_enabled = (
+        bool(getattr(decoder_cfg, "enable_export", True)) if decoder_cfg is not None else True
+    )
+    if decoder_enabled and decoder_export_enabled and eval_kind == "classification":
+        decoder_positive_label = (
+            getattr(decoder_cfg, "positive_class_label", None) if decoder_cfg is not None else None
+        )
+        decoder_include_scores = (
+            bool(getattr(decoder_cfg, "include_decision_scores", True)) if decoder_cfg is not None else True
+        )
+        decoder_include_probabilities = (
+            bool(getattr(decoder_cfg, "include_probabilities", True)) if decoder_cfg is not None else True
+        )
+        decoder_include_margin = (
+            bool(getattr(decoder_cfg, "include_margin", True)) if decoder_cfg is not None else True
+        )
+        decoder_calibrate_probabilities = (
+            bool(getattr(decoder_cfg, "calibrate_probabilities", False)) if decoder_cfg is not None else False
+        )
+
+        try:
+            dec = compute_decoder_outputs(
+                pipeline,
+                X_arr,
+                positive_class_label=decoder_positive_label,
+                include_decision_scores=decoder_include_scores,
+                include_probabilities=decoder_include_probabilities,
+                calibrate_probabilities=decoder_calibrate_probabilities,
+            )
+            ds = dec.decision_scores if (dec.decision_scores is not None and decoder_include_scores) else None
+            pr = dec.proba if (dec.proba is not None and decoder_include_probabilities) else None
+            mg = dec.margin if (dec.margin is not None and decoder_include_margin) else None
+            y_pred_dec = np.asarray(dec.y_pred).ravel()
+
+            decoder_rows = build_decoder_output_table(
+                indices=range(n_samples),
+                y_pred=y_pred_dec,
+                y_true=y_arr,
+                classes=dec.classes,
+                decision_scores=ds,
+                proba=pr,
+                margin=mg,
+                positive_class_label=dec.positive_class_label,
+                positive_class_index=dec.positive_class_index,
+                max_rows=None,
+            )
+            table = merge_prediction_and_decoder_tables(
+                prediction_rows=table,
+                decoder_rows=decoder_rows,
+            )
+        except Exception:
+            # Export should still succeed even if decoder outputs cannot be computed
+            pass
     exporter = make_exporter("csv")
     export_result = exporter.export(
         table,

@@ -7,6 +7,8 @@ import {
   Alert,
   Table,
   Badge,
+  ScrollArea,
+  Tooltip,
 } from '@mantine/core';
 
 import { useProductionDataStore } from '../state/useProductionDataStore.js';
@@ -57,62 +59,207 @@ function ModelSummary({ artifact }) {
   );
 }
 
+function parseNumber(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const x = Number(v);
+    if (Number.isFinite(x)) return x;
+  }
+  return null;
+}
+
+function fmt3(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    if (Number.isInteger(v)) return String(v);
+    return v.toFixed(3);
+  }
+  return '—';
+}
+
+function pickPreviewColumns(rows) {
+  if (!rows || rows.length === 0) return [];
+  const keys = new Set();
+  rows.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
+
+  const preferred = [
+    'index',
+    'trial_id',
+    'y_true',
+    'y_pred',
+    'correct',
+    'residual',
+    'abs_error',
+    'margin',
+    'decoder_score',
+  ];
+
+  // Match the decoder table / export ordering: scores first, then probabilities.
+  const scoreCols = [...keys].filter((k) => k.startsWith('score_')).sort();
+  const pCols = [...keys].filter((k) => k.startsWith('p_')).sort();
+  const rest = [...keys]
+    .filter((k) => !preferred.includes(k) && !k.startsWith('p_') && !k.startsWith('score_'))
+    .sort();
+
+  const out = [];
+  preferred.forEach((k) => keys.has(k) && out.push(k));
+  out.push(...scoreCols, ...pCols, ...rest);
+  return out;
+}
+
+function prettifyHeader(key) {
+  if (!key) return '';
+  if (key.startsWith('p_')) return `p=${key.slice(2)}`;
+  if (key.startsWith('score_')) return `score=${key.slice(6)}`;
+  return key.replaceAll('_', ' ');
+}
+
+function buildHeaderTooltip(key) {
+  if (key === 'index') return 'Row index within the preview.';
+  if (key === 'trial_id') return 'Optional trial identifier (if provided).';
+  if (key === 'y_true') return 'Ground-truth label/value for this sample (if provided).';
+  if (key === 'y_pred') return 'Model-predicted label/value for this sample.';
+  if (key === 'correct') return 'Whether prediction matches the ground truth.';
+  if (key === 'residual') return 'Residual = (y_pred − y_true). Only present when y_true is provided (regression).';
+  if (key === 'abs_error') return 'Absolute error = |y_pred − y_true|. Only present when y_true is provided (regression).';
+  if (key === 'decoder_score')
+    return 'Binary decision value (decision_function). More positive typically means stronger evidence for the positive class.';
+  if (key === 'margin')
+    return 'Confidence proxy: usually (top score − runner-up score). Larger margin = more confident.';
+  if (key.startsWith('p_')) {
+    const c = key.slice(2);
+    return `Predicted probability for class ${c}. (Rows sum to ~1 across all p=... columns.)`;
+  }
+  if (key.startsWith('score_')) {
+    const c = key.slice(6);
+    return `Raw decision score (logit/decision value) for class ${c}. Higher score usually means higher probability.`;
+  }
+  return null;
+}
+
 function PredictionsPreview({ applyResult }) {
   if (!applyResult) return null;
 
-  const { n_samples, n_features, task, metric_name, metric_value, preview } =
-    applyResult;
+  const { n_samples, n_features, task, metric_name, metric_value, preview, decoder_outputs } = applyResult;
+
+  // Prefer decoder preview rows when available so the production preview matches
+  // the decoder outputs/export columns (score_*, p_*, margin, etc.).
+  const decoderPreview = Array.isArray(decoder_outputs?.preview_rows)
+    ? decoder_outputs.preview_rows
+    : [];
+  const basePreview = Array.isArray(preview) ? preview : [];
+
+  const rows = decoderPreview.length > 0 ? decoderPreview : basePreview;
+  const columnsRaw = pickPreviewColumns(rows);
+
+  // Hide columns that are entirely empty in the preview (common in classification: residual/abs_error).
+  const alwaysKeep = new Set(['index', 'trial_id', 'y_true', 'y_pred', 'correct']);
+  const columns = columnsRaw.filter((c) => {
+    if (alwaysKeep.has(c)) return true;
+    return rows.some((r) => {
+      const v = r?.[c];
+      return v !== null && v !== undefined && String(v) !== '';
+    });
+  });
+
+  const renderCell = (col, value) => {
+    if (value === null || value === undefined) return '—';
+
+    if (col === 'correct') {
+      const isTrue = value === true || value === 'true';
+      return isTrue ? 'true' : 'false';
+    }
+
+    const num = parseNumber(value);
+    if (num !== null) return fmt3(num);
+
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    return String(value);
+  };
+
+  const stickyThStyle = {
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    backgroundColor: 'var(--mantine-color-gray-8)',
+    textAlign: 'center',
+  };
 
   return (
     <Stack gap="xs">
       <Text size="sm" fw={500}>
         Prediction summary
       </Text>
+
       <Text size="xs" c="dimmed">
         Samples: {n_samples} · Features: {n_features} · Task: {task}
       </Text>
+
       {metric_name && metric_value != null && (
         <Text size="xs" c="dimmed">
           {metric_name}: {metric_value.toFixed(4)} (on uploaded labels)
         </Text>
       )}
-      {preview && preview.length > 0 && (
-        <Table striped highlightOnHover withTableBorder withColumnBorders>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Index</Table.Th>
-              <Table.Th>y_pred</Table.Th>
-              <Table.Th>y_true</Table.Th>
-              <Table.Th>Residual</Table.Th>
-              <Table.Th>Correct</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {preview.map((row) => (
-              <Table.Tr key={row.index}>
-                <Table.Td>{row.index}</Table.Td>
-                <Table.Td>{String(row.y_pred)}</Table.Td>
-                <Table.Td>
-                  {row.y_true !== undefined && row.y_true !== null
-                    ? String(row.y_true)
-                    : '—'}
-                </Table.Td>
-                <Table.Td>
-                  {row.residual !== undefined && row.residual !== null
-                    ? row.residual.toFixed(4)
-                    : '—'}
-                </Table.Td>
-                <Table.Td>
-                  {typeof row.correct === 'boolean'
-                    ? row.correct
-                      ? '✓'
-                      : '✗'
-                    : '—'}
-                </Table.Td>
+
+      {rows.length > 0 && columns.length > 0 && (
+        <ScrollArea h={240} type="auto">
+          <Table withTableBorder={false} withColumnBorders={false} horizontalSpacing="xs" verticalSpacing="xs">
+            <Table.Thead>
+              <Table.Tr>
+                {columns.map((c) => {
+                  const tip = buildHeaderTooltip(c);
+                  const label = prettifyHeader(c);
+                  return (
+                    <Table.Th key={c} style={stickyThStyle}>
+                      {tip ? (
+                        <Tooltip label={tip} multiline maw={260} withArrow>
+                          <Text size="xs" fw={600} c="white">
+                            {label}
+                          </Text>
+                        </Tooltip>
+                      ) : (
+                        <Text size="xs" fw={600} c="white">
+                          {label}
+                        </Text>
+                      )}
+                    </Table.Th>
+                  );
+                })}
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+
+            <Table.Tbody>
+              {rows.map((row, idx) => {
+                const isStriped = idx % 2 === 1;
+                return (
+                  <Table.Tr
+                    key={row?.index ?? idx}
+                    style={{
+                      backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
+                    }}
+                  >
+                    {columns.map((c) => {
+                      const val = row?.[c];
+                      const isCorrectCol = c === 'correct';
+                      const isFalse = isCorrectCol && (val === false || val === 'false');
+
+                      return (
+                        <Table.Td
+                          key={c}
+                          style={{
+                            textAlign: 'center',
+                            backgroundColor: isFalse ? 'var(--mantine-color-red-1)' : undefined,
+                          }}
+                        >
+                          <Text size="sm">{renderCell(c, val)}</Text>
+                        </Table.Td>
+                      );
+                    })}
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       )}
     </Stack>
   );
