@@ -16,24 +16,20 @@ import { downloadBlob } from '../../api/models';
 function toCsvValue(v) {
   if (v === null || v === undefined) return '';
   const s = String(v);
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
 
 function mean(vals) {
   if (!vals.length) return null;
-  const s = vals.reduce((a, b) => a + b, 0);
-  return s / vals.length;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
 function median(vals) {
   if (!vals.length) return null;
   const a = [...vals].sort((x, y) => x - y);
   const mid = Math.floor(a.length / 2);
-  if (a.length % 2) return a[mid];
-  return (a[mid - 1] + a[mid]) / 2;
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
 }
 
 function parseNumber(v) {
@@ -47,7 +43,6 @@ function parseNumber(v) {
 
 function fmt3(v) {
   if (typeof v === 'number' && Number.isFinite(v)) {
-    // Keep integers clean
     if (Number.isInteger(v)) return String(v);
     return v.toFixed(3);
   }
@@ -56,50 +51,33 @@ function fmt3(v) {
 
 function buildCsv(rows, columns) {
   const header = columns.map(toCsvValue).join(',');
-  const lines = rows.map((r) =>
-    columns.map((c) => toCsvValue(r?.[c])).join(','),
-  );
+  const lines = rows.map((r) => columns.map((c) => toCsvValue(r?.[c])).join(','));
   return [header, ...lines].join('\n');
 }
 
 function pickColumns(rows) {
   if (!rows || rows.length === 0) return [];
   const keys = new Set();
-  rows.forEach((r) => {
-    Object.keys(r || {}).forEach((k) => keys.add(k));
-  });
+  rows.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
 
   const preferred = ['index', 'trial_id', 'y_true', 'y_pred', 'correct', 'margin', 'decoder_score'];
 
   const pCols = [...keys].filter((k) => k.startsWith('p_')).sort();
   const scoreCols = [...keys].filter((k) => k.startsWith('score_')).sort();
-
   const rest = [...keys]
-    .filter(
-      (k) =>
-        !preferred.includes(k) &&
-        !k.startsWith('p_') &&
-        !k.startsWith('score_'),
-    )
+    .filter((k) => !preferred.includes(k) && !k.startsWith('p_') && !k.startsWith('score_'))
     .sort();
 
   const out = [];
-  preferred.forEach((k) => {
-    if (keys.has(k)) out.push(k);
-  });
-  out.push(...pCols);
-  out.push(...scoreCols);
-  out.push(...rest);
-
+  preferred.forEach((k) => keys.has(k) && out.push(k));
+  out.push(...pCols, ...scoreCols, ...rest);
   return out;
 }
 
 function prettifyHeader(key) {
   if (!key) return '';
-  // Dynamic probability / score columns
   if (key.startsWith('p_')) return `p=${key.slice(2)}`;
   if (key.startsWith('score_')) return `score=${key.slice(6)}`;
-  // Otherwise: underscores -> spaces
   return key.replaceAll('_', ' ');
 }
 
@@ -110,16 +88,16 @@ function buildHeaderTooltip(key) {
   if (key === 'y_pred') return 'Model-predicted label for this sample.';
   if (key === 'correct') return 'Whether prediction matches the ground truth.';
   if (key === 'decoder_score')
-    return 'Binary decision value (e.g., decision_function). More positive typically means stronger evidence for the positive class.';
+    return 'Binary decision value (decision_function). More positive typically means stronger evidence for the positive class.';
   if (key === 'margin')
-    return 'Confidence proxy: for multiclass, usually (top score − runner-up score). Larger margin = more confident.';
+    return 'Confidence proxy: usually (top score − runner-up score). Larger margin = more confident.';
   if (key.startsWith('p_')) {
     const c = key.slice(2);
     return `Predicted probability for class ${c}. (Rows sum to ~1 across all p=... columns.)`;
   }
   if (key.startsWith('score_')) {
     const c = key.slice(6);
-    return `Raw decision score (logit / decision value) for class ${c}. Higher score usually means higher probability.`;
+    return `Raw decision score (logit/decision value) for class ${c}. Higher score usually means higher probability.`;
   }
   return null;
 }
@@ -130,14 +108,10 @@ export default function DecoderOutputsResults({ trainResult }) {
   const decoder = trainResult.decoder_outputs || trainResult.decoderOutputs || null;
   const preview = decoder?.preview_rows || decoder?.previewRows || [];
 
-  if (!decoder || !Array.isArray(preview) || preview.length === 0) {
-    return null;
-  }
+  if (!decoder || !Array.isArray(preview) || preview.length === 0) return null;
 
   const classes = decoder.classes || [];
-  const hasDecisionScores = Boolean(
-    decoder.has_decision_scores ?? decoder.hasDecisionScores,
-  );
+  const hasDecisionScores = Boolean(decoder.has_decision_scores ?? decoder.hasDecisionScores);
   const hasProbabilities = Boolean(
     decoder.has_proba ??
       decoder.hasProbabilities ??
@@ -145,17 +119,18 @@ export default function DecoderOutputsResults({ trainResult }) {
       decoder.hasProba,
   );
 
+  // De-dupe decoder notes against global trainResult.notes (often prefixed "Decoder outputs: ...")
+  const decoderNotes = useMemo(() => {
+    const dn = Array.isArray(decoder.notes) ? decoder.notes : [];
+    const tn = Array.isArray(trainResult.notes) ? trainResult.notes : [];
+    return dn.filter((n) => !tn.includes(n) && !tn.includes(`Decoder outputs: ${n}`));
+  }, [decoder.notes, trainResult.notes]);
+
   const classOptions = useMemo(() => {
-    const opts = [];
-    if (Array.isArray(classes)) {
-      for (const c of classes) {
-        opts.push({ value: String(c), label: String(c) });
-      }
-    }
-    return opts;
+    if (!Array.isArray(classes)) return [];
+    return classes.map((c) => ({ value: String(c), label: String(c) }));
   }, [classes]);
 
-  // Default selection: positive class label if present, otherwise first class
   const defaultSelected =
     decoder.positive_class_label != null
       ? String(decoder.positive_class_label)
@@ -167,18 +142,9 @@ export default function DecoderOutputsResults({ trainResult }) {
   const selectedProbKey = selectedClass ? `p_${selectedClass}` : null;
 
   const probStats = useMemo(() => {
-    if (!hasProbabilities || !selectedProbKey)
-      return { mean: null, median: null, n: 0 };
-
-    const vals = preview
-      .map((r) => parseNumber(r?.[selectedProbKey]))
-      .filter((v) => v !== null);
-
-    return {
-      mean: mean(vals),
-      median: median(vals),
-      n: vals.length,
-    };
+    if (!hasProbabilities || !selectedProbKey) return { mean: null, median: null, n: 0 };
+    const vals = preview.map((r) => parseNumber(r?.[selectedProbKey])).filter((v) => v !== null);
+    return { mean: mean(vals), median: median(vals), n: vals.length };
   }, [hasProbabilities, preview, selectedProbKey]);
 
   const columns = useMemo(() => pickColumns(preview), [preview]);
@@ -210,6 +176,14 @@ export default function DecoderOutputsResults({ trainResult }) {
     return String(value);
   };
 
+  const stickyThStyle = {
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    backgroundColor: 'var(--mantine-color-gray-8)',
+    textAlign: 'center',
+  };
+
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
       <Stack gap="sm">
@@ -217,14 +191,7 @@ export default function DecoderOutputsResults({ trainResult }) {
           Decoder outputs
         </Text>
 
-        {/* Export button above table, left-aligned */}
-        <Group justify="flex-start">
-          <Button size="xs" variant="light" onClick={handleExportPreview}>
-            Export preview CSV
-          </Button>
-        </Group>
-
-        {/* Summary lines (similar vibe to ClassificationMetricResults) */}
+        {/* Summary lines */}
         <Stack gap={0}>
           <Text size="sm">
             <Text span fw={500}>
@@ -267,13 +234,14 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Text>
         </Stack>
 
-        {Array.isArray(decoder.notes) && decoder.notes.length > 0 && (
+        {/* Notes (deduped) */}
+        {decoderNotes.length > 0 && (
           <Stack gap={4}>
             <Text size="sm" fw={500}>
               Notes
             </Text>
             <ul style={{ marginTop: 0 }}>
-              {decoder.notes.map((n, i) => (
+              {decoderNotes.map((n, i) => (
                 <li key={i}>
                   <Text size="sm">{n}</Text>
                 </li>
@@ -282,7 +250,7 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Stack>
         )}
 
-        {/* Probability summary (preview only) */}
+        {/* Probability summary */}
         {hasProbabilities && classOptions.length > 0 && (
           <Card withBorder radius="md" padding="sm">
             <Stack gap="xs">
@@ -325,20 +293,22 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Card>
         )}
 
+        {/* Export button directly above the table */}
+        <Group justify="flex-start">
+          <Button size="xs" variant="light" onClick={handleExportPreview}>
+            Export preview CSV
+          </Button>
+        </Group>
+
         <ScrollArea h={320} type="auto">
-          <Table
-            withTableBorder={false}
-            withColumnBorders={false}
-            horizontalSpacing="xs"
-            verticalSpacing="xs"
-          >
+          <Table withTableBorder={false} withColumnBorders={false} horizontalSpacing="xs" verticalSpacing="xs">
             <Table.Thead>
-              <Table.Tr style={{ backgroundColor: 'var(--mantine-color-gray-8)' }}>
+              <Table.Tr>
                 {columns.map((c) => {
                   const tip = buildHeaderTooltip(c);
                   const label = prettifyHeader(c);
                   return (
-                    <Table.Th key={c} style={{ textAlign: 'center' }}>
+                    <Table.Th key={c} style={stickyThStyle}>
                       {tip ? (
                         <Tooltip label={tip} multiline maw={260} withArrow>
                           <Text size="xs" fw={600} c="white">
@@ -363,25 +333,20 @@ export default function DecoderOutputsResults({ trainResult }) {
                   <Table.Tr
                     key={row?.index ?? idx}
                     style={{
-                      backgroundColor: isStriped
-                        ? 'var(--mantine-color-gray-1)'
-                        : 'white',
+                      backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
                     }}
                   >
                     {columns.map((c) => {
                       const val = row?.[c];
                       const isCorrectCol = c === 'correct';
-                      const isFalse =
-                        isCorrectCol && (val === false || val === 'false');
+                      const isFalse = isCorrectCol && (val === false || val === 'false');
 
                       return (
                         <Table.Td
                           key={c}
                           style={{
                             textAlign: 'center',
-                            backgroundColor: isFalse
-                              ? 'var(--mantine-color-red-1)'
-                              : undefined,
+                            backgroundColor: isFalse ? 'var(--mantine-color-red-1)' : undefined,
                           }}
                         >
                           <Text size="sm">{renderCell(c, val)}</Text>
