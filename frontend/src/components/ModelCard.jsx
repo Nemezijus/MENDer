@@ -169,6 +169,17 @@ export default function ModelCard() {
 
   const visualStatus = !artifact ? 'none' : !compatible ? 'incompatible' : status;
 
+  const splitMode = artifact?.split?.mode ?? null;
+  const isKFold = splitMode === 'kfold';
+  const nSplits = artifact?.n_splits ?? null;
+
+  // Under k-fold, the artifact stores per-fold train/test sizes.
+  // Summing them yields an approximate total N for out-of-fold evaluation.
+  const kfoldTotalN =
+    isKFold && Number.isFinite(Number(artifact?.n_samples_train)) && Number.isFinite(Number(artifact?.n_samples_test))
+      ? Number(artifact.n_samples_train) + Number(artifact.n_samples_test)
+      : null;
+
   const borderColor =
     visualStatus === 'trained'
       ? 'var(--mantine-color-blue-4)'
@@ -377,6 +388,16 @@ export default function ModelCard() {
                   {artifact.n_splits} splits
                 </Badge>
               ) : null}
+              {isKFold ? (
+                <Tooltip
+                  label="Out-of-fold evaluation (pooled across folds): each sample is predicted by a model that did not train on it."
+                  withArrow
+                >
+                  <Badge color="teal" variant="light">
+                    OOF
+                  </Badge>
+                </Tooltip>
+              ) : null}
             </Group>
 
             {isEnsemble && ensembleKind && (
@@ -399,8 +420,16 @@ export default function ModelCard() {
 
             <Text size="sm">
               <strong>Data:</strong>{' '}
-              train {fmt(artifact.n_samples_train, 0)}, test {fmt(artifact.n_samples_test, 0)}, features{' '}
-              {fmt(artifact.n_features_in, 0)}
+              {isKFold ? (
+                <>
+                  train {fmt(artifact.n_samples_train, 0)} / fold, test {fmt(artifact.n_samples_test, 0)} / fold
+                  {kfoldTotalN != null ? ` (N=${fmt(kfoldTotalN, 0)} OOF)` : ''}, features {fmt(artifact.n_features_in, 0)}
+                </>
+              ) : (
+                <>
+                  train {fmt(artifact.n_samples_train, 0)}, test {fmt(artifact.n_samples_test, 0)}, features {fmt(artifact.n_features_in, 0)}
+                </>
+              )}
             </Text>
 
             {Array.isArray(artifact.classes) && artifact.classes.length > 0 && (
@@ -419,6 +448,7 @@ export default function ModelCard() {
 
             <Text size="sm">
               <strong>Split:</strong> {artifact?.split?.mode ?? '—'}
+              {isKFold ? ' (out-of-fold pooled)' : ''}
             </Text>
 
             <Divider my="xs" />
