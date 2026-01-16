@@ -15,10 +15,17 @@ It extracts per-sample decoder outputs from a fitted scikit-learn estimator
 It is designed for neural decoding / behavior classification use-cases where
 you want per-trial values such as the decision axis score (w^T x + b) and/or
 P(go).
+
+Special handling:
+  - VotingClassifier hard voting (or any estimator lacking predict_proba):
+      We *do not* attempt to invent calibrated probabilities. Instead, for
+      VotingClassifier with voting="hard", we compute vote-share "probabilities"
+      (fraction of estimators voting for each class). These can be used to
+      compute margins and other confidence diagnostics.
 """
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Iterable, Optional, Sequence, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 
@@ -39,6 +46,24 @@ def _final_estimator(model: Any) -> Any:
         except Exception:
             return model
     return model
+
+
+def _transform_through_pipeline(model: Any, X: np.ndarray) -> np.ndarray:
+    """If model is a fitted sklearn Pipeline, transform X through all steps except last estimator."""
+    try:
+        if not (hasattr(model, "steps") and isinstance(getattr(model, "steps"), list) and len(model.steps) > 1):
+            return X
+        Xt = X
+        for _, step in model.steps[:-1]:
+            if step is None or step == "passthrough":
+                continue
+            if hasattr(step, "transform"):
+                Xt = step.transform(Xt)
+            else:
+                return X
+        return Xt
+    except Exception:
+        return X
 
 
 def _get_classes(model: Any) -> Optional[np.ndarray]:
@@ -63,7 +88,6 @@ def _safe_call(method_name: str, model: Any, X: np.ndarray) -> Tuple[Optional[np
 
 def _top1_top2_margin(values_2d: np.ndarray) -> np.ndarray:
     """Compute top1-top2 margin along axis=1 for 2D array."""
-    # Use partition for efficiency and stability
     part = np.partition(values_2d, kth=-2, axis=1)
     top2 = part[:, -2]
     top1 = part[:, -1]
@@ -71,10 +95,96 @@ def _top1_top2_margin(values_2d: np.ndarray) -> np.ndarray:
 
 
 def _binary_margin_from_proba(proba_2d: np.ndarray) -> np.ndarray:
-    """Binary confidence margin from probabilities."""
+    """Binary confidence margin from probabilities (or vote shares)."""
     if proba_2d.shape[1] != 2:
         return _top1_top2_margin(proba_2d)
     return np.abs(proba_2d[:, 1] - proba_2d[:, 0])
+
+
+def _is_voting_classifier(est: Any) -> bool:
+    """Duck-typed check for sklearn VotingClassifier-like object."""
+    return (
+        hasattr(est, "estimators_")
+        and hasattr(est, "voting")
+        and hasattr(est, "le_")  # LabelEncoder used internally by VotingClassifier
+    )
+
+
+def _vote_share_proba_from_voting_classifier(vote_clf: Any, X_for_vote: np.ndarray, classes: Optional[np.ndarray]) -> Tuple[Optional[np.ndarray], Optional[str]]:
+    """Compute vote-share probabilities for a fitted VotingClassifier (hard voting).
+
+    Returns (proba, note). proba shape: (n_samples, n_classes). Values sum to 1.
+    """
+    try:
+        if getattr(vote_clf, "voting", None) != "hard":
+            return None, None
+
+        ests = getattr(vote_clf, "estimators_", None)
+        if ests is None or len(ests) == 0:
+            return None, "VotingClassifier has no fitted estimators_"
+
+        cls = classes
+        if cls is None:
+            cls = getattr(vote_clf, "classes_", None)
+            cls = np.asarray(cls) if cls is not None else None
+        if cls is None or cls.size == 0:
+            return None, "VotingClassifier vote-share unavailable: classes_ missing"
+
+        n_samples = int(np.asarray(X_for_vote).shape[0])
+        k = int(cls.size)
+
+        # Determine weights
+        w = getattr(vote_clf, "weights", None)
+        if w is None:
+            weights = np.ones((len(ests),), dtype=float)
+        else:
+            weights = np.asarray(w, dtype=float)
+            if weights.size != len(ests):
+                # sklearn tolerates None for dropped estimators; handle mismatch defensively
+                weights = np.ones((len(ests),), dtype=float)
+
+        # Collect base predictions (VotingClassifier trains base estimators on encoded labels)
+        le = getattr(vote_clf, "le_", None)
+        preds = []
+        for est in ests:
+            if est is None:
+                continue
+            yp_enc = np.asarray(est.predict(X_for_vote))
+            # Convert encoded preds to original labels if possible
+            if le is not None:
+                try:
+                    yp = le.inverse_transform(yp_enc.astype(int, copy=False))
+                except Exception:
+                    yp = yp_enc
+            else:
+                yp = yp_enc
+            preds.append(np.asarray(yp))
+
+        if len(preds) == 0:
+            return None, "VotingClassifier vote-share unavailable: no base predictions"
+
+        P = np.vstack([p.reshape(1, -1) for p in preds])  # (n_estimators_eff, n_samples)
+
+        # Map class label -> column
+        cls_list = cls.tolist()
+        idx_map = {c: i for i, c in enumerate(cls_list)}
+
+        vote_mass = np.zeros((n_samples, k), dtype=float)
+        # Align weights to the kept estimators (we dropped None)
+        kept_weights = weights[: P.shape[0]] if weights.size >= P.shape[0] else np.ones((P.shape[0],), dtype=float)
+        wsum = float(np.sum(kept_weights)) if float(np.sum(kept_weights)) > 0 else float(P.shape[0])
+
+        for ei in range(P.shape[0]):
+            wi = float(kept_weights[ei])
+            for si in range(n_samples):
+                lab = P[ei, si]
+                if lab in idx_map:
+                    vote_mass[si, idx_map[lab]] += wi
+
+        proba = vote_mass / wsum
+        return proba, "predict_proba unavailable; using vote shares from hard voting (not calibrated probabilities)"
+    except Exception as e:
+        return None, f"vote-share proba failed: {type(e).__name__}: {e}"
 
 
 @dataclass
@@ -87,6 +197,9 @@ class DecoderOutputs:
     # Raw decoder outputs
     decision_scores: Optional[np.ndarray] = None
     proba: Optional[np.ndarray] = None
+
+    # How proba was obtained: "model_proba" (predict_proba) or "vote_share" (hard voting)
+    proba_source: Optional[str] = None
 
     # Optional convenience fields
     positive_class_label: Optional[Any] = None
@@ -120,35 +233,16 @@ def compute_decoder_outputs(
 ) -> DecoderOutputs:
     """Compute per-sample decoder outputs for a fitted classifier.
 
-    Parameters
-    ----------
-    model:
-        Fitted scikit-learn estimator or Pipeline.
-    X:
-        Feature matrix, shape (n_samples, n_features).
-    positive_class_label:
-        For binary classification, which class label should be treated as the
-        "positive" class (e.g. go=1). If provided and `proba`/`decision_scores`
-        exist, `positive_proba` / `positive_score` are returned.
-    include_decision_scores:
-        Attempt to extract `decision_function(X)`.
-    include_probabilities:
-        Attempt to extract `predict_proba(X)`.
-    calibrate_probabilities:
-        Reserved for later (CalibratedClassifierCV). If True and predict_proba
-        is missing, this currently records a note and returns `proba=None`.
-
-    Returns
-    -------
-    DecoderOutputs
-        Dataclass containing y_pred, optional decision_scores/proba, classes,
-        and derived fields.
+    Notes on VotingClassifier hard voting:
+      - If predict_proba is missing/unavailable, we compute vote-share "probabilities"
+        for VotingClassifier with voting="hard". These are useful confidence proxies,
+        but are not calibrated probabilities.
     """
 
     X2 = _as_2d(X)
     notes: list[str] = []
 
-    # Predict hard labels
+    # Predict hard labels (from the full model/pipeline)
     y_pred, err = _safe_call("predict", model, X2)
     if err is not None or y_pred is None:
         raise AttributeError(f"Unable to compute predictions: {err}")
@@ -157,22 +251,47 @@ def compute_decoder_outputs(
 
     decision_scores: Optional[np.ndarray] = None
     proba: Optional[np.ndarray] = None
+    proba_source: Optional[str] = None
 
     if include_decision_scores:
         decision_scores, derr = _safe_call("decision_function", model, X2)
         if derr is not None:
             notes.append(derr)
 
+    perr_msg: Optional[str] = None
     if include_probabilities:
-        proba, perr = _safe_call("predict_proba", model, X2)
-        if perr is not None:
-            if calibrate_probabilities:
-                notes.append(
-                    "predict_proba unavailable; calibration requested but not implemented yet "
-                    "(proba will be omitted)."
-                )
+        proba, perr_msg = _safe_call("predict_proba", model, X2)
+        if proba is not None:
+            proba_source = "model_proba"
+
+    # VotingClassifier hard-voting fallback for "proba"
+    if include_probabilities and proba is None:
+        est = _final_estimator(model)
+        if _is_voting_classifier(est):
+            # VoteClassifier expects X in its feature space (after preprocessing). If the outer model
+            # is a Pipeline, transform X through non-final steps.
+            X_vote = _transform_through_pipeline(model, X2) if est is not model else X2
+            vote_proba, vote_note = _vote_share_proba_from_voting_classifier(est, X_vote, classes)
+            if vote_proba is not None:
+                proba = np.asarray(vote_proba)
+                proba_source = "vote_share"
+                if vote_note:
+                    notes.append(vote_note)
             else:
-                notes.append(perr)
+                # If vote-share could not be computed, keep the original predict_proba note.
+                if vote_note:
+                    notes.append(vote_note)
+
+        # If still no proba, fall back to original error message / calibration note.
+        if proba is None:
+            if perr_msg is not None:
+                if calibrate_probabilities:
+                    notes.append(
+                        "predict_proba unavailable; calibration requested but not implemented yet "
+                        "(proba will be omitted)."
+                    )
+                else:
+                    notes.append(perr_msg)
 
     # Compute positive class mapping / convenience vectors
     pos_idx: Optional[int] = None
@@ -223,6 +342,7 @@ def compute_decoder_outputs(
         classes=classes,
         decision_scores=decision_scores,
         proba=proba,
+        proba_source=proba_source,
         positive_class_label=positive_class_label,
         positive_class_index=pos_idx,
         positive_proba=pos_proba,

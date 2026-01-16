@@ -45,6 +45,9 @@ class DecoderOutputs(BaseModel):
     has_decision_scores: bool = False
     has_proba: bool = False
 
+
+    # How probabilities were obtained: 'model_proba' or 'vote_share'
+    proba_source: Optional[str] = None
     notes: List[str] = Field(default_factory=list)
 
     # Preview table rows (first N samples)

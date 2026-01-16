@@ -162,7 +162,10 @@ export default function DecoderOutputsResults({ trainResult }) {
       decoder.has_probabilities ??
       decoder.hasProba,
   );
+  const probaSource =
+    decoder.proba_source ?? decoder.probaSource ?? decoder.proba_source ?? null;
 
+  const isVoteShare = String(probaSource || '').toLowerCase() === 'vote_share';
   const summary = useMemo(() => getSummary(decoder), [decoder]);
 
   // De-dupe decoder notes against global trainResult.notes (often prefixed "Decoder outputs: ...")
@@ -284,6 +287,12 @@ export default function DecoderOutputsResults({ trainResult }) {
             </Text>
             <Text span fw={700}>
               {hasProbabilities ? 'yes' : 'no'}
+              {hasProbabilities && isVoteShare ? (
+                <Text span fw={500} c="dimmed">
+                  {' '}
+                  (vote share)
+                </Text>
+              ) : null}
             </Text>
           </Text>
 

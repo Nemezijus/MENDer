@@ -8,11 +8,19 @@ The Decoder Outputs table stores per-sample scores/probabilities/margins.
 This module turns those into compact global diagnostics (e.g. log loss,
 Brier score, margin statistics) that can surface subtle confidence shifts.
 
-Added:
+Includes:
 - ECE (Expected Calibration Error) + reliability bins (top-1 confidence)
+
+Notes on probability sources
+----------------------------
+Some ensembles (e.g., VotingClassifier with voting="hard") do not provide
+predict_proba. In that case, MENDer may compute vote-share "probabilities"
+(fraction of estimators voting for each class). These are *not calibrated*
+probabilities. For vote-share probabilities, we compute confidence/margin/ECE
+diagnostics, but skip log loss and Brier by default (unless explicitly enabled).
 """
 
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -107,10 +115,7 @@ def _multiclass_brier(
     classes: Optional[np.ndarray],
     notes: List[str],
 ) -> Optional[float]:
-    """Compute multiclass Brier score: mean ||p - onehot(y)||^2.
-
-    This works for binary and multiclass.
-    """
+    """Compute multiclass Brier score: mean ||p - onehot(y)||^2."""
     if proba is None:
         return None
     p = np.asarray(proba, dtype=float)
@@ -179,15 +184,7 @@ def _calibration_ece_top1(
     n_bins: int,
     notes: List[str],
 ) -> Tuple[Optional[float], Optional[float], Optional[List[Dict[str, Any]]]]:
-    """Compute ECE/MCE and reliability bins using top-1 confidence.
-
-    Works for binary and multiclass:
-      conf_i = max_k p_i,k
-      pred_i = argmax_k p_i,k
-      correct_i = (pred_i == true_i)
-
-    Returns (ece, mce, bins_list).
-    """
+    """Compute ECE/MCE and reliability bins using top-1 confidence."""
     if proba is None:
         return None, None, None
 
@@ -245,10 +242,10 @@ def _calibration_ece_top1(
     conf = np.max(p, axis=1)
     correct = (pred_idx == y_idx).astype(float)
 
-    # Bin edges: uniform over [0, 1]
-    edges = np.linspace(0.0, 1.0, n_bins + 1)
     # Assign bin index; conf==1 goes to last bin
     bin_idx = np.minimum((conf * n_bins).astype(int), n_bins - 1)
+
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
 
     bins: List[Dict[str, Any]] = []
     ece = 0.0
@@ -302,6 +299,8 @@ def compute_decoder_summaries(
     y_true: Optional[Any],
     classes: Optional[Any] = None,
     proba: Optional[Any] = None,
+    proba_source: Optional[str] = None,
+    allow_vote_share_losses: bool = False,
     decision_scores: Optional[Any] = None,
     margin: Optional[Any] = None,
     low_margin_thresholds: Sequence[float] = (0.05, 0.1),
@@ -334,6 +333,9 @@ def compute_decoder_summaries(
     if classes_arr is not None:
         summary["n_classes"] = int(classes_arr.size)
 
+    if proba_source is not None:
+        summary["proba_source"] = str(proba_source)
+
     # Margin summaries
     if margin is not None:
         m = _as_1d(margin).astype(float)
@@ -359,41 +361,47 @@ def compute_decoder_summaries(
                 except Exception:
                     continue
 
-            # Log loss
-            if y_true_arr is not None:
-                try:
-                    if _sk_log_loss is not None:
-                        ll = _sk_log_loss(
-                            y_true_arr,
-                            p,
-                            labels=classes_arr.tolist() if classes_arr is not None else None,
-                        )
-                        summary["log_loss"] = _safe_float(ll)
-                    else:
-                        # manual fallback
-                        if classes_arr is None:
-                            raise ValueError("log_loss fallback requires classes")
-                        mp = _label_to_index_map(classes_arr)
-                        y_idx = np.array([mp.get(l, -1) for l in list(y_true_arr)], dtype=int)
-                        ok = y_idx >= 0
-                        if not np.all(ok):
-                            notes.append(f"Log loss: dropped {int(np.sum(~ok))} rows with unknown labels")
-                        if int(np.sum(ok)) > 0:
-                            y_idx = y_idx[ok]
-                            pp = p[ok]
-                            ll = float(np.mean(-np.log(pp[np.arange(pp.shape[0]), y_idx])))
+            # Log loss + Brier (only for real model probabilities by default)
+            is_vote_share = (proba_source or "").lower() == "vote_share"
+            if is_vote_share and not allow_vote_share_losses:
+                if y_true_arr is not None:
+                    notes.append("Probabilities are vote shares (hard voting); skipping log_loss and brier by default.")
+            else:
+                # Log loss
+                if y_true_arr is not None:
+                    try:
+                        if _sk_log_loss is not None:
+                            ll = _sk_log_loss(
+                                y_true_arr,
+                                p,
+                                labels=classes_arr.tolist() if classes_arr is not None else None,
+                            )
                             summary["log_loss"] = _safe_float(ll)
-                except Exception as e:
-                    notes.append(f"Log loss: failed ({type(e).__name__}: {e})")
+                        else:
+                            # manual fallback
+                            if classes_arr is None:
+                                raise ValueError("log_loss fallback requires classes")
+                            mp = _label_to_index_map(classes_arr)
+                            y_idx = np.array([mp.get(l, -1) for l in list(y_true_arr)], dtype=int)
+                            ok = y_idx >= 0
+                            if not np.all(ok):
+                                notes.append(f"Log loss: dropped {int(np.sum(~ok))} rows with unknown labels")
+                            if int(np.sum(ok)) > 0:
+                                y_idx = y_idx[ok]
+                                pp = p[ok]
+                                ll = float(np.mean(-np.log(pp[np.arange(pp.shape[0]), y_idx])))
+                                summary["log_loss"] = _safe_float(ll)
+                    except Exception as e:
+                        notes.append(f"Log loss: failed ({type(e).__name__}: {e})")
 
-            # Brier score (multiclass-safe)
-            if y_true_arr is not None:
-                try:
-                    br = _multiclass_brier(y_true_arr, p, classes_arr, notes)
-                    if br is not None:
-                        summary["brier"] = _safe_float(br)
-                except Exception as e:
-                    notes.append(f"Brier: failed ({type(e).__name__}: {e})")
+                # Brier score (multiclass-safe)
+                if y_true_arr is not None:
+                    try:
+                        br = _multiclass_brier(y_true_arr, p, classes_arr, notes)
+                        if br is not None:
+                            summary["brier"] = _safe_float(br)
+                    except Exception as e:
+                        notes.append(f"Brier: failed ({type(e).__name__}: {e})")
 
             # ECE + reliability bins (top-1 confidence)
             if y_true_arr is not None:
@@ -424,7 +432,6 @@ def compute_decoder_summaries(
             if ds.ndim == 1:
                 summary.update(_basic_stats(ds.astype(float), "decoder_score", quantiles))
             elif ds.ndim == 2 and ds.shape[1] > 0:
-                # track top score per row
                 top = np.max(ds.astype(float), axis=1)
                 summary.update(_basic_stats(top, "top_score", quantiles))
         except Exception as e:

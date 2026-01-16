@@ -77,6 +77,9 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     fold_scores = []
     y_true_all, y_pred_all = [], []
     y_proba_all, y_score_all = [], []
+    # If the splitter provides original sample indices, keep them so decoder outputs
+    # can be shown in the original row order (useful for downstream alignment).
+    test_indices_parts: list[np.ndarray | None] = []
     n_train_sizes, n_test_sizes = [], []
 
     # --- Optional decoder outputs (classification only) ---------------------
@@ -99,11 +102,32 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     decoder_positive_index: int | None = None
     decoder_fold_ids: list[np.ndarray] = []
 
-    for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
+    for fold_id, split in enumerate(splitter.split(X, y), start=1):
+        # Support splitters that optionally yield indices.
+        # Expected formats:
+        #   (Xtr, Xte, ytr, yte)
+        #   (idx_tr, idx_te, Xtr, Xte, ytr, yte)
+        if isinstance(split, (tuple, list)) and len(split) == 4:
+            Xtr, Xte, ytr, yte = split
+            idx_te = None
+        elif isinstance(split, (tuple, list)) and len(split) == 6:
+            _, idx_te, Xtr, Xte, ytr, yte = split
+        else:
+            raise ValueError(
+                "Splitter yielded an unsupported split tuple; expected 4 or 6 items. "
+                f"Got {type(split).__name__} of length {len(split) if isinstance(split, (tuple, list)) else 'n/a'}."
+            )
+
         pipeline = make_pipeline(cfg, rngm, stream=f"{mode}/fold{fold_id}")
         pipeline.fit(Xtr, ytr)
         y_pred = pipeline.predict(Xte)
         last_pipeline = pipeline
+
+        # Keep test indices for optional re-ordering back to original row order.
+        if idx_te is not None:
+            test_indices_parts.append(np.asarray(idx_te, dtype=int).ravel())
+        else:
+            test_indices_parts.append(None)
 
         metric_name = cfg.eval.metric
         y_proba = None
@@ -111,9 +135,10 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 
         # For classification, we try to compute scores/probabilities once per fold.
         if eval_kind == "classification":
+            # Try to compute both proba and scores when available.
             if hasattr(pipeline, "predict_proba"):
                 y_proba = pipeline.predict_proba(Xte)
-            elif hasattr(pipeline, "decision_function"):
+            if hasattr(pipeline, "decision_function"):
                 y_score = pipeline.decision_function(Xte)
 
             # If the chosen metric *needs* probabilities/scores, enforce availability
@@ -199,8 +224,30 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     y_true_all_arr = np.concatenate(y_true_all) if y_true_all else np.array([])
     y_pred_all_arr = np.concatenate(y_pred_all) if y_pred_all else np.array([])
 
+    # If we have original indices from the splitter, reorder OOF arrays back to the
+    # original row order. This makes decoder outputs align with the user's input.
+    order = None
+    row_indices_arr: np.ndarray | None = None
+    if test_indices_parts and all(p is not None for p in test_indices_parts):
+        idx_all_arr = np.concatenate([np.asarray(p) for p in test_indices_parts], axis=0)
+        # Only reorder if lengths match (defensive in case a splitter mixes formats).
+        if idx_all_arr.shape[0] == y_pred_all_arr.shape[0]:
+            order = np.argsort(idx_all_arr, kind="stable")
+            row_indices_arr = idx_all_arr[order]
+            y_true_all_arr = y_true_all_arr[order]
+            y_pred_all_arr = y_pred_all_arr[order]
+    if row_indices_arr is None:
+        row_indices_arr = np.arange(int(y_pred_all_arr.shape[0]), dtype=int)
+
     y_proba_all_arr = np.concatenate(y_proba_all, axis=0) if y_proba_all else None
     y_score_all_arr = np.concatenate(y_score_all, axis=0) if y_score_all else None
+
+    # Apply the same ordering to proba/scores if they are present and aligned.
+    if order is not None:
+        if y_proba_all_arr is not None and y_proba_all_arr.shape[0] == order.shape[0]:
+            y_proba_all_arr = y_proba_all_arr[order]
+        if y_score_all_arr is not None and y_score_all_arr.shape[0] == order.shape[0]:
+            y_score_all_arr = y_score_all_arr[order]
 
     # Compute metrics via strategy (classification only)
     if eval_kind == "classification" and y_true_all_arr.size and y_pred_all_arr.size:
@@ -404,10 +451,24 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             mg_arr = _concat_if_complete(decoder_margin_parts, "margin")
             fold_ids_arr = np.concatenate(decoder_fold_ids, axis=0) if decoder_fold_ids else None
 
+            # If we have a row-order mapping, reorder decoder arrays to match.
+            if order is not None:
+                if ds_arr is not None and ds_arr.shape[0] == order.shape[0]:
+                    ds_arr = ds_arr[order]
+                if pr_arr is not None and pr_arr.shape[0] == order.shape[0]:
+                    pr_arr = pr_arr[order]
+                if mg_arr is not None and mg_arr.shape[0] == order.shape[0]:
+                    mg_arr = mg_arr[order]
+                if fold_ids_arr is not None and fold_ids_arr.shape[0] == order.shape[0]:
+                    fold_ids_arr = fold_ids_arr[order]
+
             max_rows = int(getattr(decoder_cfg, "max_preview_rows", 200)) if decoder_cfg is not None else 200
 
+            # Prefer original indices if available; else fall back to sequential.
+            indices_out = [int(v) for v in (row_indices_arr.tolist() if row_indices_arr is not None else [])]
+
             rows = build_decoder_output_table(
-                indices=list(range(int(y_pred_all_arr.shape[0]))),
+                indices=indices_out,
                 y_pred=y_pred_all_arr,
                 y_true=y_true_all_arr if y_true_all_arr.size else None,
                 classes=decoder_classes,
