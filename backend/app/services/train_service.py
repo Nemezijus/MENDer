@@ -15,6 +15,7 @@ from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_ar
 from utils.persistence.artifact_cache import artifact_cache
 from utils.postprocessing.scoring import PROBA_METRICS
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
+from utils.postprocessing.decoder_summaries import compute_decoder_summaries
 from utils.predicting.prediction_results import build_decoder_output_table
 
 from ..adapters.io_adapter import LoadError
@@ -418,6 +419,35 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
                 max_rows=max_rows,
             )
 
+            # Global summaries derived from the per-sample decoder outputs.
+            summary, summary_notes = compute_decoder_summaries(
+                y_true=y_true_all_arr if y_true_all_arr.size else None,
+                classes=decoder_classes,
+                proba=pr_arr,
+                decision_scores=ds_arr,
+                margin=mg_arr,
+            )
+
+            if summary_notes:
+                decoder_notes_all.extend([str(n) for n in summary_notes])
+
+            # Add a short, human-readable one-liner to notes so users see it
+            # even if the API schema drops unknown fields.
+            try:
+                bits = []
+                if "log_loss" in summary:
+                    bits.append(f"log_loss={float(summary['log_loss']):.4f}")
+                if "brier" in summary:
+                    bits.append(f"brier={float(summary['brier']):.4f}")
+                if "margin_mean" in summary:
+                    bits.append(f"margin_mean={float(summary['margin_mean']):.4f}")
+                if "max_proba_mean" in summary:
+                    bits.append(f"mean_max_proba={float(summary['max_proba_mean']):.4f}")
+                if bits:
+                    decoder_notes_all.append("Decoder summary: " + ", ".join(bits))
+            except Exception:
+                pass
+
             # Add fold_id column if available (kfold); for holdout, fold_id will be 1.
             if fold_ids_arr is not None and len(rows) > 0:
                 for i, r in enumerate(rows):
@@ -435,6 +465,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
                 "positive_class_index": decoder_positive_index,
                 "has_decision_scores": ds_arr is not None,
                 "has_proba": pr_arr is not None,
+                "summary": summary,
                 "notes": decoder_notes_all,
                 "n_rows_total": int(y_pred_all_arr.shape[0]) if y_pred_all_arr is not None else 0,
                 "preview_rows": rows,

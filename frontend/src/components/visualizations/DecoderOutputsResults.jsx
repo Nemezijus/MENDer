@@ -9,6 +9,7 @@ import {
   Table,
   ScrollArea,
   Tooltip,
+  Divider,
 } from '@mantine/core';
 
 import { downloadBlob } from '../../api/models';
@@ -49,6 +50,19 @@ function fmt3(v) {
   return '—';
 }
 
+function fmtMaybe3(v) {
+  if (v === null || v === undefined) return '—';
+  const num = parseNumber(v);
+  if (num === null) return String(v);
+  return fmt3(num);
+}
+
+function fmtMaybePct(v) {
+  const num = parseNumber(v);
+  if (num === null) return '—';
+  return `${(num * 100).toFixed(1)}%`;
+}
+
 function buildCsv(rows, columns) {
   const header = columns.map(toCsvValue).join(',');
   const lines = rows.map((r) => columns.map((c) => toCsvValue(r?.[c])).join(','));
@@ -61,7 +75,16 @@ function pickColumns(rows) {
   rows.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
 
   // Keep key columns first; fold_id (when present) should appear right after index.
-  const preferred = ['index', 'fold_id', 'trial_id', 'y_true', 'y_pred', 'correct', 'margin', 'decoder_score'];
+  const preferred = [
+    'index',
+    'fold_id',
+    'trial_id',
+    'y_true',
+    'y_pred',
+    'correct',
+    'margin',
+    'decoder_score',
+  ];
 
   const pCols = [...keys].filter((k) => k.startsWith('p_')).sort();
   const scoreCols = [...keys].filter((k) => k.startsWith('score_')).sort();
@@ -104,6 +127,25 @@ function buildHeaderTooltip(key) {
   return null;
 }
 
+function getSummary(decoder) {
+  if (!decoder) return null;
+  return (
+    decoder.summary ||
+    decoder.decoder_summary ||
+    decoder.decoderSummary ||
+    decoder.decoderSummaries ||
+    null
+  );
+}
+
+function firstKey(obj, candidates) {
+  if (!obj) return null;
+  for (const k of candidates) {
+    if (Object.prototype.hasOwnProperty.call(obj, k)) return k;
+  }
+  return null;
+}
+
 export default function DecoderOutputsResults({ trainResult }) {
   if (!trainResult) return null;
 
@@ -120,6 +162,8 @@ export default function DecoderOutputsResults({ trainResult }) {
       decoder.has_probabilities ??
       decoder.hasProba,
   );
+
+  const summary = useMemo(() => getSummary(decoder), [decoder]);
 
   // De-dupe decoder notes against global trainResult.notes (often prefixed "Decoder outputs: ...")
   const decoderNotes = useMemo(() => {
@@ -190,6 +234,23 @@ export default function DecoderOutputsResults({ trainResult }) {
   const cellNowrap = { whiteSpace: 'nowrap' };
   const headerTextStyle = { ...cellNowrap, lineHeight: 1.1 };
 
+  // Pick “nice” threshold keys if present (decoder_summaries may emit multiple)
+  const marginFracKey = summary
+    ? firstKey(summary, ['margin_frac_lt_0_1', 'margin_frac_lt_0_05'])
+    : null;
+  const maxProbaFracKey = summary
+    ? firstKey(summary, ['max_proba_frac_ge_0_9', 'max_proba_frac_ge_0_8'])
+    : null;
+
+  // Calibration fields
+  const eceBins =
+    summary && Array.isArray(summary.reliability_bins) ? summary.reliability_bins : null;
+
+  const nonEmptyBins = useMemo(() => {
+    if (!eceBins) return [];
+    return eceBins.filter((b) => b && typeof b.count === 'number' && b.count > 0);
+  }, [eceBins]);
+
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
       <Stack gap="sm">
@@ -197,7 +258,7 @@ export default function DecoderOutputsResults({ trainResult }) {
           Decoder outputs
         </Text>
 
-        {/* Summary lines */}
+        {/* Basic summary */}
         <Stack gap={0}>
           <Text size="sm">
             <Text span fw={500}>
@@ -240,6 +301,293 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Text>
         </Stack>
 
+        {/* Global decoder summary (from backend, typically OOF when CV is used) */}
+        {summary && typeof summary === 'object' && (
+          <Card withBorder radius="md" padding="sm">
+            <Stack gap="xs">
+              <Group justify="space-between" align="center">
+                <Text size="sm" fw={600}>
+                  Global decoder summary
+                </Text>
+                <Text size="xs" c="dimmed">
+                  (computed from full decoder outputs)
+                </Text>
+              </Group>
+
+              <Divider />
+
+              <Group justify="space-between" wrap="wrap" gap="xs">
+                {'n_samples' in summary && (
+                  <Text size="sm">
+                    <Text span fw={500}>
+                      n:
+                    </Text>{' '}
+                    <Text span fw={700}>
+                      {summary.n_samples}
+                    </Text>
+                  </Text>
+                )}
+
+                {'log_loss' in summary && (
+                  <Tooltip
+                    label="Cross-entropy (log loss). Sensitive to confidence changes even when accuracy is similar."
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        log loss:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybe3(summary.log_loss)}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {'brier' in summary && (
+                  <Tooltip
+                    label="Brier score (mean squared error of probabilities vs one-hot truth). Lower is better."
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        brier:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybe3(summary.brier)}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {'ece' in summary && (
+                  <Tooltip
+                    label="Expected Calibration Error (ECE) using top-1 confidence. Lower is better; 0 means perfect calibration."
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        ECE:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybe3(summary.ece)}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {'mce' in summary && (
+                  <Tooltip
+                    label="Maximum Calibration Error (MCE): the largest |accuracy - confidence| among bins."
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        MCE:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybe3(summary.mce)}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {'ece_n_bins' in summary && (
+                  <Text size="sm">
+                    <Text span fw={500}>
+                      bins:
+                    </Text>{' '}
+                    <Text span fw={700}>
+                      {summary.ece_n_bins}
+                    </Text>
+                  </Text>
+                )}
+
+                {'margin_mean' in summary && (
+                  <Tooltip
+                    label="Mean margin (top1 − top2). Larger means more separation/confidence."
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        margin mean:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybe3(summary.margin_mean)}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {'margin_median' in summary && (
+                  <Text size="sm">
+                    <Text span fw={500}>
+                      margin median:
+                    </Text>{' '}
+                    <Text span fw={700}>
+                      {fmtMaybe3(summary.margin_median)}
+                    </Text>
+                  </Text>
+                )}
+
+                {marginFracKey && (
+                  <Tooltip
+                    label={`Fraction of samples with margin below threshold (${marginFracKey
+                      .replace('margin_frac_lt_', '')
+                      .replaceAll('_', '.')}).`}
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        low margin:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybePct(summary[marginFracKey])}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {'max_proba_mean' in summary && (
+                  <Tooltip
+                    label="Mean of max predicted probability per sample (confidence proxy)."
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        max p mean:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybe3(summary.max_proba_mean)}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+
+                {maxProbaFracKey && (
+                  <Tooltip
+                    label={`Fraction of samples with max probability ≥ threshold (${maxProbaFracKey
+                      .replace('max_proba_frac_ge_', '')
+                      .replaceAll('_', '.')}).`}
+                    multiline
+                    maw={280}
+                    withArrow
+                  >
+                    <Text size="sm">
+                      <Text span fw={500}>
+                        high conf:
+                      </Text>{' '}
+                      <Text span fw={700}>
+                        {fmtMaybePct(summary[maxProbaFracKey])}
+                      </Text>
+                    </Text>
+                  </Tooltip>
+                )}
+              </Group>
+
+              {/* Reliability bins (compact) */}
+              {nonEmptyBins.length > 0 && (
+                <>
+                  <Divider my="xs" />
+
+                  <Group justify="space-between" align="center">
+                    <Text size="sm" fw={600}>
+                      Calibration bins (top-1 confidence)
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Shows only non-empty bins
+                    </Text>
+                  </Group>
+
+                  <ScrollArea h={160} type="auto" offsetScrollbars>
+                    <Table
+                      withTableBorder={false}
+                      withColumnBorders={false}
+                      horizontalSpacing="xs"
+                      verticalSpacing="xs"
+                    >
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>
+                            <Text size="xs" fw={600}>
+                              bin
+                            </Text>
+                          </Table.Th>
+                          <Table.Th>
+                            <Text size="xs" fw={600}>
+                              range
+                            </Text>
+                          </Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>
+                            <Text size="xs" fw={600}>
+                              n
+                            </Text>
+                          </Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>
+                            <Text size="xs" fw={600}>
+                              conf
+                            </Text>
+                          </Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>
+                            <Text size="xs" fw={600}>
+                              acc
+                            </Text>
+                          </Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>
+                            <Text size="xs" fw={600}>
+                              gap
+                            </Text>
+                          </Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {nonEmptyBins.map((b) => (
+                          <Table.Tr key={b.bin}>
+                            <Table.Td>
+                              <Text size="sm">{b.bin}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">
+                                {fmtMaybe3(b.bin_lo)}–{fmtMaybe3(b.bin_hi)}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="sm">{b.count}</Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="sm">{fmtMaybe3(b.avg_confidence)}</Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="sm">{fmtMaybe3(b.accuracy)}</Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="sm">{fmtMaybe3(b.gap)}</Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </ScrollArea>
+                </>
+              )}
+            </Stack>
+          </Card>
+        )}
+
         {/* Notes (deduped) */}
         {decoderNotes.length > 0 && (
           <Stack gap={4}>
@@ -256,7 +604,7 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Stack>
         )}
 
-        {/* Probability summary */}
+        {/* Probability summary (preview-only) */}
         {hasProbabilities && classOptions.length > 0 && (
           <Card withBorder radius="md" padding="sm">
             <Stack gap="xs">
@@ -293,13 +641,13 @@ export default function DecoderOutputsResults({ trainResult }) {
               </Group>
 
               <Text size="xs" c="dimmed">
-                Summary is computed from the preview rows only.
+                This class-summary is computed from the preview rows only.
               </Text>
             </Stack>
           </Card>
         )}
 
-        {/* Export button directly above the table */}
+        {/* Export button */}
         <Group justify="flex-start">
           <Button size="xs" variant="light" onClick={handleExportPreview}>
             Export preview CSV
@@ -334,6 +682,7 @@ export default function DecoderOutputsResults({ trainResult }) {
                             ? 40
                             : undefined;
                   const thStyle = minW ? { ...stickyThStyle, minWidth: minW } : stickyThStyle;
+
                   return (
                     <Table.Th key={c} style={thStyle}>
                       {tip ? (

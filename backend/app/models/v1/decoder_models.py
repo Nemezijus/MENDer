@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -50,3 +50,7 @@ class DecoderOutputs(BaseModel):
     # Preview table rows (first N samples)
     preview_rows: List[DecoderOutputRow] = Field(default_factory=list)
     n_rows_total: Optional[int] = None
+
+    # Compact global summaries computed from per-sample decoder outputs.
+    # Expected to be derived from OOF predictions when CV is used.
+    summary: Optional[Dict[str, Any]] = None

@@ -30,6 +30,7 @@ from utils.postprocessing.ensembles.adaboost_ensemble_reporting import AdaBoostE
 from utils.postprocessing.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
 
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
+from utils.postprocessing.decoder_summaries import compute_decoder_summaries
 from utils.predicting.prediction_results import build_decoder_output_table
 
 
@@ -873,12 +874,42 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 for r in preview_rows:
                     r["fold_id"] = 1
 
+            # Global summaries derived from the per-sample decoder outputs.
+            summary, summary_notes = compute_decoder_summaries(
+                y_true=y_true_all_arr if y_true_all_arr.size else None,
+                classes=decoder_classes,
+                proba=pr_arr,
+                decision_scores=ds_arr,
+                margin=mg_arr,
+            )
+
+            if summary_notes:
+                decoder_notes.extend([str(n) for n in summary_notes])
+
+            # Add a short one-liner so users see key diagnostics even if the
+            # API schema drops unknown fields.
+            try:
+                bits = []
+                if "log_loss" in summary:
+                    bits.append(f"log_loss={float(summary['log_loss']):.4f}")
+                if "brier" in summary:
+                    bits.append(f"brier={float(summary['brier']):.4f}")
+                if "margin_mean" in summary:
+                    bits.append(f"margin_mean={float(summary['margin_mean']):.4f}")
+                if "max_proba_mean" in summary:
+                    bits.append(f"mean_max_proba={float(summary['max_proba_mean']):.4f}")
+                if bits:
+                    decoder_notes.append("Decoder summary: " + ", ".join(bits))
+            except Exception:
+                pass
+
             decoder_payload = {
                 "classes": decoder_classes.tolist() if decoder_classes is not None else None,
                 "positive_class_label": decoder_positive_label,
                 "positive_class_index": decoder_positive_index,
                 "has_decision_scores": ds_arr is not None,
                 "has_proba": pr_arr is not None,
+                "summary": summary,
                 "notes": decoder_notes,
                 "n_rows_total": int(len(y_pred_all_arr)),
                 "preview_rows": preview_rows,
