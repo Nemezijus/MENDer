@@ -60,7 +60,8 @@ function pickColumns(rows) {
   const keys = new Set();
   rows.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
 
-  const preferred = ['index', 'trial_id', 'y_true', 'y_pred', 'correct', 'margin', 'decoder_score'];
+  // Keep key columns first; fold_id (when present) should appear right after index.
+  const preferred = ['index', 'fold_id', 'trial_id', 'y_true', 'y_pred', 'correct', 'margin', 'decoder_score'];
 
   const pCols = [...keys].filter((k) => k.startsWith('p_')).sort();
   const scoreCols = [...keys].filter((k) => k.startsWith('score_')).sort();
@@ -83,6 +84,7 @@ function prettifyHeader(key) {
 
 function buildHeaderTooltip(key) {
   if (key === 'index') return 'Row index within the preview (often corresponds to test sample order).';
+  if (key === 'fold_id') return 'Fold index for this row in k-fold CV (1..K).';
   if (key === 'trial_id') return 'Optional trial identifier (if provided).';
   if (key === 'y_true') return 'Ground-truth label for this sample.';
   if (key === 'y_pred') return 'Model-predicted label for this sample.';
@@ -182,7 +184,11 @@ export default function DecoderOutputsResults({ trainResult }) {
     zIndex: 2,
     backgroundColor: 'var(--mantine-color-gray-8)',
     textAlign: 'center',
+    whiteSpace: 'nowrap',
   };
+
+  const cellNowrap = { whiteSpace: 'nowrap' };
+  const headerTextStyle = { ...cellNowrap, lineHeight: 1.1 };
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
@@ -300,23 +306,44 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Button>
         </Group>
 
-        <ScrollArea h={320} type="auto">
-          <Table withTableBorder={false} withColumnBorders={false} horizontalSpacing="xs" verticalSpacing="xs">
+        <ScrollArea
+          h={320}
+          type="auto"
+          offsetScrollbars
+          styles={{ viewport: { paddingRight: 8, paddingBottom: 6 }, scrollbar: { zIndex: 5 } }}
+        >
+          <Table
+            withTableBorder={false}
+            withColumnBorders={false}
+            horizontalSpacing="xs"
+            verticalSpacing="xs"
+          >
             <Table.Thead>
               <Table.Tr>
                 {columns.map((c) => {
                   const tip = buildHeaderTooltip(c);
                   const label = prettifyHeader(c);
+                  const minW =
+                    c === 'index'
+                      ? 40
+                      : c === 'fold_id'
+                        ? 40
+                        : c === 'y_true' || c === 'y_pred'
+                          ? 40
+                          : c === 'correct'
+                            ? 40
+                            : undefined;
+                  const thStyle = minW ? { ...stickyThStyle, minWidth: minW } : stickyThStyle;
                   return (
-                    <Table.Th key={c} style={stickyThStyle}>
+                    <Table.Th key={c} style={thStyle}>
                       {tip ? (
                         <Tooltip label={tip} multiline maw={260} withArrow>
-                          <Text size="xs" fw={600} c="white">
+                          <Text size="xs" fw={600} c="white" style={headerTextStyle}>
                             {label}
                           </Text>
                         </Tooltip>
                       ) : (
-                        <Text size="xs" fw={600} c="white">
+                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
                           {label}
                         </Text>
                       )}
@@ -329,11 +356,18 @@ export default function DecoderOutputsResults({ trainResult }) {
             <Table.Tbody>
               {preview.map((row, idx) => {
                 const isStriped = idx % 2 === 1;
+
+                const curFold = row?.fold_id;
+                const prevFold = idx > 0 ? preview[idx - 1]?.fold_id : null;
+                const isFoldBoundary =
+                  curFold != null && prevFold != null && String(curFold) !== String(prevFold);
+
                 return (
                   <Table.Tr
                     key={row?.index ?? idx}
                     style={{
                       backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
+                      borderTop: isFoldBoundary ? '3px solid var(--mantine-color-gray-4)' : undefined,
                     }}
                   >
                     {columns.map((c) => {
@@ -347,9 +381,12 @@ export default function DecoderOutputsResults({ trainResult }) {
                           style={{
                             textAlign: 'center',
                             backgroundColor: isFalse ? 'var(--mantine-color-red-1)' : undefined,
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          <Text size="sm">{renderCell(c, val)}</Text>
+                          <Text size="sm" style={cellNowrap}>
+                            {renderCell(c, val)}
+                          </Text>
                         </Table.Td>
                       );
                     })}

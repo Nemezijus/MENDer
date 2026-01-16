@@ -262,6 +262,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     decoder_notes: list[str] = []
     decoder_classes: Optional[np.ndarray] = None
     decoder_positive_index: Optional[int] = None
+    decoder_fold_ids: list[np.ndarray] = []
 
     # --- Split (hold-out or k-fold) -----------------------------------------
     split_seed = rngm.child_seed("ensemble/train/split")
@@ -323,6 +324,10 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
 
             # --- Optional decoder outputs (classification only) ----------------
             if decoder_enabled and eval_kind == "classification":
+                # Always track fold ID per test row for UI/diagnostics.
+                n_fold_rows = int(np.asarray(y_pred).shape[0])
+                decoder_fold_ids.append(np.full((n_fold_rows,), fold_id, dtype=int))
+
                 try:
                     dec = compute_decoder_outputs(
                         model,
@@ -347,7 +352,9 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                     if dec.notes:
                         decoder_notes.extend([str(x) for x in dec.notes])
                 except Exception as e:
-                    decoder_notes.append(f"decoder outputs failed on fold {fold_id}: {type(e).__name__}: {e}")
+                    decoder_notes.append(
+                        f"decoder outputs failed on fold {fold_id}: {type(e).__name__}: {e}"
+                    )
         except Exception as e:
             raise _friendly_ensemble_training_error(e, cfg, fold_id=fold_id) from e
 
@@ -840,6 +847,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             ds_arr = np.concatenate(decoder_scores_all, axis=0) if decoder_scores_all else None
             pr_arr = np.concatenate(decoder_proba_all, axis=0) if decoder_proba_all else None
             mg_arr = np.concatenate(decoder_margin_all, axis=0) if decoder_margin_all else None
+            fold_ids_arr = np.concatenate(decoder_fold_ids, axis=0) if decoder_fold_ids else None
 
             preview_rows = build_decoder_output_table(
                 indices=list(range(len(y_pred_all_arr))),
@@ -853,6 +861,17 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 y_true=y_true_all_arr,
                 max_rows=decoder_max_preview_rows if decoder_max_preview_rows > 0 else None,
             )
+
+            # Add fold_id column when available (kfold); for holdout, fold_id will be 1.
+            if fold_ids_arr is not None and len(preview_rows) > 0:
+                for i, r in enumerate(preview_rows):
+                    try:
+                        r["fold_id"] = int(fold_ids_arr[i])
+                    except Exception:
+                        pass
+            elif mode == "holdout" and len(preview_rows) > 0:
+                for r in preview_rows:
+                    r["fold_id"] = 1
 
             decoder_payload = {
                 "classes": decoder_classes.tolist() if decoder_classes is not None else None,

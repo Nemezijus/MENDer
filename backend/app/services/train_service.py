@@ -86,7 +86,17 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     decoder_include_probabilities = bool(getattr(decoder_cfg, "include_probabilities", True)) if decoder_cfg is not None else True
     decoder_calibrate_probabilities = bool(getattr(decoder_cfg, "calibrate_probabilities", False)) if decoder_cfg is not None else False
 
-    X_test_all = []  # only used when decoder outputs are enabled
+    # For k-fold CV, decoder outputs should be *out-of-fold* (OOF):
+    # compute them with the fold-trained model on that fold's test split.
+    # We keep per-fold decoder parts so we can safely drop a field (scores/proba/margin)
+    # if any fold cannot produce it.
+    decoder_scores_parts: list[np.ndarray | None] = []
+    decoder_proba_parts: list[np.ndarray | None] = []
+    decoder_margin_parts: list[np.ndarray | None] = []
+    decoder_notes_all: list[str] = []
+    decoder_classes: np.ndarray | None = None
+    decoder_positive_index: int | None = None
+    decoder_fold_ids: list[np.ndarray] = []
 
     for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
         pipeline = make_pipeline(cfg, rngm, stream=f"{mode}/fold{fold_id}")
@@ -127,7 +137,46 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             y_score_all.append(y_score)
 
         if decoder_enabled and eval_kind == "classification":
-            X_test_all.append(Xte)
+            # Always track fold ID per test row for UI/diagnostics.
+            n_fold_rows = int(np.asarray(y_pred).shape[0])
+            decoder_fold_ids.append(np.full((n_fold_rows,), fold_id, dtype=int))
+
+            # Compute decoder outputs per fold (OOF) so CV diagnostics are not optimistic.
+            try:
+                dec = compute_decoder_outputs(
+                    pipeline,
+                    Xte,
+                    positive_class_label=decoder_positive_label,
+                    include_decision_scores=decoder_include_scores,
+                    include_probabilities=decoder_include_probabilities,
+                    calibrate_probabilities=decoder_calibrate_probabilities,
+                )
+
+                if decoder_classes is None and dec.classes is not None:
+                    decoder_classes = np.asarray(dec.classes)
+                if decoder_positive_index is None and dec.positive_class_index is not None:
+                    decoder_positive_index = int(dec.positive_class_index)
+
+                decoder_scores_parts.append(
+                    np.asarray(dec.decision_scores) if dec.decision_scores is not None else None
+                )
+                decoder_proba_parts.append(
+                    np.asarray(dec.proba) if dec.proba is not None else None
+                )
+                decoder_margin_parts.append(
+                    np.asarray(dec.margin) if dec.margin is not None else None
+                )
+
+                if dec.notes:
+                    decoder_notes_all.extend([str(x) for x in dec.notes])
+            except Exception as e:
+                # Keep row alignment: still append None placeholders for this fold.
+                decoder_scores_parts.append(None)
+                decoder_proba_parts.append(None)
+                decoder_margin_parts.append(None)
+                decoder_notes_all.append(
+                    f"decoder outputs failed on fold {fold_id}: {type(e).__name__}: {e}"
+                )
         n_train_sizes.append(int(Xtr.shape[0]))
         n_test_sizes.append(int(Xte.shape[0]))
 
@@ -328,41 +377,70 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     }
 
     # --- Decoder outputs (optional) -----------------------------------------
-    if decoder_enabled and eval_kind == "classification" and X_test_all:
+    # For holdout, this is simply the test split.
+    # For kfold CV, this is OOF: concatenated fold test splits scored by each fold model.
+    if decoder_enabled and eval_kind == "classification":
         try:
-            X_test_all_arr = np.concatenate([np.asarray(a) for a in X_test_all], axis=0)
-            dec = compute_decoder_outputs(
-                effective_pipeline,
-                X_test_all_arr,
-                positive_class_label=decoder_positive_label,
-                include_decision_scores=decoder_include_scores,
-                include_probabilities=decoder_include_probabilities,
-                calibrate_probabilities=decoder_calibrate_probabilities,
-            )
+            def _concat_if_complete(parts: list[np.ndarray | None], name: str) -> np.ndarray | None:
+                """Concatenate per-fold arrays only if every fold produced the value."""
+                if not parts:
+                    return None
+                if any(p is None for p in parts):
+                    decoder_notes_all.append(
+                        f"Decoder outputs: '{name}' omitted because at least one fold could not produce it."
+                    )
+                    return None
+                try:
+                    return np.concatenate([np.asarray(p) for p in parts], axis=0)
+                except Exception as e:
+                    decoder_notes_all.append(
+                        f"Decoder outputs: '{name}' omitted due to concat error ({type(e).__name__}: {e})."
+                    )
+                    return None
 
-            # Build export/preview rows (JSON-friendly list[dict])
-            rows = build_decoder_output_table(
-                indices=list(range(len(dec.y_pred))),
-                y_pred=dec.y_pred,
-                y_true=y_true_all_arr if y_true_all_arr.size else None,
-                classes=dec.classes,
-                decision_scores=dec.decision_scores,
-                proba=dec.proba,
-                margin=dec.margin,
-                positive_class_label=dec.positive_class_label,
-                positive_class_index=dec.positive_class_index,
-            )
+            ds_arr = _concat_if_complete(decoder_scores_parts, "decision_scores")
+            pr_arr = _concat_if_complete(decoder_proba_parts, "proba")
+            mg_arr = _concat_if_complete(decoder_margin_parts, "margin")
+            fold_ids_arr = np.concatenate(decoder_fold_ids, axis=0) if decoder_fold_ids else None
 
             max_rows = int(getattr(decoder_cfg, "max_preview_rows", 200)) if decoder_cfg is not None else 200
 
-            decoder_payload = dec.to_dict()
-            decoder_payload["preview_rows"] = rows[:max_rows]
-            decoder_payload["n_rows_total"] = len(rows)
+            rows = build_decoder_output_table(
+                indices=list(range(int(y_pred_all_arr.shape[0]))),
+                y_pred=y_pred_all_arr,
+                y_true=y_true_all_arr if y_true_all_arr.size else None,
+                classes=decoder_classes,
+                decision_scores=ds_arr,
+                proba=pr_arr,
+                margin=mg_arr,
+                positive_class_label=decoder_positive_label,
+                positive_class_index=decoder_positive_index,
+                max_rows=max_rows,
+            )
 
-            result["decoder_outputs"] = decoder_payload
+            # Add fold_id column if available (kfold); for holdout, fold_id will be 1.
+            if fold_ids_arr is not None and len(rows) > 0:
+                for i, r in enumerate(rows):
+                    try:
+                        r["fold_id"] = int(fold_ids_arr[i])
+                    except Exception:
+                        pass
+            elif mode == "holdout" and len(rows) > 0:
+                for r in rows:
+                    r["fold_id"] = 1
 
-            # Surface any extraction notes in the main notes list as well.
-            for n in (dec.notes or []):
+            result["decoder_outputs"] = {
+                "classes": decoder_classes.tolist() if decoder_classes is not None else None,
+                "positive_class_label": decoder_positive_label,
+                "positive_class_index": decoder_positive_index,
+                "has_decision_scores": ds_arr is not None,
+                "has_proba": pr_arr is not None,
+                "notes": decoder_notes_all,
+                "n_rows_total": int(y_pred_all_arr.shape[0]) if y_pred_all_arr is not None else 0,
+                "preview_rows": rows,
+            }
+
+            for n in (decoder_notes_all or []):
                 result["notes"].append(f"Decoder outputs: {n}")
         except Exception as e:
             result["decoder_outputs"] = None

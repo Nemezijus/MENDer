@@ -28,13 +28,11 @@ def _to_1d_array(x: Any) -> Any:
         return x
 
 
-
 def _to_2d_array(x: Any) -> Any:
     """
     Best-effort coercion of input to a 2D numpy array when numpy is available.
-
-    - Scalars become shape (1, 1)
-    - 1D arrays become shape (n, 1)
+    - scalar -> (1, 1)
+    - 1D     -> (n, 1)
     Falls back to the original object if coercion fails.
     """
     if np is None:
@@ -55,7 +53,6 @@ def _slice_first_n(seq: Any, n: Optional[int]) -> Any:
         return seq
     if np is not None and isinstance(seq, np.ndarray):
         return seq[:n]
-    # Generic slicing for sequences
     try:
         return seq[:n]
     except Exception:
@@ -72,31 +69,6 @@ def build_prediction_table(
 ) -> List[Mapping[str, Any]]:
     """
     Build a table (list of dicts) summarizing prediction results.
-
-    Parameters
-    ----------
-    indices:
-        Optional iterable of row indices. If None, 0..N-1 is used.
-    y_pred:
-        Predicted values (labels or regression outputs).
-    task:
-        "classification" or "regression". Controls what extra columns are added.
-    y_true:
-        Optional ground-truth labels/targets. If provided, residuals or correctness
-        flags are computed.
-    max_rows:
-        If provided, only the first `max_rows` rows are included in the table.
-
-    Returns
-    -------
-    List[dict]
-        Each row contains at least:
-          - "index"
-          - "y_pred"
-        And optionally:
-          - "y_true"
-          - For regression: "residual", "abs_error"
-          - For classification: "correct" (bool)
     """
     y_pred_arr = _to_1d_array(y_pred)
     y_true_arr = _to_1d_array(y_true) if y_true is not None else None
@@ -105,11 +77,9 @@ def build_prediction_table(
     if np is not None and isinstance(y_pred_arr, np.ndarray):
         n = int(y_pred_arr.shape[0])
     else:
-        # Try generic len()
         try:
             n = len(y_pred_arr)  # type: ignore[arg-type]
         except Exception:
-            # Fall back to single element
             n = 1
 
     # Normalize indices
@@ -118,7 +88,6 @@ def build_prediction_table(
     else:
         idx_list = list(indices)
         if len(idx_list) != n:
-            # Best effort: fall back to 0..N-1 if lengths disagree
             idx_list = list(range(n))
 
     # Slice if max_rows is set
@@ -135,26 +104,25 @@ def build_prediction_table(
 
         # Best-effort element extraction
         if np is not None and isinstance(y_pred_arr, np.ndarray):
-            y_pred_val = y_pred_arr[i].item() if hasattr(y_pred_arr[i], "item") else y_pred_arr[i]
+            v = y_pred_arr[i]
+            y_pred_val = v.item() if hasattr(v, "item") else v
         else:
             try:
                 y_pred_val = y_pred_arr[i]  # type: ignore[index]
             except Exception:
-                y_pred_val = y_pred_arr  # type: ignore[assignment]
+                y_pred_val = y_pred_arr
 
-        row: dict[str, Any] = {
-            "index": int(idx),
-            "y_pred": y_pred_val,
-        }
+        row: dict[str, Any] = {"index": int(idx), "y_pred": y_pred_val}
 
         if y_true_arr is not None:
             if np is not None and isinstance(y_true_arr, np.ndarray):
-                y_true_val = y_true_arr[i].item() if hasattr(y_true_arr[i], "item") else y_true_arr[i]
+                v = y_true_arr[i]
+                y_true_val = v.item() if hasattr(v, "item") else v
             else:
                 try:
                     y_true_val = y_true_arr[i]  # type: ignore[index]
                 except Exception:
-                    y_true_val = y_true_arr  # type: ignore[assignment]
+                    y_true_val = y_true_arr
 
             row["y_true"] = y_true_val
 
@@ -164,10 +132,8 @@ def build_prediction_table(
                     row["residual"] = residual
                     row["abs_error"] = abs(residual)
                 except Exception:
-                    # If casting fails, just skip residuals
                     pass
             else:
-                # classification (or unknown): report correctness flag if comparable
                 try:
                     row["correct"] = bool(y_true_val == y_pred_val)
                 except Exception:
@@ -179,14 +145,7 @@ def build_prediction_table(
 
 
 def _sanitize_col_suffix(label: Any) -> str:
-    """Make a stable, CSV/JSON-friendly column suffix from a class label.
-
-    Notes
-    -----
-    - If labels come back as float-y strings like "-10.0", we normalize them to "-10"
-      so decoder columns become `p_-10` instead of `p_-10.0`.
-    - For non-integer floats (e.g. 0.5) we keep the original representation.
-    """
+    """Make a stable, CSV/JSON-friendly column suffix from a class label."""
     # unwrap numpy scalars
     try:
         if np is not None and isinstance(label, np.generic):
@@ -220,10 +179,8 @@ def _sanitize_col_suffix(label: Any) -> str:
     if not s:
         return "empty"
 
-    # conservative sanitation: spaces to underscores, drop slashes/commas
     for ch in [" ", "/", "\\", ",", ";", ":", "\t", "\n", "\r"]:
         s = s.replace(ch, "_")
-    # avoid weird duplicated underscores
     while "__" in s:
         s = s.replace("__", "_")
     return s
@@ -232,6 +189,7 @@ def _sanitize_col_suffix(label: Any) -> str:
 def build_decoder_output_table(
     *,
     indices: Optional[Iterable[int]],
+    fold_ids: Optional[Iterable[int]] = None,
     y_pred: Any,
     classes: Optional[Any] = None,
     decision_scores: Optional[Any] = None,
@@ -242,45 +200,7 @@ def build_decoder_output_table(
     y_true: Optional[Any] = None,
     max_rows: Optional[int] = None,
 ) -> List[Mapping[str, Any]]:
-    """Build a per-sample table for decoder outputs (classification only).
-
-    This is designed to be fed into `utils/io/export/result_export.py`.
-
-    Parameters
-    ----------
-    indices:
-        Optional iterable of sample indices. If None, 0..N-1 is used.
-    y_pred:
-        Hard predictions (shape (n_samples,)).
-    classes:
-        Optional class ordering corresponding to the columns of `proba` and/or
-        2D `decision_scores`.
-    decision_scores:
-        Output of decision_function(X), if available.
-        - binary: (n_samples,)
-        - multiclass: (n_samples, n_classes)
-    proba:
-        Output of predict_proba(X), if available, shape (n_samples, n_classes).
-    margin:
-        Optional confidence proxy per sample.
-    positive_class_label / positive_class_index:
-        Optional convenience mapping for a "positive" class. If provided and
-        probability/scores exist, adds `positive_proba` and/or `positive_score`.
-    y_true:
-        Optional ground truth labels. Adds `y_true` and `correct` columns.
-    max_rows:
-        If set, only the first `max_rows` rows are returned.
-
-    Returns
-    -------
-    List[dict]
-        Rows with columns like:
-          - index, y_true, y_pred, correct
-          - decoder_score (binary) OR score_<class>
-          - p_<class>
-          - positive_proba / positive_score
-          - margin
-    """
+    """Build a per-sample table for decoder outputs (classification only)."""
 
     y_pred_arr = _to_1d_array(y_pred)
     y_true_arr = _to_1d_array(y_true) if y_true is not None else None
@@ -289,9 +209,7 @@ def build_decoder_output_table(
     pr_arr = _to_2d_array(proba) if proba is not None else None
     mg_arr = _to_1d_array(margin) if margin is not None else None
 
-    cls_arr = None
-    if classes is not None:
-        cls_arr = _to_1d_array(classes)
+    cls_arr = _to_1d_array(classes) if classes is not None else None
 
     # Determine length
     if np is not None and isinstance(y_pred_arr, np.ndarray):
@@ -310,9 +228,22 @@ def build_decoder_output_table(
         if len(idx_list) != n:
             idx_list = list(range(n))
 
+    # Normalize fold ids (optional)
+    fold_list: Optional[List[int]] = None
+    if fold_ids is not None:
+        try:
+            fold_list = [int(x) for x in fold_ids]
+            if len(fold_list) != n:
+                fold_list = None
+        except Exception:
+            fold_list = None
+
     # Slice
     n_rows = n if max_rows is None else min(n, max_rows)
     idx_list = idx_list[:n_rows]
+    if fold_list is not None:
+        fold_list = fold_list[:n_rows]
+
     y_pred_arr = _slice_first_n(y_pred_arr, n_rows)
     if y_true_arr is not None:
         y_true_arr = _slice_first_n(y_true_arr, n_rows)
@@ -323,7 +254,7 @@ def build_decoder_output_table(
     if mg_arr is not None:
         mg_arr = _slice_first_n(mg_arr, n_rows)
 
-    # If user passed label but not index, resolve index if possible
+    # Resolve positive class index if label provided
     if positive_class_index is None and positive_class_label is not None and cls_arr is not None:
         try:
             if np is not None and isinstance(cls_arr, np.ndarray):
@@ -348,8 +279,6 @@ def build_decoder_output_table(
             score_cols.append((j, f"score_{suf}"))
             proba_cols.append((j, f"p_{suf}"))
 
-    rows: List[Mapping[str, Any]] = []
-
     def _get_1d_val(arr: Any, i: int) -> Any:
         if np is not None and isinstance(arr, np.ndarray):
             v = arr[i]
@@ -370,27 +299,35 @@ def build_decoder_output_table(
 
     # Determine if decision_scores were binary 1D originally
     ds_is_binary_scalar = False
+    ds_1d_arr = None
     if decision_scores is not None:
         try:
             if np is not None:
                 ds_tmp = np.asarray(decision_scores)
                 ds_is_binary_scalar = ds_tmp.ndim == 1
+                if ds_is_binary_scalar:
+                    ds_1d_arr = _to_1d_array(decision_scores)
             else:
-                # best effort
-                ds_is_binary_scalar = not isinstance(decision_scores, list) or (
-                    len(decision_scores) > 0 and not isinstance(decision_scores[0], (list, tuple))
+                ds_is_binary_scalar = (
+                    not isinstance(decision_scores, list)
+                    or (len(decision_scores) > 0 and not isinstance(decision_scores[0], (list, tuple)))
                 )
+                if ds_is_binary_scalar:
+                    ds_1d_arr = _to_1d_array(decision_scores)
         except Exception:
             ds_is_binary_scalar = False
+            ds_1d_arr = None
+
+    rows: List[Mapping[str, Any]] = []
 
     for i in range(n_rows):
         idx = idx_list[i]
         y_pred_val = _get_1d_val(y_pred_arr, i)
 
-        row: dict[str, Any] = {
-            "index": int(idx),
-            "y_pred": y_pred_val,
-        }
+        row: dict[str, Any] = {"index": int(idx), "y_pred": y_pred_val}
+
+        if fold_list is not None:
+            row["fold_id"] = fold_list[i]
 
         if y_true_arr is not None:
             y_true_val = _get_1d_val(y_true_arr, i)
@@ -402,14 +339,13 @@ def build_decoder_output_table(
 
         # decision scores
         if ds_arr is not None:
-            if ds_is_binary_scalar:
-                row["decoder_score"] = _get_1d_val(_to_1d_array(decision_scores), i)
+            if ds_is_binary_scalar and ds_1d_arr is not None:
+                row["decoder_score"] = _get_1d_val(ds_1d_arr, i)
             else:
                 if score_cols:
                     for j, col in score_cols:
                         row[col] = _get_2d_val(ds_arr, i, j)
                 else:
-                    # fallback to indexed names
                     try:
                         ncol = int(ds_arr.shape[1]) if np is not None and isinstance(ds_arr, np.ndarray) else len(ds_arr[i])
                         for j in range(ncol):
@@ -441,9 +377,8 @@ def build_decoder_output_table(
                 v = _get_2d_val(ds_arr, i, j)
                 if v is not None:
                     row["positive_score"] = v
-            elif ds_arr is not None and ds_is_binary_scalar:
-                # for binary, decision_function is already "positive" score
-                row["positive_score"] = _get_1d_val(_to_1d_array(decision_scores), i)
+            elif ds_is_binary_scalar and ds_1d_arr is not None:
+                row["positive_score"] = _get_1d_val(ds_1d_arr, i)
 
         # margin
         if mg_arr is not None:
@@ -453,6 +388,7 @@ def build_decoder_output_table(
 
     return rows
 
+
 def merge_prediction_and_decoder_tables(
     *,
     prediction_rows: List[Mapping[str, Any]],
@@ -460,14 +396,7 @@ def merge_prediction_and_decoder_tables(
     index_key: str = "index",
     overwrite: bool = False,
 ) -> List[Mapping[str, Any]]:
-    """Merge per-sample prediction rows with decoder-output rows by `index`.
-
-    This is primarily used for CSV export, where we want a single wide table
-    that contains both the base prediction columns and decoder columns
-    (`p_*`, `score_*`, `positive_*`, `margin`, ...).
-
-    By default we do NOT overwrite keys already present in the prediction row.
-    """
+    """Merge per-sample prediction rows with decoder-output rows by `index`."""
     dec_by_idx: dict[Any, Mapping[str, Any]] = {}
     for r in decoder_rows:
         try:
