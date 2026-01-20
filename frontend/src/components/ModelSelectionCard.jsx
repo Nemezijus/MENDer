@@ -125,6 +125,7 @@ function modeValToMaxFeat(mode, value) {
 // User-friendly names for the Algorithm dropdown.
 // Values must remain the internal algo keys used by the backend.
 const ALGO_LABELS = {
+  // -------- classifiers --------
   logreg: 'Logistic Regression',
   ridge: 'Ridge Classifier',
   sgd: 'SGD Classifier',
@@ -135,7 +136,21 @@ const ALGO_LABELS = {
   hgb: 'Histogram Gradient Boosting',
   knn: 'k-Nearest Neighbors',
   gnb: 'Gaussian Naive Bayes',
+
+  // -------- regressors --------
   linreg: 'Linear Regression',
+  ridgereg: 'Ridge Regression',
+  ridgecv: 'Ridge Regression (CV)',
+  enet: 'Elastic Net',
+  enetcv: 'Elastic Net (CV)',
+  lasso: 'Lasso',
+  lassocv: 'Lasso (CV)',
+  bayridge: 'Bayesian Ridge',
+  svr: 'Support Vector Regression (SVR)',
+  linsvr: 'Linear SVR',
+  knnreg: 'k-Nearest Neighbors Regressor',
+  treereg: 'Decision Tree Regressor',
+  rfreg: 'Random Forest Regressor',
 };
 
 function algoKeyToLabel(algo) {
@@ -211,6 +226,7 @@ export default function ModelSelectionCard({
     schemaAlgos ||
       defaultsAlgos ||
       [
+        // classifiers
         'logreg',
         'ridge',
         'sgd',
@@ -221,24 +237,61 @@ export default function ModelSelectionCard({
         'hgb',
         'knn',
         'gnb',
+        // regressors
         'linreg',
+        'ridgereg',
+        'ridgecv',
+        'enet',
+        'enetcv',
+        'lasso',
+        'lassocv',
+        'bayridge',
+        'svr',
+        'linsvr',
+        'knnreg',
+        'treereg',
+        'rfreg',
       ],
   );
 
-  // Preferred ordering, append any extras after
-  const preferred = [
-    'logreg',
-    'ridge',
-    'sgd',
-    'svm',
-    'tree',
-    'forest',
-    'extratrees',
-    'hgb',
-    'knn',
-    'gnb',
-    'linreg',
-  ];
+  // Preferred ordering (task-aware), append any extras after
+  const preferredByTask = {
+    classification: [
+      'logreg',
+      'ridge',
+      'sgd',
+      'svm',
+      'tree',
+      'forest',
+      'extratrees',
+      'hgb',
+      'knn',
+      'gnb',
+    ],
+    regression: [
+      'linreg',
+      'ridgereg',
+      'ridgecv',
+      'lasso',
+      'lassocv',
+      'enet',
+      'enetcv',
+      'bayridge',
+      'svr',
+      'linsvr',
+      'knnreg',
+      'treereg',
+      'rfreg',
+    ],
+  };
+
+  const preferred =
+    preferredByTask[effectiveTask] ||
+    [
+      ...preferredByTask.classification,
+      ...preferredByTask.regression,
+    ];
+
   const orderedAll = [
     ...preferred.filter((a) => available.has(a)),
     ...Array.from(available).filter((a) => !preferred.includes(a)),
@@ -381,6 +434,26 @@ export default function ModelSelectionCard({
 
   // HistGradientBoostingClassifier enums
   const hgbLoss = toSelectData(enumFromSubSchema(sub, 'loss', enums?.HGBLoss));
+
+  // Regressor enums
+  const regTreeCriterion = toSelectData(
+    enumFromSubSchema(sub, 'criterion', enums?.RegTreeCriterion),
+  );
+  const cdSelection = toSelectData(
+    enumFromSubSchema(sub, 'selection', enums?.CoordinateDescentSelection),
+  );
+  const linsvrLoss = toSelectData(
+    enumFromSubSchema(sub, 'loss', enums?.LinearSVRLoss),
+  );
+  const ridgecvGcvMode = toSelectData(
+    enumFromSubSchema(
+      sub,
+      'gcv_mode',
+      ['auto', 'svd', 'eigen', null],
+    ),
+    { includeNoneLabel: true },
+  );
+
 
   const gammaMode =
     typeof m.gamma === 'number' ? 'numeric' : (m.gamma ?? 'scale');
@@ -1315,6 +1388,843 @@ export default function ModelSelectionCard({
           </SimpleGrid>
         </Stack>
       )}
+
+      {/* Ridge Regression */}
+      {m.algo === 'ridgereg' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Alpha (regularization)"
+              value={m.alpha ?? 1.0}
+              onChange={(v) => set({ alpha: v })}
+              min={0}
+              step={0.1}
+            />
+            <Select
+              label="Solver"
+              data={ridgeSolver}
+              value={m.solver ?? 'auto'}
+              onChange={(v) => set({ solver: v })}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? null}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <Checkbox
+              label="Positive coefficients"
+              checked={!!m.positive}
+              onChange={(e) => set({ positive: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Ridge Regression (CV) */}
+      {m.algo === 'ridgecv' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              label="Alphas (comma-separated)"
+              placeholder="e.g. 0.1, 1.0, 10.0"
+              value={formatCsvFloats(m.alphas)}
+              onChange={(e) => set({ alphas: parseCsvFloats(e.currentTarget.value) || [0.1, 1.0, 10.0] })}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <TextInput
+              label="Scoring"
+              placeholder="(optional)"
+              value={m.scoring ?? ''}
+              onChange={(e) => {
+                const t = e.currentTarget.value;
+                set({ scoring: t === '' ? null : t });
+              }}
+            />
+            <NumberInput
+              label="CV folds"
+              value={m.cv ?? null}
+              onChange={(v) => set({ cv: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <Select
+              label="GCV mode"
+              data={ridgecvGcvMode}
+              value={m.gcv_mode == null ? 'none' : String(m.gcv_mode)}
+              onChange={(v) => set({ gcv_mode: fromSelectNullable(v) })}
+            />
+            <Checkbox
+              label="Alpha per target"
+              checked={!!m.alpha_per_target}
+              onChange={(e) => set({ alpha_per_target: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Elastic Net */}
+      {m.algo === 'enet' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Alpha"
+              value={m.alpha ?? 1.0}
+              onChange={(v) => set({ alpha: v })}
+              min={0}
+              step={0.1}
+            />
+            <NumberInput
+              label="L1 ratio"
+              value={m.l1_ratio ?? 0.5}
+              onChange={(v) => set({ l1_ratio: v })}
+              min={0}
+              max={1}
+              step={0.05}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <Select
+              label="Selection"
+              data={cdSelection}
+              value={m.selection ?? 'cyclic'}
+              onChange={(v) => set({ selection: v })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 1000}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <Checkbox
+              label="Positive coefficients"
+              checked={!!m.positive}
+              onChange={(e) => set({ positive: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Elastic Net (CV) */}
+      {m.algo === 'enetcv' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              label="L1 ratio list (comma-separated)"
+              placeholder="e.g. 0.1, 0.5, 0.9"
+              value={formatCsvFloats(m.l1_ratio)}
+              onChange={(e) => {
+                const vals = parseCsvFloats(e.currentTarget.value);
+                set({ l1_ratio: vals || [0.1, 0.5, 0.9] });
+              }}
+            />
+            <NumberInput
+              label="eps"
+              value={m.eps ?? 1e-3}
+              onChange={(v) => set({ eps: v })}
+              min={0}
+              step={1e-4}
+            />
+            <NumberInput
+              label="n_alphas"
+              value={m.n_alphas ?? 100}
+              onChange={(v) => set({ n_alphas: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="CV folds"
+              value={m.cv ?? 5}
+              onChange={(v) => set({ cv: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <Select
+              label="Selection"
+              data={cdSelection}
+              value={m.selection ?? 'cyclic'}
+              onChange={(v) => set({ selection: v })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 1000}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <Checkbox
+              label="Positive coefficients"
+              checked={!!m.positive}
+              onChange={(e) => set({ positive: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Lasso */}
+      {m.algo === 'lasso' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Alpha"
+              value={m.alpha ?? 1.0}
+              onChange={(v) => set({ alpha: v })}
+              min={0}
+              step={0.1}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <Select
+              label="Selection"
+              data={cdSelection}
+              value={m.selection ?? 'cyclic'}
+              onChange={(v) => set({ selection: v })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 1000}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <Checkbox
+              label="Positive coefficients"
+              checked={!!m.positive}
+              onChange={(e) => set({ positive: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Lasso (CV) */}
+      {m.algo === 'lassocv' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="eps"
+              value={m.eps ?? 1e-3}
+              onChange={(v) => set({ eps: v })}
+              min={0}
+              step={1e-4}
+            />
+            <NumberInput
+              label="n_alphas"
+              value={m.n_alphas ?? 100}
+              onChange={(v) => set({ n_alphas: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="CV folds"
+              value={m.cv ?? 5}
+              onChange={(v) => set({ cv: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <Select
+              label="Selection"
+              data={cdSelection}
+              value={m.selection ?? 'cyclic'}
+              onChange={(v) => set({ selection: v })}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 1000}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <Checkbox
+              label="Positive coefficients"
+              checked={!!m.positive}
+              onChange={(e) => set({ positive: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Bayesian Ridge */}
+      {m.algo === 'bayridge' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Iterations (n_iter)"
+              value={m.n_iter ?? 300}
+              onChange={(v) => set({ n_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-3}
+              onChange={(v) => set({ tol: v })}
+              step={1e-4}
+              min={0}
+            />
+            <NumberInput
+              label="alpha_1"
+              value={m.alpha_1 ?? 1e-6}
+              onChange={(v) => set({ alpha_1: v })}
+              step={1e-6}
+              min={0}
+            />
+            <NumberInput
+              label="alpha_2"
+              value={m.alpha_2 ?? 1e-6}
+              onChange={(v) => set({ alpha_2: v })}
+              step={1e-6}
+              min={0}
+            />
+            <NumberInput
+              label="lambda_1"
+              value={m.lambda_1 ?? 1e-6}
+              onChange={(v) => set({ lambda_1: v })}
+              step={1e-6}
+              min={0}
+            />
+            <NumberInput
+              label="lambda_2"
+              value={m.lambda_2 ?? 1e-6}
+              onChange={(v) => set({ lambda_2: v })}
+              step={1e-6}
+              min={0}
+            />
+            <Checkbox
+              label="Compute score"
+              checked={!!m.compute_score}
+              onChange={(e) => set({ compute_score: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="Copy X"
+              checked={m.copy_X ?? true}
+              onChange={(e) => set({ copy_X: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="Verbose"
+              checked={!!m.verbose}
+              onChange={(e) => set({ verbose: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Support Vector Regression */}
+      {m.algo === 'svr' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="C"
+              value={m.C ?? 1.0}
+              onChange={(v) => set({ C: v })}
+              min={0}
+              step={0.1}
+            />
+            <Select
+              label="Kernel"
+              data={svmKernel}
+              value={m.kernel ?? 'rbf'}
+              onChange={(v) => set({ kernel: v })}
+            />
+            <NumberInput
+              label="Degree"
+              value={m.degree ?? 3}
+              onChange={(v) => set({ degree: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Gamma mode"
+              data={[
+                { value: 'scale', label: 'scale' },
+                { value: 'auto', label: 'auto' },
+                { value: 'numeric', label: 'numeric' },
+              ]}
+              value={gammaMode}
+              onChange={(mode) => {
+                if (mode === 'numeric') set({ gamma: gammaValue });
+                else set({ gamma: mode });
+              }}
+            />
+            {gammaMode === 'numeric' && (
+              <NumberInput
+                label="Gamma value"
+                value={gammaValue}
+                onChange={(v) => set({ gamma: v })}
+                min={0}
+                step={0.01}
+              />
+            )}
+            <NumberInput
+              label="Coef0"
+              value={m.coef0 ?? 0.0}
+              onChange={(v) => set({ coef0: v })}
+              step={0.1}
+            />
+            <Checkbox
+              label="Shrinking"
+              checked={m.shrinking ?? true}
+              onChange={(e) => set({ shrinking: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Epsilon"
+              value={m.epsilon ?? 0.1}
+              onChange={(v) => set({ epsilon: v })}
+              min={0}
+              step={0.01}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-3}
+              onChange={(v) => set({ tol: v })}
+              step={1e-4}
+              min={0}
+            />
+            <NumberInput
+              label="Cache size (MB)"
+              value={m.cache_size ?? 200.0}
+              onChange={(v) => set({ cache_size: v })}
+              min={0}
+              step={10}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? -1}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Linear SVR */}
+      {m.algo === 'linsvr' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="C"
+              value={m.C ?? 1.0}
+              onChange={(v) => set({ C: v })}
+              min={0}
+              step={0.1}
+            />
+            <Select
+              label="Loss"
+              data={linsvrLoss}
+              value={m.loss ?? 'epsilon_insensitive'}
+              onChange={(v) => set({ loss: v })}
+            />
+            <NumberInput
+              label="Epsilon"
+              value={m.epsilon ?? 0.0}
+              onChange={(v) => set({ epsilon: v })}
+              min={0}
+              step={0.01}
+            />
+            <Checkbox
+              label="Fit intercept"
+              checked={m.fit_intercept ?? true}
+              onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Intercept scaling"
+              value={m.intercept_scaling ?? 1.0}
+              onChange={(v) => set({ intercept_scaling: v })}
+              min={0}
+              step={0.1}
+            />
+            <Checkbox
+              label="Dual"
+              checked={m.dual ?? true}
+              onChange={(e) => set({ dual: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 1000}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* KNN Regressor */}
+      {m.algo === 'knnreg' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Neighbours"
+              value={m.n_neighbors ?? 5}
+              onChange={(v) => set({ n_neighbors: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Weights"
+              data={knnWeights}
+              value={m.weights ?? 'uniform'}
+              onChange={(v) => set({ weights: v })}
+            />
+            <Select
+              label="Algorithm"
+              data={knnAlgorithm}
+              value={m.algorithm ?? 'auto'}
+              onChange={(v) => set({ algorithm: v })}
+            />
+            <NumberInput
+              label="Leaf size"
+              value={m.leaf_size ?? 30}
+              onChange={(v) => set({ leaf_size: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="p"
+              value={m.p ?? 2}
+              onChange={(v) => set({ p: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Metric"
+              data={knnMetric}
+              value={m.metric ?? 'minkowski'}
+              onChange={(v) => set({ metric: v })}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Decision Tree Regressor */}
+      {m.algo === 'treereg' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <Select
+              label="Criterion"
+              data={regTreeCriterion}
+              value={m.criterion ?? 'squared_error'}
+              onChange={(v) => set({ criterion: v })}
+            />
+            <Select
+              label="Splitter"
+              data={treeSplitter}
+              value={m.splitter ?? 'best'}
+              onChange={(v) => set({ splitter: v })}
+            />
+            <NumberInput
+              label="Max depth"
+              value={m.max_depth ?? null}
+              onChange={(v) => set({ max_depth: v })}
+            />
+            <NumberInput
+              label="Min samples split"
+              value={m.min_samples_split ?? 2}
+              onChange={(v) => set({ min_samples_split: v })}
+            />
+            <NumberInput
+              label="Min samples leaf"
+              value={m.min_samples_leaf ?? 1}
+              onChange={(v) => set({ min_samples_leaf: v })}
+            />
+            <NumberInput
+              label="Min weight fraction"
+              value={m.min_weight_fraction_leaf ?? 0.0}
+              onChange={(v) => set({ min_weight_fraction_leaf: v })}
+              step={0.01}
+              min={0}
+              max={1}
+            />
+            <Select
+              label="Max features mode"
+              data={[
+                { value: 'sqrt', label: 'sqrt' },
+                { value: 'log2', label: 'log2' },
+                { value: 'int', label: 'int' },
+                { value: 'float', label: 'float' },
+                { value: 'none', label: 'none' },
+              ]}
+              value={tMF.mode}
+              onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, tMF.value) })}
+            />
+            {(tMF.mode === 'int' || tMF.mode === 'float') && (
+              <NumberInput
+                label="Max features value"
+                value={tMF.value ?? null}
+                onChange={(v) => set({ max_features: modeValToMaxFeat(tMF.mode, v) })}
+                step={tMF.mode === 'int' ? 1 : 0.01}
+                allowDecimal={tMF.mode === 'float'}
+              />
+            )}
+            <NumberInput
+              label="Max leaf nodes"
+              value={m.max_leaf_nodes ?? null}
+              onChange={(v) => set({ max_leaf_nodes: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Min impurity decrease"
+              value={m.min_impurity_decrease ?? 0.0}
+              onChange={(v) => set({ min_impurity_decrease: v })}
+              step={0.0001}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="CCP alpha"
+              value={m.ccp_alpha ?? 0.0}
+              onChange={(v) => set({ ccp_alpha: v })}
+              step={0.0001}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Random Forest Regressor */}
+      {m.algo === 'rfreg' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Trees (n_estimators)"
+              value={m.n_estimators ?? 100}
+              onChange={(v) => set({ n_estimators: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Criterion"
+              data={regTreeCriterion}
+              value={m.criterion ?? 'squared_error'}
+              onChange={(v) => set({ criterion: v })}
+            />
+            <NumberInput
+              label="Max depth"
+              value={m.max_depth ?? null}
+              onChange={(v) => set({ max_depth: v })}
+            />
+            <NumberInput
+              label="Min samples split"
+              value={m.min_samples_split ?? 2}
+              onChange={(v) => set({ min_samples_split: v })}
+            />
+            <NumberInput
+              label="Min samples leaf"
+              value={m.min_samples_leaf ?? 1}
+              onChange={(v) => set({ min_samples_leaf: v })}
+            />
+            <NumberInput
+              label="Min weight fraction"
+              value={m.min_weight_fraction_leaf ?? 0.0}
+              onChange={(v) => set({ min_weight_fraction_leaf: v })}
+              step={0.01}
+              min={0}
+              max={1}
+            />
+            <Select
+              label="Max features mode"
+              data={[
+                { value: 'sqrt', label: 'sqrt' },
+                { value: 'log2', label: 'log2' },
+                { value: 'int', label: 'int' },
+                { value: 'float', label: 'float' },
+                { value: 'none', label: 'none' },
+              ]}
+              value={fMF.mode}
+              onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, fMF.value) })}
+            />
+            {(fMF.mode === 'int' || fMF.mode === 'float') && (
+              <NumberInput
+                label="Max features value"
+                value={fMF.value ?? null}
+                onChange={(v) => set({ max_features: modeValToMaxFeat(fMF.mode, v) })}
+                step={fMF.mode === 'int' ? 1 : 0.01}
+                allowDecimal={fMF.mode === 'float'}
+              />
+            )}
+            <NumberInput
+              label="Max leaf nodes"
+              value={m.max_leaf_nodes ?? null}
+              onChange={(v) => set({ max_leaf_nodes: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Min impurity decrease"
+              value={m.min_impurity_decrease ?? 0.0}
+              onChange={(v) => set({ min_impurity_decrease: v })}
+              step={0.0001}
+            />
+            <Checkbox
+              label="Use bootstrap"
+              checked={m.bootstrap ?? true}
+              onChange={(e) => set({ bootstrap: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="OOB score"
+              checked={!!m.oob_score}
+              onChange={(e) => set({ oob_score: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+            <Checkbox
+              label="Warm start"
+              checked={!!m.warm_start}
+              onChange={(e) => set({ warm_start: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="CCP alpha"
+              value={m.ccp_alpha ?? 0.0}
+              onChange={(v) => set({ ccp_alpha: v })}
+              step={0.0001}
+            />
+            <NumberInput
+              label="Max samples"
+              value={m.max_samples ?? null}
+              onChange={(v) => set({ max_samples: v })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
 
       <Divider my="xs" />
       <Text size="xs" c="dimmed">

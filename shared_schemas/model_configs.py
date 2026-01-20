@@ -8,6 +8,7 @@ from .types import (
     PenaltyName, SVMKernel, SVMDecisionShape,
     TreeCriterion, TreeSplitter, MaxFeaturesName,
     RidgeSolver, SGDLoss, SGDPenalty, SGDLearningRate, HGBLoss,
+    RegTreeCriterion, CoordinateDescentSelection, LinearSVRLoss,
 )
 
 class ModelMeta(TypedDict):
@@ -40,6 +41,20 @@ def get_model_task_by_algo(algo: str) -> str:
         "extratrees": ExtraTreesConfig.task,
         "hgb": HistGradientBoostingConfig.task,
         "linreg": LinearRegConfig.task,
+
+        # regressors
+        "ridgereg": RidgeRegressorConfig.task,
+        "ridgecv": RidgeCVRegressorConfig.task,
+        "enet": ElasticNetRegressorConfig.task,
+        "enetcv": ElasticNetCVRegressorConfig.task,
+        "lasso": LassoRegressorConfig.task,
+        "lassocv": LassoCVRegressorConfig.task,
+        "bayridge": BayesianRidgeRegressorConfig.task,
+        "svr": SVRRegressorConfig.task,
+        "linsvr": LinearSVRRegressorConfig.task,
+        "knnreg": KNNRegressorConfig.task,
+        "treereg": DecisionTreeRegressorConfig.task,
+        "rfreg": RandomForestRegressorConfig.task,
     }
     return mapping.get(algo, "classification")
 # -----------------------------
@@ -276,6 +291,239 @@ class LinearRegConfig(BaseModel):
     copy_X: bool = True
     n_jobs: Optional[int] = None
     positive: bool = False
+
+
+class RidgeRegressorConfig(BaseModel):
+    """Ridge regression (linear model with L2 regularization)."""
+
+    algo: Literal["ridgereg"] = "ridgereg"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    alpha: float = 1.0
+    fit_intercept: bool = True
+    solver: RidgeSolver = "auto"
+    max_iter: Optional[int] = None
+    tol: float = 1e-4
+    random_state: Optional[int] = None
+    positive: bool = False
+
+
+class RidgeCVRegressorConfig(BaseModel):
+    """Ridge regression with built-in cross-validation over alphas."""
+
+    algo: Literal["ridgecv"] = "ridgecv"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    alphas: List[float] = Field(default_factory=lambda: [0.1, 1.0, 10.0])
+    fit_intercept: bool = True
+    scoring: Optional[str] = None
+    # None = leave to sklearn default (often efficient GCV when possible)
+    cv: Optional[int] = None
+    gcv_mode: Optional[Literal["auto", "svd", "eigen"]] = None
+    alpha_per_target: bool = False
+
+
+class ElasticNetRegressorConfig(BaseModel):
+    """ElasticNet regression (L1 + L2)."""
+
+    algo: Literal["enet"] = "enet"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    alpha: float = 1.0
+    l1_ratio: float = 0.5
+    fit_intercept: bool = True
+    max_iter: int = 1000
+    tol: float = 1e-4
+    selection: CoordinateDescentSelection = "cyclic"
+    random_state: Optional[int] = None
+    positive: bool = False
+
+
+class ElasticNetCVRegressorConfig(BaseModel):
+    """ElasticNet with built-in cross-validation."""
+
+    algo: Literal["enetcv"] = "enetcv"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    l1_ratio: List[float] = Field(default_factory=lambda: [0.1, 0.5, 0.9])
+    eps: float = 1e-3
+    n_alphas: int = 100
+    fit_intercept: bool = True
+    max_iter: int = 1000
+    tol: float = 1e-4
+    cv: int = 5
+    n_jobs: Optional[int] = None
+    selection: CoordinateDescentSelection = "cyclic"
+    random_state: Optional[int] = None
+    positive: bool = False
+
+
+class LassoRegressorConfig(BaseModel):
+    """Lasso regression (L1)."""
+
+    algo: Literal["lasso"] = "lasso"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    alpha: float = 1.0
+    fit_intercept: bool = True
+    max_iter: int = 1000
+    tol: float = 1e-4
+    selection: CoordinateDescentSelection = "cyclic"
+    random_state: Optional[int] = None
+    positive: bool = False
+
+
+class LassoCVRegressorConfig(BaseModel):
+    """Lasso regression with built-in cross-validation."""
+
+    algo: Literal["lassocv"] = "lassocv"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    eps: float = 1e-3
+    n_alphas: int = 100
+    fit_intercept: bool = True
+    max_iter: int = 1000
+    tol: float = 1e-4
+    cv: int = 5
+    n_jobs: Optional[int] = None
+    selection: CoordinateDescentSelection = "cyclic"
+    random_state: Optional[int] = None
+    positive: bool = False
+
+
+class BayesianRidgeRegressorConfig(BaseModel):
+    """Bayesian ridge regression."""
+
+    algo: Literal["bayridge"] = "bayridge"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "linear"
+
+    n_iter: int = 300
+    tol: float = 1e-3
+    alpha_1: float = 1e-6
+    alpha_2: float = 1e-6
+    lambda_1: float = 1e-6
+    lambda_2: float = 1e-6
+    compute_score: bool = False
+    fit_intercept: bool = True
+    copy_X: bool = True
+    verbose: bool = False
+
+
+class SVRRegressorConfig(BaseModel):
+    """Support Vector Regression (kernel SVR)."""
+
+    algo: Literal["svr"] = "svr"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "svm"
+
+    C: float = 1.0
+    kernel: SVMKernel = "rbf"
+    degree: int = 3
+    gamma: Union[Literal["scale", "auto"], float] = "scale"
+    coef0: float = 0.0
+    shrinking: bool = True
+    tol: float = 1e-3
+    cache_size: float = 200.0
+    max_iter: int = -1
+    epsilon: float = 0.1
+
+
+class LinearSVRRegressorConfig(BaseModel):
+    """Linear Support Vector Regression (faster than kernel SVR)."""
+
+    algo: Literal["linsvr"] = "linsvr"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "svm"
+
+    C: float = 1.0
+    loss: LinearSVRLoss = "epsilon_insensitive"
+    epsilon: float = 0.0
+    fit_intercept: bool = True
+    intercept_scaling: float = 1.0
+    dual: bool = True
+    tol: float = 1e-4
+    max_iter: int = 1000
+    random_state: Optional[int] = None
+
+
+class KNNRegressorConfig(BaseModel):
+    """KNeighborsRegressor."""
+
+    algo: Literal["knnreg"] = "knnreg"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "knn"
+
+    n_neighbors: int = 5
+    weights: Literal["uniform", "distance"] = "uniform"
+    algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
+    leaf_size: int = 30
+    p: int = 2
+    metric: Literal["minkowski", "euclidean", "manhattan", "chebyshev"] = "minkowski"
+    n_jobs: Optional[int] = None
+
+
+class DecisionTreeRegressorConfig(BaseModel):
+    """DecisionTreeRegressor."""
+
+    algo: Literal["treereg"] = "treereg"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "forest"
+
+    criterion: RegTreeCriterion = "squared_error"
+    splitter: TreeSplitter = "best"
+    max_depth: Optional[int] = None
+    min_samples_split: Union[int, float] = 2
+    min_samples_leaf: Union[int, float] = 1
+    min_weight_fraction_leaf: float = 0.0
+    max_features: Optional[Union[int, float, MaxFeaturesName]] = None
+    max_leaf_nodes: Optional[int] = None
+    min_impurity_decrease: float = 0.0
+    random_state: Optional[int] = None
+    ccp_alpha: float = 0.0
+
+
+class RandomForestRegressorConfig(BaseModel):
+    """RandomForestRegressor (ensemble of decision trees)."""
+
+    algo: Literal["rfreg"] = "rfreg"
+
+    task: ClassVar[str] = "regression"
+    family: ClassVar[str] = "forest"
+
+    n_estimators: int = 100
+    criterion: RegTreeCriterion = "squared_error"
+    max_depth: Optional[int] = None
+    min_samples_split: Union[int, float] = 2
+    min_samples_leaf: Union[int, float] = 1
+    min_weight_fraction_leaf: float = 0.0
+    max_features: Optional[Union[int, float, MaxFeaturesName]] = 1.0
+    max_leaf_nodes: Optional[int] = None
+    min_impurity_decrease: float = 0.0
+    bootstrap: bool = True
+    oob_score: bool = False
+    n_jobs: Optional[int] = None
+    random_state: Optional[int] = None
+    warm_start: bool = False
+    ccp_alpha: float = 0.0
+    max_samples: Optional[Union[int, float]] = None
 # -----------------------------
 # Discriminated union (single source for "model")
 # -----------------------------
@@ -292,6 +540,19 @@ ModelConfig = Annotated[
         ExtraTreesConfig,
         HistGradientBoostingConfig,
         LinearRegConfig,
+
+        RidgeRegressorConfig,
+        RidgeCVRegressorConfig,
+        ElasticNetRegressorConfig,
+        ElasticNetCVRegressorConfig,
+        LassoRegressorConfig,
+        LassoCVRegressorConfig,
+        BayesianRidgeRegressorConfig,
+        SVRRegressorConfig,
+        LinearSVRRegressorConfig,
+        KNNRegressorConfig,
+        DecisionTreeRegressorConfig,
+        RandomForestRegressorConfig,
     ],
     Field(discriminator="algo"),
 ]
@@ -309,5 +570,18 @@ __all__ = [
     "ExtraTreesConfig",
     "HistGradientBoostingConfig",
     "LinearRegConfig",
+
+    "RidgeRegressorConfig",
+    "RidgeCVRegressorConfig",
+    "ElasticNetRegressorConfig",
+    "ElasticNetCVRegressorConfig",
+    "LassoRegressorConfig",
+    "LassoCVRegressorConfig",
+    "BayesianRidgeRegressorConfig",
+    "SVRRegressorConfig",
+    "LinearSVRRegressorConfig",
+    "KNNRegressorConfig",
+    "DecisionTreeRegressorConfig",
+    "RandomForestRegressorConfig",
     "ModelConfig",
 ]

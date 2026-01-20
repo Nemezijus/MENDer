@@ -13,7 +13,20 @@ from shared_schemas.model_configs import (
     SGDClassifierConfig,
     ExtraTreesConfig,
     HistGradientBoostingConfig,
+    # ---------------- regressors ----------------
     LinearRegConfig,
+    RidgeRegressorConfig,
+    RidgeCVRegressorConfig,
+    ElasticNetRegressorConfig,
+    ElasticNetCVRegressorConfig,
+    LassoRegressorConfig,
+    LassoCVRegressorConfig,
+    BayesianRidgeRegressorConfig,
+    SVRRegressorConfig,
+    LinearSVRRegressorConfig,
+    KNNRegressorConfig,
+    DecisionTreeRegressorConfig,
+    RandomForestRegressorConfig,
 )
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
@@ -93,7 +106,21 @@ def _model_union_schema_and_defaults():
         SGDClassifierConfig,
         ExtraTreesConfig,
         HistGradientBoostingConfig,
+        # ---------------- regressors ----------------
         LinearRegConfig,
+        RidgeRegressorConfig,
+        RidgeCVRegressorConfig,
+        ElasticNetRegressorConfig,
+        ElasticNetCVRegressorConfig,
+        LassoRegressorConfig,
+        LassoCVRegressorConfig,
+        BayesianRidgeRegressorConfig,
+        SVRRegressorConfig,
+        LinearSVRRegressorConfig,
+        KNNRegressorConfig,
+        DecisionTreeRegressorConfig,
+        RandomForestRegressorConfig,
+
     ):
         try:
             inst = cls()
@@ -142,6 +169,15 @@ def _enums_payload():
         "TreeCriterion":        safe(getattr(T, "TreeCriterion", None)),
         "TreeSplitter":         safe(getattr(T, "TreeSplitter", None)),
         "MaxFeaturesName":      safe(getattr(T, "MaxFeaturesName", None)),
+
+        # regression trees / forests
+        "RegTreeCriterion":     safe(getattr(T, "RegTreeCriterion", None)),
+
+        # coordinate descent (Lasso / ElasticNet)
+        "CoordinateDescentSelection": safe(getattr(T, "CoordinateDescentSelection", None)),
+
+        # SVR / LinearSVR
+        "LinearSVRLoss":        safe(getattr(T, "LinearSVRLoss", None)),
 
         # class weights
         "ClassWeightBalanced":  safe(getattr(T, "ClassWeightBalanced", None)),
@@ -199,7 +235,22 @@ def _model_defaults_and_meta():
         SGDClassifierConfig,
         ExtraTreesConfig,
         HistGradientBoostingConfig,
+
+        # ---------------- regressors ----------------
         LinearRegConfig,
+        RidgeRegressorConfig,
+        RidgeCVRegressorConfig,
+        ElasticNetRegressorConfig,
+        ElasticNetCVRegressorConfig,
+        LassoRegressorConfig,
+        LassoCVRegressorConfig,
+        BayesianRidgeRegressorConfig,
+        SVRRegressorConfig,
+        LinearSVRRegressorConfig,
+        KNNRegressorConfig,
+        DecisionTreeRegressorConfig,
+        RandomForestRegressorConfig,
+
     ]
     defaults = {}
     meta = {}

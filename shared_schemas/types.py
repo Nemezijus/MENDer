@@ -14,6 +14,14 @@ TreeCriterion: TypeAlias = Literal["gini", "entropy", "log_loss"]
 TreeSplitter: TypeAlias = Literal["best", "random"]
 MaxFeaturesName: TypeAlias = Literal["sqrt", "log2"]  # (int|float|None are also allowed at runtime)
 
+# Regression Trees / Forests
+RegTreeCriterion: TypeAlias = Literal[
+    "squared_error",
+    "friedman_mse",
+    "absolute_error",
+    "poisson",
+]
+
 # Class weights
 ClassWeightBalanced: TypeAlias = Union[Literal["balanced"], None]
 ForestClassWeight: TypeAlias = Union[Literal["balanced", "balanced_subsample"], None]
@@ -53,6 +61,15 @@ MetricName: TypeAlias = Union[ClassificationMetricName, RegressionMetricName]
 SVMKernel: TypeAlias = Literal["linear", "poly", "rbf", "sigmoid"]
 SVMDecisionShape: TypeAlias = Literal["ovr", "ovo"]
 
+# SVR / LinearSVR helpers
+LinearSVRLoss: TypeAlias = Literal["epsilon_insensitive", "squared_epsilon_insensitive"]
+
+# LinearSVR helpers
+LinearSVRLoss: TypeAlias = Literal["epsilon_insensitive", "squared_epsilon_insensitive"]
+
+# Linear / sparse regression helpers
+CoordinateDescentSelection: TypeAlias = Literal["cyclic", "random"]
+
 # LDA solver
 LDASolver: TypeAlias = Literal["svd", "lsqr", "eigen"]
 
@@ -60,6 +77,9 @@ LDASolver: TypeAlias = Literal["svd", "lsqr", "eigen"]
 KNNWeights: TypeAlias = Literal["uniform", "distance"]
 KNNAlgorithm: TypeAlias = Literal["auto", "ball_tree", "kd_tree", "brute"]
 KNNMetric: TypeAlias = Literal["minkowski", "euclidean", "manhattan", "chebyshev"]
+
+# Coordinate descent selection (ElasticNet/Lasso)
+CDSelection: TypeAlias = Literal["cyclic", "random"]
 
 # RidgeClassifier helpers
 RidgeSolver: TypeAlias = Literal[
@@ -72,6 +92,9 @@ RidgeSolver: TypeAlias = Literal[
     "saga",
     "lbfgs",
 ]
+
+# Coordinate descent regressors helpers
+CoordinateDescentSelection: TypeAlias = Literal["cyclic", "random"]
 
 # SGDClassifier helpers
 SGDLoss: TypeAlias = Literal[
