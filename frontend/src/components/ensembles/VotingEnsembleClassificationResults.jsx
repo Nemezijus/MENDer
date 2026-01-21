@@ -157,7 +157,7 @@ function rebinHistogram(edges, counts, newEdges) {
   return outCounts;
 }
 
-export default function VotingEnsembleResults({ report }) {
+export default function VotingEnsembleClassificationResults({ report }) {
   if (!report || report.kind !== 'voting') return null;
 
   const estimators = Array.isArray(report.estimators) ? report.estimators : [];

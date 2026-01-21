@@ -16,7 +16,7 @@ from utils.postprocessing.scoring import PROBA_METRICS
 
 from ..adapters.io_adapter import LoadError
 
-from sklearn.ensemble import VotingClassifier
+from sklearn.ensemble import VotingClassifier, VotingRegressor
 from shared_schemas.ensemble_configs import (
     VotingEnsembleConfig,
     BaggingEnsembleConfig,
@@ -24,7 +24,10 @@ from shared_schemas.ensemble_configs import (
     XGBoostEnsembleConfig,
 )
 
-from utils.postprocessing.ensembles.voting_ensemble_reporting import VotingEnsembleReportAccumulator
+from utils.postprocessing.ensembles.voting_ensemble_reporting import (
+    VotingEnsembleReportAccumulator,
+    VotingEnsembleRegressorReportAccumulator,
+)
 from utils.postprocessing.ensembles.bagging_ensemble_reporting import BaggingEnsembleReportAccumulator
 from utils.postprocessing.ensembles.adaboost_ensemble_reporting import AdaBoostEnsembleReportAccumulator
 from utils.postprocessing.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
@@ -313,8 +316,9 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     last_model = None
 
     # --- Accumulator setup (for ensemble reports) ------------------------
-    voting_acc: VotingEnsembleReportAccumulator | None = None
-    is_voting_report = eval_kind == "classification" and isinstance(cfg.ensemble, VotingEnsembleConfig)
+    voting_cls_acc: VotingEnsembleReportAccumulator | None = None
+    voting_reg_acc: VotingEnsembleRegressorReportAccumulator | None = None
+    is_voting_report = isinstance(cfg.ensemble, VotingEnsembleConfig)
 
     bagging_acc: BaggingEnsembleReportAccumulator | None = None
     is_bagging_report = eval_kind == "classification" and isinstance(cfg.ensemble, BaggingEnsembleConfig)
@@ -383,82 +387,125 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         except Exception as e:
             raise _friendly_ensemble_training_error(e, cfg, fold_id=fold_id) from e
 
-        # ---------------- Voting report (existing) ----------------
-        if is_voting_report and isinstance(model, VotingClassifier):
+        # ---------------- Voting report (classification + regression) ----------------
+        if is_voting_report:
             try:
-                if voting_acc is None:
-                    est_names = [n for n, _ in getattr(model, "estimators", [])]
-                    est_algos = [getattr(s.model, "algo", "model") for s in cfg.ensemble.estimators]
-                    if len(est_algos) != len(est_names):
-                        est_algos = (est_algos + ["model"] * len(est_names))[: len(est_names)]
+                final_est = _unwrap_final_estimator(model)
 
-                    voting_acc = VotingEnsembleReportAccumulator.create(
-                        estimator_names=est_names,
-                        estimator_algos=est_algos,
-                        metric_name=str(cfg.eval.metric),
-                        weights=getattr(model, "weights", None),
-                        voting=str(getattr(cfg.ensemble, "voting", "hard")),
-                    )
+                # --- classification voting report ---
+                if eval_kind == "classification" and isinstance(final_est, VotingClassifier):
+                    if voting_cls_acc is None:
+                        est_names = [n for n, _ in getattr(final_est, "estimators", [])]
+                        est_algos = [getattr(s.model, "algo", "model") for s in cfg.ensemble.estimators]
+                        if len(est_algos) != len(est_names):
+                            est_algos = (est_algos + ["model"] * len(est_names))[: len(est_names)]
 
-                base_preds: Dict[str, Any] = {}
-                base_scores: Dict[str, float] = {}
+                        voting_cls_acc = VotingEnsembleReportAccumulator.create(
+                            estimator_names=est_names,
+                            estimator_algos=est_algos,
+                            metric_name=str(cfg.eval.metric),
+                            weights=getattr(final_est, "weights", None),
+                            voting=str(getattr(cfg.ensemble, "voting", "hard")),
+                        )
 
-                # VotingClassifier internally label-encodes y during fit().
-                yte_arr = np.asarray(yte)
-                yte_enc = yte_arr
-                le = getattr(model, "le_", None)
-                if le is not None:
-                    try:
-                        yte_enc = le.transform(yte_arr)
-                    except Exception:
-                        yte_enc = yte_arr
+                    base_preds: Dict[str, Any] = {}
+                    base_scores: Dict[str, float] = {}
 
-                est_pairs = list(zip(getattr(model, "estimators", []), getattr(model, "estimators_", [])))
-                for (name, _unfitted), fitted in est_pairs:
-                    yp_enc = fitted.predict(Xte)
-
-                    yp_report = yp_enc
+                    # VotingClassifier internally label-encodes y during fit().
+                    yte_arr = np.asarray(yte)
+                    yte_enc = yte_arr
+                    le = getattr(final_est, "le_", None)
                     if le is not None:
                         try:
-                            yp_report = le.inverse_transform(np.asarray(yp_enc))
+                            yte_enc = le.transform(yte_arr)
                         except Exception:
-                            yp_report = yp_enc
+                            yte_enc = yte_arr
 
-                    base_preds[name] = yp_report
+                    est_pairs = list(zip(getattr(final_est, "estimators", []), getattr(final_est, "estimators_", [])))
+                    for (name, _unfitted), fitted in est_pairs:
+                        yp_enc = fitted.predict(Xte)
 
-                    y_proba_i = None
-                    y_score_i = None
-                    if hasattr(fitted, "predict_proba"):
-                        try:
-                            y_proba_i = fitted.predict_proba(Xte)
-                        except Exception:
-                            y_proba_i = None
-                    if y_proba_i is None and hasattr(fitted, "decision_function"):
-                        try:
-                            y_score_i = fitted.decision_function(Xte)
-                        except Exception:
-                            y_score_i = None
+                        yp_report = yp_enc
+                        if le is not None:
+                            try:
+                                yp_report = le.inverse_transform(np.asarray(yp_enc))
+                            except Exception:
+                                yp_report = yp_enc
 
-                    base_scores[name] = float(
-                        evaluator.score(
-                            yte_enc,
-                            y_pred=yp_enc,
-                            y_proba=y_proba_i,
-                            y_score=y_score_i,
+                        base_preds[name] = yp_report
+
+                        y_proba_i = None
+                        y_score_i = None
+                        if hasattr(fitted, "predict_proba"):
+                            try:
+                                y_proba_i = fitted.predict_proba(Xte)
+                            except Exception:
+                                y_proba_i = None
+                        if y_proba_i is None and hasattr(fitted, "decision_function"):
+                            try:
+                                y_score_i = fitted.decision_function(Xte)
+                            except Exception:
+                                y_score_i = None
+
+                        base_scores[name] = float(
+                            evaluator.score(
+                                yte_enc,
+                                y_pred=yp_enc,
+                                y_proba=y_proba_i,
+                                y_score=y_score_i,
+                            )
                         )
-                    )
 
-                if voting_acc is not None:
-                    voting_acc.add_fold(
-                        y_true=np.asarray(yte),
-                        y_ensemble_pred=np.asarray(y_pred),
-                        base_preds={k: np.asarray(v) for k, v in base_preds.items()},
-                        base_scores=base_scores,
-                    )
+                    if voting_cls_acc is not None:
+                        voting_cls_acc.add_fold(
+                            y_true=np.asarray(yte),
+                            y_ensemble_pred=np.asarray(y_pred),
+                            base_preds={k: np.asarray(v) for k, v in base_preds.items()},
+                            base_scores=base_scores,
+                        )
+
+                # --- regression voting report ---
+                elif eval_kind == "regression" and isinstance(final_est, VotingRegressor):
+                    if voting_reg_acc is None:
+                        est_names = [n for n, _ in getattr(final_est, "estimators", [])]
+                        est_algos = [getattr(s.model, "algo", "model") for s in cfg.ensemble.estimators]
+                        if len(est_algos) != len(est_names):
+                            est_algos = (est_algos + ["model"] * len(est_names))[: len(est_names)]
+
+                        voting_reg_acc = VotingEnsembleRegressorReportAccumulator.create(
+                            estimator_names=est_names,
+                            estimator_algos=est_algos,
+                            metric_name=str(cfg.eval.metric),
+                            weights=getattr(final_est, "weights", None),
+                        )
+
+                    base_preds: Dict[str, Any] = {}
+                    base_scores: Dict[str, float] = {}
+
+                    est_pairs = list(zip(getattr(final_est, "estimators", []), getattr(final_est, "estimators_", [])))
+                    for (name, _unfitted), fitted in est_pairs:
+                        yp = fitted.predict(Xte)
+                        base_preds[name] = np.asarray(yp)
+                        base_scores[name] = float(
+                            evaluator.score(
+                                np.asarray(yte),
+                                y_pred=np.asarray(yp),
+                                y_proba=None,
+                                y_score=None,
+                            )
+                        )
+
+                    if voting_reg_acc is not None:
+                        voting_reg_acc.add_fold(
+                            y_true=np.asarray(yte),
+                            y_ensemble_pred=np.asarray(y_pred),
+                            base_preds={k: np.asarray(v) for k, v in base_preds.items()},
+                            base_scores=base_scores,
+                        )
             except Exception:
                 pass
 
-        # ---------------- Bagging report (existing) ----------------
+# ---------------- Bagging report (existing) ----------------
         if is_bagging_report:
             try:
                 ests = getattr(model, "estimators_", None)
@@ -1079,8 +1126,11 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         result["decoder_outputs"] = decoder_payload
 
     ensemble_report = None
-    if voting_acc is not None:
-        ensemble_report = voting_acc.finalize()
+    if voting_cls_acc is not None:
+        ensemble_report = voting_cls_acc.finalize()
+        result["ensemble_report"] = ensemble_report
+    elif voting_reg_acc is not None:
+        ensemble_report = voting_reg_acc.finalize()
         result["ensemble_report"] = ensemble_report
     elif bagging_acc is not None:
         ensemble_report = bagging_acc.finalize()
@@ -1109,17 +1159,38 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     if ensemble_report and isinstance(ensemble_report, dict):
         kind = ensemble_report.get("kind")
         if kind == "voting":
-            extra_stats = {
-                "ensemble_kind": "voting",
-                "ensemble_n_estimators": ensemble_report.get("n_estimators"),
-                "ensemble_all_agree_rate": (ensemble_report.get("agreement") or {}).get("all_agree_rate"),
-                "ensemble_pairwise_agreement": (ensemble_report.get("agreement") or {}).get("pairwise_mean_agreement"),
-                "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
-                "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
-                "ensemble_best_estimator": (ensemble_report.get("best_estimator") or {}).get("name"),
-                "ensemble_corrected_vs_best": (ensemble_report.get("change_vs_best") or {}).get("corrected"),
-                "ensemble_harmed_vs_best": (ensemble_report.get("change_vs_best") or {}).get("harmed"),
-            }
+            task = (ensemble_report.get("task") or "classification")
+            if task == "regression":
+                sim = ensemble_report.get("similarity") or {}
+                errs = ensemble_report.get("errors") or {}
+                ens_err = (errs.get("ensemble") or {})
+                gain = (errs.get("gain_vs_best") or {})
+                extra_stats = {
+                    "ensemble_kind": "voting",
+                    "ensemble_task": "regression",
+                    "ensemble_n_estimators": ensemble_report.get("n_estimators"),
+                    "ensemble_pairwise_mean_corr": sim.get("pairwise_mean_corr"),
+                    "ensemble_pairwise_mean_absdiff": sim.get("pairwise_mean_absdiff"),
+                    "ensemble_prediction_spread": sim.get("prediction_spread_mean"),
+                    "ensemble_rmse": ens_err.get("rmse"),
+                    "ensemble_mae": ens_err.get("mae"),
+                    "ensemble_best_estimator": (ensemble_report.get("best_estimator") or {}).get("name"),
+                    "ensemble_rmse_reduction_vs_best": gain.get("rmse_reduction"),
+                    "ensemble_mae_reduction_vs_best": gain.get("mae_reduction"),
+                }
+            else:
+                extra_stats = {
+                    "ensemble_kind": "voting",
+                    "ensemble_task": "classification",
+                    "ensemble_n_estimators": ensemble_report.get("n_estimators"),
+                    "ensemble_all_agree_rate": (ensemble_report.get("agreement") or {}).get("all_agree_rate"),
+                    "ensemble_pairwise_agreement": (ensemble_report.get("agreement") or {}).get("pairwise_mean_agreement"),
+                    "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
+                    "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
+                    "ensemble_best_estimator": (ensemble_report.get("best_estimator") or {}).get("name"),
+                    "ensemble_corrected_vs_best": (ensemble_report.get("change_vs_best") or {}).get("corrected"),
+                    "ensemble_harmed_vs_best": (ensemble_report.get("change_vs_best") or {}).get("harmed"),
+                }
         elif kind == "bagging":
             extra_stats = {
                 "ensemble_kind": "bagging",

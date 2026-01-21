@@ -34,9 +34,46 @@ import EnsembleHelpText, {
   VotingIntroText,
 } from '../helpers/helpTexts/EnsembleHelpText.jsx';
 
-import VotingEnsembleResults from './VotingEnsembleResults.jsx';
+import VotingEnsembleClassificationResults from './VotingEnsembleClassificationResults.jsx';
+import VotingEnsembleRegressionResults from './VotingEnsembleRegressionResults.jsx';
 
 /** ---------- helpers ---------- **/
+
+// User-friendly names for the Algorithm dropdown.
+// Values must remain the internal algo keys used by the backend.
+const ALGO_LABELS = {
+  // -------- classifiers --------
+  logreg: 'Logistic Regression',
+  ridge: 'Ridge Classifier',
+  sgd: 'SGD Classifier',
+  svm: 'Support Vector Machine (SVC)',
+  tree: 'Decision Tree',
+  forest: 'Random Forest',
+  extratrees: 'Extra Trees Classifier',
+  hgb: 'Histogram Gradient Boosting',
+  knn: 'k-Nearest Neighbors',
+  gnb: 'Gaussian Naive Bayes',
+
+  // -------- regressors --------
+  linreg: 'Linear Regression',
+  ridgereg: 'Ridge Regression',
+  ridgecv: 'Ridge Regression (CV)',
+  enet: 'Elastic Net',
+  enetcv: 'Elastic Net (CV)',
+  lasso: 'Lasso',
+  lassocv: 'Lasso (CV)',
+  bayridge: 'Bayesian Ridge',
+  svr: 'Support Vector Regression (SVR)',
+  linsvr: 'Linear SVR',
+  knnreg: 'k-Nearest Neighbors Regressor',
+  treereg: 'Decision Tree Regressor',
+  rfreg: 'Random Forest Regressor',
+};
+
+function algoKeyToLabel(algo) {
+  if (!algo) return '';
+  return ALGO_LABELS[algo] ?? String(algo);
+}
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -155,7 +192,7 @@ export default function VotingEnsemblePanel() {
   }, [getCompatibleAlgos, effectiveTask]);
 
   const algoOptions = useMemo(
-    () => compatibleAlgos.map((a) => ({ value: a, label: a })),
+    () => compatibleAlgos.map((a) => ({ value: a, label: algoKeyToLabel(a) })),
     [compatibleAlgos],
   );
 
@@ -535,7 +572,7 @@ export default function VotingEnsemblePanel() {
                 Duplicate estimator types detected
               </Text>
               <Text size="sm">
-                You selected: <strong>{duplicateAlgos.join(', ')}</strong> more than once. If these are
+                You selected: <strong>{duplicateAlgos.map(algoKeyToLabel).join(', ')}</strong> more than once. If these are
                 identical, this acts like implicit weighting. Prefer using explicit weights in Advanced mode.
               </Text>
             </Alert>
@@ -647,9 +684,15 @@ export default function VotingEnsemblePanel() {
         seed={voting.seed}
         onSeedChange={(v) => setVoting({ seed: v })}
       />
-        {trainResult?.ensemble_report?.kind === 'voting' && (
-        <VotingEnsembleResults report={trainResult.ensemble_report} />
-        )}
+      {trainResult?.ensemble_report?.kind === 'voting' &&
+      trainResult.ensemble_report.task === 'classification' && (
+        <VotingEnsembleClassificationResults report={trainResult.ensemble_report} />
+      )}
+
+      {trainResult?.ensemble_report?.kind === 'voting' &&
+      trainResult.ensemble_report.task === 'regression' && (
+        <VotingEnsembleRegressionResults report={trainResult.ensemble_report} />
+      )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>
