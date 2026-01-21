@@ -13,20 +13,6 @@ import Plot from 'react-plotly.js';
 // Keep labels consistent with ModelSelectionCard / VotingEnsemblePanel.
 // Unknown keys fall back gracefully.
 const ALGO_LABELS = {
-  // classifiers
-  logreg: 'Logistic Regression',
-  gnb: 'Gaussian Naive Bayes',
-  ridge: 'Ridge Classifier',
-  sgd: 'SGD Classifier',
-  svm: 'SVM (RBF)',
-  linsvm: 'Linear SVM',
-  knn: 'k-Nearest Neighbors',
-  tree: 'Decision Tree',
-  forest: 'Random Forest',
-  extratrees: 'Extra Trees',
-  hgb: 'Hist Gradient Boosting',
-  xgboost: 'XGBoost',
-
   // regressors
   linreg: 'Linear Regression',
   ridgereg: 'Ridge Regression',
@@ -41,6 +27,22 @@ const ALGO_LABELS = {
   knnreg: 'kNN Regressor',
   treereg: 'Decision Tree Regressor',
   rfreg: 'Random Forest Regressor',
+};
+
+const ALGO_ABBREV = {
+  linreg: 'LR',
+  ridgereg: 'RR',
+  ridgecv: 'RR(CV)',
+  enet: 'EN',
+  enetcv: 'EN(CV)',
+  lasso: 'Lasso',
+  lassocv: 'Lasso(CV)',
+  bayridge: 'BR',
+  svr: 'SVR',
+  linsvr: 'LinSVR',
+  knnreg: 'kNN',
+  treereg: 'DT',
+  rfreg: 'RF',
 };
 
 // Confusion-matrix-inspired blue ramp (same logic as ConfusionMatrixResults.jsx)
@@ -71,30 +73,6 @@ function fmt(x, digits = 3) {
   return Number.isInteger(n) ? String(n) : n.toFixed(digits);
 }
 
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
-
-function prettyEstimatorName(raw) {
-  const base = String(raw || '').replace(/_\d+$/, '');
-  return titleCase(base);
-}
-
-function makeUniqueLabels(labels) {
-  const counts = new Map();
-  return labels.map((l) => {
-    const k = String(l);
-    const c = (counts.get(k) || 0) + 1;
-    counts.set(k, c);
-    return c === 1 ? k : `${k} (${c})`;
-  });
-}
-
 function normalize01(vals) {
   const nums = (vals || [])
     .map((v) => safeNum(v))
@@ -112,88 +90,78 @@ function normalize01(vals) {
   });
 }
 
-function computeBarRange(means, stds, { clamp01 = false } = {}) {
-  const lo = [];
-  const hi = [];
-  for (let i = 0; i < means.length; i++) {
-    const m = safeNum(means[i]);
-    const s = safeNum(stds[i]);
-    if (m == null) continue;
-    lo.push(m - (s == null ? 0 : s));
-    hi.push(m + (s == null ? 0 : s));
-  }
+function computeBarRange(means, stds) {
+  const vals = means
+    .map((m, i) => {
+      const mm = safeNum(m);
+      if (mm == null) return null;
+      const ss = safeNum(stds?.[i]) ?? 0;
+      return mm + ss;
+    })
+    .filter((v) => typeof v === 'number' && Number.isFinite(v));
 
-  if (!lo.length || !hi.length) return null;
+  if (!vals.length) return null;
 
-  let minY = Math.min(...lo);
-  let maxY = Math.max(...hi);
+  const maxV = Math.max(...vals);
+  const pad = Math.max(0.02, maxV * 0.08);
 
-  if (clamp01) {
-    minY = Math.max(0, minY);
-    maxY = Math.min(1, maxY);
-  }
+  // if score is in [0,1], keep it tidy
+  const upper = maxV <= 1.2 ? Math.min(1, maxV + pad) : maxV + pad;
 
-  if (!Number.isFinite(minY) || !Number.isFinite(maxY)) return null;
-  if (minY === maxY) {
-    const pad = Math.abs(minY) > 0 ? 0.1 * Math.abs(minY) : 0.1;
-    return [minY - pad, maxY + pad];
-  }
+  return [0, upper];
+}
 
-  const pad = 0.08 * (maxY - minY);
-  return [minY - pad, maxY + pad];
+function titleCase(s) {
+  return String(s || '')
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+function prettyEstimatorName(raw) {
+  const base = String(raw || '').replace(/_\d+$/, '');
+  return titleCase(base);
 }
 
 function niceEstimatorLabel({ name, algo }) {
   const key = String(algo || '').toLowerCase();
-  const base = ALGO_LABELS[key] || prettyEstimatorName(name || key);
-  return base;
+  return ALGO_LABELS[key] || prettyEstimatorName(name || key);
 }
 
-function labelsForMatrix(rawLabels, nameToPretty, fallbackPretty) {
-  if (Array.isArray(rawLabels) && rawLabels.length) {
-    return rawLabels.map((n, i) => nameToPretty.get(n) || fallbackPretty?.[i] || prettyEstimatorName(n));
-  }
-  return fallbackPretty || [];
+function makeUniqueLabels(labels) {
+  const counts = new Map();
+  return labels.map((l) => {
+    const k = String(l);
+    const c = (counts.get(k) || 0) + 1;
+    counts.set(k, c);
+    return c === 1 ? k : `${k} (${c})`;
+  });
 }
 
-function SummaryTable({ rows }) {
-  return (
-    <Table
-      withTableBorder={false}
-      withColumnBorders={false}
-      horizontalSpacing="xs"
-      verticalSpacing="xs"
-      mt="xs"
-    >
-      <tbody>
-        {rows.map((pair, idx) => (
-          <tr key={idx}>
-            {pair.map((item) => (
-              <td key={item.label} style={{ width: '50%', verticalAlign: 'top' }}>
-                <Group gap={6} align="flex-start" wrap="nowrap">
-                  <Text size="sm" fw={600}>
-                    {item.label}
-                  </Text>
-                  {item.tooltip ? (
-                    <Tooltip label={item.tooltip} withArrow position="top" maw={360}>
-                      <Text
-                        size="sm"
-                        c="dimmed"
-                        style={{ cursor: 'help', userSelect: 'none' }}
-                      >
-                        ⓘ
-                      </Text>
-                    </Tooltip>
-                  ) : null}
-                </Group>
-                <Text size="sm">{item.value}</Text>
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </Table>
-  );
+function algoKeyToAbbrev(algoKey) {
+  if (!algoKey) return 'UNK';
+  const key = String(algoKey).toLowerCase();
+  return ALGO_ABBREV[key] || ALGO_LABELS[key] || key;
+}
+
+function buildLegendLines(estimators) {
+  const seen = new Map(); // abbrev -> full label
+  (estimators || []).forEach((e) => {
+    const key = String(e?.algo || '').toLowerCase();
+    if (!key) return;
+    const ab = algoKeyToAbbrev(key);
+    const full = ALGO_LABELS[key] || key;
+    if (!seen.has(ab)) seen.set(ab, full);
+  });
+
+  // Stable order: by full label
+  const entries = Array.from(seen.entries())
+    .map(([ab, full]) => ({ ab, full }))
+    .sort((a, b) => a.full.localeCompare(b.full));
+
+  return entries;
 }
 
 export default function VotingEnsembleRegressionResults({ report }) {
@@ -204,11 +172,15 @@ export default function VotingEnsembleRegressionResults({ report }) {
   const estimators = Array.isArray(report.estimators) ? report.estimators : [];
   const metricName = report.metric_name || '';
 
-  // Build friendly unique labels for estimators.
-  const baseLabels = estimators.map((e) =>
+  // friendly unique labels for estimators (long) + abbreviated labels for matrix ticks
+  const baseLabelsLong = estimators.map((e) =>
     niceEstimatorLabel({ name: e?.name, algo: e?.algo }),
   );
-  const namesPretty = makeUniqueLabels(baseLabels);
+  const namesPretty = makeUniqueLabels(baseLabelsLong);
+
+  // abbreviations aligned to estimators (used for matrix tick labels)
+  const baseAbbrev = estimators.map((e) => algoKeyToAbbrev(e?.algo));
+  const matrixLabels = makeUniqueLabels(baseAbbrev);
 
   const nameToPretty = new Map();
   estimators.forEach((e, i) => nameToPretty.set(e?.name, namesPretty[i]));
@@ -219,11 +191,11 @@ export default function VotingEnsembleRegressionResults({ report }) {
   const hasEstimatorScores =
     means.filter((v) => typeof v === 'number' && Number.isFinite(v)).length > 0;
 
-  const yRange = computeBarRange(means, stds, { clamp01: false });
-
-  // Base estimator bar colors: darker for higher mean score
+  // Base estimator bar colors: darker for higher mean score (all in same blue family)
   const meanT = normalize01(means);
   const barColors = meanT.map((t) => cmBlue(0.25 + 0.75 * t));
+
+  const yRange = computeBarRange(means, stds);
 
   const barTrace = {
     type: 'bar',
@@ -235,22 +207,23 @@ export default function VotingEnsembleRegressionResults({ report }) {
       visible: true,
     },
     marker: { color: barColors },
-    hovertemplate: `<b>%{x}</b><br>${metricName}: %{y:.4f}<extra></extra>`,
+    hovertemplate: `<b>%{x}</b><br>${metricName || 'score'}: %{y:.4f}<extra></extra>`,
   };
 
   const similarity = report.similarity || {};
-  const corr = Array.isArray(similarity.pairwise_corr) ? similarity.pairwise_corr : null;
-  const absdiff = Array.isArray(similarity.pairwise_absdiff)
-    ? similarity.pairwise_absdiff
-    : null;
-  const simLabelsPretty = labelsForMatrix(similarity.labels, nameToPretty, namesPretty);
+  const corrRaw = Array.isArray(similarity.pairwise_corr) ? similarity.pairwise_corr : null;
+  const absRaw = Array.isArray(similarity.pairwise_absdiff) ? similarity.pairwise_absdiff : null;
 
+  const labelsPretty = matrixLabels;
+  const legendEntries = buildLegendLines(estimators);
+
+  // ---- Summary metrics table (same structure as classification: 3 rows, 2 pairs each) ----
   const errors = report.errors || {};
   const ensErr = errors.ensemble || {};
   const bestErr = errors.best_base || {};
   const gain = errors.gain_vs_best || {};
 
-  const regMetricItems = [
+  const metricItems = [
     {
       label: 'Avg pairwise corr',
       value: fmt(similarity.pairwise_mean_corr, 3),
@@ -289,74 +262,140 @@ export default function VotingEnsembleRegressionResults({ report }) {
     },
   ];
 
-  const regMetricRows = [
-    [regMetricItems[0], regMetricItems[1]],
-    [regMetricItems[2], regMetricItems[3]],
-    [regMetricItems[4], regMetricItems[5]],
+  const metricRows = [
+    [metricItems[0], metricItems[1]],
+    [metricItems[2], metricItems[3]],
+    [metricItems[4], metricItems[5]],
   ];
 
-  const corrTrace = corr
-    ? {
-        type: 'heatmap',
-        x: simLabelsPretty,
-        y: simLabelsPretty,
-        z: corr,
-        zmin: -1,
-        zmax: 1,
-        colorscale: 'RdBu',
-        reversescale: true,
-        showscale: true,
-        colorbar: {
-          x: 0.75,
-          xanchor: 'right',
-          xpad: 0,
-          thickness: 12,
-          len: 0.92,
-          outlinewidth: 0,
-        },
-        text: corr.map((row) =>
-          row.map((v) => (typeof v === 'number' ? v.toFixed(2) : '')),
-        ),
-        texttemplate: '%{text}',
-        hovertemplate: '<b>%{y}</b> vs <b>%{x}</b><br>corr: %{z:.3f}<extra></extra>',
-      }
-    : null;
+  // ---- Matrices: match "Pairwise agreement" look, but show two side-by-side, squared ----
+  // Correlation uses the same blue ramp by mapping [-1,1] -> [0,1] for colors,
+  // while keeping text/hover as the original correlation.
+  const corrTrace = (() => {
+    if (!corrRaw) return null;
+    const zColor = corrRaw.map((row) =>
+      row.map((v) => {
+        const n = safeNum(v);
+        if (n == null) return null;
+        return (n + 1) / 2;
+      }),
+    );
+
+    const text = corrRaw.map((row) =>
+      row.map((v) => {
+        const n = safeNum(v);
+        return n == null ? '' : n.toFixed(2);
+      }),
+    );
+
+    return {
+      type: 'heatmap',
+      x: labelsPretty,
+      y: labelsPretty,
+      z: zColor,
+      zmin: 0,
+      zmax: 1,
+      colorscale: HEATMAP_COLORSCALE,
+      showscale: true,
+      colorbar: {
+        x: 1.02,
+        xanchor: 'left',
+        xpad: 0,
+        thickness: 12,
+        len: 0.92,
+        outlinewidth: 0,
+        tickvals: [0, 0.5, 1],
+        ticktext: ['-1', '0', '1'],
+      },
+      text,
+      texttemplate: '%{text}',
+      hovertemplate:
+        '<b>%{y}</b> vs <b>%{x}</b><br>corr: %{text}<extra></extra>',
+    };
+  })();
 
   const absTrace = (() => {
-    if (!absdiff) return null;
-    const flat = absdiff
+    if (!absRaw) return null;
+    const flat = absRaw
       .flat()
       .map((v) => safeNum(v))
       .filter((v) => v != null);
     const zmax = flat.length ? Math.max(...flat) : 1;
+
+    const text = absRaw.map((row) =>
+      row.map((v) => {
+        const n = safeNum(v);
+        return n == null ? '' : n.toFixed(2);
+      }),
+    );
+
     return {
       type: 'heatmap',
-      x: simLabelsPretty,
-      y: simLabelsPretty,
-      z: absdiff,
+      x: labelsPretty,
+      y: labelsPretty,
+      z: absRaw,
       zmin: 0,
       zmax: zmax || 1,
       colorscale: HEATMAP_COLORSCALE,
       showscale: true,
       colorbar: {
-        x: 0.75,
-        xanchor: 'right',
+        x: 1.02,
+        xanchor: 'left',
         xpad: 0,
         thickness: 12,
         len: 0.92,
         outlinewidth: 0,
       },
-      text: absdiff.map((row) =>
-        row.map((v) => (typeof v === 'number' ? fmt(v, 3) : '')),
-      ),
+      text,
       texttemplate: '%{text}',
-      hovertemplate: '<b>%{y}</b> vs <b>%{x}</b><br>|Δ|: %{z:.4f}<extra></extra>',
+      hovertemplate:
+        '<b>%{y}</b> vs <b>%{x}</b><br>|Δ|: %{z:.4f}<extra></extra>',
     };
   })();
 
-  const bestNamePretty =
-    nameToPretty.get(bestErr.name) ||
-    niceEstimatorLabel({ name: bestErr.name, algo: null });
+  // ---- Errors table (same visual style as Summary metrics) ----
+  const bestNamePretty = bestErr?.name
+    ? (nameToPretty.get(bestErr.name) || niceEstimatorLabel({ name: bestErr.name, algo: bestErr.algo }))
+    : '—';
+
+  const errorItems = [
+    {
+      label: 'Ensemble RMSE',
+      value: fmt(ensErr.rmse, 4),
+      tooltip: 'Root mean squared error of ensemble predictions.',
+    },
+    {
+      label: 'Ensemble MAE',
+      value: fmt(ensErr.mae, 4),
+      tooltip: 'Mean absolute error of ensemble predictions.',
+    },
+    {
+      label: 'Best base RMSE',
+      value: fmt(bestErr.rmse, 4),
+      tooltip: `RMSE of the best single estimator (${bestNamePretty}).`,
+    },
+    {
+      label: 'Best base MAE',
+      value: fmt(bestErr.mae, 4),
+      tooltip: `MAE of the best single estimator (${bestNamePretty}).`,
+    },
+    {
+      label: 'RMSE reduction',
+      value: fmt(gain.rmse_reduction, 4),
+      tooltip: 'Best-base RMSE − ensemble RMSE. Positive = improvement.',
+    },
+    {
+      label: 'MAE reduction',
+      value: fmt(gain.mae_reduction, 4),
+      tooltip: 'Best-base MAE − ensemble MAE. Positive = improvement.',
+    },
+  ];
+
+  const errorRows = [
+    [errorItems[0], errorItems[1]],
+    [errorItems[2], errorItems[3]],
+    [errorItems[4], errorItems[5]],
+  ];
 
   return (
     <Card withBorder radius="md" p="md">
@@ -365,91 +404,236 @@ export default function VotingEnsembleRegressionResults({ report }) {
           Voting ensemble insights
         </Text>
 
+        {/* Summary metrics */}
         <Box>
           <Text fw={500} size="lg" align="center">
             Summary metrics
           </Text>
-          <SummaryTable rows={regMetricRows} />
+
+          <Table
+            withTableBorder={false}
+            withColumnBorders={false}
+            horizontalSpacing="xs"
+            verticalSpacing="xs"
+            mt="xs"
+          >
+            <Table.Tbody>
+              {metricRows.map((pair, i) => (
+                <Table.Tr
+                  key={i}
+                  style={{
+                    backgroundColor:
+                      i % 2 === 1 ? 'var(--mantine-color-gray-0)' : 'white',
+                  }}
+                >
+                  <Table.Td style={{ width: '25%' }}>
+                    <Tooltip label={pair[0].tooltip} multiline maw={360} withArrow>
+                      <Text size="sm" fw={600}>
+                        {pair[0].label}
+                      </Text>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td style={{ width: '25%' }}>
+                    <Text size="sm" fw={700}>
+                      {pair[0].value}
+                    </Text>
+                  </Table.Td>
+
+                  <Table.Td style={{ width: '25%' }}>
+                    <Tooltip label={pair[1].tooltip} multiline maw={360} withArrow>
+                      <Text size="sm" fw={600}>
+                        {pair[1].label}
+                      </Text>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td style={{ width: '25%' }}>
+                    <Text size="sm" fw={700}>
+                      {pair[1].value}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+
+          <Text size="sm" c="dimmed" mt="xs" align="center">
+            Voting: <b>{report.voting}</b> • Estimators: <b>{report.n_estimators}</b>
+          </Text>
         </Box>
 
-        <Divider />
+        <Divider my="xs" />
 
+        {/* Base estimators */}
         <Box>
-          <Text fw={500} size="lg" align="center">
-            Base estimator performance
-          </Text>
+          <Tooltip
+            label="Per-estimator performance across folds (mean ± std). Helps you spot strong/weak and stable/unstable base models."
+            multiline
+            maw={360}
+            withArrow
+          >
+            <Text size="lg" fw={500} align="center" mb={6}>
+              Base estimators ({metricName || 'score'})
+            </Text>
+          </Tooltip>
 
           {!hasEstimatorScores ? (
             <Text size="sm" c="dimmed" align="center" mt="xs">
-              No base-estimator fold scores were provided.
+              Base estimator scores unavailable.
             </Text>
           ) : (
-            <Plot
-              data={[barTrace]}
-              layout={{
-                margin: { l: 40, r: 20, t: 30, b: 70 },
-                height: 320,
-                yaxis: {
-                  title: metricName || 'score',
-                  range: yRange || undefined,
-                  zeroline: true,
-                },
-                xaxis: { tickangle: -25 },
-                showlegend: false,
-              }}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: '100%' }}
-            />
-          )}
-        </Box>
-
-        <Divider />
-
-        <Box>
-          <Text fw={500} size="lg" align="center">
-            Prediction similarity
-          </Text>
-
-          {!corrTrace ? (
-            <Text size="sm" c="dimmed" align="center" mt="xs">
-              Similarity matrix not available.
-            </Text>
-          ) : (
-            <Plot
-              data={[corrTrace]}
-              layout={{
-                margin: { l: 90, r: 20, t: 20, b: 90 },
-                height: 420,
-                xaxis: { tickangle: -35 },
-                yaxis: { autorange: 'reversed' },
-              }}
-              config={{ displayModeBar: false, responsive: true }}
-              style={{ width: '100%' }}
-            />
-          )}
-
-          {absTrace ? (
-            <Box mt="md">
-              <Text fw={500} size="md" align="center">
-                Absolute prediction differences
-              </Text>
+            <Box style={{ maxWidth: 560, margin: '0 auto' }}>
               <Plot
-                data={[absTrace]}
+                data={[barTrace]}
                 layout={{
-                  margin: { l: 90, r: 20, t: 20, b: 90 },
-                  height: 420,
-                  xaxis: { tickangle: -35 },
-                  yaxis: { autorange: 'reversed' },
+                  autosize: true,
+                  height: 300,
+                  margin: { l: 70, r: 18, t: 10, b: 90 },
+                  xaxis: {
+                    tickangle: -25,
+                    title: { text: 'Estimator' },
+                    automargin: true,
+                    showgrid: false,
+                    zeroline: false,
+                  },
+                  yaxis: {
+                    title: { text: metricName || 'score' },
+                    range: yRange || undefined,
+                    automargin: true,
+                    showgrid: true,
+                    zeroline: false,
+                  },
+                  bargap: 0.25,
+                  plot_bgcolor: '#ffffff',
+                  paper_bgcolor: '#ffffff',
                 }}
                 config={{ displayModeBar: false, responsive: true }}
                 style={{ width: '100%' }}
               />
             </Box>
-          ) : null}
+          )}
         </Box>
 
-        <Divider />
+        <Divider my="xs" />
 
+        {/* Matrices */}
+        <Box>
+          <Tooltip
+            label="Pairwise relationships between base estimators. Correlation close to 1 means very similar predictions; |Δ| highlights how far predictions differ on average."
+            multiline
+            maw={420}
+            withArrow
+          >
+            <Text size="lg" fw={500} align="center" mb={6}>
+              Pairwise prediction structure
+            </Text>
+          </Tooltip>
+
+          <Group align="stretch" grow wrap="wrap">
+            <Box style={{ flex: 1, minWidth: 320 }}>
+              <Text size="md" fw={500} align="center" mb={6}>
+                Prediction similarity (corr)
+              </Text>
+
+              {corrTrace ? (
+                <Plot
+                  data={[corrTrace]}
+                  layout={{
+                    autosize: true,
+                    height: 360,
+                    margin: { l: 80, r: 36, t: 10, b: 90 },
+                    xaxis: {
+                      title: { text: 'Estimator' },
+                      tickangle: -30,
+                      side: 'top',
+                      automargin: true,
+                      showgrid: false,
+                      zeroline: false,
+                      constrain: 'domain',
+                    },
+                    yaxis: {
+                      title: { text: 'Estimator' },
+                      autorange: 'reversed',
+                      automargin: true,
+                      showgrid: false,
+                      zeroline: false,
+                      scaleanchor: 'x',
+                      scaleratio: 1,
+                      constrain: 'domain',
+                    },
+                    plot_bgcolor: '#ffffff',
+                    paper_bgcolor: '#ffffff',
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%' }}
+                />
+              ) : (
+                <Text size="sm" c="dimmed" align="center">
+                  Correlation matrix unavailable.
+                </Text>
+              )}
+            </Box>
+
+            <Box style={{ flex: 1, minWidth: 320 }}>
+              <Text size="md" fw={500} align="center" mb={6}>
+                Absolute prediction differences (|Δ|)
+              </Text>
+
+              {absTrace ? (
+                <Plot
+                  data={[absTrace]}
+                  layout={{
+                    autosize: true,
+                    height: 360,
+                    margin: { l: 80, r: 36, t: 10, b: 90 },
+                    xaxis: {
+                      title: { text: 'Estimator' },
+                      tickangle: -30,
+                      side: 'top',
+                      automargin: true,
+                      showgrid: false,
+                      zeroline: false,
+                      constrain: 'domain',
+                    },
+                    yaxis: {
+                      title: { text: 'Estimator' },
+                      autorange: 'reversed',
+                      automargin: true,
+                      showgrid: false,
+                      zeroline: false,
+                      scaleanchor: 'x',
+                      scaleratio: 1,
+                      constrain: 'domain',
+                    },
+                    plot_bgcolor: '#ffffff',
+                    paper_bgcolor: '#ffffff',
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%' }}
+                />
+              ) : (
+                <Text size="sm" c="dimmed" align="center">
+                  Absolute-difference matrix unavailable.
+                </Text>
+              )}
+            </Box>
+          </Group>
+          {legendEntries.length > 0 && (
+            <Box mt="xs">
+              <Text size="sm" c="dimmed" align="center">
+                {legendEntries.map((e, idx) => (
+                  <span key={e.ab}>
+                    <b>{e.ab}</b> — {e.full}
+                    {idx < legendEntries.length - 1 ? '   •   ' : ''}
+                  </span>
+                ))}
+              </Text>
+            </Box>
+          )}
+        </Box>
+
+        <Divider my="xs" />
+
+        {/* Errors */}
         <Box>
           <Text fw={500} size="lg" align="center">
             Errors
@@ -462,83 +646,48 @@ export default function VotingEnsembleRegressionResults({ report }) {
             verticalSpacing="xs"
             mt="xs"
           >
-            <thead>
-              <tr>
-                <th />
-                <th>
-                  <Text size="sm" fw={600}>
-                    RMSE
-                  </Text>
-                </th>
-                <th>
-                  <Text size="sm" fw={600}>
-                    MAE
-                  </Text>
-                </th>
-                <th>
-                  <Text size="sm" fw={600}>
-                    Median AE
-                  </Text>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <Text size="sm" fw={600}>
-                    Ensemble
-                  </Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(ensErr.rmse, 4)}</Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(ensErr.mae, 4)}</Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(ensErr.median_ae, 4)}</Text>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <Text size="sm" fw={600}>
-                    Best base ({bestNamePretty || '—'})
-                  </Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(bestErr.rmse, 4)}</Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(bestErr.mae, 4)}</Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(bestErr.median_ae, 4)}</Text>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <Text size="sm" fw={600}>
-                    Reduction vs best
-                  </Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(gain.rmse_reduction, 4)}</Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(gain.mae_reduction, 4)}</Text>
-                </td>
-                <td>
-                  <Text size="sm">{fmt(gain.median_ae_reduction, 4)}</Text>
-                </td>
-              </tr>
-            </tbody>
+            <Table.Tbody>
+              {errorRows.map((pair, i) => (
+                <Table.Tr
+                  key={i}
+                  style={{
+                    backgroundColor:
+                      i % 2 === 1 ? 'var(--mantine-color-gray-0)' : 'white',
+                  }}
+                >
+                  <Table.Td style={{ width: '25%' }}>
+                    <Tooltip label={pair[0].tooltip} multiline maw={360} withArrow>
+                      <Text size="sm" fw={600}>
+                        {pair[0].label}
+                      </Text>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td style={{ width: '25%' }}>
+                    <Text size="sm" fw={700}>
+                      {pair[0].value}
+                    </Text>
+                  </Table.Td>
+
+                  <Table.Td style={{ width: '25%' }}>
+                    <Tooltip label={pair[1].tooltip} multiline maw={360} withArrow>
+                      <Text size="sm" fw={600}>
+                        {pair[1].label}
+                      </Text>
+                    </Tooltip>
+                  </Table.Td>
+                  <Table.Td style={{ width: '25%' }}>
+                    <Text size="sm" fw={700}>
+                      {pair[1].value}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
           </Table>
 
-          <Group justify="center" mt="xs">
-            <Text size="sm" c="dimmed">
-              Best single estimator: <Text span fw={600}>{bestNamePretty || '—'}</Text>
-            </Text>
-          </Group>
+          <Text size="sm" c="dimmed" mt="xs" align="center">
+            Best single estimator: <b>{bestNamePretty}</b>
+          </Text>
         </Box>
       </Stack>
     </Card>
