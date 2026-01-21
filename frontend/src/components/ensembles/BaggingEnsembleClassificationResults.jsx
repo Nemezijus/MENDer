@@ -111,7 +111,7 @@ function histToBarTrace(edges, counts, opts = {}) {
   };
 }
 
-export default function BaggingEnsembleResults({ report }) {
+export default function BaggingEnsembleClassificationResults({ report }) {
   if (!report || report.kind !== 'bagging') return null;
 
   const metricName = report.metric_name || '';

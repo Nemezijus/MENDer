@@ -31,7 +31,8 @@ import { runEnsembleTrainRequest } from '../../api/ensembles.js';
 
 import EnsembleHelpText, { BaggingIntroText } from '../helpers/helpTexts/EnsembleHelpText.jsx';
 
-import BaggingEnsembleResults from './BaggingEnsembleResults.jsx';
+import BaggingEnsembleClassificationResults from './BaggingEnsembleClassificationResults.jsx';
+import BaggingEnsembleRegressionResults from './BaggingEnsembleRegressionResults.jsx';
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -76,6 +77,49 @@ function buildFeaturesPayload(fctx) {
     sfs_n_jobs: fctx.sfs_n_jobs,
   };
 }
+
+const ALGO_LABELS = {
+  // classifiers
+  logreg: 'Logistic Regression',
+  ridgeclf: 'Ridge Classifier',
+  svm: 'SVM (RBF)',
+  linsvm: 'Linear SVM',
+  knn: 'kNN Classifier',
+  tree: 'Decision Tree',
+  forest: 'Random Forest',
+  extratrees: 'Extra Trees',
+  histgb: 'HistGradientBoosting',
+  nb: 'Naive Bayes',
+  // regressors
+  linreg: 'Linear Regression',
+  ridgereg: 'Ridge Regression',
+  ridgecv: 'Ridge Regression (CV)',
+  enet: 'Elastic Net',
+  enetcv: 'Elastic Net (CV)',
+  lasso: 'Lasso',
+  lassocv: 'Lasso (CV)',
+  bayridge: 'Bayesian Ridge',
+  svr: 'SVR (RBF)',
+  linsvr: 'Linear SVR',
+  knnreg: 'kNN Regressor',
+  treereg: 'Decision Tree Regressor',
+  rfreg: 'Random Forest Regressor',
+};
+
+function titleCase(s) {
+  return String(s || '')
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+function algoKeyToLabel(key) {
+  const k = String(key || '').toLowerCase();
+  return ALGO_LABELS[k] || titleCase(k);
+}
+
 
 export default function BaggingEnsemblePanel() {
   const inspectReport = useDataStore((s) => s.inspectReport);
@@ -125,7 +169,7 @@ export default function BaggingEnsemblePanel() {
   }, [getCompatibleAlgos, effectiveTask]);
 
   const algoOptions = useMemo(
-    () => compatibleAlgos.map((a) => ({ value: a, label: a })),
+    () => compatibleAlgos.map((a) => ({ value: a, label: algoKeyToLabel(a) })),
     [compatibleAlgos],
   );
 
@@ -178,8 +222,9 @@ export default function BaggingEnsemblePanel() {
       });
     }
 
-    if (effectiveTask === 'regression' && bagging.stratified) {
-      setBagging({ stratified: false });
+    if (effectiveTask === 'regression') {
+      if (bagging.stratified) setBagging({ stratified: false });
+      if (bagging.balanced) setBagging({ balanced: false });
     }
 
     initializedRef.current = true;
@@ -187,8 +232,14 @@ export default function BaggingEnsemblePanel() {
   }, [defsLoading, compatibleAlgos, getModelDefaults, getEnsembleDefaults]);
 
   const handleReset = () => {
+    // Reset store values, then re-apply a default base estimator so the dropdown isn't empty
+    initializedRef.current = false;
     resetBagging(effectiveTask);
     setErr(null);
+
+    const algo = (getCompatibleAlgos?.(effectiveTask) || compatibleAlgos || [])[0] || 'tree';
+    setBaggingBaseEstimator(getModelDefaults?.(algo) || { algo });
+    initializedRef.current = true;
   };
 
   const buildPayload = () => {
@@ -236,10 +287,9 @@ export default function BaggingEnsemblePanel() {
   },
     };
 
-    const useBalanced = !!bagging.balanced;
-
     const ensemble = {
       kind: 'bagging',
+      problem_kind: effectiveTask === 'regression' ? 'regression' : 'classification',
       base_estimator: bagging.base_estimator,
       n_estimators: Number(bagging.n_estimators) || 10,
       max_samples: bagging.max_samples === '' ? null : bagging.max_samples,
@@ -431,6 +481,7 @@ export default function BaggingEnsemblePanel() {
             <Switch
               label="Balanced bagging"
               checked={!!bagging.balanced}
+              disabled={effectiveTask === 'regression'}
               onChange={(e) => {
                 const next = e.currentTarget.checked;
                 // When enabling, ensure sensible defaults are present.
@@ -481,8 +532,12 @@ export default function BaggingEnsemblePanel() {
         onSeedChange={(v) => setBagging({ seed: v })}
       />
       {trainResult?.ensemble_report?.kind === 'bagging' && (
-        <BaggingEnsembleResults report={trainResult.ensemble_report} />
-        )}
+        (trainResult.ensemble_report.task || 'classification') === 'regression' ? (
+          <BaggingEnsembleRegressionResults report={trainResult.ensemble_report} />
+        ) : (
+          <BaggingEnsembleClassificationResults report={trainResult.ensemble_report} />
+        )
+      )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>

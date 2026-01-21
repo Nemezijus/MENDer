@@ -31,7 +31,8 @@ import { runEnsembleTrainRequest } from '../../api/ensembles.js';
 import EnsembleHelpText, {
   AdaBoostIntroText,
 } from '../helpers/helpTexts/EnsembleHelpText.jsx';
-import AdaBoostEnsembleResults from './AdaBoostEnsembleResults.jsx';
+import AdaBoostEnsembleClassificationResults from './AdaBoostEnsembleClassificationResults.jsx';
+import AdaBoostEnsembleRegressionResults from './AdaBoostEnsembleRegressionResults.jsx';
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -83,6 +84,49 @@ function numOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+const ALGO_LABELS = {
+  // classifiers
+  logreg: 'Logistic Regression',
+  ridgeclf: 'Ridge Classifier',
+  svm: 'SVM (RBF)',
+  linsvm: 'Linear SVM',
+  knn: 'kNN Classifier',
+  tree: 'Decision Tree',
+  forest: 'Random Forest',
+  extratrees: 'Extra Trees',
+  histgb: 'HistGradientBoosting',
+  nb: 'Naive Bayes',
+  // regressors
+  linreg: 'Linear Regression',
+  ridgereg: 'Ridge Regression',
+  ridgecv: 'Ridge Regression (CV)',
+  enet: 'Elastic Net',
+  enetcv: 'Elastic Net (CV)',
+  lasso: 'Lasso',
+  lassocv: 'Lasso (CV)',
+  bayridge: 'Bayesian Ridge',
+  svr: 'SVR (RBF)',
+  linsvr: 'Linear SVR',
+  knnreg: 'kNN Regressor',
+  treereg: 'Decision Tree Regressor',
+  rfreg: 'Random Forest Regressor',
+};
+
+function titleCase(s) {
+  return String(s || '')
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+function algoKeyToLabel(key) {
+  const k = String(key || '').toLowerCase();
+  return ALGO_LABELS[k] || titleCase(k);
+}
+
+
 export default function AdaBoostEnsemblePanel() {
   const inspectReport = useDataStore((s) => s.inspectReport);
 
@@ -131,7 +175,7 @@ export default function AdaBoostEnsemblePanel() {
   }, [getCompatibleAlgos, effectiveTask]);
 
   const algoOptions = useMemo(
-    () => compatibleAlgos.map((a) => ({ value: a, label: a })),
+    () => compatibleAlgos.map((a) => ({ value: a, label: algoKeyToLabel(a) })),
     [compatibleAlgos],
   );
 
@@ -177,8 +221,14 @@ export default function AdaBoostEnsemblePanel() {
   }, [defsLoading, compatibleAlgos, getModelDefaults, getEnsembleDefaults, effectiveTask]);
 
   const handleReset = () => {
+    // Reset store values, then re-apply a default base estimator so the dropdown isn't empty
+    initializedRef.current = false;
     resetAdaBoost(effectiveTask);
     setErr(null);
+
+    const algo = (getCompatibleAlgos?.(effectiveTask) || compatibleAlgos || [])[0] || 'tree';
+    setAdaBoostBaseEstimator(getModelDefaults?.(algo) || { algo });
+    initializedRef.current = true;
   };
 
   const buildPayload = () => {
@@ -432,7 +482,11 @@ export default function AdaBoostEnsemblePanel() {
       />
 
       {trainResult?.ensemble_report?.kind === 'adaboost' && (
-        <AdaBoostEnsembleResults report={trainResult.ensemble_report} />
+        (trainResult.ensemble_report.task || 'classification') === 'regression' ? (
+          <AdaBoostEnsembleRegressionResults report={trainResult.ensemble_report} />
+        ) : (
+          <AdaBoostEnsembleClassificationResults report={trainResult.ensemble_report} />
+        )
       )}
 
       {err && (
