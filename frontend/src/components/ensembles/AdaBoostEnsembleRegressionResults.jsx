@@ -84,7 +84,8 @@ export default function AdaBoostEnsembleRegressionResults({ report }) {
   const metricName = report.metric_name || '';
   const ada = report.adaboost || {};
   const weights = report.weights || {};
-  const errors = report.errors || {};
+  const estErrors = report.errors || {};
+  const modelErrors = report.model_errors || {};
   const stages = report.stages || {};
   const baseScores = report.base_estimator_scores || {};
 
@@ -102,8 +103,8 @@ export default function AdaBoostEnsembleRegressionResults({ report }) {
 
   const effectiveN = safeNum(weights.effective_n_mean);
 
-  const ensErr = errors.ensemble || {};
-  const gain = errors.gain_vs_best || {};
+  const ensErr = modelErrors.ensemble || {};
+  const gain = modelErrors.gain_vs_best || {};
 
   const summaryItems = [
     {
@@ -135,7 +136,7 @@ export default function AdaBoostEnsembleRegressionResults({ report }) {
     },
     {
       label: 'N samples',
-      value: errors.n_total == null ? '—' : fmt(errors.n_total, 0),
+      value: modelErrors.n_total == null ? '—' : fmt(modelErrors.n_total, 0),
       tooltip: 'Total number of evaluation samples pooled across folds used for AdaBoost reporting.',
     },
   ];
@@ -147,7 +148,7 @@ export default function AdaBoostEnsembleRegressionResults({ report }) {
   ];
 
   const wHist = weights.hist || null;
-  const eHist = errors.hist || null;
+  const eHist = estErrors.hist || null;
   const scoreHist = baseScores.hist || null;
 
   const weightPlot =

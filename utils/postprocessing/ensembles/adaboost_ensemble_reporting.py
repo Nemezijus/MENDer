@@ -417,6 +417,29 @@ def _mean_absdiff_matrix(P: np.ndarray) -> np.ndarray:
     return out
 
 
+
+def _base_score_hist(scores: Sequence[float], *, bins: int = 20) -> Dict[str, Any]:
+    """Compute a histogram for pooled stage/base-estimator scores.
+
+    Edges are data-driven (min..max). If all values are equal, a tiny range is added.
+    """
+    vals = np.asarray([float(x) for x in scores if x is not None], dtype=float)
+    vals = vals[np.isfinite(vals)]
+    if vals.size == 0:
+        return {"edges": [], "counts": []}
+
+    vmin = float(np.min(vals))
+    vmax = float(np.max(vals))
+    if np.isclose(vmin, vmax):
+        eps = 1e-6 if vmax == 0.0 else abs(vmax) * 1e-6
+        vmin -= eps
+        vmax += eps
+
+    edges = np.linspace(vmin, vmax, num=int(bins) + 1, dtype=float)
+    counts, edges = np.histogram(vals, bins=edges)
+    return {"edges": [float(x) for x in edges.tolist()], "counts": [float(x) for x in counts.tolist()]}
+
+
 @dataclass
 class AdaBoostEnsembleRegressorReportAccumulator:
     """Accumulate regression-specific AdaBoost insights across folds."""
@@ -738,12 +761,13 @@ class AdaBoostEnsembleRegressorReportAccumulator:
             "model_errors": {
                 "ensemble": {"rmse": _safe_float(ens_rmse), "mae": _safe_float(ens_mae), "median_ae": _safe_float(ens_med)},
                 "best_base": {"rmse": _safe_float(best_rmse), "mae": _safe_float(best_mae), "median_ae": _safe_float(best_med)},
-                "gain_vs_best": {"rmse": _safe_float(gain_rmse), "mae": _safe_float(gain_mae), "median_ae": _safe_float(gain_med)},
+                "gain_vs_best": {"rmse_reduction": _safe_float(gain_rmse), "mae_reduction": _safe_float(gain_mae), "median_ae_reduction": _safe_float(gain_med), "r2": None},
                 "n_total": _safe_int(self._n_eval_total),
             },
             "base_estimator_scores": {
                 "mean": _safe_float(bs_mean) if self._base_scores_all else None,
                 "std": _safe_float(bs_std) if self._base_scores_all else None,
+                "hist": _base_score_hist(self._base_scores_all) if self._base_scores_all else None,
             },
             "meta": {
                 "n_folds": _safe_int(self._n_folds),
