@@ -28,8 +28,14 @@ from utils.postprocessing.ensembles.voting_ensemble_reporting import (
     VotingEnsembleReportAccumulator,
     VotingEnsembleRegressorReportAccumulator,
 )
-from utils.postprocessing.ensembles.bagging_ensemble_reporting import BaggingEnsembleReportAccumulator
-from utils.postprocessing.ensembles.adaboost_ensemble_reporting import AdaBoostEnsembleReportAccumulator
+from utils.postprocessing.ensembles.bagging_ensemble_reporting import (
+    BaggingEnsembleReportAccumulator,
+    BaggingEnsembleRegressorReportAccumulator,
+)
+from utils.postprocessing.ensembles.adaboost_ensemble_reporting import (
+    AdaBoostEnsembleReportAccumulator,
+    AdaBoostEnsembleRegressorReportAccumulator,
+)
 from utils.postprocessing.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
 
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
@@ -97,6 +103,28 @@ def _transform_through_pipeline(model, X):
         return Xt
     except Exception:
         return X
+
+
+def _slice_X_by_features(X, feat_idx):
+    # Best-effort column slicing that works for numpy arrays, pandas DataFrames, and scipy sparse.
+    if feat_idx is None:
+        return X
+    try:
+        idx = feat_idx
+        # sklearn uses numpy arrays of indices; ensure list-like works
+        if not isinstance(idx, (slice, list, tuple)):
+            idx = list(idx)
+    except Exception:
+        idx = feat_idx
+    try:
+        return X[:, idx]
+    except Exception:
+        try:
+            import numpy as _np
+            Xa = _np.asarray(X)
+            return Xa[:, idx]
+        except Exception:
+            return X
 
 
 def _get_classes_arr(model) -> Optional[np.ndarray]:
@@ -320,11 +348,13 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     voting_reg_acc: VotingEnsembleRegressorReportAccumulator | None = None
     is_voting_report = isinstance(cfg.ensemble, VotingEnsembleConfig)
 
-    bagging_acc: BaggingEnsembleReportAccumulator | None = None
-    is_bagging_report = eval_kind == "classification" and isinstance(cfg.ensemble, BaggingEnsembleConfig)
+    bagging_cls_acc: BaggingEnsembleReportAccumulator | None = None
+    bagging_reg_acc: BaggingEnsembleRegressorReportAccumulator | None = None
+    is_bagging_report = isinstance(cfg.ensemble, BaggingEnsembleConfig)
 
-    adaboost_acc: AdaBoostEnsembleReportAccumulator | None = None
-    is_adaboost_report = eval_kind == "classification" and isinstance(cfg.ensemble, AdaBoostEnsembleConfig)
+    adaboost_cls_acc: AdaBoostEnsembleReportAccumulator | None = None
+    adaboost_reg_acc: AdaBoostEnsembleRegressorReportAccumulator | None = None
+    is_adaboost_report = isinstance(cfg.ensemble, AdaBoostEnsembleConfig)
 
     xgb_acc: XGBoostEnsembleReportAccumulator | None = None
     is_xgboost_report = eval_kind == "classification" and isinstance(cfg.ensemble, XGBoostEnsembleConfig)
@@ -505,111 +535,189 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             except Exception:
                 pass
 
-# ---------------- Bagging report (existing) ----------------
+
+# ---------------- Bagging report ----------------
         if is_bagging_report:
             try:
                 ests = getattr(model, "estimators_", None)
+                feats_list = getattr(model, "estimators_features_", None)
+
                 if ests is not None and len(ests) > 0:
-                    if bagging_acc is None:
-                        base_algo = _extract_base_estimator_algo_from_cfg(cfg, default="default")
-                        bagging_acc = BaggingEnsembleReportAccumulator.create(
-                            metric_name=str(cfg.eval.metric),
-                            base_algo=base_algo,
-                            n_estimators=int(getattr(cfg.ensemble, "n_estimators", len(ests)) or len(ests)),
-                            max_samples=getattr(cfg.ensemble, "max_samples", None),
-                            max_features=getattr(cfg.ensemble, "max_features", None),
-                            bootstrap=bool(getattr(cfg.ensemble, "bootstrap", True)),
-                            bootstrap_features=bool(getattr(cfg.ensemble, "bootstrap_features", False)),
-                            oob_score_enabled=bool(getattr(cfg.ensemble, "oob_score", False)),
-                            balanced=bool(getattr(cfg.ensemble, "balanced", False)),
-                            sampling_strategy=getattr(cfg.ensemble, "sampling_strategy", None),
-                            replacement=getattr(cfg.ensemble, "replacement", None),
-                        )
-
-                    base_pred_cols = []
-                    base_scores_list: list[float] = []
-
                     metric_name = str(cfg.eval.metric)
+                    base_algo = _extract_base_estimator_algo_from_cfg(cfg, default="default")
 
-                    classes_arr = _get_classes_arr(model)
-                    yte_arr = np.asarray(yte)
-                    yte_enc = _encode_y_true_to_index(yte_arr, classes_arr)
+                    # --- classification bagging report ---
+                    if eval_kind == "classification":
+                        if bagging_cls_acc is None:
+                            bagging_cls_acc = BaggingEnsembleReportAccumulator.create(
+                                metric_name=str(cfg.eval.metric),
+                                base_algo=base_algo,
+                                n_estimators=int(getattr(cfg.ensemble, "n_estimators", len(ests)) or len(ests)),
+                                max_samples=getattr(cfg.ensemble, "max_samples", None),
+                                max_features=getattr(cfg.ensemble, "max_features", None),
+                                bootstrap=bool(getattr(cfg.ensemble, "bootstrap", True)),
+                                bootstrap_features=bool(getattr(cfg.ensemble, "bootstrap_features", False)),
+                                oob_score_enabled=bool(getattr(cfg.ensemble, "oob_score", False)),
+                                balanced=bool(getattr(cfg.ensemble, "balanced", False)),
+                                sampling_strategy=getattr(cfg.ensemble, "sampling_strategy", None),
+                                replacement=getattr(cfg.ensemble, "replacement", None),
+                            )
 
-                    for est in ests:
-                        if est is None:
-                            continue
+                        base_pred_cols = []
+                        base_scores_list: list[float] = []
 
-                        yp_raw = np.asarray(est.predict(Xte))
+                        classes_arr = _get_classes_arr(model)
+                        yte_arr = np.asarray(yte)
+                        yte_enc = _encode_y_true_to_index(yte_arr, classes_arr)
 
-                        if _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                            yp_dec = classes_arr[yp_raw.astype(int, copy=False)]
-                        else:
-                            yp_dec = yp_raw
+                        for i, est in enumerate(ests):
+                            if est is None:
+                                continue
 
-                        base_pred_cols.append(np.asarray(yp_dec))
+                            feat_idx = None
+                            try:
+                                if feats_list is not None and i < len(feats_list):
+                                    feat_idx = feats_list[i]
+                            except Exception:
+                                feat_idx = None
 
-                        # score distribution (handle PROBA metrics deterministically in encoded space)
-                        try:
-                            y_proba_i = None
-                            y_score_i = None
+                            Xte_i = _slice_X_by_features(Xte, feat_idx)
 
-                            if metric_name in PROBA_METRICS:
-                                if hasattr(est, "predict_proba"):
-                                    try:
-                                        y_proba_i = est.predict_proba(Xte)
-                                    except Exception:
-                                        y_proba_i = None
-                                if y_proba_i is None and hasattr(est, "decision_function"):
-                                    try:
-                                        y_score_i = est.decision_function(Xte)
-                                    except Exception:
-                                        y_score_i = None
+                            # IMPORTANT: if max_features < 1.0, each base estimator was trained on a subset.
+                            # We must apply the SAME subset at predict/score time.
+                            yp_raw = np.asarray(est.predict(Xte_i))
 
-                                if y_proba_i is None and y_score_i is None:
-                                    s = None
-                                elif yte_enc is not None and _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                                    s = evaluator.score(
-                                        yte_enc,
-                                        y_pred=yp_raw,
-                                        y_proba=y_proba_i,
-                                        y_score=y_score_i,
-                                    )
+                            if _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
+                                yp_dec = classes_arr[yp_raw.astype(int, copy=False)]
+                            else:
+                                yp_dec = yp_raw
+
+                            base_pred_cols.append(np.asarray(yp_dec))
+
+                            # score distribution (handle PROBA metrics deterministically in encoded space)
+                            try:
+                                y_proba_i = None
+                                y_score_i = None
+
+                                if metric_name in PROBA_METRICS:
+                                    if hasattr(est, "predict_proba"):
+                                        try:
+                                            y_proba_i = est.predict_proba(Xte_i)
+                                        except Exception:
+                                            y_proba_i = None
+                                    if y_proba_i is None and hasattr(est, "decision_function"):
+                                        try:
+                                            y_score_i = est.decision_function(Xte_i)
+                                        except Exception:
+                                            y_score_i = None
+
+                                    if y_proba_i is None and y_score_i is None:
+                                        s = None
+                                    elif yte_enc is not None and _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
+                                        s = evaluator.score(
+                                            yte_enc,
+                                            y_pred=yp_raw,
+                                            y_proba=y_proba_i,
+                                            y_score=y_score_i,
+                                        )
+                                    else:
+                                        s = evaluator.score(
+                                            yte_arr,
+                                            y_pred=yp_dec,
+                                            y_proba=y_proba_i,
+                                            y_score=y_score_i,
+                                        )
                                 else:
                                     s = evaluator.score(
                                         yte_arr,
                                         y_pred=yp_dec,
-                                        y_proba=y_proba_i,
-                                        y_score=y_score_i,
+                                        y_proba=None,
+                                        y_score=None,
                                     )
-                            else:
+
+                                if s is not None:
+                                    base_scores_list.append(float(s))
+                            except Exception:
+                                pass
+
+                        if base_pred_cols and bagging_cls_acc is not None:
+                            base_preds_mat = np.column_stack(base_pred_cols)
+
+                            oob_score = getattr(model, "oob_score_", None)
+                            oob_decision = getattr(model, "oob_decision_function_", None)
+
+                            bagging_cls_acc.add_fold(
+                                base_preds=base_preds_mat,
+                                oob_score=oob_score if oob_score is not None else None,
+                                oob_decision_function=oob_decision,
+                                base_estimator_scores=base_scores_list if base_scores_list else None,
+                            )
+
+                    # --- regression bagging report ---
+                    elif eval_kind == "regression":
+                        if bagging_reg_acc is None:
+                            bagging_reg_acc = BaggingEnsembleRegressorReportAccumulator.create(
+                                metric_name=str(cfg.eval.metric),
+                                base_algo=base_algo,
+                                n_estimators=int(getattr(cfg.ensemble, "n_estimators", len(ests)) or len(ests)),
+                                max_samples=getattr(cfg.ensemble, "max_samples", None),
+                                max_features=getattr(cfg.ensemble, "max_features", None),
+                                bootstrap=bool(getattr(cfg.ensemble, "bootstrap", True)),
+                                bootstrap_features=bool(getattr(cfg.ensemble, "bootstrap_features", False)),
+                                oob_score_enabled=bool(getattr(cfg.ensemble, "oob_score", False)),
+                            )
+
+                        base_pred_cols = []
+                        base_scores_list: list[float] = []
+
+                        yte_arr = np.asarray(yte, dtype=float)
+                        yens = np.asarray(y_pred, dtype=float)
+
+                        for i, est in enumerate(ests):
+                            if est is None:
+                                continue
+
+                            feat_idx = None
+                            try:
+                                if feats_list is not None and i < len(feats_list):
+                                    feat_idx = feats_list[i]
+                            except Exception:
+                                feat_idx = None
+
+                            Xte_i = _slice_X_by_features(Xte, feat_idx)
+
+                            yp = np.asarray(est.predict(Xte_i), dtype=float)
+                            base_pred_cols.append(yp)
+
+                            try:
                                 s = evaluator.score(
                                     yte_arr,
-                                    y_pred=yp_dec,
+                                    y_pred=yp,
                                     y_proba=None,
                                     y_score=None,
                                 )
-
-                            if s is not None:
                                 base_scores_list.append(float(s))
-                        except Exception:
-                            pass
+                            except Exception:
+                                pass
 
-                    if base_pred_cols:
-                        base_preds_mat = np.column_stack(base_pred_cols)
+                        if base_pred_cols and bagging_reg_acc is not None:
+                            base_preds_mat = np.column_stack(base_pred_cols)
 
-                        oob_score = getattr(model, "oob_score_", None)
-                        oob_decision = getattr(model, "oob_decision_function_", None)
+                            oob_score = getattr(model, "oob_score_", None)
+                            oob_pred = getattr(model, "oob_prediction_", None)
 
-                        bagging_acc.add_fold(
-                            base_preds=base_preds_mat,
-                            oob_score=oob_score if oob_score is not None else None,
-                            oob_decision_function=oob_decision,
-                            base_estimator_scores=base_scores_list if base_scores_list else None,
-                        )
+                            bagging_reg_acc.add_fold(
+                                y_true=yte_arr,
+                                ensemble_pred=yens,
+                                base_preds=base_preds_mat,
+                                oob_score=oob_score if oob_score is not None else None,
+                                oob_prediction=oob_pred,
+                                base_estimator_scores=base_scores_list if base_scores_list else None,
+                            )
             except Exception:
                 pass
 
-        # ---------------- AdaBoost report (adjusted) ----------------
+        # ---------------- AdaBoost report (classification + regression) ----------------
         if is_adaboost_report:
             try:
                 # AdaBoost often comes wrapped as a Pipeline(pre -> clf). In this repo, step names
@@ -655,122 +763,195 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                     errs = np.asarray(errs, dtype=float)[:m]
 
                 if ests is not None and len(ests) > 0 and w is not None:
-                    if adaboost_acc is None:
-                        base_algo = _extract_base_estimator_algo_from_cfg(cfg, default="default")
-                        adaboost_acc = AdaBoostEnsembleReportAccumulator.create(
-                            metric_name=str(cfg.eval.metric),
-                            base_algo=base_algo,
-                            n_estimators=int(getattr(cfg.ensemble, "n_estimators", len(ests)) or len(ests)),
-                            learning_rate=float(getattr(cfg.ensemble, "learning_rate", 1.0) or 1.0),
-                            algorithm=str(getattr(cfg.ensemble, "algorithm", None) or None),
-                        )
-
-                    classes_arr = _get_classes_arr(boost)
-                    if classes_arr is None:
-                        classes_arr = _get_classes_arr(model)
-                    yte_arr = np.asarray(yte)
-                    yte_enc = _encode_y_true_to_index(yte_arr, classes_arr) if classes_arr is not None else None
-
-                    base_pred_cols = []
-                    base_scores_list: list[float] = []
+                    base_algo = _extract_base_estimator_algo_from_cfg(cfg, default="default")
                     metric_name = str(cfg.eval.metric)
 
-                    for est in ests:
-                        if est is None:
-                            continue
+                    # --- classification adaboost report ---
+                    if eval_kind == "classification":
+                        if adaboost_cls_acc is None:
+                            adaboost_cls_acc = AdaBoostEnsembleReportAccumulator.create(
+                                metric_name=str(cfg.eval.metric),
+                                base_algo=base_algo,
+                                n_estimators=int(getattr(cfg.ensemble, "n_estimators", len(ests)) or len(ests)),
+                                learning_rate=float(getattr(cfg.ensemble, "learning_rate", 1.0) or 1.0),
+                                algorithm=str(getattr(cfg.ensemble, "algorithm", None) or None),
+                            )
 
-                        yp_raw = np.asarray(est.predict(Xte_boost))
+                        classes_arr = _get_classes_arr(boost)
+                        if classes_arr is None:
+                            classes_arr = _get_classes_arr(model)
+                        yte_arr = np.asarray(yte)
+                        yte_enc = _encode_y_true_to_index(yte_arr, classes_arr) if classes_arr is not None else None
 
-                        # Deterministic decode protection (same as bagging)
-                        if _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                            yp_dec = classes_arr[yp_raw.astype(int, copy=False)]
-                        else:
-                            yp_dec = yp_raw
+                        base_pred_cols = []
+                        base_scores_list: list[float] = []
 
-                        base_pred_cols.append(np.asarray(yp_dec))
+                        for est in ests:
+                            if est is None:
+                                continue
 
-                        # Optional per-stage score distribution (best-effort)
-                        try:
-                            y_proba_i = None
-                            y_score_i = None
+                            yp_raw = np.asarray(est.predict(Xte_boost))
 
-                            if metric_name in PROBA_METRICS:
-                                if hasattr(est, "predict_proba"):
-                                    try:
-                                        y_proba_i = est.predict_proba(Xte_boost)
-                                    except Exception:
-                                        y_proba_i = None
-                                if y_proba_i is None and hasattr(est, "decision_function"):
-                                    try:
-                                        y_score_i = est.decision_function(Xte_boost)
-                                    except Exception:
-                                        y_score_i = None
+                            # Deterministic decode protection (same as bagging)
+                            if _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
+                                yp_dec = classes_arr[yp_raw.astype(int, copy=False)]
+                            else:
+                                yp_dec = yp_raw
 
-                                if y_proba_i is None and y_score_i is None:
-                                    s = None
-                                elif yte_enc is not None and _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                                    s = evaluator.score(
-                                        yte_enc,
-                                        y_pred=yp_raw,
-                                        y_proba=y_proba_i,
-                                        y_score=y_score_i,
-                                    )
+                            base_pred_cols.append(np.asarray(yp_dec))
+
+                            # Optional per-stage score distribution (best-effort)
+                            try:
+                                y_proba_i = None
+                                y_score_i = None
+
+                                if metric_name in PROBA_METRICS:
+                                    if hasattr(est, "predict_proba"):
+                                        try:
+                                            y_proba_i = est.predict_proba(Xte_boost)
+                                        except Exception:
+                                            y_proba_i = None
+                                    if y_proba_i is None and hasattr(est, "decision_function"):
+                                        try:
+                                            y_score_i = est.decision_function(Xte_boost)
+                                        except Exception:
+                                            y_score_i = None
+
+                                    if y_proba_i is None and y_score_i is None:
+                                        s = None
+                                    elif yte_enc is not None and _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
+                                        s = evaluator.score(
+                                            yte_enc,
+                                            y_pred=yp_raw,
+                                            y_proba=y_proba_i,
+                                            y_score=y_score_i,
+                                        )
+                                    else:
+                                        s = evaluator.score(
+                                            yte_arr,
+                                            y_pred=yp_dec,
+                                            y_proba=y_proba_i,
+                                            y_score=y_score_i,
+                                        )
                                 else:
                                     s = evaluator.score(
                                         yte_arr,
                                         y_pred=yp_dec,
-                                        y_proba=y_proba_i,
-                                        y_score=y_score_i,
+                                        y_proba=None,
+                                        y_score=None,
                                     )
-                            else:
+
+                                if s is not None:
+                                    base_scores_list.append(float(s))
+                            except Exception:
+                                pass
+
+                        if base_pred_cols and adaboost_cls_acc is not None:
+                            base_preds_mat = np.column_stack(base_pred_cols)
+
+                            # ---- stage/weight diagnostics (configured vs fitted vs effective) ----
+                            w_arr = np.asarray(w, dtype=float)
+                            weight_eps = 1e-6
+
+                            n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_mat.shape[1])
+                            n_nonzero_weights = int(np.sum(w_arr > 0))
+                            n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
+
+                            weight_mass_topk = None
+                            try:
+                                ssum = float(np.sum(w_arr))
+                                if ssum > 0:
+                                    w_sorted = np.sort(w_arr)[::-1]
+                                    c = np.cumsum(w_sorted) / ssum
+                                    topks = [5, 10, 20]
+                                    weight_mass_topk = {k: float(c[min(k, len(c)) - 1]) for k in topks if len(c) > 0}
+                            except Exception:
+                                weight_mass_topk = None
+
+                            adaboost_cls_acc.add_fold(
+                                base_preds=base_preds_mat,
+                                estimator_weights=np.asarray(w, dtype=float)[: base_preds_mat.shape[1]],
+                                estimator_errors=np.asarray(errs, dtype=float)[: base_preds_mat.shape[1]] if errs is not None else None,
+                                base_estimator_scores=base_scores_list if base_scores_list else None,
+
+                                # diagnostics
+                                n_estimators_fitted=n_estimators_fitted,
+                                n_nonzero_weights=n_nonzero_weights,
+                                n_nontrivial_weights=n_nontrivial_weights,
+                                weight_eps=weight_eps,
+                                weight_mass_topk=weight_mass_topk,
+                            )
+
+                    # --- regression adaboost report ---
+                    elif eval_kind == "regression":
+                        if adaboost_reg_acc is None:
+                            adaboost_reg_acc = AdaBoostEnsembleRegressorReportAccumulator.create(
+                                metric_name=str(cfg.eval.metric),
+                                base_algo=base_algo,
+                                n_estimators=int(getattr(cfg.ensemble, "n_estimators", len(ests)) or len(ests)),
+                                learning_rate=float(getattr(cfg.ensemble, "learning_rate", 1.0) or 1.0),
+                                loss=None,
+                            )
+
+                        yte_arr = np.asarray(yte, dtype=float)
+                        yens = np.asarray(y_pred, dtype=float)
+
+                        base_pred_cols = []
+                        base_scores_list: list[float] = []
+
+                        for est in ests:
+                            if est is None:
+                                continue
+
+                            yp = np.asarray(est.predict(Xte_boost), dtype=float)
+                            base_pred_cols.append(yp)
+
+                            try:
                                 s = evaluator.score(
                                     yte_arr,
-                                    y_pred=yp_dec,
+                                    y_pred=yp,
                                     y_proba=None,
                                     y_score=None,
                                 )
-
-                            if s is not None:
                                 base_scores_list.append(float(s))
-                        except Exception:
-                            pass
+                            except Exception:
+                                pass
 
-                    if base_pred_cols:
-                        base_preds_mat = np.column_stack(base_pred_cols)
+                        if base_pred_cols and adaboost_reg_acc is not None:
+                            base_preds_mat = np.column_stack(base_pred_cols)
 
-                        # ---- stage/weight diagnostics (configured vs fitted vs effective) ----
-                        w_arr = np.asarray(w, dtype=float)
-                        weight_eps = 1e-6
+                            w_arr = np.asarray(w, dtype=float)
+                            weight_eps = 1e-6
 
-                        n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_mat.shape[1])
-                        n_nonzero_weights = int(np.sum(w_arr > 0))
-                        n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
+                            n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_mat.shape[1])
+                            n_nonzero_weights = int(np.sum(w_arr > 0))
+                            n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
 
-                        weight_mass_topk = None
-                        try:
-                            s = float(np.sum(w_arr))
-                            if s > 0:
-                                w_sorted = np.sort(w_arr)[::-1]
-                                c = np.cumsum(w_sorted) / s
-                                topks = [5, 10, 20]
-                                weight_mass_topk = {k: float(c[min(k, len(c)) - 1]) for k in topks if len(c) > 0}
-                        except Exception:
                             weight_mass_topk = None
+                            try:
+                                ssum = float(np.sum(w_arr))
+                                if ssum > 0:
+                                    w_sorted = np.sort(w_arr)[::-1]
+                                    c = np.cumsum(w_sorted) / ssum
+                                    topks = [5, 10, 20]
+                                    weight_mass_topk = {k: float(c[min(k, len(c)) - 1]) for k in topks if len(c) > 0}
+                            except Exception:
+                                weight_mass_topk = None
 
-                        adaboost_acc.add_fold(
-                            base_preds=base_preds_mat,
-                            estimator_weights=np.asarray(w, dtype=float)[: base_preds_mat.shape[1]],
-                            estimator_errors=np.asarray(errs, dtype=float)[: base_preds_mat.shape[1]] if errs is not None else None,
-                            base_estimator_scores=base_scores_list if base_scores_list else None,
+                            adaboost_reg_acc.add_fold(
+                                y_true=yte_arr,
+                                ensemble_pred=yens,
+                                base_preds=base_preds_mat,
+                                estimator_weights=np.asarray(w, dtype=float)[: base_preds_mat.shape[1]],
+                                estimator_errors=np.asarray(errs, dtype=float)[: base_preds_mat.shape[1]] if errs is not None else None,
+                                base_estimator_scores=base_scores_list if base_scores_list else None,
+                                n_estimators_fitted=n_estimators_fitted,
+                                n_nonzero_weights=n_nonzero_weights,
+                                n_nontrivial_weights=n_nontrivial_weights,
+                                weight_eps=weight_eps,
+                                weight_mass_topk=weight_mass_topk,
+                            )
 
-                            # ---- NEW fields ----
-                            n_estimators_fitted=n_estimators_fitted,
-                            n_nonzero_weights=n_nonzero_weights,
-                            n_nontrivial_weights=n_nontrivial_weights,
-                            weight_eps=weight_eps,
-                            weight_mass_topk=weight_mass_topk,
-                        )
-                        
             except Exception:
                 pass
 
@@ -1132,11 +1313,17 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     elif voting_reg_acc is not None:
         ensemble_report = voting_reg_acc.finalize()
         result["ensemble_report"] = ensemble_report
-    elif bagging_acc is not None:
-        ensemble_report = bagging_acc.finalize()
+    elif bagging_cls_acc is not None:
+        ensemble_report = bagging_cls_acc.finalize()
         result["ensemble_report"] = ensemble_report
-    elif adaboost_acc is not None:
-        ensemble_report = adaboost_acc.finalize()
+    elif bagging_reg_acc is not None:
+        ensemble_report = bagging_reg_acc.finalize()
+        result["ensemble_report"] = ensemble_report
+    elif adaboost_cls_acc is not None:
+        ensemble_report = adaboost_cls_acc.finalize()
+        result["ensemble_report"] = ensemble_report
+    elif adaboost_reg_acc is not None:
+        ensemble_report = adaboost_reg_acc.finalize()
         result["ensemble_report"] = ensemble_report
     elif xgb_acc is not None:
         ensemble_report = xgb_acc.finalize()
@@ -1192,26 +1379,69 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                     "ensemble_harmed_vs_best": (ensemble_report.get("change_vs_best") or {}).get("harmed"),
                 }
         elif kind == "bagging":
-            extra_stats = {
-                "ensemble_kind": "bagging",
-                "ensemble_n_estimators": (ensemble_report.get("bagging") or {}).get("n_estimators"),
-                "ensemble_base_algo": (ensemble_report.get("bagging") or {}).get("base_algo"),
-                "ensemble_oob_score": (ensemble_report.get("oob") or {}).get("score"),
-                "ensemble_oob_coverage": (ensemble_report.get("oob") or {}).get("coverage_rate"),
-                "ensemble_all_agree_rate": (ensemble_report.get("diversity") or {}).get("all_agree_rate"),
-                "ensemble_pairwise_agreement": (ensemble_report.get("diversity") or {}).get("pairwise_mean_agreement"),
-                "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
-                "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
-            }
+            task = (ensemble_report.get("task") or "classification")
+            if task == "regression":
+                sim = ensemble_report.get("diversity") or {}
+                errs = ensemble_report.get("errors") or {}
+                ens_err = (errs.get("ensemble") or {})
+                gain = (errs.get("gain_vs_best") or {})
+                extra_stats = {
+                    "ensemble_kind": "bagging",
+                    "ensemble_task": "regression",
+                    "ensemble_n_estimators": (ensemble_report.get("bagging") or {}).get("n_estimators"),
+                    "ensemble_base_algo": (ensemble_report.get("bagging") or {}).get("base_algo"),
+                    "ensemble_oob_score": (ensemble_report.get("oob") or {}).get("score"),
+                    "ensemble_oob_coverage": (ensemble_report.get("oob") or {}).get("coverage_rate"),
+                    "ensemble_pairwise_mean_corr": sim.get("pairwise_mean_corr"),
+                    "ensemble_pairwise_mean_absdiff": sim.get("pairwise_mean_absdiff"),
+                    "ensemble_prediction_spread": sim.get("prediction_spread_mean"),
+                    "ensemble_rmse": ens_err.get("rmse"),
+                    "ensemble_mae": ens_err.get("mae"),
+                    "ensemble_r2": ens_err.get("r2"),
+                    "ensemble_rmse_reduction_vs_best": gain.get("rmse"),
+                    "ensemble_mae_reduction_vs_best": gain.get("mae"),
+                    "ensemble_r2_gain_vs_best": gain.get("r2"),
+                }
+            else:
+                extra_stats = {
+                    "ensemble_kind": "bagging",
+                    "ensemble_task": "classification",
+                    "ensemble_n_estimators": (ensemble_report.get("bagging") or {}).get("n_estimators"),
+                    "ensemble_base_algo": (ensemble_report.get("bagging") or {}).get("base_algo"),
+                    "ensemble_oob_score": (ensemble_report.get("oob") or {}).get("score"),
+                    "ensemble_oob_coverage": (ensemble_report.get("oob") or {}).get("coverage_rate"),
+                    "ensemble_all_agree_rate": (ensemble_report.get("diversity") or {}).get("all_agree_rate"),
+                    "ensemble_pairwise_agreement": (ensemble_report.get("diversity") or {}).get("pairwise_mean_agreement"),
+                    "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
+                    "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
+                }
         elif kind == "adaboost":
-            extra_stats = {
-                "ensemble_kind": "adaboost",
-                "ensemble_n_estimators": (ensemble_report.get("adaboost") or {}).get("n_estimators"),
-                "ensemble_learning_rate": (ensemble_report.get("adaboost") or {}).get("learning_rate"),
-                "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
-                "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
-                "ensemble_effective_n": (ensemble_report.get("weights") or {}).get("effective_n_mean"),
-            }
+            task = (ensemble_report.get("task") or "classification")
+            if task == "regression":
+                errs = ensemble_report.get("errors") or {}
+                ens_err = (errs.get("ensemble") or {})
+                gain = (errs.get("gain_vs_best") or {})
+                extra_stats = {
+                    "ensemble_kind": "adaboost",
+                    "ensemble_task": "regression",
+                    "ensemble_n_estimators": (ensemble_report.get("adaboost") or {}).get("n_estimators"),
+                    "ensemble_learning_rate": (ensemble_report.get("adaboost") or {}).get("learning_rate"),
+                    "ensemble_effective_n": (ensemble_report.get("weights") or {}).get("effective_n_mean"),
+                    "ensemble_rmse": ens_err.get("rmse"),
+                    "ensemble_mae": ens_err.get("mae"),
+                    "ensemble_rmse_reduction_vs_best": gain.get("rmse"),
+                    "ensemble_mae_reduction_vs_best": gain.get("mae"),
+                }
+            else:
+                extra_stats = {
+                    "ensemble_kind": "adaboost",
+                    "ensemble_task": "classification",
+                    "ensemble_n_estimators": (ensemble_report.get("adaboost") or {}).get("n_estimators"),
+                    "ensemble_learning_rate": (ensemble_report.get("adaboost") or {}).get("learning_rate"),
+                    "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
+                    "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
+                    "ensemble_effective_n": (ensemble_report.get("weights") or {}).get("effective_n_mean"),
+                }
         elif kind == "xgboost":
             extra_stats = {
                 "ensemble_kind": "xgboost",
