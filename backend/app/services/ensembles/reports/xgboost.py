@@ -52,6 +52,7 @@ def update_xgboost_report(
 
             xgb_acc = XGBoostEnsembleReportAccumulator.create(
                 metric_name=str(cfg.eval.metric),          # final metric (MENDer)
+                task=str(getattr(cfg.ensemble, "problem_kind", None) or "classification"),
                 train_eval_metric=train_eval_metric,       # training metric (XGB)
                 params=params,
             )

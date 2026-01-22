@@ -143,7 +143,8 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     is_adaboost_report = isinstance(cfg.ensemble, AdaBoostEnsembleConfig)
 
     xgb_acc: XGBoostEnsembleReportAccumulator | None = None
-    is_xgboost_report = eval_kind == "classification" and isinstance(cfg.ensemble, XGBoostEnsembleConfig)
+    # XGBoost report is task-agnostic (works for classification + regression)
+    is_xgboost_report = isinstance(cfg.ensemble, XGBoostEnsembleConfig)
 
     for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
         try:

@@ -75,10 +75,10 @@ def _finite_float_or_none(x: Any) -> Optional[float]:
 @dataclass
 class XGBoostEnsembleReportAccumulator:
     metric_name: str
-
-    train_eval_metric: Optional[str]
-    # store params (opaque dict is fine; service populates)
+        # store params (opaque dict is fine; service populates)
     params: Dict[str, Any]
+    train_eval_metric: Optional[str]
+    task: Optional[str] = None
 
     _n_folds: int = 0
 
@@ -96,12 +96,14 @@ class XGBoostEnsembleReportAccumulator:
         cls,
         *,
         metric_name: str,
+        task: Optional[str] = None,
         train_eval_metric: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
     ) -> "XGBoostEnsembleReportAccumulator":
         tem = str(train_eval_metric) if train_eval_metric is not None else None
         return cls(
             metric_name=str(metric_name),
+            task=(str(task) if task is not None else None),
             train_eval_metric=tem,
             params=dict(params or {}),
             _best_iterations=[],
@@ -189,6 +191,7 @@ class XGBoostEnsembleReportAccumulator:
 
         return {
             "kind": "xgboost",
+            "task": self.task,
             "metric_name": self.metric_name,
             "train_eval_metric": self.train_eval_metric,
             "xgboost": {
