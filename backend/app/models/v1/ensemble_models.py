@@ -11,7 +11,7 @@ from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.eval_configs import EvalModel
 
 from .model_artifact import ModelArtifactMeta
-from .metrics_models import ConfusionMatrix, RocMetrics
+from .metrics_models import ConfusionMatrix, RocMetrics, RegressionDiagnostics
 from .decoder_models import DecoderOutputs
 
 
@@ -320,6 +320,9 @@ class EnsembleTrainResponse(BaseModel):
     # Classification only (None for regression)
     roc: Optional[RocMetrics] = None
 
+    # Regression diagnostics (None for classification)
+    regression: Optional[RegressionDiagnostics] = None
+
     # Shuffle-baseline fields (optional; parity with single-model train)
     shuffled_scores: Optional[List[float]] = None
     p_value: Optional[float] = None
@@ -336,5 +339,5 @@ class EnsembleTrainResponse(BaseModel):
     # Ensemble-specific insights (present for some ensemble kinds, e.g. voting)
     ensemble_report: Optional[EnsembleReport] = None
 
-    # Optional: per-sample decoder outputs (classification only)
+    # Optional: per-sample decoder outputs (classification or regression)
     decoder_outputs: Optional[DecoderOutputs] = None

@@ -9,6 +9,7 @@ from utils.factories.eval_factory import make_evaluator
 from utils.factories.export_factory import make_exporter
 from utils.predicting.prediction_results import build_prediction_table
 from utils.io.export.result_export import ExportResult
+from utils.persistence.eval_outputs_cache import eval_outputs_cache
 
 from .predictions.helpers import (
     build_preview_rows,
@@ -136,6 +137,56 @@ def export_predictions_to_csv(
         ev=ev,
         eval_kind=eval_kind,
     )
+
+    exporter = make_exporter("csv")
+    export_result = exporter.export(
+        table,
+        dest=None,
+        filename=filename,
+    )
+    return export_result
+
+
+def export_decoder_outputs_to_csv(
+    *,
+    artifact_uid: str,
+    filename: Optional[str] = None,
+) -> ExportResult:
+    """Export cached evaluation outputs (decoder table) as CSV.
+
+    Note: this exports what was cached at training time (OOF pooled for kfold, test split for holdout).
+    """
+    cached = eval_outputs_cache.get(artifact_uid)
+    if cached is None:
+        raise ValueError(
+            "No cached evaluation outputs available for this artifact. "
+            "Re-run training with decoder/regression results enabled."
+        )
+
+    y_pred = np.asarray(cached.y_pred).ravel()
+    y_true = None if cached.y_true is None else np.asarray(cached.y_true).ravel()
+    indices = cached.indices
+    if indices is None:
+        indices = np.arange(int(y_pred.shape[0]), dtype=int)
+
+    table = build_prediction_table(
+        indices=indices,
+        y_pred=y_pred,
+        task=cached.task,
+        y_true=y_true,
+        max_rows=None,
+    )
+
+    # Attach fold_id if available (useful for CV pooled exports)
+    if cached.fold_ids is not None:
+        fold_ids = np.asarray(cached.fold_ids).ravel()
+        for i, r in enumerate(table):
+            if i >= fold_ids.shape[0]:
+                break
+            try:
+                r["fold_id"] = int(fold_ids[i])
+            except Exception:
+                pass
 
     exporter = make_exporter("csv")
     export_result = exporter.export(

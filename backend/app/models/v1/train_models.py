@@ -9,7 +9,7 @@ from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.eval_configs import EvalModel
 
 from .model_artifact import ModelArtifactMeta
-from .metrics_models import ConfusionMatrix, RocMetrics
+from .metrics_models import ConfusionMatrix, RocMetrics, RegressionDiagnostics
 from .decoder_models import DecoderOutputs
 
 
@@ -35,6 +35,9 @@ class TrainResponse(BaseModel):
     # New: ROC metrics (classification only; None for regression)
     roc: Optional[RocMetrics] = None
 
+    # New: regression diagnostics (regression only; None for classification)
+    regression: Optional[RegressionDiagnostics] = None
+
     # Shuffle-baseline fields (used by both train & cv use-cases)
     shuffled_scores: Optional[List[float]] = None
     p_value: Optional[float] = None
@@ -48,5 +51,5 @@ class TrainResponse(BaseModel):
     # Model description
     artifact: Optional[ModelArtifactMeta] = None
 
-    # Optional: per-sample decoder outputs (classification only)
+    # Optional: per-sample decoder outputs (classification or regression)
     decoder_outputs: Optional[DecoderOutputs] = None

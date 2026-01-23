@@ -76,3 +76,64 @@ class RocMetrics(BaseModel):
     # the macro-averaged AUC across classes.
     macro_auc: Optional[float] = None
     micro_auc: Optional[float] = None
+
+
+# ---------------- Regression diagnostics ------------------------
+
+
+class RegressionSummary(BaseModel):
+    """Compact regression summary metrics computed on the evaluation set."""
+
+    n: int
+
+    rmse: Optional[float] = None
+    mae: Optional[float] = None
+    median_ae: Optional[float] = None
+    r2: Optional[float] = None
+    explained_variance: Optional[float] = None
+
+    bias: Optional[float] = None
+    residual_std: Optional[float] = None
+
+    pearson_r: Optional[float] = None
+    spearman_r: Optional[float] = None
+
+    y_true_min: Optional[float] = None
+    y_true_max: Optional[float] = None
+    y_pred_min: Optional[float] = None
+    y_pred_max: Optional[float] = None
+
+    # Optional normalization (e.g., rmse/std(y_true) or rmse/(max-min))
+    nrmse: Optional[float] = None
+
+
+class RegressionXY(BaseModel):
+    """Downsampled x/y vectors for scatter-like plots."""
+
+    x: List[float]
+    y: List[float]
+
+
+class RegressionHistogram(BaseModel):
+    edges: List[float]
+    counts: List[float]
+
+
+class RegressionBinnedError(BaseModel):
+    edges: List[float]
+    mae: List[float]
+    rmse: List[float]
+    n: List[float]
+
+
+class RegressionDiagnostics(BaseModel):
+    """Regression diagnostics payload used by Results UI."""
+
+    summary: RegressionSummary
+    pred_vs_true: Optional[RegressionXY] = None
+    residuals_vs_pred: Optional[RegressionXY] = None
+    residual_hist: Optional[RegressionHistogram] = None
+    error_by_true_bin: Optional[RegressionBinnedError] = None
+
+    # Endpoints for the ideal y=x line in the pred-vs-true plot.
+    ideal_line: Optional[RegressionXY] = None

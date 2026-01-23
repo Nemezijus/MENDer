@@ -12,6 +12,7 @@ from utils.factories.ensemble_factory import make_ensemble_strategy
 from utils.permutations.rng import RngManager
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
 from utils.persistence.artifact_cache import artifact_cache
+from utils.persistence.eval_outputs_cache import EvalOutputs, eval_outputs_cache
 from utils.postprocessing.scoring import PROBA_METRICS
 
 from ..adapters.io_adapter import LoadError
@@ -40,6 +41,11 @@ from utils.postprocessing.ensembles.xgboost_ensemble_reporting import XGBoostEns
 
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 from utils.predicting.prediction_results import build_decoder_output_table
+
+from .training.regression_payloads import (
+    build_regression_diagnostics_payload,
+    build_regression_decoder_outputs_payload,
+)
 
 from .common.json_safety import safe_float_list, safe_float_scalar, dedupe_preserve_order
 from .ensembles.helpers import (
@@ -125,6 +131,10 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     fold_scores = []
     y_true_all, y_pred_all = [], []
     y_proba_all, y_score_all = [], []
+    # Optional original row indices for evaluation rows (when splitter yields them)
+    test_indices_parts: list[np.ndarray | None] = []
+    # Fold id per evaluation row (useful for CV export)
+    eval_fold_ids_parts: list[np.ndarray] = []
     n_train_sizes, n_test_sizes = [], []
 
     last_model = None
@@ -146,7 +156,18 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     # XGBoost report is task-agnostic (works for classification + regression)
     is_xgboost_report = isinstance(cfg.ensemble, XGBoostEnsembleConfig)
 
-    for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter.split(X, y), start=1):
+    for fold_id, split in enumerate(splitter.split(X, y), start=1):
+        # Split can be 4-tuple (Xtr,Xte,ytr,yte) or 6-tuple (..., idx_tr, idx_te)
+        if isinstance(split, (tuple, list)) and len(split) == 4:
+            Xtr, Xte, ytr, yte = split
+            idx_te = None
+        elif isinstance(split, (tuple, list)) and len(split) == 6:
+            Xtr, Xte, ytr, yte, _idx_tr, idx_te = split
+        else:
+            raise ValueError(
+                "Splitter yielded an unsupported split tuple; expected 4 or 6 items. "
+                f"Got {type(split).__name__} of length {len(split) if isinstance(split, (tuple, list)) else 'n/a'}."
+            )
         try:
             model = ensemble_strategy.fit(
                 Xtr,
@@ -157,6 +178,19 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             last_model = model
 
             y_pred = model.predict(Xte)
+
+            # Keep test indices for optional re-ordering back to original row order.
+            if idx_te is not None:
+                test_indices_parts.append(np.asarray(idx_te, dtype=int).ravel())
+            else:
+                test_indices_parts.append(None)
+
+            # Always keep fold id per evaluation row (works for both holdout and k-fold).
+            try:
+                n_fold_rows = int(np.asarray(y_pred).shape[0])
+            except Exception:
+                n_fold_rows = int(Xte.shape[0])
+            eval_fold_ids_parts.append(np.full((n_fold_rows,), fold_id, dtype=int))
 
             # --- Optional decoder outputs (classification only) ----------------
             if decoder_enabled and eval_kind == "classification":
@@ -325,9 +359,35 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
 
     y_true_all_arr = np.concatenate(y_true_all) if y_true_all else np.array([])
     y_pred_all_arr = np.concatenate(y_pred_all) if y_pred_all else np.array([])
+    fold_ids_all_arr = np.concatenate(eval_fold_ids_parts, axis=0) if eval_fold_ids_parts else None
 
     y_proba_all_arr = np.concatenate(y_proba_all, axis=0) if y_proba_all else None
     y_score_all_arr = np.concatenate(y_score_all, axis=0) if y_score_all else None
+
+    # If splitter provided original indices, reorder pooled evaluation arrays back
+    # to the original row order.
+    order = None
+    row_indices_arr: np.ndarray | None = None
+    if test_indices_parts and all(p is not None for p in test_indices_parts):
+        try:
+            idx_all_arr = np.concatenate([np.asarray(p) for p in test_indices_parts], axis=0)
+            order = np.argsort(idx_all_arr)
+            row_indices_arr = idx_all_arr[order]
+            y_true_all_arr = y_true_all_arr[order]
+            y_pred_all_arr = y_pred_all_arr[order]
+            if fold_ids_all_arr is not None and fold_ids_all_arr.shape[0] == order.shape[0]:
+                fold_ids_all_arr = fold_ids_all_arr[order]
+            if y_proba_all_arr is not None and y_proba_all_arr.shape[0] == order.shape[0]:
+                y_proba_all_arr = y_proba_all_arr[order]
+            if y_score_all_arr is not None and y_score_all_arr.shape[0] == order.shape[0]:
+                y_score_all_arr = y_score_all_arr[order]
+        except Exception:
+            order = None
+            row_indices_arr = None
+
+    if row_indices_arr is None:
+        # Fall back to consecutive indices in pooled eval order.
+        row_indices_arr = np.arange(int(y_pred_all_arr.shape[0]), dtype=int)
 
     # --- Aggregate decoder outputs across folds (out-of-sample) -------------
     decoder_payload = None
@@ -338,8 +398,19 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             mg_arr = np.concatenate(decoder_margin_all, axis=0) if decoder_margin_all else None
             fold_ids_arr = np.concatenate(decoder_fold_ids, axis=0) if decoder_fold_ids else None
 
+            # If we reordered evaluation rows, reorder decoder arrays to match.
+            if order is not None:
+                if ds_arr is not None and ds_arr.shape[0] == order.shape[0]:
+                    ds_arr = ds_arr[order]
+                if pr_arr is not None and pr_arr.shape[0] == order.shape[0]:
+                    pr_arr = pr_arr[order]
+                if mg_arr is not None and mg_arr.shape[0] == order.shape[0]:
+                    mg_arr = mg_arr[order]
+                if fold_ids_arr is not None and fold_ids_arr.shape[0] == order.shape[0]:
+                    fold_ids_arr = fold_ids_arr[order]
+
             preview_rows = build_decoder_output_table(
-                indices=list(range(len(y_pred_all_arr))),
+                indices=[int(v) for v in np.asarray(row_indices_arr).ravel().tolist()],
                 y_pred=y_pred_all_arr,
                 classes=decoder_classes,
                 decision_scores=ds_arr,
@@ -386,6 +457,21 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 "n_rows_total": int(len(y_pred_all_arr)) if y_pred_all_arr is not None else None,
                 "preview_rows": [],
             }
+
+    # Regression decoder outputs (no decision scores / probabilities)
+    if decoder_enabled and eval_kind == "regression":
+        try:
+            decoder_payload = build_regression_decoder_outputs_payload(
+                decoder_cfg=decoder_cfg,
+                mode=mode,
+                y_true_all=y_true_all_arr if y_true_all_arr.size else None,
+                y_pred_all=y_pred_all_arr,
+                row_indices=row_indices_arr,
+                fold_ids_all=fold_ids_all_arr,
+                notes=[],
+            )
+        except Exception:
+            decoder_payload = None
 
     if eval_kind == "classification" and y_true_all_arr.size and y_pred_all_arr.size:
         metrics_result = metrics_computer.compute(
@@ -504,6 +590,18 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             if micro_auc is not None:
                 roc_payload["micro_auc"] = micro_auc
 
+    # Regression diagnostics (regression only)
+    regression_payload = None
+    if eval_kind == "regression" and y_true_all_arr.size and y_pred_all_arr.size:
+        try:
+            regression_payload = build_regression_diagnostics_payload(
+                y_true=y_true_all_arr,
+                y_pred=y_pred_all_arr,
+                seed=int(getattr(cfg.eval, "seed", 0) or 0),
+            )
+        except Exception:
+            regression_payload = None
+
     n_train_avg = int(np.round(np.mean(n_train_sizes))) if n_train_sizes else 0
     n_test_avg = int(np.round(np.mean(n_test_sizes))) if n_test_sizes else 0
 
@@ -534,6 +632,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
             "weighted_avg": weighted_avg,
         },
         "roc": roc_payload,
+        "regression": regression_payload,
         "n_train": n_train_out,
         "n_test": n_test_out,
         "notes": [],
@@ -709,6 +808,21 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     try:
         uid = result["artifact"]["uid"]
         artifact_cache.put(uid, effective_model)
+        # Cache eval outputs for post-hoc export (decoder CSV).
+        if y_pred_all_arr is not None and (y_true_all_arr is not None and y_true_all_arr.size):
+            try:
+                eval_outputs_cache.put(
+                    uid,
+                    EvalOutputs(
+                        task=eval_kind,
+                        indices=row_indices_arr,
+                        fold_ids=fold_ids_all_arr,
+                        y_true=y_true_all_arr,
+                        y_pred=y_pred_all_arr,
+                    ),
+                )
+            except Exception:
+                pass
     except Exception:
         pass
 

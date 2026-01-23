@@ -6,11 +6,13 @@ from ..models.v1.models import (
     ApplyModelRequest,
     ApplyModelResponse,
     ApplyModelExportRequest,
+    ExportDecoderOutputsRequest,
 )
 from ..models.v1.model_artifact import ModelArtifactMeta
 from ..services.prediction_service import (
     apply_model_to_arrays,
     export_predictions_to_csv,
+    export_decoder_outputs_to_csv,
 )
 from ..adapters.io_adapter import load_X_optional_y, LoadError
 
@@ -89,6 +91,34 @@ def export_predictions_endpoint(req: ApplyModelExportRequest):
     Export predictions as CSV for a given artifact + dataset.
     """
     export_result = _run_apply(req, export=True)
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{export_result["filename"]}"',
+        "X-MENDER-Size": str(export_result["size"]),
+    }
+
+    return StreamingResponse(
+        content=iter([export_result["content"]]),
+        media_type=export_result["mime_type"],
+        headers=headers,
+    )
+
+
+@router.post("/decoder/export")
+def export_decoder_outputs_endpoint(req: ExportDecoderOutputsRequest):
+    """Export cached evaluation (decoder) outputs as CSV.
+
+    The `artifact_uid` must be obtained from a training endpoint response.
+    """
+    try:
+        export_result = export_decoder_outputs_to_csv(
+            artifact_uid=req.artifact_uid,
+            filename=req.filename,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     headers = {
         "Content-Disposition": f'attachment; filename="{export_result["filename"]}"',

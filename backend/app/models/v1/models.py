@@ -90,3 +90,10 @@ class ApplyModelExportRequest(ApplyModelRequest):
     Same as ApplyModelRequest, plus an optional filename hint for the server.
     """
     filename: Optional[str] = None
+
+
+class ExportDecoderOutputsRequest(BaseModel):
+    """Request body for exporting cached evaluation (decoder) outputs as CSV."""
+
+    artifact_uid: str
+    filename: Optional[str] = None

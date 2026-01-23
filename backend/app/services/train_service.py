@@ -13,6 +13,7 @@ from utils.permutations.rng import RngManager
 from utils.factories.baseline_factory import make_baseline
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
 from utils.persistence.artifact_cache import artifact_cache
+from utils.persistence.eval_outputs_cache import EvalOutputs, eval_outputs_cache
 from utils.postprocessing.scoring import PROBA_METRICS
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 
@@ -22,6 +23,14 @@ from ..progress.registry import PROGRESS
 from .common.json_safety import safe_float_list, safe_float_scalar
 from .training.metrics_payloads import normalize_confusion, normalize_roc
 from .training.decoder_payloads import build_decoder_outputs_payload
+from .training.regression_payloads import (
+    build_regression_diagnostics_payload,
+    build_regression_decoder_outputs_payload,
+)
+from .training.regression_payloads import (
+    build_regression_diagnostics_payload,
+    build_regression_decoder_outputs_payload,
+)
 
 
 
@@ -71,6 +80,8 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     # If the splitter provides original sample indices, keep them so decoder outputs
     # can be shown in the original row order (useful for downstream alignment).
     test_indices_parts: list[np.ndarray | None] = []
+    # Track fold id for each evaluation row (useful for CV exports / diagnostics).
+    eval_fold_ids_parts: list[np.ndarray] = []
     n_train_sizes, n_test_sizes = [], []
 
     # --- Optional decoder outputs (classification only) ---------------------
@@ -120,6 +131,13 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         else:
             test_indices_parts.append(None)
 
+        # Always keep fold_id per row (works for both holdout and k-fold).
+        try:
+            n_fold_rows = int(np.asarray(y_pred).shape[0])
+        except Exception:
+            n_fold_rows = int(Xte.shape[0])
+        eval_fold_ids_parts.append(np.full((n_fold_rows,), fold_id, dtype=int))
+
         metric_name = cfg.eval.metric
         y_proba = None
         y_score = None
@@ -154,8 +172,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             y_score_all.append(y_score)
 
         if decoder_enabled and eval_kind == "classification":
-            # Always track fold ID per test row for UI/diagnostics.
-            n_fold_rows = int(np.asarray(y_pred).shape[0])
+            # Track fold ID per test row for UI/diagnostics.
             decoder_fold_ids.append(np.full((n_fold_rows,), fold_id, dtype=int))
 
             # Compute decoder outputs per fold (OOF) so CV diagnostics are not optimistic.
@@ -214,6 +231,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     # Concatenate per-fold arrays
     y_true_all_arr = np.concatenate(y_true_all) if y_true_all else np.array([])
     y_pred_all_arr = np.concatenate(y_pred_all) if y_pred_all else np.array([])
+    fold_ids_all_arr = np.concatenate(eval_fold_ids_parts) if eval_fold_ids_parts else None
 
     # If we have original indices from the splitter, reorder OOF arrays back to the
     # original row order. This makes decoder outputs align with the user's input.
@@ -227,6 +245,10 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             row_indices_arr = idx_all_arr[order]
             y_true_all_arr = y_true_all_arr[order]
             y_pred_all_arr = y_pred_all_arr[order]
+            if fold_ids_all_arr is not None and fold_ids_all_arr.shape[0] == order.shape[0]:
+                fold_ids_all_arr = fold_ids_all_arr[order]
+            if fold_ids_all_arr is not None and fold_ids_all_arr.shape[0] == order.shape[0]:
+                fold_ids_all_arr = fold_ids_all_arr[order]
     if row_indices_arr is None:
         row_indices_arr = np.arange(int(y_pred_all_arr.shape[0]), dtype=int)
 
@@ -259,6 +281,18 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     # Normalize ROC payload into RocMetrics shape
     roc_payload = normalize_roc(roc_raw)
 
+    # Regression diagnostics (regression only)
+    regression_payload = None
+    if eval_kind == "regression" and y_true_all_arr.size and y_pred_all_arr.size:
+        try:
+            regression_payload = build_regression_diagnostics_payload(
+                y_true=y_true_all_arr,
+                y_pred=y_pred_all_arr,
+                seed=int(getattr(cfg.eval, "seed", 0) or 0),
+            )
+        except Exception:
+            regression_payload = None
+
     n_train_avg = int(np.round(np.mean(n_train_sizes))) if n_train_sizes else 0
     n_test_avg = int(np.round(np.mean(n_test_sizes))) if n_test_sizes else 0
 
@@ -289,6 +323,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             "weighted_avg": weighted_avg,
         },
         "roc": roc_payload,
+        "regression": regression_payload,
         "n_train": n_train_out,
         "n_test": n_test_out,
         "notes": [],
@@ -297,31 +332,48 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     # --- Decoder outputs (optional) -----------------------------------------
     # For holdout, this is simply the test split.
     # For kfold CV, this is OOF: concatenated fold test splits scored by each fold model.
-    if decoder_enabled and eval_kind == "classification":
-        try:
-            result["decoder_outputs"] = build_decoder_outputs_payload(
-                decoder_cfg=decoder_cfg,
-                mode=mode,
-                y_pred_all=y_pred_all_arr,
-                y_true_all=y_true_all_arr if y_true_all_arr.size else None,
-                order=order,
-                row_indices=row_indices_arr,
-                decoder_classes=decoder_classes,
-                positive_class_label=decoder_positive_label,
-                positive_class_index=decoder_positive_index,
-                decision_scores_parts=decoder_scores_parts,
-                proba_parts=decoder_proba_parts,
-                margin_parts=decoder_margin_parts,
-                fold_ids_parts=decoder_fold_ids,
-                notes=decoder_notes_all,
-            )
-            for n in (decoder_notes_all or []):
-                result["notes"].append(f"Decoder outputs: {n}")
-        except Exception as e:
-            result["decoder_outputs"] = None
-            result["notes"].append(
-                f"Decoder outputs could not be computed ({type(e).__name__}: {e})."
-            )
+    if decoder_enabled:
+        if eval_kind == "classification":
+            try:
+                result["decoder_outputs"] = build_decoder_outputs_payload(
+                    decoder_cfg=decoder_cfg,
+                    mode=mode,
+                    y_pred_all=y_pred_all_arr,
+                    y_true_all=y_true_all_arr if y_true_all_arr.size else None,
+                    order=order,
+                    row_indices=row_indices_arr,
+                    decoder_classes=decoder_classes,
+                    positive_class_label=decoder_positive_label,
+                    positive_class_index=decoder_positive_index,
+                    decision_scores_parts=decoder_scores_parts,
+                    proba_parts=decoder_proba_parts,
+                    margin_parts=decoder_margin_parts,
+                    fold_ids_parts=decoder_fold_ids,
+                    notes=decoder_notes_all,
+                )
+                for n in (decoder_notes_all or []):
+                    result["notes"].append(f"Decoder outputs: {n}")
+            except Exception as e:
+                result["decoder_outputs"] = None
+                result["notes"].append(
+                    f"Decoder outputs could not be computed ({type(e).__name__}: {e})."
+                )
+        elif eval_kind == "regression":
+            try:
+                result["decoder_outputs"] = build_regression_decoder_outputs_payload(
+                    decoder_cfg=decoder_cfg,
+                    mode=mode,
+                    y_true_all=y_true_all_arr if y_true_all_arr.size else None,
+                    y_pred_all=y_pred_all_arr,
+                    row_indices=row_indices_arr,
+                    fold_ids_all=fold_ids_all_arr,
+                    notes=[],
+                )
+            except Exception as e:
+                result["decoder_outputs"] = None
+                result["notes"].append(
+                    f"Decoder outputs could not be computed ({type(e).__name__}: {e})."
+                )
 
     # --- Feature-related notes ----------------------------------------------
     if cfg.features.method == "pca":
@@ -354,6 +406,22 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     try:
         uid = result["artifact"]["uid"]
         artifact_cache.put(uid, effective_pipeline)
+
+        # Cache eval outputs for post-hoc export (currently used by regression UI).
+        if y_pred_all_arr is not None and (y_true_all_arr is not None and y_true_all_arr.size):
+            try:
+                eval_outputs_cache.put(
+                    uid,
+                    EvalOutputs(
+                        task=eval_kind,
+                        indices=row_indices_arr,
+                        fold_ids=fold_ids_all_arr,
+                        y_true=y_true_all_arr,
+                        y_pred=y_pred_all_arr,
+                    ),
+                )
+            except Exception:
+                pass
     except Exception:
         # Cache errors must not break training response.
         pass
