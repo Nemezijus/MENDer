@@ -131,6 +131,37 @@ export async function exportPredictions({ artifactUid, artifactMeta, data, filen
   };
 }
 
+/**
+ * Export cached decoder/evaluation outputs as CSV (from a training run).
+ *
+ * @param {{ artifactUid: string, filename?: string }} params
+ * @returns {Promise<{ blob: Blob, filename: string }>} 
+ */
+export async function exportDecoderOutputs({ artifactUid, filename }) {
+  const resp = await fetch('/api/v1/decoder/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      artifact_uid: artifactUid,
+      filename,
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(text || `Export decoder outputs failed with status ${resp.status}`);
+  }
+
+  const blob = await resp.blob();
+  const cd = resp.headers.get('Content-Disposition');
+  const serverName = parseContentDispositionFilename(cd);
+
+  return {
+    blob,
+    filename: serverName || filename || 'decoder_outputs.csv',
+  };
+}
+
 /** Fallback download if interactive save is not supported. */
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

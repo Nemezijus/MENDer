@@ -13,7 +13,7 @@ import {
   SimpleGrid,
 } from '@mantine/core';
 
-import { downloadBlob } from '../../api/models';
+import { downloadBlob, exportDecoderOutputs } from '../../api/models';
 
 function toCsvValue(v) {
   if (v === null || v === undefined) return '';
@@ -64,16 +64,35 @@ function fmtMaybePct(v) {
   return `${(num * 100).toFixed(1)}%`;
 }
 
+function rangeText(minV, maxV) {
+  const a = parseNumber(minV);
+  const b = parseNumber(maxV);
+  if (a === null || b === null) return '—';
+  return `${fmt3(a)} … ${fmt3(b)}`;
+}
+
 function buildCsv(rows, columns) {
   const header = columns.map(toCsvValue).join(',');
   const lines = rows.map((r) => columns.map((c) => toCsvValue(r?.[c])).join(','));
   return [header, ...lines].join('\n');
 }
 
+function isEmptyCell(v) {
+  if (v === null || v === undefined) return true;
+  if (typeof v === 'string') return v.trim() === '';
+  return false;
+}
+
 function pickColumns(rows) {
   if (!rows || rows.length === 0) return [];
+
   const keys = new Set();
   rows.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
+
+  // Drop columns that are entirely empty in the preview (keeps the table cleaner, e.g. margin for regression).
+  const nonEmptyKeys = new Set(
+    [...keys].filter((k) => k === 'index' || rows.some((r) => !isEmptyCell(r?.[k]))),
+  );
 
   const preferred = [
     'index',
@@ -81,19 +100,21 @@ function pickColumns(rows) {
     'trial_id',
     'y_true',
     'y_pred',
+    'residual',
+    'abs_error',
     'correct',
     'margin',
     'decoder_score',
   ];
 
-  const pCols = [...keys].filter((k) => k.startsWith('p_')).sort();
-  const scoreCols = [...keys].filter((k) => k.startsWith('score_')).sort();
-  const rest = [...keys]
+  const pCols = [...nonEmptyKeys].filter((k) => k.startsWith('p_')).sort();
+  const scoreCols = [...nonEmptyKeys].filter((k) => k.startsWith('score_')).sort();
+  const rest = [...nonEmptyKeys]
     .filter((k) => !preferred.includes(k) && !k.startsWith('p_') && !k.startsWith('score_'))
     .sort();
 
   const out = [];
-  preferred.forEach((k) => keys.has(k) && out.push(k));
+  preferred.forEach((k) => nonEmptyKeys.has(k) && out.push(k));
   out.push(...pCols, ...scoreCols, ...rest);
   return out;
 }
@@ -102,15 +123,35 @@ function prettifyHeader(key) {
   if (!key) return '';
   if (key.startsWith('p_')) return `p=${key.slice(2)}`;
   if (key.startsWith('score_')) return `score=${key.slice(6)}`;
-  return key.replaceAll('_', ' ');
+
+  const map = {
+    index: 'Index',
+    fold_id: 'Fold',
+    trial_id: 'Trial',
+    y_true: 'True value',
+    y_pred: 'Predicted value',
+    residual: 'Residual',
+    abs_error: 'Absolute error',
+    correct: 'Correct',
+    margin: 'Margin',
+    decoder_score: 'Decoder score',
+  };
+
+  if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+
+  return key
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function buildHeaderTooltip(key) {
   if (key === 'index') return 'Row index within the preview.';
   if (key === 'fold_id') return 'Fold index for this row in k-fold CV (1..K).';
   if (key === 'trial_id') return 'Optional trial identifier (if provided).';
-  if (key === 'y_true') return 'Ground-truth label for this sample.';
-  if (key === 'y_pred') return 'Model-predicted label for this sample.';
+  if (key === 'y_true') return 'True value for this sample.';
+  if (key === 'y_pred') return 'Predicted value for this sample.';
+  if (key === 'residual') return 'Residual = predicted − true (regression).';
+  if (key === 'abs_error') return '|predicted − true| (regression).';
   if (key === 'correct') return 'Whether prediction matches the ground truth.';
   if (key === 'decoder_score')
     return 'Binary decision value (decision_function). More positive usually means stronger evidence for the positive class.';
@@ -234,6 +275,11 @@ export default function DecoderOutputsResults({ trainResult }) {
 
   if (!decoder || !Array.isArray(preview) || preview.length === 0) return null;
 
+  const evalKind =
+    trainResult?.artifact?.kind || (trainResult.regression ? 'regression' : 'classification');
+
+  const isRegression = evalKind === 'regression';
+
   const classes = decoder.classes || [];
   const hasDecisionScores = Boolean(decoder.has_decision_scores ?? decoder.hasDecisionScores);
   const hasProbabilities = Boolean(
@@ -296,6 +342,28 @@ export default function DecoderOutputsResults({ trainResult }) {
     downloadBlob(blob, 'decoder_outputs_preview.csv');
   };
 
+  const [isExportingFull, setIsExportingFull] = useState(false);
+
+  const handleExportFull = async () => {
+    const artifactUid = trainResult?.artifact?.uid;
+    if (!artifactUid) return;
+
+    try {
+      setIsExportingFull(true);
+      const { blob, filename } = await exportDecoderOutputs({
+        artifactUid,
+        filename: 'decoder_outputs.csv',
+      });
+      downloadBlob(blob, filename || 'decoder_outputs.csv');
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      window.alert(`Export failed: ${e?.message || 'Could not export decoder outputs.'}`);
+    } finally {
+      setIsExportingFull(false);
+    }
+  };
+
   const previewN = Array.isArray(preview) ? preview.length : 0;
   const totalN =
     typeof decoder.n_rows_total === 'number' && Number.isFinite(decoder.n_rows_total)
@@ -326,9 +394,9 @@ export default function DecoderOutputsResults({ trainResult }) {
     whiteSpace: 'nowrap',
   };
 
-  const cellNowrap = { whiteSpace: 'nowrap' };
-  const headerTextStyle = { ...cellNowrap, lineHeight: 1.1 };
+  const headerTextStyle = { whiteSpace: 'nowrap', lineHeight: 1.1 };
 
+  // Classification-specific summary keys (robust to older keys)
   const marginFracKey = summary
     ? firstKey(summary, ['margin_frac_lt_0_1', 'margin_frac_lt_0_05'])
     : null;
@@ -336,24 +404,29 @@ export default function DecoderOutputsResults({ trainResult }) {
     ? firstKey(summary, ['max_proba_frac_ge_0_9', 'max_proba_frac_ge_0_8'])
     : null;
 
-  const eceBins =
-    summary && Array.isArray(summary.reliability_bins) ? summary.reliability_bins : null;
+  const eceBins = summary && Array.isArray(summary.reliability_bins) ? summary.reliability_bins : null;
 
   const nonEmptyBins = useMemo(() => {
     if (!eceBins) return [];
     return eceBins.filter((b) => b && typeof b.count === 'number' && b.count > 0);
   }, [eceBins]);
 
-  const showCalibrationBins = nonEmptyBins.length > 0;
+  const showCalibrationBins = !isRegression && nonEmptyBins.length > 0;
 
-  const showClassSummary = hasProbabilities && classOptions.length > 0;
+  const showClassSummary = !isRegression && hasProbabilities && classOptions.length > 0;
 
-  // ---------- Summary blocks (structured) ----------
+  // ---------- Summary blocks ----------
   const evalSamplesTooltip = isKfold
     ? 'Number of evaluation samples pooled across folds using out-of-fold (OOF) predictions.'
     : isHoldout
       ? 'Number of samples in the held-out test split.'
       : 'Number of evaluation samples for this run.';
+
+  const datasetTitleTip =
+    'Quick context about the evaluation set used for decoder outputs. In k-fold CV this is typically pooled out-of-fold (OOF) predictions; in hold-out it is the held-out test split.';
+
+  const regTitleTip =
+    'Regression summary computed from the full evaluation set (not just the preview).';
 
   const dataParamsItems = [
     {
@@ -440,8 +513,72 @@ export default function DecoderOutputsResults({ trainResult }) {
       : null,
   ].filter(Boolean);
 
-  const datasetTitleTip =
-    'Quick context about the evaluation set used for decoder outputs. In k-fold CV this is typically pooled out-of-fold (OOF) predictions; in hold-out it is the held-out test split.';
+  const regPerfItems = [
+    {
+      key: 'RMSE',
+      value: summary?.rmse ?? null,
+      tooltip: 'Root mean squared error. Smaller is better.',
+    },
+    {
+      key: 'MAE',
+      value: summary?.mae ?? null,
+      tooltip: 'Mean absolute error. Smaller is better.',
+    },
+    {
+      key: 'Median AE',
+      value: summary?.median_ae ?? summary?.median_abs_error ?? null,
+      tooltip: 'Median absolute error (robust). Smaller is better.',
+    },
+    {
+      key: 'R²',
+      value: summary?.r2 ?? null,
+      tooltip: 'Coefficient of determination. Larger is better (1 is perfect).',
+    },
+    {
+      key: 'Bias',
+      value: summary?.bias ?? null,
+      tooltip: 'Mean(pred − true). >0 indicates overestimation on average.',
+    },
+    {
+      key: 'Residual std',
+      value: summary?.residual_std ?? null,
+      tooltip: 'Standard deviation of residuals (pred − true). Smaller is better.',
+    },
+    {
+      key: 'Pearson r',
+      value: summary?.pearson_r ?? null,
+      tooltip: 'Linear correlation between predictions and targets.',
+    },
+    {
+      key: 'Spearman ρ',
+      value: summary?.spearman_r ?? null,
+      tooltip: 'Rank correlation between predictions and targets.',
+    },
+    {
+      key: 'NRMSE',
+      value: summary?.nrmse ?? null,
+      tooltip: 'Normalized RMSE (e.g., divided by std(y_true)). Smaller is better.',
+    },
+  ];
+
+  const regDataItems = [
+    {
+      key: 'Evaluation samples',
+      value: summary?.n ?? totalN ?? null,
+      tooltip: evalSamplesTooltip,
+    },
+    {
+      key: 'True range',
+      value: rangeText(summary?.y_true_min, summary?.y_true_max),
+      tooltip: 'Range of ground-truth values in the evaluation set.',
+    },
+    {
+      key: 'Pred range',
+      value: rangeText(summary?.y_pred_min, summary?.y_pred_max),
+      tooltip: 'Range of predicted values in the evaluation set.',
+    },
+  ];
+
   const lossTitleTip =
     'Loss and calibration describe probability quality. Log loss and Brier measure probability error (smaller is better). ECE/MCE describe how well confidence matches accuracy (smaller is better; 0 is ideal).';
   const confTitleTip =
@@ -495,43 +632,47 @@ export default function DecoderOutputsResults({ trainResult }) {
           </Text>
 
           <Group gap="md" wrap="wrap">
-            <Tooltip
-              label="Whether decision_function outputs exist (used to build score_* columns)."
-              multiline
-              maw={320}
-              withArrow
-            >
-              <Text size="sm">
-                <Text span c="dimmed">
-                  Decision scores:{' '}
-                </Text>
-                <Text span fw={700}>
-                  {hasDecisionScores ? 'Available' : 'Not available'}
-                </Text>
-              </Text>
-            </Tooltip>
-
-            <Tooltip
-              label="Whether probability columns exist. For hard voting, these may be vote shares (not calibrated probabilities)."
-              multiline
-              maw={340}
-              withArrow
-            >
-              <Text size="sm">
-                <Text span c="dimmed">
-                  Probabilities:{' '}
-                </Text>
-                <Text span fw={700}>
-                  {hasProbabilities ? 'Available' : 'Not available'}
-                </Text>
-                {hasProbabilities && isVoteShare ? (
-                  <Text span fw={500} c="dimmed">
-                    {' '}
-                    (vote share)
+            {!isRegression && (
+              <>
+                <Tooltip
+                  label="Whether decision_function outputs exist (used to build score_* columns)."
+                  multiline
+                  maw={320}
+                  withArrow
+                >
+                  <Text size="sm">
+                    <Text span c="dimmed">
+                      Decision scores:{' '}
+                    </Text>
+                    <Text span fw={700}>
+                      {hasDecisionScores ? 'Available' : 'Not available'}
+                    </Text>
                   </Text>
-                ) : null}
-              </Text>
-            </Tooltip>
+                </Tooltip>
+
+                <Tooltip
+                  label="Whether probability columns exist. For hard voting, these may be vote shares (not calibrated probabilities)."
+                  multiline
+                  maw={340}
+                  withArrow
+                >
+                  <Text size="sm">
+                    <Text span c="dimmed">
+                      Probabilities:{' '}
+                    </Text>
+                    <Text span fw={700}>
+                      {hasProbabilities ? 'Available' : 'Not available'}
+                    </Text>
+                    {hasProbabilities && isVoteShare ? (
+                      <Text span fw={500} c="dimmed">
+                        {' '}
+                        (vote share)
+                      </Text>
+                    ) : null}
+                  </Text>
+                </Tooltip>
+              </>
+            )}
 
             <Tooltip
               label="Number of rows rendered in the table. Preview may be capped for performance."
@@ -567,15 +708,22 @@ export default function DecoderOutputsResults({ trainResult }) {
               </Stack>
             </Group>
 
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-              <KeyValueBlock title="Dataset" titleTooltip={datasetTitleTip} items={dataParamsItems} />
-              <KeyValueBlock
-                title="Loss & calibration"
-                titleTooltip={lossTitleTip}
-                items={lossCalItems}
-              />
-              <KeyValueBlock title="Confidence" titleTooltip={confTitleTip} items={confidenceItems} />
-            </SimpleGrid>
+            {isRegression ? (
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <KeyValueBlock title="Performance" titleTooltip={regTitleTip} items={regPerfItems} />
+                <KeyValueBlock title="Dataset" titleTooltip={datasetTitleTip} items={regDataItems} />
+              </SimpleGrid>
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+                <KeyValueBlock title="Dataset" titleTooltip={datasetTitleTip} items={dataParamsItems} />
+                <KeyValueBlock
+                  title="Loss & calibration"
+                  titleTooltip={lossTitleTip}
+                  items={lossCalItems}
+                />
+                <KeyValueBlock title="Confidence" titleTooltip={confTitleTip} items={confidenceItems} />
+              </SimpleGrid>
+            )}
 
             {/* Calibration bins */}
             {showCalibrationBins && (
@@ -742,13 +890,36 @@ export default function DecoderOutputsResults({ trainResult }) {
         )}
 
         {/* Export + main table */}
-        <Group justify="space-between" align="center">
+        <Group justify="space-between" align="center" wrap="wrap">
           <Text size="sm" fw={600}>
             Preview table
           </Text>
-          <Button size="xs" variant="light" onClick={handleExportPreview}>
-            Export preview CSV
-          </Button>
+
+          <Group gap="xs" wrap="wrap">
+            <Button size="xs" variant="light" onClick={handleExportPreview}>
+              Export preview CSV
+            </Button>
+            <Tooltip
+              label={
+                trainResult?.artifact?.uid
+                  ? 'Export full evaluation-set decoder outputs as CSV.'
+                  : 'No artifact UID available for this run.'
+              }
+              multiline
+              maw={320}
+              withArrow
+            >
+              <Button
+                size="xs"
+                variant="light"
+                loading={isExportingFull}
+                disabled={!trainResult?.artifact?.uid}
+                onClick={handleExportFull}
+              >
+                Export full CSV
+              </Button>
+            </Tooltip>
+          </Group>
         </Group>
 
         <ScrollArea
@@ -775,12 +946,14 @@ export default function DecoderOutputsResults({ trainResult }) {
                       : c === 'fold_id'
                         ? 70
                         : c === 'y_true' || c === 'y_pred'
-                          ? 80
-                          : c === 'correct'
-                            ? 80
-                            : c === 'margin'
+                          ? 85
+                          : c === 'residual' || c === 'abs_error'
+                            ? 95
+                            : c === 'correct'
                               ? 80
-                              : undefined;
+                              : c === 'margin'
+                                ? 80
+                                : undefined;
 
                   const thStyle = minW ? { ...stickyThStyle, minWidth: minW } : stickyThStyle;
 

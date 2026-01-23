@@ -4,6 +4,7 @@ import GeneralSummary from './visualizations/GeneralSummary.jsx';
 import KFoldResults from './visualizations/KFoldResults.jsx';
 import BaselineShufflingResults from './visualizations/BaselineShufflingResults.jsx';
 import ClassificationResultsPanel from './ClassificationResultsPanel.jsx';
+import RegressionResultsPanel from './RegressionResultsPanel.jsx';
 import DecoderOutputsResults from './visualizations/DecoderOutputsResults.jsx';
 
 export default function ModelTrainingResultsPanel() {
@@ -30,6 +31,10 @@ export default function ModelTrainingResultsPanel() {
     (trainResult.confusion &&
       Array.isArray(trainResult.confusion.matrix) &&
       trainResult.confusion.matrix.length > 0);
+
+  const isRegression =
+    trainResult?.artifact?.kind === 'regression' ||
+    (trainResult.regression && typeof trainResult.regression === 'object');
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
@@ -59,6 +64,13 @@ export default function ModelTrainingResultsPanel() {
         {isClassification && (
           <>
             <ClassificationResultsPanel trainResult={trainResult} />
+            <DecoderOutputsResults trainResult={trainResult} />
+          </>
+        )}
+
+        {isRegression && !isClassification && (
+          <>
+            <RegressionResultsPanel trainResult={trainResult} />
             <DecoderOutputsResults trainResult={trainResult} />
           </>
         )}
