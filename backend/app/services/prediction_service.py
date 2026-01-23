@@ -165,9 +165,17 @@ def export_decoder_outputs_to_csv(
 
     y_pred = np.asarray(cached.y_pred).ravel()
     y_true = None if cached.y_true is None else np.asarray(cached.y_true).ravel()
+
     indices = cached.indices
     if indices is None:
         indices = np.arange(int(y_pred.shape[0]), dtype=int)
+
+    fold_ids = None
+    if cached.fold_ids is not None:
+        try:
+            fold_ids = np.asarray(cached.fold_ids).ravel()
+        except Exception:
+            fold_ids = None
 
     table = build_prediction_table(
         indices=indices,
@@ -177,16 +185,36 @@ def export_decoder_outputs_to_csv(
         max_rows=None,
     )
 
-    # Attach fold_id if available (useful for CV pooled exports)
-    if cached.fold_ids is not None:
-        fold_ids = np.asarray(cached.fold_ids).ravel()
-        for i, r in enumerate(table):
-            if i >= fold_ids.shape[0]:
-                break
-            try:
-                r["fold_id"] = int(fold_ids[i])
-            except Exception:
-                pass
+    # Attach fold_id (useful for pooled CV exports and post-hoc analyses).
+    # We rebuild rows so fold_id is guaranteed to be present in the header.
+    if fold_ids is not None:
+        rebuilt = []
+        n_f = int(fold_ids.shape[0])
+        for i, row in enumerate(table):
+            fid = ''
+            if i < n_f:
+                fid = fold_ids[i]
+                try:
+                    fid = int(fid)
+                except Exception:
+                    # Keep as-is if it cannot be cast cleanly
+                    pass
+
+            if isinstance(row, dict):
+                # Keep 'index' first (if present), then fold_id, then the rest
+                if 'index' in row:
+                    new_row = {'index': row.get('index', ''), 'fold_id': fid}
+                    for k, v in row.items():
+                        if k == 'index':
+                            continue
+                        new_row[k] = v
+                else:
+                    new_row = {'fold_id': fid, **row}
+                rebuilt.append(new_row)
+            else:
+                rebuilt.append(row)
+
+        table = rebuilt
 
     exporter = make_exporter("csv")
     export_result = exporter.export(

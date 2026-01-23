@@ -324,6 +324,15 @@ def regression_summary(
     residuals = yt - yp
     abs_err = np.abs(residuals)
 
+    # Normalization reference (std of true values) for NRMSE.
+    # If std is ~0 (near-constant target), NRMSE is not meaningful.
+    try:
+        y_std = float(np.std(yt))
+        if not np.isfinite(y_std) or y_std <= 0:
+            y_std = None
+    except Exception:
+        y_std = None
+
     # sklearn metrics when available
     rmse = None
     mae = None
@@ -384,6 +393,16 @@ def regression_summary(
         "y_pred_min": _safe_float(np.min(yp)),
         "y_pred_max": _safe_float(np.max(yp)),
     }
+
+    # Normalized RMSE (NRMSE): RMSE divided by std(y_true), when meaningful.
+    try:
+        if rmse is not None and y_std is not None and y_std > 0:
+            out["nrmse"] = _safe_float(float(rmse) / float(y_std))
+        else:
+            out["nrmse"] = None
+    except Exception:
+        out["nrmse"] = None
+
     if ev is not None:
         out["explained_variance"] = _safe_float(ev)
 

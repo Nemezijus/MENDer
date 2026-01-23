@@ -297,6 +297,10 @@ export default function DecoderOutputsResults({ trainResult }) {
   const splitType = useMemo(() => detectSplitType(trainResult), [trainResult]);
   const isKfold = splitType === 'kfold';
   const isHoldout = splitType === 'holdout';
+  const nSplits =
+    (typeof trainResult?.n_splits === 'number' ? trainResult.n_splits : null) ??
+    (typeof trainResult?.artifact?.n_splits === 'number' ? trainResult.artifact.n_splits : null) ??
+    null;
 
   // Notes: remove duplicated “Decoder summary: …” line if we already display the structured summary.
   const decoderNotes = useMemo(() => {
@@ -417,7 +421,7 @@ export default function DecoderOutputsResults({ trainResult }) {
 
   // ---------- Summary blocks ----------
   const evalSamplesTooltip = isKfold
-    ? 'Number of evaluation samples pooled across folds using out-of-fold (OOF) predictions.'
+    ? `Number of evaluation samples pooled (concatenated) across ${nSplits || 'multiple'} folds using out-of-fold (OOF) predictions.`
     : isHoldout
       ? 'Number of samples in the held-out test split.'
       : 'Number of evaluation samples for this run.';
@@ -622,7 +626,7 @@ export default function DecoderOutputsResults({ trainResult }) {
                     out-of-fold (OOF)
                   </Text>
                 </Tooltip>{' '}
-                pooled across folds).
+                pooled (concatenated) across {nSplits || 'multiple'} folds).
               </>
             ) : isHoldout ? (
               <>Per-sample decoder outputs on the held-out test split.</>

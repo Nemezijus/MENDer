@@ -46,6 +46,9 @@ function chunk(arr, n) {
 export default function RegressionResultsPanel({ trainResult }) {
   if (!trainResult) return null;
 
+  const nSplits = trainResult?.n_splits;
+  const isKFold = typeof nSplits === 'number' && Number.isFinite(nSplits) && nSplits > 1;
+
   const diag = trainResult.regression || null;
   const summary = diag?.summary || null;
 
@@ -197,7 +200,9 @@ export default function RegressionResultsPanel({ trainResult }) {
 
         <Stack gap={6}>
           <Text size="sm" c="dimmed">
-            Summary metrics computed on the evaluation set.
+            {isKFold
+              ? `Summary metrics computed on pooled out-of-fold predictions (concatenated across ${nSplits} folds).`
+              : 'Summary metrics computed on the evaluation (test) set.'}
           </Text>
         </Stack>
 
