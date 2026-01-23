@@ -49,6 +49,17 @@ export default function RegressionResultsPanel({ trainResult }) {
   const nSplits = trainResult?.n_splits;
   const isKFold = typeof nSplits === 'number' && Number.isFinite(nSplits) && nSplits > 1;
 
+  const metricNameRaw = trainResult?.metric_name;
+  const metricName =
+    typeof metricNameRaw === 'string' && metricNameRaw.trim() !== ''
+      ? metricNameRaw.replaceAll('_', ' ')
+      : 'score';
+  const foldScores = Array.isArray(trainResult?.fold_scores)
+    ? trainResult.fold_scores.filter((v) => typeof v === 'number' && Number.isFinite(v))
+    : null;
+  const hasFoldScores = isKFold && Array.isArray(foldScores) && foldScores.length > 1;
+
+
   const diag = trainResult.regression || null;
   const summary = diag?.summary || null;
 
@@ -270,6 +281,66 @@ export default function RegressionResultsPanel({ trainResult }) {
 
         <Divider />
 
+        {hasFoldScores && (
+          <>
+            <Stack gap="xs" mt="xs">
+              {plotTitle(
+                `Per-fold score distribution (${metricName})`,
+                `Distribution of fold evaluation scores for metric "${metricNameRaw}". Each point corresponds to one fold's held-out score.`,
+              )}
+
+              <div style={PLOT_CONTAINER}>
+                <div style={PLOT_INNER}>
+                  <Plot
+                    data={[
+                      {
+                        type: 'violin',
+                        y: foldScores,
+                        name: 'Fold scores',
+                        box: { visible: true },
+                        meanline: { visible: true },
+                        points: 'all',
+                        jitter: 0.25,
+                        pointpos: 0,
+                        marker: { size: 6, opacity: 0.65 },
+                        showlegend: false,
+                        hovertemplate: 'Score=%{y}<extra></extra>',
+                      },
+                    ]}
+                    layout={{
+                      margin: PLOT_MARGIN,
+                      xaxis: {
+                        visible: false,
+                        showgrid: false,
+                        zeroline: false,
+                        showline: false,
+                        showticklabels: false,
+                        ticks: "",
+                      },
+                      yaxis: {
+                        title: { text: metricName, font: { size: 16, weight: 'bold' } },
+                        tickfont: { size: 14 },
+                        showgrid: true,
+                        gridcolor: 'rgba(200,200,200,0.4)',
+                        zeroline: false,
+                        showline: true,
+                        linecolor: '#000',
+                        linewidth: 1,
+                      },
+                      hovermode: 'closest',
+                      plot_bgcolor: '#ffffff',
+                      paper_bgcolor: 'rgba(0,0,0,0)',
+                    }}
+                    config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
+                    style={{ width: '100%', height: 320 }}
+                  />
+                </div>
+              </div>
+            </Stack>
+
+            <Divider />
+          </>
+        )}
         {scatterPoints && (
           <Stack gap="xs">
             {plotTitle(
