@@ -5,6 +5,7 @@ from .model_artifact import ModelArtifactMeta
 from .data_models import DataInspectRequest, Label
 from .decoder_models import DecoderOutputs
 from shared_schemas.eval_configs import EvalModel
+from shared_schemas.unsupervised_configs import UnsupervisedEvalModel
 
 
 class SaveModelRequest(BaseModel):
@@ -37,6 +38,25 @@ class ApplyModelRequest(BaseModel):
     # Optional override for evaluation/decoder settings during apply/export.
     # If provided, this will be used instead of artifact_meta.eval.
     eval: Optional[EvalModel] = None
+
+
+class ApplyUnsupervisedModelRequest(BaseModel):
+    """Request to apply an unsupervised (clustering) artifact to a new dataset.
+
+    Notes
+    -----
+    - Labels (y) in the provided dataset are ignored for unsupervised apply.
+    - Only predict-capable unsupervised models can be applied to unseen datasets.
+    """
+
+    artifact_uid: str
+    artifact_meta: ModelArtifactMeta
+    data: DataInspectRequest
+
+    # Optional override for unsupervised evaluation settings.
+    # This is currently informational (apply returns assignments only), but kept
+    # for parity with the supervised ApplyModelRequest.
+    eval: Optional[UnsupervisedEvalModel] = None
 
 
 class PredictionRow(BaseModel):
@@ -83,12 +103,35 @@ class ApplyModelResponse(BaseModel):
     # Optional: per-sample decoder outputs preview (classification only)
     decoder_outputs: Optional[DecoderOutputs] = None
 
+
+class UnsupervisedPredictionRow(BaseModel):
+    """One row of the unsupervised apply preview table."""
+
+    index: int
+    cluster_id: int
+
+
+class ApplyUnsupervisedModelResponse(BaseModel):
+    """Response from applying an unsupervised artifact to a new dataset."""
+
+    n_samples: int
+    n_features: int
+    task: str
+    preview: List[UnsupervisedPredictionRow]
+    notes: List[str] = []
+
 class ApplyModelExportRequest(ApplyModelRequest):
     """
     Request body for exporting predictions as CSV.
 
     Same as ApplyModelRequest, plus an optional filename hint for the server.
     """
+    filename: Optional[str] = None
+
+
+class ApplyUnsupervisedModelExportRequest(ApplyUnsupervisedModelRequest):
+    """Request body for exporting unsupervised predictions as CSV."""
+
     filename: Optional[str] = None
 
 

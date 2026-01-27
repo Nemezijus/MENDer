@@ -27,11 +27,23 @@ from shared_schemas.model_configs import (
     KNNRegressorConfig,
     DecisionTreeRegressorConfig,
     RandomForestRegressorConfig,
+
+    # ---------------- unsupervised ----------------
+    KMeansConfig,
+    DBSCANConfig,
+    SpectralClusteringConfig,
+    AgglomerativeClusteringConfig,
+    GaussianMixtureConfig,
+    BayesianGaussianMixtureConfig,
+    MeanShiftConfig,
+    BirchConfig,
 )
 from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
 from shared_schemas.scale_configs import ScaleModel
 from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.eval_configs import EvalModel
+from shared_schemas.run_config import DataModel
+from shared_schemas.unsupervised_configs import UnsupervisedEvalModel, UnsupervisedRunConfig, FitScopeName
 
 from shared_schemas.ensemble_configs import (
     EnsembleConfig,
@@ -121,6 +133,16 @@ def _model_union_schema_and_defaults():
         DecisionTreeRegressorConfig,
         RandomForestRegressorConfig,
 
+        # ---------------- unsupervised ----------------
+        KMeansConfig,
+        DBSCANConfig,
+        SpectralClusteringConfig,
+        AgglomerativeClusteringConfig,
+        GaussianMixtureConfig,
+        BayesianGaussianMixtureConfig,
+        MeanShiftConfig,
+        BirchConfig,
+
     ):
         try:
             inst = cls()
@@ -204,14 +226,21 @@ def _enums_payload():
         "FeatureName":          safe(getattr(T, "FeatureName", None)),
         "MetricName":           safe(getattr(T, "MetricName", None)),
 
+        # task routing / unsupervised
+        "ModelTaskName":         safe(getattr(T, "ModelTaskName", None)),
+        "UnsupervisedMetricName": safe(getattr(T, "UnsupervisedMetricName", None)),
+        "FitScopeName":          safe(FitScopeName),
+
         # ensembles
         "EnsembleKind":         safe(getattr(T, "EnsembleKind", None)),
     }
     cls = safe(getattr(T, "ClassificationMetricName", None))
     reg = safe(getattr(T, "RegressionMetricName", None))
+    unsup = safe(getattr(T, "UnsupervisedMetricName", None))
     metric_by_task = {}
     if cls: metric_by_task["classification"] = cls
     if reg: metric_by_task["regression"] = reg
+    if unsup: metric_by_task["unsupervised"] = unsup
     if metric_by_task:
         enums["MetricByTask"] = metric_by_task
     return {k: v for k, v in enums.items() if v is not None}
@@ -250,6 +279,16 @@ def _model_defaults_and_meta():
         KNNRegressorConfig,
         DecisionTreeRegressorConfig,
         RandomForestRegressorConfig,
+
+        # ---------------- unsupervised ----------------
+        KMeansConfig,
+        DBSCANConfig,
+        SpectralClusteringConfig,
+        AgglomerativeClusteringConfig,
+        GaussianMixtureConfig,
+        BayesianGaussianMixtureConfig,
+        MeanShiftConfig,
+        BirchConfig,
 
     ]
     defaults = {}
@@ -309,6 +348,29 @@ def get_all_defaults():
         "eval": {
             "schema": TypeAdapter(EvalModel).json_schema(),
             "defaults": _schema_defaults(EvalModel),
+        },
+        "unsupervised": {
+            "run": {
+                "schema": TypeAdapter(UnsupervisedRunConfig).json_schema(),
+                # UnsupervisedRunConfig cannot be instantiated without choosing a concrete ModelConfig.
+                # Provide a partial defaults dict so the UI can construct the full payload.
+                "defaults": {
+                    "task": "unsupervised",
+                    "data": DataModel().model_dump(),
+                    "apply": None,
+                    "fit_scope": "train_only",
+                    "scale": _schema_defaults(ScaleModel),
+                    "features": _schema_defaults(FeaturesModel),
+                    "model": None,
+                    "eval": _schema_defaults(UnsupervisedEvalModel),
+                    "use_y_for_external_metrics": False,
+                    "external_metrics": [],
+                },
+            },
+            "eval": {
+                "schema": TypeAdapter(UnsupervisedEvalModel).json_schema(),
+                "defaults": _schema_defaults(UnsupervisedEvalModel),
+            },
         },
         "enums": _enums_payload(),
         "schema_version": 1,

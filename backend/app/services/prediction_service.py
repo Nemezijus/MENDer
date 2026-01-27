@@ -10,6 +10,7 @@ from utils.factories.export_factory import make_exporter
 from utils.predicting.prediction_results import build_prediction_table
 from utils.io.export.result_export import ExportResult
 from utils.persistence.eval_outputs_cache import eval_outputs_cache
+from utils.persistence.artifact_cache import artifact_cache
 
 from .predictions.helpers import (
     build_preview_rows,
@@ -30,7 +31,77 @@ def apply_model_to_arrays(
     y: Optional[np.ndarray] = None,
     max_preview_rows: int = 100,
 ) -> Dict[str, Any]:
-    """Apply a cached model pipeline to (X, optional y) and return preview + metric."""
+    """Apply a cached model pipeline to (X, optional y) and return preview + metric.
+
+    Notes
+    -----
+    - For supervised artifacts (classification/regression), this returns a PredictionRow preview.
+    - For unsupervised artifacts, this returns an UnsupervisedPredictionRow preview (cluster_id per sample).
+    """
+
+    task_kind = getattr(artifact_meta, "kind", None) or "classification"
+    if task_kind == "unsupervised":
+        # Unsupervised apply: y is ignored; requires predict-capable estimator.
+        pipeline = artifact_cache.get(artifact_uid)
+        if pipeline is None:
+            raise ValueError(
+                f"No cached model pipeline found for artifact_uid={artifact_uid!r}. "
+                "Train a model or load an artifact first."
+            )
+
+        X_arr = np.asarray(X)
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(-1, 1)
+        if X_arr.ndim != 2:
+            raise ValueError(f"Expected 2D X for prediction; got shape {X_arr.shape}.")
+
+        n_features_meta = getattr(artifact_meta, "n_features_in", None) or getattr(artifact_meta, "n_features", None)
+        if n_features_meta is not None:
+            n_features_meta = int(n_features_meta)
+            if X_arr.shape[1] == n_features_meta:
+                pass
+            elif X_arr.shape[0] == n_features_meta:
+                X_arr = X_arr.T
+            if X_arr.shape[1] != n_features_meta:
+                raise ValueError(
+                    f"Feature mismatch: model expects {n_features_meta} features, "
+                    f"but X has shape {X_arr.shape}."
+                )
+
+        # For unsupervised apply we require predict().
+        try:
+            cluster_id = pipeline.predict(X_arr)
+        except Exception as e:
+            raise ValueError(
+                "This unsupervised model does not support predicting cluster assignments for new data. "
+                "Only predict-capable clustering models can be applied to unseen datasets."
+            ) from e
+
+        cluster_id = np.asarray(cluster_id).ravel()
+
+        n_samples = int(X_arr.shape[0])
+        n_features = int(X_arr.shape[1])
+        n_preview = min(max_preview_rows, n_samples)
+
+        preview = [
+            {
+                "index": int(i),
+                "cluster_id": int(cluster_id[i]) if i < int(cluster_id.shape[0]) else -1,
+            }
+            for i in range(n_preview)
+        ]
+
+        return {
+            "n_samples": n_samples,
+            "n_features": n_features,
+            "task": "unsupervised",
+            "preview": preview,
+            "notes": [
+                "Unsupervised apply ignores labels (y) even if provided.",
+                "Cluster assignments were produced via pipeline.predict(X).",
+            ],
+        }
+
     pipeline, X_arr, y_arr, task, ev, eval_kind = setup_prediction(
         artifact_uid=artifact_uid,
         artifact_meta=artifact_meta,
@@ -108,6 +179,59 @@ def export_predictions_to_csv(
     filename: Optional[str] = None,
 ) -> ExportResult:
     """Apply a cached model pipeline to X (and optional y) and export FULL prediction table as CSV."""
+
+    task_kind = getattr(artifact_meta, "kind", None) or "classification"
+    if task_kind == "unsupervised":
+        pipeline = artifact_cache.get(artifact_uid)
+        if pipeline is None:
+            raise ValueError(
+                f"No cached model pipeline found for artifact_uid={artifact_uid!r}. "
+                "Train a model or load an artifact first."
+            )
+
+        X_arr = np.asarray(X)
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(-1, 1)
+        if X_arr.ndim != 2:
+            raise ValueError(f"Expected 2D X for prediction; got shape {X_arr.shape}.")
+
+        n_features_meta = getattr(artifact_meta, "n_features_in", None) or getattr(artifact_meta, "n_features", None)
+        if n_features_meta is not None:
+            n_features_meta = int(n_features_meta)
+            if X_arr.shape[1] == n_features_meta:
+                pass
+            elif X_arr.shape[0] == n_features_meta:
+                X_arr = X_arr.T
+            if X_arr.shape[1] != n_features_meta:
+                raise ValueError(
+                    f"Feature mismatch: model expects {n_features_meta} features, "
+                    f"but X has shape {X_arr.shape}."
+                )
+
+        try:
+            cluster_id = pipeline.predict(X_arr)
+        except Exception as e:
+            raise ValueError(
+                "This unsupervised model does not support predicting cluster assignments for new data. "
+                "Only predict-capable clustering models can be applied to unseen datasets."
+            ) from e
+
+        cluster_id = np.asarray(cluster_id).ravel()
+
+        n_samples = int(X_arr.shape[0])
+        table = [
+            {"index": int(i), "cluster_id": int(cluster_id[i]) if i < int(cluster_id.shape[0]) else -1}
+            for i in range(n_samples)
+        ]
+
+        exporter = make_exporter("csv")
+        export_result = exporter.export(
+            table,
+            dest=None,
+            filename=filename,
+        )
+        return export_result
+
     pipeline, X_arr, y_arr, task, ev, eval_kind = setup_prediction(
         artifact_uid=artifact_uid,
         artifact_meta=artifact_meta,
@@ -163,6 +287,88 @@ def export_decoder_outputs_to_csv(
             "Re-run training with decoder/regression results enabled."
         )
 
+    # Unsupervised cached outputs
+    if (cached.task == "unsupervised") or (cached.cluster_id is not None) or (cached.per_sample is not None):
+        # Determine length from available payload
+        n = None
+        if cached.cluster_id is not None:
+            try:
+                n = int(np.asarray(cached.cluster_id).ravel().shape[0])
+            except Exception:
+                n = None
+        if n is None and cached.per_sample:
+            # Use the first column as the length reference
+            try:
+                first_key = next(iter(cached.per_sample.keys()))
+                n = int(np.asarray(cached.per_sample[first_key]).ravel().shape[0])
+            except Exception:
+                n = None
+        if n is None:
+            raise ValueError(
+                "Cached outputs for this unsupervised artifact are incomplete. "
+                "Re-run training to cache per-sample outputs."
+            )
+
+        indices = cached.indices
+        if indices is None:
+            indices = np.arange(n, dtype=int)
+        else:
+            indices = np.asarray(indices).ravel()
+            if int(indices.shape[0]) != n:
+                indices = np.arange(n, dtype=int)
+
+        fold_ids = None
+        if cached.fold_ids is not None:
+            try:
+                fold_ids = np.asarray(cached.fold_ids).ravel()
+            except Exception:
+                fold_ids = None
+
+        cluster_id = None
+        if cached.cluster_id is not None:
+            try:
+                cluster_id = np.asarray(cached.cluster_id).ravel()
+            except Exception:
+                cluster_id = None
+
+        # Build base rows
+        table = []
+        for i in range(n):
+            row: Dict[str, Any] = {"index": int(indices[i])}
+            if fold_ids is not None and i < int(fold_ids.shape[0]):
+                try:
+                    row["fold_id"] = int(fold_ids[i])
+                except Exception:
+                    row["fold_id"] = fold_ids[i]
+            if cluster_id is not None and i < int(cluster_id.shape[0]):
+                try:
+                    row["cluster_id"] = int(cluster_id[i])
+                except Exception:
+                    row["cluster_id"] = cluster_id[i]
+
+            # Attach any additional per-sample columns
+            if cached.per_sample:
+                for k, v in cached.per_sample.items():
+                    try:
+                        col = np.asarray(v).ravel()
+                        if i < int(col.shape[0]):
+                            val = col[i]
+                            row[k] = val.item() if hasattr(val, "item") else val
+                    except Exception:
+                        # Ignore malformed columns
+                        continue
+
+            table.append(row)
+
+        exporter = make_exporter("csv")
+        export_result = exporter.export(
+            table,
+            dest=None,
+            filename=filename,
+        )
+        return export_result
+
+    # Supervised cached outputs
     y_pred = np.asarray(cached.y_pred).ravel()
     y_true = None if cached.y_true is None else np.asarray(cached.y_true).ravel()
 

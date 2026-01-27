@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -12,7 +12,9 @@ class ModelArtifactMeta(BaseModel):
     uid: str                                   # e.g. uuid4
     created_at: datetime
     mender_version: Optional[str] = None
-    kind: str = "classification"               # room for regression/clustering later
+    # Modelling task family for this artifact.
+    # NOTE: backend/UI treat this as the authoritative task for filtering/routing.
+    kind: Literal["classification", "regression", "unsupervised"] = "classification"
 
     # Data summary
     n_samples_train: Optional[int] = None

@@ -2,10 +2,15 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
+from typing import Union
+
 from ..models.v1.models import (
     ApplyModelRequest,
     ApplyModelResponse,
     ApplyModelExportRequest,
+    ApplyUnsupervisedModelRequest,
+    ApplyUnsupervisedModelResponse,
+    ApplyUnsupervisedModelExportRequest,
     ExportDecoderOutputsRequest,
 )
 from ..models.v1.model_artifact import ModelArtifactMeta
@@ -41,7 +46,7 @@ def _load_prediction_data(data):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-def _run_apply(req: ApplyModelRequest, *, export: bool = False):
+def _run_apply(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest], *, export: bool = False):
     """
     Shared execution for apply/export to keep router endpoints thin and consistent.
     """
@@ -50,7 +55,8 @@ def _run_apply(req: ApplyModelRequest, *, export: bool = False):
     # Allow apply/export to override evaluation/decoder settings without
     # mutating the stored artifact meta.
     artifact_meta = req.artifact_meta
-    if getattr(req, "eval", None) is not None:
+    # Supervised apply/export allows an EvalModel override.
+    if getattr(req, "eval", None) is not None and isinstance(req, ApplyModelRequest):
         meta_dict = req.artifact_meta.model_dump()
         meta_dict["eval"] = req.eval.model_dump()
         artifact_meta = ModelArtifactMeta(**meta_dict)
@@ -76,17 +82,19 @@ def _run_apply(req: ApplyModelRequest, *, export: bool = False):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.post("/models/apply", response_model=ApplyModelResponse)
-def apply_model_endpoint(req: ApplyModelRequest):
+@router.post("/models/apply", response_model=Union[ApplyModelResponse, ApplyUnsupervisedModelResponse])
+def apply_model_endpoint(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest]):
     """
     Apply an existing model artifact to a new dataset.
     """
     result = _run_apply(req, export=False)
+    if isinstance(result, dict) and result.get("task") == "unsupervised":
+        return ApplyUnsupervisedModelResponse(**result)
     return ApplyModelResponse(**result)
 
 
 @router.post("/models/apply/export")
-def export_predictions_endpoint(req: ApplyModelExportRequest):
+def export_predictions_endpoint(req: Union[ApplyModelExportRequest, ApplyUnsupervisedModelExportRequest]):
     """
     Export predictions as CSV for a given artifact + dataset.
     """

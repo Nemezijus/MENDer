@@ -1,13 +1,14 @@
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from shared_schemas.run_config import RunConfig
+from shared_schemas.unsupervised_configs import UnsupervisedRunConfig
 from shared_schemas.model_configs import get_model_task
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.split_factory import make_splitter
-from utils.factories.pipeline_factory import make_pipeline
-from utils.factories.eval_factory import make_evaluator
+from utils.factories.pipeline_factory import make_pipeline, make_unsupervised_pipeline
+from utils.factories.eval_factory import make_evaluator, make_unsupervised_evaluator
 from utils.factories.metrics_factory import make_metrics_computer
 from utils.permutations.rng import RngManager
 from utils.factories.baseline_factory import make_baseline
@@ -20,7 +21,7 @@ from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
 
-from .common.json_safety import safe_float_list, safe_float_scalar
+from .common.json_safety import safe_float_list, safe_float_scalar, safe_float_optional
 from .training.metrics_payloads import normalize_confusion, normalize_roc
 from .training.decoder_payloads import build_decoder_outputs_payload
 from .training.regression_payloads import (
@@ -451,3 +452,209 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         )
 
     return result
+
+
+def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
+    """Train an unsupervised (clustering) model and return a JSON-safe payload.
+
+    Notes:
+      - `y` may exist in the input data but is ignored.
+      - Some estimators do not support `predict` on unseen data; `apply` handling
+        should be UI-gated. We still handle this defensively and emit warnings.
+    """
+
+    # --- Load training data -------------------------------------------------
+    try:
+        loader = make_data_loader(cfg.data)
+        X, _y_ignored = loader.load()
+    except Exception as e:
+        raise LoadError(str(e))
+
+    X = np.asarray(X)
+    if X.ndim != 2 or X.shape[0] < 1 or X.shape[1] < 1:
+        raise ValueError("Unsupervised training requires a 2D feature matrix X with at least 1 sample and 1 feature.")
+
+    # --- RNG ----------------------------------------------------------------
+    rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
+
+    # --- Build + fit pipeline ----------------------------------------------
+    pipeline = make_unsupervised_pipeline(cfg, rngm, stream="unsupervised/train")
+    # sklearn clustering estimators typically accept y=None, but we call fit(X)
+    pipeline.fit(X)
+
+    # --- Extract training labels -------------------------------------------
+    labels: Optional[np.ndarray] = None
+    try:
+        est = pipeline.steps[-1][1] if hasattr(pipeline, "steps") and pipeline.steps else pipeline
+    except Exception:
+        est = pipeline
+
+    # Prefer labels_ (Agglomerative/Spectral/DBSCAN/KMeans/etc.)
+    if labels is None:
+        lab = getattr(est, "labels_", None)
+        if lab is not None:
+            labels = np.asarray(lab)
+
+    # Mixture models (GMM/BGMM) typically use predict
+    if labels is None and hasattr(pipeline, "predict"):
+        try:
+            labels = np.asarray(pipeline.predict(X))
+        except Exception:
+            labels = None
+
+    if labels is None:
+        raise ValueError(
+            f"Could not obtain cluster labels from estimator {type(est).__name__}. "
+            "Expected attribute 'labels_' or method 'predict'."
+        )
+
+    labels = np.asarray(labels).reshape(-1)
+    if labels.shape[0] != X.shape[0]:
+        raise ValueError("Cluster labels length does not match number of samples in X.")
+
+    # --- Compute unsupervised diagnostics ----------------------------------
+    evaluator = make_unsupervised_evaluator(cfg.eval)
+    diag = evaluator.evaluate(X, labels, model=pipeline)
+
+    # --- Optional apply/predict on unseen data -----------------------------
+    n_apply: Optional[int] = None
+    apply_notes: list[str] = []
+    if cfg.apply is not None and cfg.fit_scope == "train_and_predict":
+        try:
+            loader2 = make_data_loader(cfg.apply)
+            X_apply, _y2_ignored = loader2.load()
+            X_apply = np.asarray(X_apply)
+            n_apply = int(X_apply.shape[0])
+            if hasattr(pipeline, "predict"):
+                # We do not yet return apply outputs in the response model; this
+                # is recorded into artifact extra_stats for later UI expansion.
+                _ = pipeline.predict(X_apply)
+            else:
+                apply_notes.append(
+                    f"apply requested but estimator {type(est).__name__} does not support predict(); skipping apply."  # noqa: E501
+                )
+        except Exception as e:
+            apply_notes.append(f"apply failed: {type(e).__name__}: {e}")
+
+    # --- Build per-sample preview table ------------------------------------
+    per_sample = diag.get("per_sample") or {}
+    n_rows_total = int(X.shape[0])
+    preview_n = min(50, n_rows_total)
+
+    preview_rows: list[Dict[str, Any]] = []
+    # Ensure cluster_id exists
+    cluster_ids = per_sample.get("cluster_id")
+    if cluster_ids is None:
+        cluster_ids = [int(v) for v in labels.tolist()]
+        per_sample["cluster_id"] = cluster_ids
+
+    for i in range(preview_n):
+        row: Dict[str, Any] = {"index": int(i), "cluster_id": int(cluster_ids[i])}
+        # attach any additional per-sample columns
+        for k, v in per_sample.items():
+            if k in ("cluster_id",):
+                continue
+            try:
+                row[k] = v[i]
+            except Exception:
+                continue
+        preview_rows.append(row)
+
+    # --- Artifact meta + caching -------------------------------------------
+    # Choose a primary metric for artifact summary (best-effort): silhouette
+    metrics_dict = diag.get("metrics") or {}
+    primary_metric_name = None
+    primary_metric_value = None
+    if isinstance(metrics_dict, dict):
+        if metrics_dict.get("silhouette") is not None:
+            primary_metric_name = "silhouette"
+            primary_metric_value = safe_float_optional(metrics_dict.get("silhouette"))
+        else:
+            for k, v in metrics_dict.items():
+                if v is not None:
+                    primary_metric_name = str(k)
+                    primary_metric_value = safe_float_optional(v)
+                    break
+
+    n_features_in = int(X.shape[1])
+    artifact_input = ArtifactBuilderInput(
+        cfg=cfg,
+        pipeline=pipeline,
+        n_train=int(X.shape[0]),
+        n_test=None,
+        n_features=n_features_in,
+        classes=None,
+        kind="unsupervised",
+        summary={
+            "metric_name": primary_metric_name,
+            "metric_value": primary_metric_value,
+            "mean_score": None,
+            "std_score": None,
+            "n_splits": None,
+            "notes": [],
+            "extra_stats": {
+                "unsupervised_metrics": metrics_dict,
+                "cluster_summary": diag.get("cluster_summary"),
+            },
+        },
+    )
+    artifact_meta = build_model_artifact_meta(artifact_input)
+
+    # cache fitted pipeline
+    try:
+        uid = artifact_meta["uid"]
+        artifact_cache.put(uid, pipeline)
+
+        # cache per-sample outputs for export
+        try:
+            eval_outputs_cache.put(
+                uid,
+                EvalOutputs(
+                    task="unsupervised",
+                    indices=np.arange(int(X.shape[0]), dtype=int),
+                    cluster_id=np.asarray(labels, dtype=int),
+                    per_sample=per_sample,
+                ),
+            )
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # --- Assemble response --------------------------------------------------
+    out_metrics: Dict[str, Optional[float]] = {}
+    if isinstance(metrics_dict, dict):
+        for k, v in metrics_dict.items():
+            out_metrics[str(k)] = safe_float_optional(v)
+
+    warnings_all: list[str] = []
+    try:
+        warnings_all.extend([str(x) for x in (diag.get("warnings") or [])])
+    except Exception:
+        pass
+    warnings_all.extend(apply_notes)
+
+    return {
+        "task": "unsupervised",
+        "n_train": int(X.shape[0]),
+        "n_features": n_features_in,
+        "n_apply": n_apply,
+        "metrics": out_metrics,
+        "warnings": warnings_all,
+        "cluster_summary": diag.get("cluster_summary") or {},
+        "diagnostics": {
+            "model_diagnostics": diag.get("model_diagnostics") or {},
+            "embedding_2d": diag.get("embedding_2d"),
+        },
+        "artifact": artifact_meta,
+        "unsupervised_outputs": {
+            "notes": [],
+            "preview_rows": preview_rows,
+            "n_rows_total": n_rows_total,
+            "summary": {
+                "n_clusters": (diag.get("cluster_summary") or {}).get("n_clusters"),
+                "n_noise": (diag.get("cluster_summary") or {}).get("n_noise"),
+            },
+        },
+        "notes": [],
+    }

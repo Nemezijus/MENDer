@@ -544,8 +544,8 @@ class KMeansConfig(BaseModel):
 
     algo: Literal["kmeans"] = "kmeans"
 
-    task: ClassVar[str] = "clustering"
-    family: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
+    family: ClassVar[str] = "unsupervised"
 
     n_clusters: int = 8
     init: Literal["k-means++", "random"] = "k-means++"
@@ -562,8 +562,8 @@ class DBSCANConfig(BaseModel):
 
     algo: Literal["dbscan"] = "dbscan"
 
-    task: ClassVar[str] = "clustering"
-    family: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
+    family: ClassVar[str] = "unsupervised"
 
     eps: float = 0.5
     min_samples: int = 5
@@ -580,8 +580,8 @@ class SpectralClusteringConfig(BaseModel):
 
     algo: Literal["spectral"] = "spectral"
 
-    task: ClassVar[str] = "clustering"
-    family: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
+    family: ClassVar[str] = "unsupervised"
 
     n_clusters: int = 8
     eigen_solver: Optional[Literal["arpack", "lobpcg", "amg"]] = None
@@ -606,8 +606,8 @@ class AgglomerativeClusteringConfig(BaseModel):
 
     algo: Literal["agglo"] = "agglo"
 
-    task: ClassVar[str] = "clustering"
-    family: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
+    family: ClassVar[str] = "unsupervised"
 
     n_clusters: Optional[int] = 2
     metric: str = "euclidean"
@@ -622,7 +622,7 @@ class GaussianMixtureConfig(BaseModel):
 
     algo: Literal["gmm"] = "gmm"
 
-    task: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "mixture"
 
     n_components: int = 1
@@ -644,7 +644,7 @@ class BayesianGaussianMixtureConfig(BaseModel):
 
     algo: Literal["bgmm"] = "bgmm"
 
-    task: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "mixture"
 
     n_components: int = 1
@@ -671,8 +671,8 @@ class MeanShiftConfig(BaseModel):
 
     algo: Literal["meanshift"] = "meanshift"
 
-    task: ClassVar[str] = "clustering"
-    family: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
+    family: ClassVar[str] = "unsupervised"
 
     bandwidth: Optional[float] = None
     bin_seeding: bool = False
@@ -686,8 +686,8 @@ class BirchConfig(BaseModel):
 
     algo: Literal["birch"] = "birch"
 
-    task: ClassVar[str] = "clustering"
-    family: ClassVar[str] = "clustering"
+    task: ClassVar[str] = "unsupervised"
+    family: ClassVar[str] = "unsupervised"
 
     threshold: float = 0.5
     branching_factor: int = 50
