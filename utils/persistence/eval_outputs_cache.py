@@ -26,12 +26,13 @@ class EvalOutputs:
 
     All fields are optional to keep the cache flexible.
     Typical use:
-      - task: "classification" | "regression"
+      - task: "classification" | "regression" | "unsupervised"
       - indices: row indices in the evaluation set
       - fold_ids: optional fold id per sample (for CV)
       - y_true: ground-truth labels/targets
       - y_pred: predicted labels/targets
       - proba / decision_scores / margin: classification extras (optional)
+      - cluster_id / per_sample: unsupervised outputs (optional)
     """
 
     task: Optional[str] = None
@@ -43,6 +44,8 @@ class EvalOutputs:
     decision_scores: Optional[Any] = None
     margin: Optional[Any] = None
     classes: Optional[Any] = None
+    cluster_id: Optional[Any] = None
+    per_sample: Optional[Dict[str, Any]] = None
     extra: Optional[Dict[str, Any]] = None
 
 

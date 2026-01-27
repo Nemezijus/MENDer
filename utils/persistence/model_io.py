@@ -54,8 +54,25 @@ class SaveResult:
 
 
 def _ensure_pipeline_is_serializable(pipeline: Any) -> None:
-    if not hasattr(pipeline, "fit") or not hasattr(pipeline, "predict"):
-        raise ValueError("Pipeline must expose fit/predict methods.")
+    # Supervised models typically expose predict(). Unsupervised estimators may
+    # expose fit_predict() and/or transform() but not predict() (e.g., DBSCAN,
+    # AgglomerativeClustering, SpectralClustering). We still want to persist
+    # such pipelines.
+    if not hasattr(pipeline, "fit"):
+        raise ValueError("Pipeline must expose a fit() method.")
+
+    has_infer = any(
+        hasattr(pipeline, name)
+        for name in (
+            "predict",
+            "fit_predict",
+            "transform",
+        )
+    )
+    if not has_infer:
+        raise ValueError(
+            "Pipeline must expose at least one inference method: predict(), fit_predict(), or transform()."
+        )
     if BaseEstimator is not object and not isinstance(pipeline, BaseEstimator):
         # non-fatal; we prefer sklearn-compatible estimators but don't require it
         pass

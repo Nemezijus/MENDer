@@ -52,7 +52,7 @@ class UnsupervisedRunConfig(BaseModel):
       Only some algorithms support `predict`; callers should gate this in the UI.
     """
 
-    task: Literal["clustering"] = "clustering"
+    task: Literal["unsupervised"] = "unsupervised"
 
     data: DataModel
     apply: Optional[DataModel] = None

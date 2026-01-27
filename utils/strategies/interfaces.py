@@ -124,6 +124,24 @@ class Evaluator(Protocol):
         """
         ...
 
+
+class UnsupervisedEvaluator(Protocol):
+    """Evaluate unsupervised (clustering) results.
+
+    Unsupervised evaluation is post-fit diagnostics computed from X and cluster labels.
+    The returned payload should be JSON-friendly (dict/list/scalars) so it can be
+    serialized by the backend.
+    """
+
+    def evaluate(
+        self,
+        X: np.ndarray,
+        labels: np.ndarray,
+        *,
+        model: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        ...
+
 class BaselineRunner(Protocol):
     def run(
         self,
