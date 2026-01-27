@@ -15,7 +15,7 @@ class ArtifactBuilderInput:
     n_features: Optional[int]
     classes: Optional[List[Any]]
     summary: Dict[str, Any]  # scores, notes, n_splits, metric name/value
-    kind: Optional[Literal["classification", "regression"]] = None
+    kind: Optional[Literal["classification", "regression", "unsupervised"]] = None
     
 
 
@@ -191,7 +191,7 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
                 extra_stats[k] = v
     kind = inp.kind
     if kind is None:
-    # Try to infer from model config's `task` attribute (ClassVar or instance)
+        # Try to infer from model config's `task` attribute (ClassVar or instance)
         model_cfg = getattr(inp.cfg, "model", None)
         task_attr = None
         if model_cfg is not None:
@@ -201,9 +201,12 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
             )
         if task_attr in ("classification", "regression"):
             kind = task_attr
+        elif task_attr in ("clustering", "unsupervised"):
+            # Codebase convention: treat all unsupervised clustering runs under a single kind.
+            kind = "unsupervised"
         else:
             # Defensive fallback – should not normally happen
-                kind = "classification"
+            kind = "classification"
     # -------------------------------------------------
 
     return {
@@ -215,7 +218,9 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
         "n_samples_test": inp.n_test,
         "n_features_in": inp.n_features,
         "classes": inp.classes,
-        "split": split_dict,
+        # Backend schema historically required split to be a dict.
+        # For unsupervised runs there is no split; keep an empty dict for compatibility.
+        "split": split_dict if split_dict is not None else {},
         "scale": scale_dict,
         "features": features_dict,
         "model": model_dict,

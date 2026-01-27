@@ -1,4 +1,3 @@
-# shared_schemas/types.py
 from __future__ import annotations
 from typing import Literal, TypeAlias, Union
 
@@ -120,3 +119,17 @@ EnsembleKind: TypeAlias = Literal["voting", "bagging", "adaboost", "xgboost"]
 
 # Decoder / probability calibration
 CalibrationMethod: TypeAlias = Literal["sigmoid", "isotonic"]
+
+# -----------------------------
+# Unsupervised / clustering
+# -----------------------------
+
+# High-level modelling task (used in UI filtering / routing)
+ModelTaskName: TypeAlias = Literal["classification", "regression", "unsupervised"]
+
+# Common internal clustering validation metrics (post-fit diagnostics)
+UnsupervisedMetricName: TypeAlias = Literal[
+    "silhouette",
+    "davies_bouldin",
+    "calinski_harabasz",
+]

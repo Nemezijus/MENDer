@@ -18,6 +18,15 @@ from shared_schemas.model_configs import (
   KNNRegressorConfig,
   DecisionTreeRegressorConfig,
   RandomForestRegressorConfig,
+
+  KMeansConfig,
+  DBSCANConfig,
+  SpectralClusteringConfig,
+  AgglomerativeClusteringConfig,
+  GaussianMixtureConfig,
+  BayesianGaussianMixtureConfig,
+  MeanShiftConfig,
+  BirchConfig,
 )
 from utils.strategies.models import (
   LogRegBuilder, SVMBuilder, DecisionTreeBuilder, RandomForestBuilder, KNNBuilder,
@@ -37,6 +46,15 @@ from utils.strategies.models import (
   KNNRegressorBuilder,
   DecisionTreeRegressorBuilder,
   RandomForestRegressorBuilder,
+
+  KMeansBuilder,
+  DBSCANBuilder,
+  SpectralClusteringBuilder,
+  AgglomerativeClusteringBuilder,
+  GaussianMixtureBuilder,
+  BayesianGaussianMixtureBuilder,
+  MeanShiftBuilder,
+  BirchBuilder,
 )
 
 def make_model(cfg: ModelConfig, *, seed: int | None = None):
@@ -65,4 +83,15 @@ def make_model(cfg: ModelConfig, *, seed: int | None = None):
     if isinstance(cfg, KNNRegressorConfig):   return KNNRegressorBuilder(cfg)
     if isinstance(cfg, DecisionTreeRegressorConfig): return DecisionTreeRegressorBuilder(cfg, seed=seed)
     if isinstance(cfg, RandomForestRegressorConfig): return RandomForestRegressorBuilder(cfg, seed=seed)
+
+    # ---------------- unsupervised ----------------
+    if isinstance(cfg, KMeansConfig):         return KMeansBuilder(cfg, seed=seed)
+    if isinstance(cfg, DBSCANConfig):         return DBSCANBuilder(cfg)
+    if isinstance(cfg, SpectralClusteringConfig): return SpectralClusteringBuilder(cfg, seed=seed)
+    if isinstance(cfg, AgglomerativeClusteringConfig): return AgglomerativeClusteringBuilder(cfg)
+    if isinstance(cfg, GaussianMixtureConfig): return GaussianMixtureBuilder(cfg, seed=seed)
+    if isinstance(cfg, BayesianGaussianMixtureConfig): return BayesianGaussianMixtureBuilder(cfg, seed=seed)
+    if isinstance(cfg, MeanShiftConfig):      return MeanShiftBuilder(cfg)
+    if isinstance(cfg, BirchConfig):          return BirchBuilder(cfg)
+
     raise ValueError(f"Unsupported algo: {getattr(cfg, 'algo', None)}")

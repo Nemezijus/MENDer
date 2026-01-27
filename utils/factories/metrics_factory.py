@@ -13,8 +13,7 @@ def make_metrics_computer(
     compute_confusion: bool = True,
     compute_roc: bool = True,
 ) -> MetricsComputer:
-    """
-    Factory for the metrics strategy.
+    """Factory for the metrics strategy.
 
     This keeps the backend isolated from the concrete implementation in
     utils.postprocessing.scoring and utils.strategies.metrics.
@@ -22,8 +21,7 @@ def make_metrics_computer(
     Parameters
     ----------
     kind : {"classification", "regression"}, default "classification"
-        Evaluation kind. For regression, the metrics strategy currently
-        returns empty confusion/ROC metrics.
+        Evaluation kind.
 
     compute_confusion : bool, default True
         Whether to compute confusion-matrix-based metrics.

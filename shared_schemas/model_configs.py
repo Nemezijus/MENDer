@@ -1,4 +1,3 @@
-# shared_schemas/model_configs.py
 from __future__ import annotations
 
 from typing import Dict, Optional, Union, Literal, Annotated, ClassVar, TypedDict, List
@@ -55,6 +54,16 @@ def get_model_task_by_algo(algo: str) -> str:
         "knnreg": KNNRegressorConfig.task,
         "treereg": DecisionTreeRegressorConfig.task,
         "rfreg": RandomForestRegressorConfig.task,
+
+        # clustering / unsupervised
+        "kmeans": KMeansConfig.task,
+        "dbscan": DBSCANConfig.task,
+        "spectral": SpectralClusteringConfig.task,
+        "agglo": AgglomerativeClusteringConfig.task,
+        "gmm": GaussianMixtureConfig.task,
+        "bgmm": BayesianGaussianMixtureConfig.task,
+        "meanshift": MeanShiftConfig.task,
+        "birch": BirchConfig.task,
     }
     return mapping.get(algo, "classification")
 # -----------------------------
@@ -524,6 +533,170 @@ class RandomForestRegressorConfig(BaseModel):
     warm_start: bool = False
     ccp_alpha: float = 0.0
     max_samples: Optional[Union[int, float]] = None
+
+
+#------------------------------------------
+#          CLUSTERING / UNSUPERVISED
+#------------------------------------------
+
+class KMeansConfig(BaseModel):
+    """KMeans clustering."""
+
+    algo: Literal["kmeans"] = "kmeans"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "clustering"
+
+    n_clusters: int = 8
+    init: Literal["k-means++", "random"] = "k-means++"
+    n_init: Union[Literal["auto"], int] = "auto"
+    max_iter: int = 300
+    tol: float = 1e-4
+    verbose: int = 0
+    random_state: Optional[int] = None
+    algorithm: Union[Literal["lloyd", "elkan", "auto"], str] = "lloyd"
+
+
+class DBSCANConfig(BaseModel):
+    """DBSCAN density-based clustering."""
+
+    algo: Literal["dbscan"] = "dbscan"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "clustering"
+
+    eps: float = 0.5
+    min_samples: int = 5
+    metric: str = "euclidean"
+    metric_params: Optional[Dict[str, float]] = None
+    algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
+    leaf_size: int = 30
+    p: Optional[float] = None
+    n_jobs: Optional[int] = None
+
+
+class SpectralClusteringConfig(BaseModel):
+    """SpectralClustering (graph-based clustering)."""
+
+    algo: Literal["spectral"] = "spectral"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "clustering"
+
+    n_clusters: int = 8
+    eigen_solver: Optional[Literal["arpack", "lobpcg", "amg"]] = None
+    n_components: Optional[int] = None
+    random_state: Optional[int] = None
+    n_init: int = 10
+    gamma: float = 1.0
+    affinity: Literal[
+        "nearest_neighbors",
+        "rbf",
+        "precomputed",
+        "precomputed_nearest_neighbors",
+    ] = "rbf"
+    n_neighbors: int = 10
+    assign_labels: Literal["kmeans", "discretize", "cluster_qr"] = "kmeans"
+    degree: int = 3
+    coef0: float = 1.0
+
+
+class AgglomerativeClusteringConfig(BaseModel):
+    """Agglomerative hierarchical clustering."""
+
+    algo: Literal["agglo"] = "agglo"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "clustering"
+
+    n_clusters: Optional[int] = 2
+    metric: str = "euclidean"
+    linkage: Literal["ward", "complete", "average", "single"] = "ward"
+    distance_threshold: Optional[float] = None
+    compute_full_tree: Union[bool, Literal["auto"]] = "auto"
+    compute_distances: bool = False
+
+
+class GaussianMixtureConfig(BaseModel):
+    """Gaussian Mixture Model (GMM)."""
+
+    algo: Literal["gmm"] = "gmm"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "mixture"
+
+    n_components: int = 1
+    covariance_type: Literal["full", "tied", "diag", "spherical"] = "full"
+    tol: float = 1e-3
+    reg_covar: float = 1e-6
+    max_iter: int = 100
+    n_init: int = 1
+    init_params: Literal["kmeans", "k-means++", "random", "random_from_data"] = "kmeans"
+    weights_init: Optional[List[float]] = None
+    means_init: Optional[List[List[float]]] = None
+    random_state: Optional[int] = None
+    warm_start: bool = False
+    verbose: int = 0
+
+
+class BayesianGaussianMixtureConfig(BaseModel):
+    """Variational Bayesian Gaussian mixture (BGMM)."""
+
+    algo: Literal["bgmm"] = "bgmm"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "mixture"
+
+    n_components: int = 1
+    covariance_type: Literal["full", "tied", "diag", "spherical"] = "full"
+    tol: float = 1e-3
+    reg_covar: float = 1e-6
+    max_iter: int = 100
+    n_init: int = 1
+    init_params: Literal["kmeans", "k-means++", "random", "random_from_data"] = "kmeans"
+    weight_concentration_prior_type: Literal[
+        "dirichlet_process",
+        "dirichlet_distribution",
+    ] = "dirichlet_process"
+    weight_concentration_prior: Optional[float] = None
+    mean_precision_prior: Optional[float] = None
+    degrees_of_freedom_prior: Optional[float] = None
+    random_state: Optional[int] = None
+    warm_start: bool = False
+    verbose: int = 0
+
+
+class MeanShiftConfig(BaseModel):
+    """MeanShift clustering."""
+
+    algo: Literal["meanshift"] = "meanshift"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "clustering"
+
+    bandwidth: Optional[float] = None
+    bin_seeding: bool = False
+    min_bin_freq: int = 1
+    cluster_all: bool = True
+    n_jobs: Optional[int] = None
+
+
+class BirchConfig(BaseModel):
+    """Birch clustering."""
+
+    algo: Literal["birch"] = "birch"
+
+    task: ClassVar[str] = "clustering"
+    family: ClassVar[str] = "clustering"
+
+    threshold: float = 0.5
+    branching_factor: int = 50
+    n_clusters: Optional[int] = 3
+    compute_labels: bool = True
+    copy: bool = True
+
+
+
 # -----------------------------
 # Discriminated union (single source for "model")
 # -----------------------------
@@ -553,6 +726,15 @@ ModelConfig = Annotated[
         KNNRegressorConfig,
         DecisionTreeRegressorConfig,
         RandomForestRegressorConfig,
+
+        KMeansConfig,
+        DBSCANConfig,
+        SpectralClusteringConfig,
+        AgglomerativeClusteringConfig,
+        GaussianMixtureConfig,
+        BayesianGaussianMixtureConfig,
+        MeanShiftConfig,
+        BirchConfig,
     ],
     Field(discriminator="algo"),
 ]
@@ -583,5 +765,14 @@ __all__ = [
     "KNNRegressorConfig",
     "DecisionTreeRegressorConfig",
     "RandomForestRegressorConfig",
+
+    "KMeansConfig",
+    "DBSCANConfig",
+    "SpectralClusteringConfig",
+    "AgglomerativeClusteringConfig",
+    "GaussianMixtureConfig",
+    "BayesianGaussianMixtureConfig",
+    "MeanShiftConfig",
+    "BirchConfig",
     "ModelConfig",
 ]
