@@ -61,6 +61,50 @@ def build_preview_rows(
     return rows
 
 
+def setup_prediction_common(
+    *,
+    artifact_uid: str,
+    artifact_meta: Any,
+    X: np.ndarray,
+) -> Tuple[Any, np.ndarray, str]:
+    """Shared preparation for apply/export flows that do not need EvalModel.
+
+    This is used by unsupervised artifacts where the stored eval config is not
+    `EvalModel`, and by any other flow where we only need pipeline retrieval and
+    X-shape validation.
+    """
+
+    pipeline = artifact_cache.get(artifact_uid)
+    if pipeline is None:
+        raise ValueError(
+            f"No cached model pipeline found for artifact_uid={artifact_uid!r}. "
+            "Train a model or load an artifact first."
+        )
+
+    X_arr = np.asarray(X)
+    if X_arr.ndim == 1:
+        X_arr = X_arr.reshape(-1, 1)
+    if X_arr.ndim != 2:
+        raise ValueError(f"Expected 2D X for prediction; got shape {X_arr.shape}.")
+
+    n_features_meta = getattr(artifact_meta, "n_features_in", None) or getattr(artifact_meta, "n_features", None)
+    if n_features_meta is not None:
+        n_features_meta = int(n_features_meta)
+        if X_arr.shape[1] == n_features_meta:
+            pass
+        elif X_arr.shape[0] == n_features_meta:
+            X_arr = X_arr.T
+        if X_arr.shape[1] != n_features_meta:
+            raise ValueError(
+                f"Feature mismatch: model expects {n_features_meta} features, "
+                f"but X has shape {X_arr.shape}."
+            )
+
+    task = getattr(artifact_meta, "kind", None) or "classification"
+
+    return pipeline, X_arr, task
+
+
 def setup_prediction(
     *,
     artifact_uid: str,

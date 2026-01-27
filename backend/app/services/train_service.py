@@ -21,19 +21,13 @@ from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
 
-from .common.json_safety import safe_float_list, safe_float_scalar, safe_float_optional
+from .common.json_safety import safe_float_optional
 from .training.metrics_payloads import normalize_confusion, normalize_roc
 from .training.decoder_payloads import build_decoder_outputs_payload
 from .training.regression_payloads import (
     build_regression_diagnostics_payload,
     build_regression_decoder_outputs_payload,
 )
-from .training.regression_payloads import (
-    build_regression_diagnostics_payload,
-    build_regression_decoder_outputs_payload,
-)
-
-
 
 
 def train(cfg: RunConfig) -> Dict[str, Any]:

@@ -15,6 +15,7 @@ from utils.persistence.artifact_cache import artifact_cache
 from .predictions.helpers import (
     build_preview_rows,
     safe_float_optional,
+    setup_prediction_common,
     setup_prediction,
 )
 from .predictions.decoder_payloads import (
@@ -42,31 +43,11 @@ def apply_model_to_arrays(
     task_kind = getattr(artifact_meta, "kind", None) or "classification"
     if task_kind == "unsupervised":
         # Unsupervised apply: y is ignored; requires predict-capable estimator.
-        pipeline = artifact_cache.get(artifact_uid)
-        if pipeline is None:
-            raise ValueError(
-                f"No cached model pipeline found for artifact_uid={artifact_uid!r}. "
-                "Train a model or load an artifact first."
-            )
-
-        X_arr = np.asarray(X)
-        if X_arr.ndim == 1:
-            X_arr = X_arr.reshape(-1, 1)
-        if X_arr.ndim != 2:
-            raise ValueError(f"Expected 2D X for prediction; got shape {X_arr.shape}.")
-
-        n_features_meta = getattr(artifact_meta, "n_features_in", None) or getattr(artifact_meta, "n_features", None)
-        if n_features_meta is not None:
-            n_features_meta = int(n_features_meta)
-            if X_arr.shape[1] == n_features_meta:
-                pass
-            elif X_arr.shape[0] == n_features_meta:
-                X_arr = X_arr.T
-            if X_arr.shape[1] != n_features_meta:
-                raise ValueError(
-                    f"Feature mismatch: model expects {n_features_meta} features, "
-                    f"but X has shape {X_arr.shape}."
-                )
+        pipeline, X_arr, _task = setup_prediction_common(
+            artifact_uid=artifact_uid,
+            artifact_meta=artifact_meta,
+            X=X,
+        )
 
         # For unsupervised apply we require predict().
         try:
@@ -182,31 +163,11 @@ def export_predictions_to_csv(
 
     task_kind = getattr(artifact_meta, "kind", None) or "classification"
     if task_kind == "unsupervised":
-        pipeline = artifact_cache.get(artifact_uid)
-        if pipeline is None:
-            raise ValueError(
-                f"No cached model pipeline found for artifact_uid={artifact_uid!r}. "
-                "Train a model or load an artifact first."
-            )
-
-        X_arr = np.asarray(X)
-        if X_arr.ndim == 1:
-            X_arr = X_arr.reshape(-1, 1)
-        if X_arr.ndim != 2:
-            raise ValueError(f"Expected 2D X for prediction; got shape {X_arr.shape}.")
-
-        n_features_meta = getattr(artifact_meta, "n_features_in", None) or getattr(artifact_meta, "n_features", None)
-        if n_features_meta is not None:
-            n_features_meta = int(n_features_meta)
-            if X_arr.shape[1] == n_features_meta:
-                pass
-            elif X_arr.shape[0] == n_features_meta:
-                X_arr = X_arr.T
-            if X_arr.shape[1] != n_features_meta:
-                raise ValueError(
-                    f"Feature mismatch: model expects {n_features_meta} features, "
-                    f"but X has shape {X_arr.shape}."
-                )
+        pipeline, X_arr, _task = setup_prediction_common(
+            artifact_uid=artifact_uid,
+            artifact_meta=artifact_meta,
+            X=X,
+        )
 
         try:
             cluster_id = pipeline.predict(X_arr)
