@@ -125,15 +125,30 @@ def _build_common_inspect_fields(X: np.ndarray) -> Dict[str, Any]:
 # ---------------------------------------------------------------------
 def inspect_data(payload) -> Dict[str, Any]:
     """
-    Data inspection for TRAINING: requires X and y.
-    This keeps the original contract so training cannot omit labels.
+    Data inspection for TRAINING uploads.
+
+    Smart behavior (used by the shared upload UI):
+      - X is required.
+      - y is optional.
+        * If y is present -> infer classification/regression (existing behavior).
+        * If y is missing -> treat as unsupervised and return task_inferred="unsupervised".
+
+    Training endpoints still require y for supervised models; this only affects the
+    upload/inspect step so the UI can support X-only datasets.
     """
-    X, y = load_dataset_strict(payload)
+    X, y = load_dataset_optional_y(payload)
     base = _build_common_inspect_fields(X)
 
-    task_inferred, y_summary = _infer_task_and_y_summary(y)
+    if y is None:
+        return {
+            **base,
+            "classes": [],
+            "class_counts": {},
+            "task_inferred": "unsupervised",
+            "y_summary": {"present": False},
+        }
 
-    # Legacy fields to avoid breaking UI
+    task_inferred, y_summary = _infer_task_and_y_summary(y)
     classes = y_summary.get("classes", [])
     class_counts = y_summary.get("class_counts", {})
 

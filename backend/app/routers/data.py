@@ -22,7 +22,13 @@ class InspectRequest(BaseModel):
 @router.post("/data/inspect")
 def inspect_endpoint(req: InspectRequest):
     """
-    TRAINING inspect (strict): requires y for separate-file workflows.
+    TRAINING inspect (smart):
+      - X required
+      - y optional
+
+    If y is missing, the response will set task_inferred="unsupervised" so the
+    frontend can route the user into unsupervised learning without a separate
+    upload flow.
     """
     from ..services.data_service import inspect_data
 

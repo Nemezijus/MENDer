@@ -26,6 +26,8 @@ import { useFeatureStore } from '../state/useFeatureStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useUnsupervisedStore } from '../state/useUnsupervisedStore.js';
 
+import { useShallow } from 'zustand/react/shallow';
+
 import { runUnsupervisedTrainRequest } from '../api/unsupervised.js';
 
 function cloneDefaults(obj) {
@@ -37,21 +39,39 @@ function cloneDefaults(obj) {
 export default function UnsupervisedTrainingPanel() {
   const schema = useSchemaDefaults();
 
-  const { xPath, yPath, npzPath, xKey, yKey } = useDataStore((s) => ({
-    xPath: s.xPath,
-    yPath: s.yPath,
-    npzPath: s.npzPath,
-    xKey: s.xKey,
-    yKey: s.yKey,
-  }));
+  // IMPORTANT (Zustand v5): avoid returning a new object from the selector.
+  // React 18's useSyncExternalStore expects getSnapshot to be stable.
+  // useShallow memoizes the selected object and prevents an infinite render loop.
+  const { xPath, yPath, npzPath, xKey, yKey } = useDataStore(
+    useShallow((s) => ({
+      xPath: s.xPath,
+      yPath: s.yPath,
+      npzPath: s.npzPath,
+      xKey: s.xKey,
+      yKey: s.yKey,
+    })),
+  );
 
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const setScaleMethod = useSettingsStore((s) => s.setScaleMethod);
 
   const features = useFeatureStore((s) => s);
 
-  const { algo, setAlgo, fitScope, setFitScope, metrics, setMetrics, includeClusterProbabilities, setIncludeClusterProbabilities, embeddingMethod, setEmbeddingMethod, embeddingMaxPoints, setEmbeddingMaxPoints } =
-    useUnsupervisedStore((s) => ({
+  const {
+    algo,
+    setAlgo,
+    fitScope,
+    setFitScope,
+    metrics,
+    setMetrics,
+    includeClusterProbabilities,
+    setIncludeClusterProbabilities,
+    embeddingMethod,
+    setEmbeddingMethod,
+    embeddingMaxPoints,
+    setEmbeddingMaxPoints,
+  } = useUnsupervisedStore(
+    useShallow((s) => ({
       algo: s.algo,
       setAlgo: s.setAlgo,
       fitScope: s.fitScope,
@@ -64,7 +84,8 @@ export default function UnsupervisedTrainingPanel() {
       setEmbeddingMethod: s.setEmbeddingMethod,
       embeddingMaxPoints: s.embeddingMaxPoints,
       setEmbeddingMaxPoints: s.setEmbeddingMaxPoints,
-    }));
+    })),
+  );
 
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
   const artifact = useModelArtifactStore((s) => s.artifact);

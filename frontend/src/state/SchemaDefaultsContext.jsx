@@ -101,6 +101,8 @@ export function useSchemaDefaults() {
         if (!m) return true; // if no meta, don't exclude
         const t = m.task;
         if (!t) return true;
+        // Backwards compatibility: older backends might call this "clustering".
+        if (t === 'clustering' && task === 'unsupervised') return true;
         if (Array.isArray(t)) return t.includes(task);
         return t === task;
       });
