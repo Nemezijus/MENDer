@@ -4,8 +4,8 @@ from typing import Protocol, Tuple, Any, Optional, Literal, Sequence, Iterator, 
 import numpy as np
 
 class DataLoader(Protocol):
-    def load(self) -> Tuple[np.ndarray, np.ndarray]:
-        """Return (X, y) with shapes (n_samples, n_features) and (n_samples,)."""
+    def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        """Return (X, y). For unsupervised/X-only data, y may be None."""
         ...
 
 class SanityChecker(Protocol):

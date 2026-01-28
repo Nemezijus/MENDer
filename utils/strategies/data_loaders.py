@@ -6,6 +6,21 @@ import numpy as np
 from shared_schemas.run_config import DataModel
 from utils.parse.data_read import load_mat_variable
 
+def _coerce_X_only(X: np.ndarray) -> np.ndarray:
+    """Basic coercion for X-only datasets (unsupervised).
+    Assumes X is already shaped as (n_samples, n_features).
+    """
+    X = np.asarray(X)
+    if X.ndim == 1:
+        X = X[:, None]
+    if X.ndim != 2:
+        raise ValueError(f"X must be 2D; got {X.shape}")
+    n_rows, n_cols = X.shape
+    if n_rows < 1 or n_cols < 1:
+        raise ValueError(f"X must have at least 1 sample and 1 feature; got {X.shape}")
+    print(f"[INFO] Loaded X-only shape = ({n_rows}, {n_cols})")
+    return X
+
 def _coerce_shapes(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     X = np.asarray(X)
     y = np.asarray(y).ravel()
@@ -57,34 +72,48 @@ def _coerce_shapes(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray
 @dataclass
 class NPZLoader:
     cfg: DataModel
-    def load(self) -> Tuple[np.ndarray, np.ndarray]:
+    def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         path = self.cfg.npz_path or self.cfg.x_path
         if not path:
             raise ValueError("NPZLoader needs npz_path (or x_path pointing to .npz).")
         data = np.load(path, allow_pickle=True)
-        if self.cfg.x_key not in data or self.cfg.y_key not in data:
+        if not self.cfg.x_key:
+            raise ValueError("NPZLoader requires x_key.")
+        if self.cfg.x_key not in data:
             raise KeyError(
-                f"Keys '{self.cfg.x_key}'/'{self.cfg.y_key}' not in {path}. "
-                f"Available: {list(data.keys())}"
+                f"Key '{self.cfg.x_key}' not in {path}. Available: {list(data.keys())}"
             )
         X = np.asarray(data[self.cfg.x_key])
-        y = np.asarray(data[self.cfg.y_key]).ravel()
-        return _coerce_shapes(X, y)
+
+        y: Optional[np.ndarray] = None
+        if self.cfg.y_key and self.cfg.y_key in data:
+            y = np.asarray(data[self.cfg.y_key]).ravel()
+            return _coerce_shapes(X, y)
+
+        # X-only NPZ bundle (unsupervised)
+        X = _coerce_X_only(X)
+        return X, None
 
 @dataclass
 class MatPairLoader:
     cfg: DataModel
-    def load(self) -> Tuple[np.ndarray, np.ndarray]:
-        if not (self.cfg.x_path and self.cfg.y_path):
-            raise ValueError("MatPairLoader needs both x_path and y_path.")
+    def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        if not self.cfg.x_path:
+            raise ValueError("MatPairLoader needs x_path.")
         X = np.asarray(load_mat_variable(self.cfg.x_path))
+
+        # X-only (unsupervised)
+        if not self.cfg.y_path:
+            X = _coerce_X_only(X)
+            return X, None
+
         y = np.asarray(load_mat_variable(self.cfg.y_path)).ravel()
         return _coerce_shapes(X, y)
 
 @dataclass
 class AutoLoader:
     cfg: DataModel
-    def load(self) -> Tuple[np.ndarray, np.ndarray]:
+    def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         # Prefer explicit npz if given
         if self.cfg.npz_path:
             return NPZLoader(self.cfg).load()

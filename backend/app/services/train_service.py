@@ -35,6 +35,8 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     try:
         loader = make_data_loader(cfg.data)
         X, y = loader.load()
+        if y is None:
+            raise LoadError("Supervised training requires both X and y. For X-only data, use Unsupervised learning.")
     except Exception as e:
         raise LoadError(str(e))
 
