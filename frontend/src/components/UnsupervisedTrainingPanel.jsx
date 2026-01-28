@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Stack, Card, Text, Group, Button, Alert, Divider, Code } from '@mantine/core';
+import { Stack, Card, Text, Group, Button, Alert, Title } from '@mantine/core';
 import { useShallow } from 'zustand/react/shallow';
-
-import ModelSelectionCard from './ModelSelectionCard.jsx';
-import UnsupervisedResultsPanel from './UnsupervisedResultsPanel.jsx';
 
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext.jsx';
 import { useDataStore } from '../state/useDataStore.js';
 import { useSettingsStore } from '../state/useSettingsStore.js';
 import { useFeatureStore } from '../state/useFeatureStore.js';
+import { useResultsStore } from '../state/useResultsStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 
+import ModelSelectionCard from './ModelSelectionCard.jsx';
 import { runUnsupervisedTrainRequest } from '../api/unsupervised.js';
 
 function cloneDefaults(obj) {
@@ -48,19 +47,16 @@ export default function UnsupervisedTrainingPanel() {
 
   // Global Settings
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
-  const features = useFeatureStore((s) => s); // contains features.method and associated params
+  const features = useFeatureStore((s) => s);
 
+  // Results + artifact persistence
+  const setTrainResult = useResultsStore((s) => s.setTrainResult);
+  const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
-  const artifact = useModelArtifactStore((s) => s.artifact);
 
   const [model, setModel] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
-
-  const handleModelChange = (next) => {
-    setModel(next);
-  };
 
   // Available unsupervised algorithms from backend meta
   const unsupAlgos = useMemo(() => {
@@ -77,17 +73,24 @@ export default function UnsupervisedTrainingPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unsupAlgos, schema]);
 
+  // Keep model hydrated with backend defaults for current algo
+  useEffect(() => {
+    if (!model?.algo) return;
+    const base = schema.getModelDefaults?.(model.algo) || { algo: model.algo };
+    setModel((prev) => ({ ...cloneDefaults(base), ...(prev || {}) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schema.getModelDefaults, model?.algo]);
+
   const hasX = !!(xPath || npzPath);
   const canRun = hasX && !!model?.algo && !schema.loading && !isRunning;
 
-  // LDA and SFS require y (supervised)
+  // LDA and SFS require y (supervised). For X-only unsupervised, override to 'none'.
   const needsY = features?.method === 'lda' || features?.method === 'sfs';
   const willOverrideFeatures = needsY && !yPath;
 
   const handleRun = async () => {
     setIsRunning(true);
     setError(null);
-    setResult(null);
 
     try {
       const safeFeatures = {
@@ -110,18 +113,18 @@ export default function UnsupervisedTrainingPanel() {
         task: 'unsupervised',
         data: {
           x_path: xPath || null,
-          y_path: yPath || null,     // ignored by backend for unsupervised
+          y_path: yPath || null, // ignored by backend for unsupervised
           npz_path: npzPath || null,
           x_key: xKey || null,
           y_key: yKey || null,
         },
-        // we train here; applying to production happens via Predictions tab
+        // Applying to production is done via the Predictions tab
         fit_scope: 'train_only',
         scale: { method: scaleMethod },
         features: safeFeatures,
         model,
         eval: {
-          // UI does not select metrics; backend computes default pack + model diagnostics
+          // Empty list => backend computes default pack (and model-specific diagnostics)
           metrics: [],
           compute_embedding_2d: true,
           embedding_method: 'pca',
@@ -133,7 +136,8 @@ export default function UnsupervisedTrainingPanel() {
       };
 
       const resp = await runUnsupervisedTrainRequest(payload);
-      setResult(resp);
+      setTrainResult(resp);
+      setActiveResultKind('train');
       if (resp?.artifact) setArtifact(resp.artifact);
     } catch (e) {
       setError(formatAxiosError(e));
@@ -144,68 +148,43 @@ export default function UnsupervisedTrainingPanel() {
 
   return (
     <Stack gap="md">
-      <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Stack gap="xs">
-          <Text fw={700} size="lg">
-            Unsupervised learning
-          </Text>
-          <Text size="sm" c="dimmed">
-            Uses the training data and settings you already configured in <b>Upload data &amp; models</b> and <b>Settings</b>.
-            This panel trains a clustering model and reports diagnostics. Use <b>Predictions</b> to apply a saved model to production data.
-          </Text>
-        </Stack>
-      </Card>
+      <Title order={2}>Train an unsupervised Model</Title>
 
-      <Card withBorder shadow="sm" radius="md" padding="lg">
+      <Card withBorder shadow="sm" radius="md" padding="md">
         <Stack gap="sm">
-          <Text fw={700}>Current data</Text>
+          <Group justify="space-between" align="flex-start" wrap="wrap">
+            <Text fw={600}>Configuration</Text>
+            <Button onClick={handleRun} disabled={!canRun} loading={isRunning}>
+              Run
+            </Button>
+          </Group>
 
           {!hasX ? (
-            <Alert color="red" title="Missing X">
+            <Alert color="red" title="Missing Feature matrix (X)">
               Select a Feature matrix (X) in <b>Upload data &amp; models</b>.
-            </Alert>
-          ) : (
-            <Stack gap={6}>
-              <Text size="sm">
-                X: <Code>{npzPath || xPath}</Code>
-              </Text>
-              {yPath ? (
-                <Alert color="blue" title="Note">
-                  A <b>y</b> file is present, but unsupervised training ignores it.
-                </Alert>
-              ) : null}
-            </Stack>
-          )}
-        </Stack>
-      </Card>
-
-      <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Stack gap="sm">
-          <Text fw={700}>Using global Settings</Text>
-          <Text size="sm">
-            Scaling: <Code>{scaleMethod}</Code>
-          </Text>
-          <Text size="sm">
-            Features: <Code>{features?.method}</Code>
-          </Text>
-
-          {willOverrideFeatures ? (
-            <Alert color="yellow" title="Feature method overridden">
-              Your current Features method is <b>{features.method}</b>, which requires <b>y</b>.
-              Since you are training unsupervised (X-only), this run will use <Code>none</Code> for Features.
-              Change this in the <b>Settings</b> tab if you want a different unsupervised-compatible reduction (e.g., PCA).
             </Alert>
           ) : null}
 
-          <Text size="sm" c="dimmed">
-            Metrics are not selected here — the backend computes the default unsupervised metric pack (when applicable) and model-specific diagnostics automatically.
-          </Text>
+          {willOverrideFeatures ? (
+            <Alert color="yellow" title="Features overridden for X-only unsupervised">
+              Your current Features method (<b>{features.method}</b>) requires <b>y</b>. Since this run is X-only,
+              Features will be treated as <b>None</b>. You can change this in the <b>Settings</b> tab (e.g., use PCA).
+            </Alert>
+          ) : null}
+
+          {error ? (
+            <Alert color="red" title="Error">
+              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                {error}
+              </Text>
+            </Alert>
+          ) : null}
         </Stack>
       </Card>
 
       <ModelSelectionCard
         model={model}
-        onChange={handleModelChange}
+        onChange={setModel}
         schema={schema.models?.schema}
         enums={schema.enums}
         models={schema.models}
@@ -213,30 +192,9 @@ export default function UnsupervisedTrainingPanel() {
         showHelp
       />
 
-      <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Stack gap="md">
-          <Group justify="space-between" wrap="wrap">
-            <Button onClick={handleRun} disabled={!canRun} loading={isRunning}>
-              Train unsupervised model
-            </Button>
-            {model?.algo ? (
-              <Text size="sm" c="dimmed">
-                Selected algorithm: <b>{model.algo}</b>
-              </Text>
-            ) : null}
-          </Group>
-
-          <Divider />
-
-          {error ? (
-            <Alert color="red" title="Error">
-              <Code block>{error}</Code>
-            </Alert>
-          ) : null}
-        </Stack>
-      </Card>
-
-      <UnsupervisedResultsPanel result={result} artifact={artifact} />
+      <Text size="sm" c="dimmed">
+        This uses your current global Scaling / Metric / Features settings from the Settings section.
+      </Text>
     </Stack>
   );
 }

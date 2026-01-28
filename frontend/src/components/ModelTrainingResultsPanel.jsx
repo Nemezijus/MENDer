@@ -6,9 +6,17 @@ import BaselineShufflingResults from './visualizations/BaselineShufflingResults.
 import ClassificationResultsPanel from './ClassificationResultsPanel.jsx';
 import RegressionResultsPanel from './RegressionResultsPanel.jsx';
 import DecoderOutputsResults from './visualizations/DecoderOutputsResults.jsx';
+import UnsupervisedResultsPanel from './UnsupervisedResultsPanel.jsx';
 
 export default function ModelTrainingResultsPanel() {
   const trainResult = useResultsStore((s) => s.trainResult);
+
+  const task =
+    trainResult?.task ||
+    trainResult?.artifact?.kind ||
+    null;
+
+  const isUnsupervised = task === 'unsupervised';
 
   const isCV = trainResult && Array.isArray(trainResult.fold_scores);
 
@@ -26,30 +34,31 @@ export default function ModelTrainingResultsPanel() {
   }
 
   const isClassification =
-    trainResult?.artifact?.kind === 'classification' ||
-    // fallback heuristic: confusion matrix present & non-empty
-    (trainResult.confusion &&
+    task === 'classification' ||
+    (trainResult?.confusion &&
       Array.isArray(trainResult.confusion.matrix) &&
       trainResult.confusion.matrix.length > 0);
 
   const isRegression =
-    trainResult?.artifact?.kind === 'regression' ||
-    (trainResult.regression && typeof trainResult.regression === 'object');
+    task === 'regression' ||
+    (trainResult?.regression && typeof trainResult.regression === 'object');
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={500}>Results</Text>
 
-        <GeneralSummary
-          isCV={!!isCV}
-          metricName={trainResult.metric_name}
-          metricValue={trainResult.metric_value}
-          meanScore={trainResult.mean_score}
-          stdScore={trainResult.std_score}
-          nTrain={trainResult.n_train}
-          nTest={trainResult.n_test}
-        />
+        {!isUnsupervised && (
+          <GeneralSummary
+            isCV={!!isCV}
+            metricName={trainResult.metric_name}
+            metricValue={trainResult.metric_value}
+            meanScore={trainResult.mean_score}
+            stdScore={trainResult.std_score}
+            nTrain={trainResult.n_train}
+            nTest={trainResult.n_test}
+          />
+        )}
 
         {isCV && (
           <KFoldResults
@@ -61,14 +70,16 @@ export default function ModelTrainingResultsPanel() {
           />
         )}
 
-        {isClassification && (
+        {isUnsupervised && <UnsupervisedResultsPanel trainResult={trainResult} />}
+
+        {isClassification && !isUnsupervised && (
           <>
             <ClassificationResultsPanel trainResult={trainResult} />
             <DecoderOutputsResults trainResult={trainResult} />
           </>
         )}
 
-        {isRegression && !isClassification && (
+        {isRegression && !isClassification && !isUnsupervised && (
           <>
             <RegressionResultsPanel trainResult={trainResult} />
             <DecoderOutputsResults trainResult={trainResult} />
