@@ -31,6 +31,11 @@ const SECTION_GROUPS = [
         description: 'Choose algorithm and fit on current data',
       },
       {
+        id: 'train-unsupervised',
+        label: 'Unsupervised learning',
+        description: 'Clustering models (X-only)',
+      },
+      {
         id: 'train-ensemble',
         label: 'Train an Ensemble',
         description: 'Perform ensemble model training',

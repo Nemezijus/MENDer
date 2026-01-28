@@ -40,6 +40,8 @@ export function ModelDetailsText({
       ? 'You are working on a classification task, so classification algorithms are most relevant.'
       : effectiveTask === 'regression'
       ? 'You are working on a regression task, so regression algorithms are most relevant.'
+      : effectiveTask === 'unsupervised'
+      ? 'You are working on an unsupervised task, so clustering / mixture models are most relevant.'
       : 'If the task is not set yet, you can still explore models. They will be filtered once the task is known.';
 
   return (
@@ -275,6 +277,78 @@ export function ModelDetailsText({
               Random forest regressor
             </Text>{' '}
             – ensemble of regression trees. Strong default for tabular regression problems.
+          </List.Item>
+        )}
+
+        {isVisible('kmeans') && (
+          <List.Item>
+            <Text span {...labelStyle('kmeans')}>
+              K-Means
+            </Text>{' '}
+            – partitions data into a fixed number of clusters by minimising within-cluster distance. Fast, strong baseline when clusters are roughly spherical.
+          </List.Item>
+        )}
+
+        {isVisible('dbscan') && (
+          <List.Item>
+            <Text span {...labelStyle('dbscan')}>
+              DBSCAN
+            </Text>{' '}
+            – density-based clustering that can find arbitrary-shaped clusters and label outliers as noise. Does not require choosing the number of clusters.
+          </List.Item>
+        )}
+
+        {isVisible('spectral') && (
+          <List.Item>
+            <Text span {...labelStyle('spectral')}>
+              Spectral clustering
+            </Text>{' '}
+            – graph-based clustering that can capture complex cluster shapes. Often slower than K-Means on large datasets.
+          </List.Item>
+        )}
+
+        {isVisible('agglo') && (
+          <List.Item>
+            <Text span {...labelStyle('agglo')}>
+              Agglomerative clustering
+            </Text>{' '}
+            – hierarchical clustering that merges samples step-by-step. Useful when you want linkage-based structure.
+          </List.Item>
+        )}
+
+        {isVisible('gmm') && (
+          <List.Item>
+            <Text span {...labelStyle('gmm')}>
+              Gaussian mixture model
+            </Text>{' '}
+            – probabilistic clustering that models each cluster as a Gaussian component. Can provide soft assignments.
+          </List.Item>
+        )}
+
+        {isVisible('bgmm') && (
+          <List.Item>
+            <Text span {...labelStyle('bgmm')}>
+              Bayesian Gaussian mixture
+            </Text>{' '}
+            – mixture model with Bayesian regularisation that can shrink unused components. Often more stable with limited data.
+          </List.Item>
+        )}
+
+        {isVisible('meanshift') && (
+          <List.Item>
+            <Text span {...labelStyle('meanshift')}>
+              MeanShift
+            </Text>{' '}
+            – mode-seeking clustering that can discover the number of clusters based on bandwidth. Can be expensive on large datasets.
+          </List.Item>
+        )}
+
+        {isVisible('birch') && (
+          <List.Item>
+            <Text span {...labelStyle('birch')}>
+              Birch
+            </Text>{' '}
+            – scalable clustering based on a compact tree representation. Useful for larger datasets.
           </List.Item>
         )}
 
@@ -538,6 +612,172 @@ export function ModelParamsText({ selectedAlgo }) {
               <Text span fw={600}>Break ties</Text>{' '}
               – refines tie-breaking between classes in multi-class settings,
               at a small computational cost.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'kmeans':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            K-Means parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>n_clusters</Text>{' '}
+              – number of clusters to form.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>init</Text>{' '}
+              – initialisation method (k-means++ is a strong default).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>n_init</Text>{' '}
+              – number of initialisations. More initialisations can improve stability.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>max_iter</Text>{' '}
+              – maximum iterations per initialisation.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'dbscan':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            DBSCAN parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>eps</Text>{' '}
+              – neighbourhood radius. Most important parameter.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>min_samples</Text>{' '}
+              – minimum neighbours needed to be a core point. Higher values make clustering more conservative.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>metric</Text>{' '}
+              – distance metric.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'spectral':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            Spectral clustering parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>n_clusters</Text>{' '}
+              – number of clusters.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>affinity</Text>{' '}
+              – how to build the similarity graph (rbf, nearest_neighbors, ...).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>gamma</Text>{' '}
+              – used for rbf affinity; controls how local the similarity is.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'agglo':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            Agglomerative clustering parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>n_clusters</Text>{' '}
+              – number of clusters.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>linkage</Text>{' '}
+              – how clusters are merged (ward, complete, average, single).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>metric</Text>{' '}
+              – distance metric (for non-ward linkages).
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'gmm':
+    case 'bgmm':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            {selectedAlgo === 'bgmm' ? 'Bayesian Gaussian Mixture' : 'Gaussian Mixture'} parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>n_components</Text>{' '}
+              – maximum number of mixture components.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>covariance_type</Text>{' '}
+              – shape of covariance (full, diag, tied, spherical).
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>reg_covar</Text>{' '}
+              – adds a small value to the diagonal for numerical stability.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>max_iter</Text>{' '}
+              – EM iterations.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'meanshift':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            MeanShift parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>bandwidth</Text>{' '}
+              – kernel bandwidth. If not set, it can be estimated but may be slow.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>bin_seeding</Text>{' '}
+              – speed optimisation that seeds from binned points.
+            </List.Item>
+          </List>
+        </Stack>
+      );
+
+    case 'birch':
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            Birch parameters
+          </Text>
+          <List spacing={4} size="xs">
+            <List.Item>
+              <Text span fw={600}>threshold</Text>{' '}
+              – radius threshold for creating new subclusters.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>branching_factor</Text>{' '}
+              – maximum number of subclusters in each node.
+            </List.Item>
+            <List.Item>
+              <Text span fw={600}>n_clusters</Text>{' '}
+              – optional final clustering step (e.g. an integer number of clusters).
             </List.Item>
           </List>
         </Stack>

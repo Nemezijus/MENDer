@@ -12,7 +12,7 @@ import {
   Button,
   TextInput,
 } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDataStore } from '../state/useDataStore.js';
 import ModelHelpText, {
   ModelIntroText,
@@ -151,6 +151,16 @@ const ALGO_LABELS = {
   knnreg: 'k-Nearest Neighbors Regressor',
   treereg: 'Decision Tree Regressor',
   rfreg: 'Random Forest Regressor',
+
+  // -------- unsupervised --------
+  kmeans: 'K-Means',
+  dbscan: 'DBSCAN',
+  spectral: 'Spectral Clustering',
+  agglo: 'Agglomerative Clustering',
+  gmm: 'Gaussian Mixture',
+  bgmm: 'Bayesian Gaussian Mixture',
+  meanshift: 'MeanShift',
+  birch: 'Birch',
 };
 
 function algoKeyToLabel(algo) {
@@ -187,6 +197,7 @@ export default function ModelSelectionCard({
   schema,
   enums,
   models,
+  taskOverride = null,
   showHelp = false,
 }) {
   const m = model || {};
@@ -215,9 +226,10 @@ export default function ModelSelectionCard({
     }
   };
 
-  const effectiveTask = useDataStore(
+  const inferredTask = useDataStore(
     (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
   );
+  const effectiveTask = taskOverride ?? inferredTask;
 
   // Prefer schema -> defaults -> known fallback
   const schemaAlgos = algoListFromSchema(schema);
@@ -251,6 +263,16 @@ export default function ModelSelectionCard({
         'knnreg',
         'treereg',
         'rfreg',
+
+        // unsupervised
+        'kmeans',
+        'dbscan',
+        'spectral',
+        'agglo',
+        'gmm',
+        'bgmm',
+        'meanshift',
+        'birch',
       ],
   );
 
@@ -283,6 +305,16 @@ export default function ModelSelectionCard({
       'treereg',
       'rfreg',
     ],
+    unsupervised: [
+      'kmeans',
+      'gmm',
+      'bgmm',
+      'agglo',
+      'spectral',
+      'birch',
+      'meanshift',
+      'dbscan',
+    ],
   };
 
   const preferred =
@@ -290,6 +322,7 @@ export default function ModelSelectionCard({
     [
       ...preferredByTask.classification,
       ...preferredByTask.regression,
+      ...preferredByTask.unsupervised,
     ];
 
   const orderedAll = [
@@ -301,14 +334,23 @@ export default function ModelSelectionCard({
   const meta = models?.meta || {};
   const matchesTask = (algo) => {
     if (!effectiveTask) return true; // no filter if task unknown
-    const t = meta[algo]?.task; // 'classification' | 'regression' | undefined
+    let t = meta[algo]?.task; // 'classification' | 'regression' | 'unsupervised' | ...
     if (!t) return true; // if backend didn’t annotate, don’t hide it
+
+    // Backwards-compat: older backends may use "clustering".
+    if (t === 'clustering') t = 'unsupervised';
+
+    if (Array.isArray(t)) return t.includes(effectiveTask);
     return t === effectiveTask;
   };
   const ordered = orderedAll.filter(matchesTask);
 
   // Final visible algo list for this card
   const visibleAlgos = ordered.length ? ordered : orderedAll;
+  const visibleKey = useMemo(
+    () => (visibleAlgos && visibleAlgos.length ? visibleAlgos.join('|') : ''),
+    [visibleAlgos],
+  );
   const algoData = (visibleAlgos ?? []).map((a) => ({
     value: String(a),
     label: algoKeyToLabel(a),
@@ -318,13 +360,19 @@ export default function ModelSelectionCard({
   useEffect(() => {
     if (!visibleAlgos.length) return;
     const current = m.algo;
+
+    // If nothing matches the task filter (e.g. older meta), fall back to "available" only.
+    const hasTaskFilteredList = ordered.length > 0;
+
     const isValid =
-      current && visibleAlgos.includes(current) && matchesTask(current);
+      current &&
+      visibleAlgos.includes(current) &&
+      (hasTaskFilteredList ? matchesTask(current) : true);
     if (!isValid) {
       applyAlgo(visibleAlgos[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTask, JSON.stringify(visibleAlgos), JSON.stringify(meta)]);
+  }, [effectiveTask, visibleKey, meta, m.algo]);
 
   const sub = getAlgoSchema(schema, m.algo);
 
@@ -2220,6 +2268,464 @@ export default function ModelSelectionCard({
               label="Max samples"
               value={m.max_samples ?? null}
               onChange={(v) => set({ max_samples: v })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* KMeans */}
+      {m.algo === 'kmeans' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Clusters (n_clusters)"
+              value={m.n_clusters ?? 8}
+              onChange={(v) => set({ n_clusters: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Init"
+              data={toSelectData(enumFromSubSchema(sub, 'init', ['k-means++', 'random']))}
+              value={m.init ?? 'k-means++'}
+              onChange={(v) => set({ init: v })}
+            />
+            <TextInput
+              label="n_init (auto or int)"
+              value={m.n_init == null ? 'auto' : String(m.n_init)}
+              onChange={(e) => {
+                const raw = e.currentTarget.value;
+                const t = String(raw ?? '').trim();
+                if (!t || t.toLowerCase() === 'auto') {
+                  set({ n_init: 'auto' });
+                  return;
+                }
+                const n = Number(t);
+                set({ n_init: Number.isFinite(n) ? Math.max(1, Math.trunc(n)) : 'auto' });
+              }}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 300}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-4}
+              onChange={(v) => set({ tol: v })}
+              step={1e-5}
+              min={0}
+            />
+            <NumberInput
+              label="Verbose"
+              value={m.verbose ?? 0}
+              onChange={(v) => set({ verbose: v })}
+              allowDecimal={false}
+              min={0}
+            />
+            <Select
+              label="Algorithm"
+              data={toSelectData(enumFromSubSchema(sub, 'algorithm', ['lloyd', 'elkan', 'auto']))}
+              value={m.algorithm ?? 'lloyd'}
+              onChange={(v) => set({ algorithm: v })}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* DBSCAN */}
+      {m.algo === 'dbscan' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="eps"
+              value={m.eps ?? 0.5}
+              onChange={(v) => set({ eps: v })}
+              step={0.01}
+              min={0}
+            />
+            <NumberInput
+              label="min_samples"
+              value={m.min_samples ?? 5}
+              onChange={(v) => set({ min_samples: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <TextInput
+              label="Metric"
+              value={m.metric ?? 'euclidean'}
+              onChange={(e) => set({ metric: e.currentTarget.value })}
+            />
+            <Select
+              label="Algorithm"
+              data={toSelectData(enumFromSubSchema(sub, 'algorithm', ['auto', 'ball_tree', 'kd_tree', 'brute']))}
+              value={m.algorithm ?? 'auto'}
+              onChange={(v) => set({ algorithm: v })}
+            />
+            <NumberInput
+              label="Leaf size"
+              value={m.leaf_size ?? 30}
+              onChange={(v) => set({ leaf_size: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="p"
+              value={m.p ?? null}
+              onChange={(v) => set({ p: v })}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Spectral Clustering */}
+      {m.algo === 'spectral' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Clusters (n_clusters)"
+              value={m.n_clusters ?? 8}
+              onChange={(v) => set({ n_clusters: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <Select
+              label="Affinity"
+              data={toSelectData(enumFromSubSchema(sub, 'affinity', ['rbf', 'nearest_neighbors']))}
+              value={m.affinity ?? 'rbf'}
+              onChange={(v) => set({ affinity: v })}
+            />
+            <Select
+              label="Assign labels"
+              data={toSelectData(enumFromSubSchema(sub, 'assign_labels', ['kmeans', 'discretize', 'cluster_qr']))}
+              value={m.assign_labels ?? 'kmeans'}
+              onChange={(v) => set({ assign_labels: v })}
+            />
+            <NumberInput
+              label="n_init"
+              value={m.n_init ?? 10}
+              onChange={(v) => set({ n_init: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Gamma"
+              value={m.gamma ?? 1.0}
+              onChange={(v) => set({ gamma: v })}
+              step={0.1}
+              min={0}
+            />
+            <NumberInput
+              label="Neighbours (n_neighbors)"
+              value={m.n_neighbors ?? 10}
+              onChange={(v) => set({ n_neighbors: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Agglomerative Clustering */}
+      {m.algo === 'agglo' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Clusters (n_clusters)"
+              value={m.n_clusters ?? 2}
+              onChange={(v) => set({ n_clusters: v })}
+              allowDecimal={false}
+              min={2}
+            />
+            <Select
+              label="Linkage"
+              data={toSelectData(enumFromSubSchema(sub, 'linkage', ['ward', 'complete', 'average', 'single']))}
+              value={m.linkage ?? 'ward'}
+              onChange={(v) => set({ linkage: v })}
+            />
+            <TextInput
+              label="Metric"
+              value={m.metric ?? 'euclidean'}
+              onChange={(e) => set({ metric: e.currentTarget.value })}
+            />
+            <NumberInput
+              label="Distance threshold"
+              value={m.distance_threshold ?? null}
+              onChange={(v) => set({ distance_threshold: v })}
+              min={0}
+            />
+            <Select
+              label="Compute full tree"
+              data={[
+                { value: 'auto', label: 'auto' },
+                { value: 'true', label: 'true' },
+                { value: 'false', label: 'false' },
+              ]}
+              value={
+                m.compute_full_tree === true
+                  ? 'true'
+                  : m.compute_full_tree === false
+                  ? 'false'
+                  : 'auto'
+              }
+              onChange={(v) => {
+                if (v === 'true') set({ compute_full_tree: true });
+                else if (v === 'false') set({ compute_full_tree: false });
+                else set({ compute_full_tree: 'auto' });
+              }}
+            />
+            <Checkbox
+              label="Compute distances"
+              checked={!!m.compute_distances}
+              onChange={(e) => set({ compute_distances: e.currentTarget.checked })}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Gaussian Mixture */}
+      {m.algo === 'gmm' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Components (n_components)"
+              value={m.n_components ?? 1}
+              onChange={(v) => set({ n_components: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Covariance type"
+              data={toSelectData(enumFromSubSchema(sub, 'covariance_type', ['full', 'tied', 'diag', 'spherical']))}
+              value={m.covariance_type ?? 'full'}
+              onChange={(v) => set({ covariance_type: v })}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-3}
+              onChange={(v) => set({ tol: v })}
+              step={1e-4}
+              min={0}
+            />
+            <NumberInput
+              label="Reg covar"
+              value={m.reg_covar ?? 1e-6}
+              onChange={(v) => set({ reg_covar: v })}
+              step={1e-6}
+              min={0}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 100}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="n_init"
+              value={m.n_init ?? 1}
+              onChange={(v) => set({ n_init: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Init params"
+              data={toSelectData(enumFromSubSchema(sub, 'init_params', ['kmeans', 'k-means++', 'random', 'random_from_data']))}
+              value={m.init_params ?? 'kmeans'}
+              onChange={(v) => set({ init_params: v })}
+            />
+            <Checkbox
+              label="Warm start"
+              checked={!!m.warm_start}
+              onChange={(e) => set({ warm_start: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Verbose"
+              value={m.verbose ?? 0}
+              onChange={(v) => set({ verbose: v })}
+              allowDecimal={false}
+              min={0}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Bayesian Gaussian Mixture */}
+      {m.algo === 'bgmm' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Components (n_components)"
+              value={m.n_components ?? 1}
+              onChange={(v) => set({ n_components: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Covariance type"
+              data={toSelectData(enumFromSubSchema(sub, 'covariance_type', ['full', 'tied', 'diag', 'spherical']))}
+              value={m.covariance_type ?? 'full'}
+              onChange={(v) => set({ covariance_type: v })}
+            />
+            <NumberInput
+              label="Tolerance"
+              value={m.tol ?? 1e-3}
+              onChange={(v) => set({ tol: v })}
+              step={1e-4}
+              min={0}
+            />
+            <NumberInput
+              label="Reg covar"
+              value={m.reg_covar ?? 1e-6}
+              onChange={(v) => set({ reg_covar: v })}
+              step={1e-6}
+              min={0}
+            />
+            <NumberInput
+              label="Max iterations"
+              value={m.max_iter ?? 100}
+              onChange={(v) => set({ max_iter: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="n_init"
+              value={m.n_init ?? 1}
+              onChange={(v) => set({ n_init: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Select
+              label="Init params"
+              data={toSelectData(enumFromSubSchema(sub, 'init_params', ['kmeans', 'k-means++', 'random', 'random_from_data']))}
+              value={m.init_params ?? 'kmeans'}
+              onChange={(v) => set({ init_params: v })}
+            />
+            <Select
+              label="Weight concentration prior type"
+              data={toSelectData(enumFromSubSchema(sub, 'weight_concentration_prior_type', ['dirichlet_process', 'dirichlet_distribution']))}
+              value={m.weight_concentration_prior_type ?? 'dirichlet_process'}
+              onChange={(v) => set({ weight_concentration_prior_type: v })}
+            />
+            <Checkbox
+              label="Warm start"
+              checked={!!m.warm_start}
+              onChange={(e) => set({ warm_start: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Verbose"
+              value={m.verbose ?? 0}
+              onChange={(v) => set({ verbose: v })}
+              allowDecimal={false}
+              min={0}
+            />
+            <NumberInput
+              label="Random state"
+              value={m.random_state ?? null}
+              onChange={(v) => set({ random_state: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* MeanShift */}
+      {m.algo === 'meanshift' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Bandwidth (optional)"
+              value={m.bandwidth ?? null}
+              onChange={(v) => set({ bandwidth: v })}
+              min={0}
+            />
+            <Checkbox
+              label="Bin seeding"
+              checked={!!m.bin_seeding}
+              onChange={(e) => set({ bin_seeding: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Min bin freq"
+              value={m.min_bin_freq ?? 1}
+              onChange={(v) => set({ min_bin_freq: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Checkbox
+              label="Cluster all"
+              checked={m.cluster_all ?? true}
+              onChange={(e) => set({ cluster_all: e.currentTarget.checked })}
+            />
+            <NumberInput
+              label="Jobs (n_jobs)"
+              value={m.n_jobs ?? null}
+              onChange={(v) => set({ n_jobs: v })}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {/* Birch */}
+      {m.algo === 'birch' && (
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <NumberInput
+              label="Threshold"
+              value={m.threshold ?? 0.5}
+              onChange={(v) => set({ threshold: v })}
+              step={0.01}
+              min={0}
+            />
+            <NumberInput
+              label="Branching factor"
+              value={m.branching_factor ?? 50}
+              onChange={(v) => set({ branching_factor: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <NumberInput
+              label="n_clusters (optional)"
+              value={m.n_clusters ?? 3}
+              onChange={(v) => set({ n_clusters: v })}
+              allowDecimal={false}
+              min={1}
+            />
+            <Checkbox
+              label="Compute labels"
+              checked={m.compute_labels ?? true}
+              onChange={(e) => set({ compute_labels: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="Copy"
+              checked={m.copy ?? true}
+              onChange={(e) => set({ copy: e.currentTarget.checked })}
             />
           </SimpleGrid>
         </Stack>

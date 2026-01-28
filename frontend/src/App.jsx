@@ -16,6 +16,7 @@ import ValidationCurvePanel from './components/ValidationCurvePanel.jsx';
 import GridSearchPanel from './components/GridSearchPanel.jsx';
 import RandomSearchPanel from './components/RandomSearchPanel.jsx';
 import EnsembleTrainingPanel from './components/EnsembleTrainingPanel.jsx';
+import UnsupervisedTrainingPanel from './components/UnsupervisedTrainingPanel.jsx';
 
 const COLUMN_GAP = 'var(--mantine-spacing-lg)';
 
@@ -84,6 +85,19 @@ export default function App() {
             </DataGuard>
           </Stack>
         );
+
+      case 'train-unsupervised':
+        return (
+          <Stack gap="md">
+            <Title order={3} align="center">
+              Unsupervised learning
+            </Title>
+            <DataGuard>
+              <UnsupervisedTrainingPanel />
+            </DataGuard>
+          </Stack>
+        );
+
       case 'learning-curve':
         return (
           <Stack gap="md">

@@ -44,6 +44,8 @@ export function useSchemaDefaults() {
         split: null,
         eval: null,
 
+        unsupervised: null,
+
         enums: {},
         loading: isLoading,
         error: isError ? (error ?? null) : null,
@@ -51,6 +53,8 @@ export function useSchemaDefaults() {
         getModelDefaults: () => null,
         getModelMeta: () => null,
         getCompatibleAlgos: () => [],
+
+        getUnsupervisedEvalDefaults: () => null,
 
         getEnsembleDefaults: () => null,
         getCompatibleEnsembles: () => [],
@@ -64,6 +68,14 @@ export function useSchemaDefaults() {
     const features = data.features ?? null;
     const split = data.split ?? null;
     const evalCfg = data.eval ?? null;
+
+    // Optional unsupervised (clustering) defaults
+    const unsupervised = data.unsupervised ?? null;
+    const unsupervisedEval = unsupervised?.eval ?? null;
+    // unsupervised.run exists mainly to expose schema/defaults for UI, but it
+    // will be partially-populated because model selection is required.
+    const unsupervisedRun = unsupervised?.run ?? null;
+
     const enums = data.enums ?? {};
 
     // ---- models helpers ----------------------------------------------------
@@ -94,6 +106,11 @@ export function useSchemaDefaults() {
       });
     };
 
+    // ---- unsupervised helpers --------------------------------------------
+    const getUnsupervisedEvalDefaults = () => {
+      return unsupervisedEval?.defaults ?? null;
+    };
+
     // ---- ensembles helpers -------------------------------------------------
     const ensembleDefaults = ensembles?.defaults ?? {};
 
@@ -117,6 +134,14 @@ export function useSchemaDefaults() {
       split,
       eval: evalCfg,
 
+      unsupervised: unsupervised
+        ? {
+            ...unsupervised,
+            eval: unsupervisedEval,
+            run: unsupervisedRun,
+          }
+        : null,
+
       enums,
       loading: isLoading,
       error: isError ? (error ?? null) : null,
@@ -124,6 +149,8 @@ export function useSchemaDefaults() {
       getModelDefaults,
       getModelMeta,
       getCompatibleAlgos,
+
+      getUnsupervisedEvalDefaults,
 
       getEnsembleDefaults,
       getCompatibleEnsembles,
