@@ -1,8 +1,13 @@
-import { useEffect } from 'react';
-import { Card, Stack, Text, Select, Group, Box } from '@mantine/core';
+import { useEffect, useMemo } from 'react';
+import { Card, Stack, Text, Select, Group, Box, MultiSelect } from '@mantine/core';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useDataStore } from '../state/useDataStore.js';
 import MetricHelpText, { MetricIntroText } from './helpers/helpTexts/MetricHelpText.jsx';
+
+function normalizeTaskName(t) {
+  if (!t) return null;
+  return t === 'clustering' ? 'unsupervised' : t;
+}
 
 export default function MetricCard({
   title = 'Metric',
@@ -11,40 +16,54 @@ export default function MetricCard({
 }) {
   const { enums } = useSchemaDefaults();
 
-  const effectiveTask = useDataStore(
-    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
-  );
+  const effectiveTask = useDataStore((s) => {
+    const raw = s.taskSelected || s.inspectReport?.task_inferred || null;
+    return normalizeTaskName(raw);
+  });
 
   const metricByTask = enums?.MetricByTask || null;
+  const isUnsupervised = effectiveTask === 'unsupervised';
 
-  let rawList;
-  if (
-    metricByTask &&
-    effectiveTask &&
-    Array.isArray(metricByTask[effectiveTask])
-  ) {
-    // Prefer backend-provided task-specific list
-    rawList = metricByTask[effectiveTask];
-  } else if (Array.isArray(enums?.MetricName)) {
-    // Fallback: all metrics
-    rawList = enums.MetricName;
-  } else {
+  const rawList = useMemo(() => {
+    if (isUnsupervised) {
+      if (Array.isArray(enums?.UnsupervisedMetricName)) return enums.UnsupervisedMetricName;
+      return ['silhouette', 'davies_bouldin', 'calinski_harabasz'];
+    }
+
+    if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
+      // Prefer backend-provided task-specific list
+      return metricByTask[effectiveTask];
+    }
+    if (Array.isArray(enums?.MetricName)) {
+      // Fallback: all supervised metrics
+      return enums.MetricName;
+    }
     // Legacy fallback
-    rawList = ['accuracy', 'balanced_accuracy', 'f1_macro'];
-  }
+    return ['accuracy', 'balanced_accuracy', 'f1_macro'];
+  }, [enums, metricByTask, effectiveTask, isUnsupervised]);
 
-  // Ensure the selected value is always in the current option list.
+  // Ensure the selected metric(s) are always in the current option list.
+  // - supervised: keep a valid single metric selected
+  // - unsupervised: allow empty selection; just drop invalid entries
   useEffect(() => {
     if (!rawList || rawList.length === 0) return;
+    if (typeof onChange !== 'function') return;
+
+    if (isUnsupervised) {
+      const arr = Array.isArray(value) ? value : value ? [String(value)] : [];
+      const filtered = arr.filter((m) => rawList.includes(m));
+      if (filtered.length !== arr.length) {
+        onChange(filtered);
+      }
+      return;
+    }
 
     const isValid = rawList.includes(value);
     if (!isValid) {
       const first = rawList[0];
-      if (first != null && typeof onChange === 'function') {
-        onChange(String(first));
-      }
+      if (first != null) onChange(String(first));
     }
-  }, [rawList, value, onChange]);
+  }, [rawList, value, onChange, isUnsupervised]);
 
   const metricOptions = rawList.map((v) => ({
     value: String(v),
@@ -137,9 +156,25 @@ export default function MetricCard({
       direction:
         'lower is better; expresses error as a percentage of the true value, but can blow up near zero targets.',
     },
+    silhouette: {
+      range: '[-1, 1]',
+      direction: 'higher is better; values near 1 indicate dense, well-separated clusters.',
+    },
+    davies_bouldin: {
+      range: '[0, ∞)',
+      direction: 'lower is better; 0 indicates perfect separation.',
+    },
+    calinski_harabasz: {
+      range: '[0, ∞)',
+      direction: 'higher is better; ratio of between-cluster to within-cluster dispersion.',
+    },
   };
 
-  const selectedMeta = value ? metricMeta[value] : null;
+  const selectedSingle = isUnsupervised
+    ? (Array.isArray(value) ? value[0] : value) || null
+    : value || null;
+
+  const selectedMeta = selectedSingle ? metricMeta[selectedSingle] : null;
 
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -153,18 +188,36 @@ export default function MetricCard({
         <Group align="flex-start" gap="xl" grow wrap="nowrap">
           <Box style={{ flex: 1, minWidth: 0 }}>
             <Stack gap="xs">
-              <Select
-                label="Metric method"
-                data={metricOptions}
-                value={value}
-                onChange={onChange}
-                styles={{
-                  input: {
-                    borderWidth: 2,
-                    borderColor: '#5c94ccff',
-                  },
-                }}
-              />
+              {isUnsupervised ? (
+                <MultiSelect
+                  label="Metrics"
+                  description="Optional. If empty, the backend will compute a default set."
+                  data={metricOptions}
+                  value={Array.isArray(value) ? value : value ? [String(value)] : []}
+                  onChange={onChange}
+                  searchable
+                  clearable
+                  styles={{
+                    input: {
+                      borderWidth: 2,
+                      borderColor: '#5c94ccff',
+                    },
+                  }}
+                />
+              ) : (
+                <Select
+                  label="Metric method"
+                  data={metricOptions}
+                  value={value}
+                  onChange={onChange}
+                  styles={{
+                    input: {
+                      borderWidth: 2,
+                      borderColor: '#5c94ccff',
+                    },
+                  }}
+                />
+              )}
 
               {selectedMeta && (
                 <Text size="xs" c="dimmed">
@@ -190,7 +243,7 @@ export default function MetricCard({
 
         {/* C: full-width detailed help text, with the selected metric highlighted */}
         <Box mt="md">
-          <MetricHelpText selectedMetric={value} />
+          <MetricHelpText selectedMetric={selectedSingle} />
         </Box>
       </Stack>
     </Card>

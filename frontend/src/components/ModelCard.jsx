@@ -123,7 +123,9 @@ export default function ModelCard() {
 
   const inspectReport = useDataStore((s) => s.inspectReport);
   const taskSelected = useDataStore((s) => s.taskSelected);
-  const effectiveTask = taskSelected || inspectReport?.task_inferred || null;
+  const inferredTaskRaw = inspectReport?.task_inferred || null;
+  const inferredTask = inferredTaskRaw === 'clustering' ? 'unsupervised' : inferredTaskRaw;
+  const effectiveTask = taskSelected || inferredTask || null;
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
@@ -138,11 +140,12 @@ export default function ModelCard() {
   let compatReason = '';
 
   if (artifact && inspectReport) {
-    if (artifact.kind && effectiveTask && artifact.kind !== effectiveTask) {
+    const artifactKind = artifact.kind === 'clustering' ? 'unsupervised' : artifact.kind;
+    if (artifactKind && effectiveTask && artifactKind !== effectiveTask) {
       compatible = false;
       compatReason =
         compatReason ||
-        `Task mismatch: model is "${artifact.kind}", data is "${effectiveTask}".`;
+        `Task mismatch: model is "${artifactKind}", data is "${effectiveTask}".`;
     }
 
     if (

@@ -444,7 +444,9 @@ export default function TrainingDataUploadCard() {
   const setNpzDisplay = useDataStore((s) => s.setNpzDisplay);
 
   const dataReady = !!inspectReport && (inspectReport?.n_samples ?? 0) > 0;
-  const taskInferred = inspectReport?.task_inferred || null;
+  const taskInferredRaw = inspectReport?.task_inferred || null;
+  // Backwards compatibility: older backend/meta may still report "clustering".
+  const taskInferred = taskInferredRaw === 'clustering' ? 'unsupervised' : taskInferredRaw;
   const effectiveTask = taskSelected || taskInferred || null;
 
   return (
@@ -509,12 +511,21 @@ export default function TrainingDataUploadCard() {
             data={[
               { value: 'classification', label: 'classification' },
               { value: 'regression', label: 'regression' },
+              { value: 'unsupervised', label: 'unsupervised' },
             ]}
             value={taskSelected || null}
             placeholder={taskInferred ? `inferred: ${taskInferred}` : 'leave empty'}
             onChange={(v) => setTaskSelected(v)}
             clearable
           />
+
+          {effectiveTask === 'unsupervised' && (
+            <Alert color="blue" variant="light" title="Unsupervised mode">
+              <Text size="sm">
+                In unsupervised mode, <b>y</b> (labels/targets) are ignored even if provided.
+              </Text>
+            </Alert>
+          )}
         </Stack>
       </Card>
 
