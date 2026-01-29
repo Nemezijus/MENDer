@@ -236,6 +236,7 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
     const pairs = [];
     Object.entries(modelDiag).forEach(([k, v]) => {
       if (v === null || v === undefined) return;
+      if (k === 'label_summary') return;
       pairs.push([k, v]);
     });
     if (embedding2d) {
@@ -382,7 +383,7 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
               Cluster summary &amp; diagnostics
             </Text>
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <Stack gap="xs">
                 <Text size="sm" fw={600}>
                   Cluster summary
@@ -466,59 +467,65 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
                   </Table.Tbody>
                 </Table>
               </Stack>
-            </SimpleGrid>
-            <Stack gap="xs" mt="xs" maw={420} mx="auto">
-              <Text size="sm" fw={600}>
-                Cluster sizes
-              </Text>
+              <Stack gap="xs">
+                <Text size="sm" fw={600}>
+                  Cluster sizes
+                </Text>
 
-              <ScrollArea h={220} type="auto" offsetScrollbars>
-                <Table
-                  withTableBorder={false}
-                  withColumnBorders={false}
-                  horizontalSpacing="xs"
-                  verticalSpacing="xs"
-                >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th style={stickyThStyle}>
-                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
-                          Cluster id
-                        </Text>
-                      </Table.Th>
-                      <Table.Th style={stickyThStyle}>
-                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
-                          Size
-                        </Text>
-                      </Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-
-                  <Table.Tbody>
-                    {clusterSizesRows.length === 0 ? (
+                <ScrollArea h={220} type="auto" offsetScrollbars>
+                  <Table
+                    withTableBorder={false}
+                    withColumnBorders={false}
+                    horizontalSpacing="xs"
+                    verticalSpacing="xs"
+                  >
+                    <Table.Thead>
                       <Table.Tr>
-                        <Table.Td colSpan={2}>
-                          <Text size="sm" c="dimmed">
-                            —
+                        <Table.Th style={stickyThStyle}>
+                          <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                            Cluster id
                           </Text>
-                        </Table.Td>
+                        </Table.Th>
+                        <Table.Th style={stickyThStyle}>
+                          <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                            Size
+                          </Text>
+                        </Table.Th>
                       </Table.Tr>
-                    ) : (
-                      clusterSizesRows.map((r, i) => (
-                        <Table.Tr key={i}>
-                          <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {fmtCell(r.cluster_id)}
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {fmtCell(r.size)}
+                    </Table.Thead>
+
+                    <Table.Tbody>
+                      {clusterSizesRows.length === 0 ? (
+                        <Table.Tr>
+                          <Table.Td colSpan={2}>
+                            <Text size="sm" c="dimmed">—</Text>
                           </Table.Td>
                         </Table.Tr>
-                      ))
-                    )}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
-            </Stack>
+                      ) : (
+                        clusterSizesRows.map((r, i) => {
+                          const isStriped = i % 2 === 1;
+                          return (
+                            <Table.Tr
+                              key={i}
+                              style={{
+                                backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
+                              }}
+                            >
+                              <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                {fmtCell(r.cluster_id)}
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                {fmtCell(r.size)}
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })
+                      )}
+                    </Table.Tbody>
+                  </Table>
+                </ScrollArea>
+              </Stack>
+            </SimpleGrid>
 
           </Stack>
         </Stack>
@@ -607,13 +614,21 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {previewRows.map((r, i) => (
-                  <Table.Tr key={i}>
+                {previewRows.map((r, i) => {
+                  const isStriped = i % 2 === 1;
+                  return (
+                    <Table.Tr
+                      key={i}
+                      style={{
+                        backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
+                      }}
+                    >
                     {previewColumns.map((c) => (
                       <Table.Td key={c} style={{ textAlign: 'center' }}>{fmtCell(r?.[c])}</Table.Td>
                     ))}
                   </Table.Tr>
-                ))}
+                  );
+                })}
               </Table.Tbody>
             </Table>
           </ScrollArea>
