@@ -170,6 +170,30 @@ function headerTooltip(key) {
   return map[key] || tooltipForKey(key);
 }
 
+function parseClusterSizes(v) {
+  if (v == null) return [];
+
+  // dict-like: {"0": 12, "-1": 4}
+  if (typeof v === 'object' && !Array.isArray(v)) {
+    return Object.entries(v).map(([k, count]) => ({
+      cluster_id: k,
+      size: count,
+    }));
+  }
+
+  // array of pairs: [[0, 12], [-1, 4]]
+  if (Array.isArray(v) && v.length && Array.isArray(v[0]) && v[0].length >= 2) {
+    return v.map(([cid, count]) => ({ cluster_id: cid, size: count }));
+  }
+
+  // array of counts: [12, 9, 7] -> ids 0..n-1
+  if (Array.isArray(v)) {
+    return v.map((count, i) => ({ cluster_id: i, size: count }));
+  }
+
+  return [];
+}
+
 export default function UnsupervisedResultsPanel({ trainResult }) {
   if (!trainResult) return null;
 
@@ -182,11 +206,20 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
   const modelDiag = trainResult?.diagnostics?.model_diagnostics || {};
   const embedding2d = trainResult?.diagnostics?.embedding_2d || null;
 
+  const clusterSizesRows = useMemo(() => {
+    const rows = parseClusterSizes(clusterSummary?.cluster_sizes);
+    // numeric-ish sort
+    return rows.sort((a, b) => Number(a.cluster_id) - Number(b.cluster_id));
+  }, [clusterSummary]);
+
   const clusterPairs = useMemo(() => {
     const pairs = [];
+    console.log(Object.entries(clusterSummary));
     Object.entries(clusterSummary).forEach(([k, v]) => {
       if (v === null || v === undefined) return;
-      if (k === 'label_summary') return;
+      const nk = String(k).trim().toLowerCase();
+      if (nk === 'label_summary') return;
+      if (nk === 'cluster_sizes') return;
       pairs.push([k, v]);
     });
     const order = ['n_clusters', 'n_noise', 'noise_ratio', 'cluster_sizes'];
@@ -259,6 +292,17 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
     });
     return pairs;
   }, [metrics]);
+
+  const stickyThStyle = {
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    backgroundColor: 'var(--mantine-color-gray-8)',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+  };
+
+  const headerTextStyle = { whiteSpace: 'nowrap', lineHeight: 1.1 };
 
   return (
     <Stack gap="md">
@@ -423,6 +467,59 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
                 </Table>
               </Stack>
             </SimpleGrid>
+            <Stack gap="xs" mt="xs" maw={420} mx="auto">
+              <Text size="sm" fw={600}>
+                Cluster sizes
+              </Text>
+
+              <ScrollArea h={220} type="auto" offsetScrollbars>
+                <Table
+                  withTableBorder={false}
+                  withColumnBorders={false}
+                  horizontalSpacing="xs"
+                  verticalSpacing="xs"
+                >
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th style={stickyThStyle}>
+                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                          Cluster id
+                        </Text>
+                      </Table.Th>
+                      <Table.Th style={stickyThStyle}>
+                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                          Size
+                        </Text>
+                      </Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+
+                  <Table.Tbody>
+                    {clusterSizesRows.length === 0 ? (
+                      <Table.Tr>
+                        <Table.Td colSpan={2}>
+                          <Text size="sm" c="dimmed">
+                            —
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ) : (
+                      clusterSizesRows.map((r, i) => (
+                        <Table.Tr key={i}>
+                          <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {fmtCell(r.cluster_id)}
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {fmtCell(r.size)}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))
+                    )}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
+            </Stack>
+
           </Stack>
         </Stack>
       </Card>
@@ -480,17 +577,22 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
           ) : null}
 
           <ScrollArea h={360} type="auto">
-            <Table striped highlightOnHover withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
+            <Table
+              withTableBorder={false}
+              withColumnBorders={false}
+              horizontalSpacing="xs"
+              verticalSpacing="xs"
+            >
               <Table.Thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                 <Table.Tr>
                   {previewColumns.map((c) => {
                     const tip = headerTooltip(c);
                     const label = headerLabel(c);
                     return (
-                      <Table.Th key={c} style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--mantine-color-gray-8)', textAlign: 'center' }}>
+                      <Table.Th key={c} style={stickyThStyle}>
                         {tip ? (
                           <Tooltip label={tip} multiline maw={360} withArrow>
-                            <Text size="xs" fw={600} c="white" style={{ width: 'fit-content' }}>
+                            <Text size="xs" fw={600} c="white" style={headerTextStyle}>
                               {label}
                             </Text>
                           </Tooltip>
