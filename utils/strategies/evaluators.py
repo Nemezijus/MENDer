@@ -13,6 +13,7 @@ from utils.postprocessing.clustering_diagnostics import (
     embedding_2d,
     model_diagnostics,
     per_sample_outputs,
+    build_plot_data,
 )
 
 @dataclass
@@ -53,6 +54,7 @@ class SklearnUnsupervisedEvaluator(UnsupervisedEvaluator):
     """
 
     cfg: UnsupervisedEvalModel
+
 
     def evaluate(
         self,
@@ -99,11 +101,32 @@ class SklearnUnsupervisedEvaluator(UnsupervisedEvaluator):
                 per_sample = dict(p)
                 warnings.extend(w)
 
+        # Plot payloads (frontend visualizations)
+        plot_data: Dict[str, Any] = {}
+        try:
+            pd, w = build_plot_data(
+                model=model,
+                X=X,
+                labels=labels,
+                per_sample=per_sample,
+                embedding=emb,
+                seed=int(self.cfg.seed or 0),
+            )
+            plot_data = dict(pd)
+            warnings.extend(w)
+            # Attach embedding labels for coloring (aligned to emb.idx)
+            if emb is not None and plot_data.get("embedding_labels") is not None:
+                emb = dict(emb)
+                emb["label"] = [int(v) for v in plot_data.get("embedding_labels", [])]
+        except Exception:
+            plot_data = {}
+
         return {
             "metrics": metrics,
             "cluster_summary": summary,
             "model_diagnostics": diag,
             "embedding_2d": emb,
+            "plot_data": plot_data,
             "per_sample": per_sample,
             "warnings": warnings,
         }

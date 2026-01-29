@@ -641,6 +641,7 @@ def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
         "diagnostics": {
             "model_diagnostics": diag.get("model_diagnostics") or {},
             "embedding_2d": diag.get("embedding_2d"),
+            "plot_data": diag.get("plot_data") or {},
         },
         "artifact": artifact_meta,
         "unsupervised_outputs": {

@@ -28,6 +28,11 @@ try:
 except Exception:  # pragma: no cover
     PCA = None  # type: ignore
 
+try:
+    from sklearn.metrics import silhouette_samples  # type: ignore
+except Exception:  # pragma: no cover
+    silhouette_samples = None  # type: ignore
+
 
 def _as_2d(X: Any) -> Any:
     if np is None:
@@ -351,3 +356,170 @@ class UnsupervisedDiagnostics:
             "embedding_2d": dict(self.embedding_2d) if self.embedding_2d is not None else None,
             "warnings": list(self.warnings) if self.warnings is not None else [],
         }
+
+
+def build_plot_data(
+    *,
+    model: Any,
+    X: Any,
+    labels: Any,
+    per_sample: Optional[Mapping[str, Any]] = None,
+    embedding: Optional[Mapping[str, Any]] = None,
+    max_points: int = 5000,
+    seed: int = 0,
+) -> Tuple[Mapping[str, Any], List[str]]:
+    """Build JSON-friendly plot payloads for the frontend.
+
+    Derived values for plots only. Never raises in normal use.
+    """
+    warnings: List[str] = []
+    out: Dict[str, Any] = {}
+    if np is None:
+        return out, ["numpy unavailable; cannot build plot data."]
+
+    try:
+        Xa = _as_2d(X)
+        y = np.asarray(labels).reshape(-1)
+    except Exception as e:
+        return out, [f"Invalid inputs for plot_data: {e}"]
+
+    n = int(Xa.shape[0])
+    if n == 0:
+        return out, ["Empty X; cannot build plot data."]
+
+    idx = np.arange(n, dtype=int)
+    if int(max_points) > 0 and n > int(max_points):
+        try:
+            rng = np.random.default_rng(int(seed))
+            idx = rng.choice(n, size=int(max_points), replace=False)
+            idx = np.sort(idx)
+            warnings.append(f"Downsampled plot_data arrays to {int(max_points)} points.")
+        except Exception:
+            idx = idx[: int(max_points)]
+            warnings.append(f"Downsampled plot_data arrays to first {int(max_points)} points.")
+
+    # Cluster sizes + Lorenz/Gini
+    try:
+        cs = cluster_summary(y).get("cluster_sizes")
+        if cs is not None:
+            out["cluster_sizes"] = cs
+            sizes = []
+            for k, v in dict(cs).items():
+                if int(k) == -1:
+                    continue
+                sizes.append(int(v))
+            sizes = [s for s in sizes if s > 0]
+            if sizes:
+                srt = np.sort(np.asarray(sizes, dtype=float))
+                cum = np.cumsum(srt)
+                total = float(cum[-1])
+                lor_x = np.linspace(0.0, 1.0, num=int(srt.size) + 1)
+                lor_y = np.concatenate([[0.0], cum / total])
+                gini = float(1.0 - 2.0 * np.trapz(lor_y, lor_x))
+                out["lorenz"] = {
+                    "x": [float(v) for v in lor_x.tolist()],
+                    "y": [float(v) for v in lor_y.tolist()],
+                    "gini": gini,
+                }
+    except Exception:
+        pass
+
+    # Distance-to-center values (if present)
+    try:
+        if per_sample is not None and per_sample.get("distance_to_center") is not None:
+            d = np.asarray(per_sample.get("distance_to_center")).reshape(-1).astype(float)
+            out["distance_to_center"] = {"values": [float(v) for v in d[idx].tolist()]}
+    except Exception:
+        pass
+
+    # Centroids + separation matrix (exclude noise)
+    try:
+        cluster_ids = [int(v) for v in np.unique(y).tolist() if int(v) != -1]
+        if cluster_ids:
+            centroids = []
+            kept_ids = []
+            for cid in cluster_ids:
+                mask = (y == cid)
+                if int(np.sum(mask)) == 0:
+                    continue
+                centroids.append(np.mean(Xa[mask], axis=0))
+                kept_ids.append(cid)
+            if centroids:
+                C = np.vstack(centroids)
+                p = int(C.shape[1])
+                top_k = min(30, p)
+                var = np.var(C, axis=0)
+                feat_idx = np.argsort(var)[::-1][:top_k]
+                C_small = C[:, feat_idx]
+                out["centroids"] = {
+                    "cluster_ids": kept_ids,
+                    "feature_idx": [int(i) for i in feat_idx.tolist()],
+                    "values": [[float(v) for v in row.tolist()] for row in C_small],
+                }
+                diff = C[:, None, :] - C[None, :, :]
+                D = np.sqrt(np.sum(diff * diff, axis=2))
+                out["separation_matrix"] = {
+                    "cluster_ids": kept_ids,
+                    "values": [[float(v) for v in row.tolist()] for row in D],
+                }
+    except Exception:
+        pass
+
+    # Silhouette samples grouped per cluster (exclude noise)
+    try:
+        if silhouette_samples is not None:
+            mask = (y != -1)
+            y2 = y[mask]
+            if y2.size > 1 and np.unique(y2).size >= 2:
+                s = silhouette_samples(Xa[mask], y2)
+                full_idx = np.where(mask)[0]
+                keep = np.isin(full_idx, idx)
+                s_keep = s[keep]
+                y_keep = y2[keep]
+                groups: Dict[int, List[float]] = {}
+                for val, lab in zip(s_keep.tolist(), y_keep.tolist()):
+                    groups[int(lab)] = groups.get(int(lab), []) + [float(val)]
+                if groups:
+                    keys = sorted(groups.keys())
+                    out["silhouette"] = {
+                        "cluster_ids": keys,
+                        "values": [groups[k] for k in keys],
+                        "avg": float(np.mean(s)) if s.size else None,
+                    }
+    except Exception as e:
+        warnings.append(f"Silhouette computation failed: {type(e).__name__}: {e}")
+
+    # Decoder-style payload
+    dec: Dict[str, Any] = {}
+    try:
+        if per_sample is not None:
+            if per_sample.get("max_membership_prob") is not None:
+                v = np.asarray(per_sample.get("max_membership_prob")).reshape(-1).astype(float)
+                dec["confidence"] = {"values": [float(x) for x in v[idx].tolist()]}
+            if per_sample.get("log_likelihood") is not None:
+                v = np.asarray(per_sample.get("log_likelihood")).reshape(-1).astype(float)
+                dec["log_likelihood"] = {"values": [float(x) for x in v[idx].tolist()]}
+            if per_sample.get("is_noise") is not None:
+                v = np.asarray(per_sample.get("is_noise")).reshape(-1).astype(bool)
+                x = np.arange(v.size, dtype=int)
+                cum = np.cumsum(v.astype(int))
+                frac = cum / np.maximum(1, (x + 1))
+                dec["noise_trend"] = {
+                    "x": [int(i) for i in x[idx].tolist()],
+                    "y": [float(f) for f in frac[idx].tolist()],
+                }
+    except Exception:
+        pass
+
+    if dec:
+        out["decoder"] = dec
+
+    # Embedding labels aligned to embedding.idx
+    try:
+        if embedding is not None and "idx" in embedding:
+            emb_idx = np.asarray(embedding.get("idx"), dtype=int)
+            out["embedding_labels"] = [int(v) for v in y[emb_idx].tolist()]
+    except Exception:
+        pass
+
+    return out, warnings

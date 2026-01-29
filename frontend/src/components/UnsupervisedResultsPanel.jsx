@@ -15,6 +15,9 @@ import {
 
 import { downloadBlob, exportDecoderOutputs } from '../api/models.js';
 
+import UnsupervisedTrainingResults from './visualizations/UnsupervisedTrainingResults.jsx';
+import UnsupervisedTrainingDecoderResults from './visualizations/UnsupervisedTrainingDecoderResults.jsx';
+
 function parseNumber(v) {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
   if (typeof v === 'string' && v.trim() !== '') {
@@ -527,6 +530,10 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
               </Stack>
             </SimpleGrid>
 
+            <Divider my="sm" />
+
+            <UnsupervisedTrainingResults trainResult={trainResult} />
+
           </Stack>
         </Stack>
       </Card>
@@ -568,6 +575,8 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
           </Stack>
 
           <Divider />
+
+          <UnsupervisedTrainingDecoderResults trainResult={trainResult} />
 
           <Group justify="flex-end" align="center" wrap="wrap">
             <Button size="xs" variant="light" onClick={handleExport} disabled={!artifactUid}>
