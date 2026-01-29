@@ -10,6 +10,7 @@ import {
   Tooltip,
   Button,
   Divider,
+  SimpleGrid,
 } from '@mantine/core';
 
 import { downloadBlob, exportDecoderOutputs } from '../api/models.js';
@@ -32,7 +33,7 @@ function fmt3(v) {
 
 function fmtCell(v) {
   if (v === null || v === undefined) return '—';
-  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
   if (Array.isArray(v) || (typeof v === 'object' && v !== null)) {
     try {
       return JSON.stringify(v);
@@ -181,53 +182,44 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
   const modelDiag = trainResult?.diagnostics?.model_diagnostics || {};
   const embedding2d = trainResult?.diagnostics?.embedding_2d || null;
 
-  const mergedDiagnostics = useMemo(() => {
-    const merged = {
-      ...clusterSummary,
-      ...modelDiag,
-    };
-    // Do not show redundant / noisy fields
-    delete merged.label_summary;
-    return merged;
-  }, [clusterSummary, modelDiag]);
-
-  const diagPairs = useMemo(() => {
+  const clusterPairs = useMemo(() => {
     const pairs = [];
-    Object.entries(mergedDiagnostics).forEach(([k, v]) => {
+    Object.entries(clusterSummary).forEach(([k, v]) => {
+      if (v === null || v === undefined) return;
+      if (k === 'label_summary') return;
+      pairs.push([k, v]);
+    });
+    const order = ['n_clusters', 'n_noise', 'noise_ratio', 'cluster_sizes'];
+    pairs.sort((a, b) => {
+      const ia = order.indexOf(a[0]);
+      const ib = order.indexOf(b[0]);
+      if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      return a[0].localeCompare(b[0]);
+    });
+    return pairs;
+  }, [clusterSummary]);
+
+  const modelDiagPairs = useMemo(() => {
+    const pairs = [];
+    Object.entries(modelDiag).forEach(([k, v]) => {
       if (v === null || v === undefined) return;
       pairs.push([k, v]);
     });
     if (embedding2d) {
       pairs.push(['embedding_2d', Array.isArray(embedding2d?.x) ? `${embedding2d.x.length} points` : 'Present']);
     }
-    // Sort with a bit of intentional ordering
-    const order = [
-      'n_clusters',
-      'n_noise',
-      'noise_ratio',
-      'cluster_sizes',
-      'inertia',
-      'n_iter',
-      'converged',
-      'lower_bound',
-      'aic',
-      'bic',
-      'mean_log_likelihood',
-      'std_log_likelihood',
-      'embedding_2d',
-    ];
+    const order = ['inertia', 'n_iter', 'converged', 'lower_bound', 'aic', 'bic', 'mean_log_likelihood', 'std_log_likelihood', 'embedding_2d'];
     pairs.sort((a, b) => {
       const ia = order.indexOf(a[0]);
       const ib = order.indexOf(b[0]);
-      if (ia !== -1 || ib !== -1) {
-        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-      }
+      if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
       return a[0].localeCompare(b[0]);
     });
     return pairs;
-  }, [mergedDiagnostics, embedding2d]);
+  }, [modelDiag, embedding2d]);
 
-  const diagRows = useMemo(() => buildPairsTableRows(diagPairs), [diagPairs]);
+  const clusterRows = useMemo(() => buildPairsTableRows(clusterPairs), [clusterPairs]);
+  const modelDiagRows = useMemo(() => buildPairsTableRows(modelDiagPairs), [modelDiagPairs]);
 
   const previewRows = trainResult.unsupervised_outputs?.preview_rows || [];
   const nTotal = trainResult.unsupervised_outputs?.n_rows_total ?? null;
@@ -346,96 +338,137 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
               Cluster summary &amp; diagnostics
             </Text>
 
-            <Table
-              withTableBorder={false}
-              withColumnBorders={false}
-              horizontalSpacing="xs"
-              verticalSpacing="xs"
-              style={{ tableLayout: 'fixed' }}
-            >
-              <Table.Tbody>
-                {diagRows.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={4}>
-                      <Text size="sm" c="dimmed">
-                        No diagnostics returned.
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  diagRows.map(([a, b], i) => (
-                    <Table.Tr key={i}>
-                      {[a, b].map((pair, j) => {
-                        const k = pair?.[0] ?? null;
-                        const val = pair?.[1];
-                        const label = k ? titleCaseFromKey(k) : '';
-                        const tip = k ? tooltipForKey(k) : null;
-
-                        const labelCell = (
-                          <Table.Td
-                            key={`${i}-${j}-label`}
-                            style={{ width: '35%', paddingLeft: j === 0 ? 0 : undefined }}
-                          >
-                            {k ? (
-                              tip ? (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Stack gap="xs">
+                <Text size="sm" fw={600}>
+                  Cluster summary
+                </Text>
+                <Table withTableBorder={false} withColumnBorders={false} horizontalSpacing="xs" verticalSpacing="xs" style={{ tableLayout: 'fixed' }}>
+                  <Table.Tbody>
+                    {clusterRows.length === 0 ? (
+                      <Table.Tr>
+                        <Table.Td colSpan={2}>
+                          <Text size="sm" c="dimmed">No cluster summary returned.</Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ) : (
+                      clusterRows.flat().filter(Boolean).map(([k, val]) => {
+                        const label = titleCaseFromKey(k);
+                        const tip = tooltipForKey(k);
+                        return (
+                          <Table.Tr key={`cluster-${k}`}>
+                            <Table.Td style={{ width: '45%', paddingLeft: 0 }}>
+                              {tip ? (
                                 <Tooltip label={tip} multiline maw={360} withArrow>
                                   <Text size="sm" c="dimmed" style={{ width: 'fit-content' }}>
                                     {label}
                                   </Text>
                                 </Tooltip>
                               ) : (
-                                <Text size="sm" c="dimmed">
-                                  {label}
-                                </Text>
-                              )
-                            ) : (
-                              <Text size="sm" c="dimmed">
-                                {' '}
-                              </Text>
-                            )}
-                          </Table.Td>
-                        );
-
-                        const valueCell = (
-                          <Table.Td
-                            key={`${i}-${j}-value`}
-                            style={{ width: '15%', paddingRight: j === 1 ? 0 : undefined }}
-                          >
-                            {k ? (
-                              <Text size="sm" fw={700}>
+                                <Text size="sm" c="dimmed">{label}</Text>
+                              )}
+                            </Table.Td>
+                            <Table.Td style={{ width: '55%', paddingRight: 0 }}>
+                              <Text size="sm" fw={700} style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
                                 {fmtCell(val)}
                               </Text>
-                            ) : (
-                              <Text size="sm">{' '}</Text>
-                            )}
-                          </Table.Td>
+                            </Table.Td>
+                          </Table.Tr>
                         );
+                      })
+                    )}
+                  </Table.Tbody>
+                </Table>
+              </Stack>
 
-                        return [labelCell, valueCell];
-                      })}
-                    </Table.Tr>
-                  ))
-                )}
-              </Table.Tbody>
-            </Table>
+              <Stack gap="xs">
+                <Text size="sm" fw={600}>
+                  Model diagnostics
+                </Text>
+                <Table withTableBorder={false} withColumnBorders={false} horizontalSpacing="xs" verticalSpacing="xs" style={{ tableLayout: 'fixed' }}>
+                  <Table.Tbody>
+                    {modelDiagRows.length === 0 ? (
+                      <Table.Tr>
+                        <Table.Td colSpan={2}>
+                          <Text size="sm" c="dimmed">No model diagnostics returned.</Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ) : (
+                      modelDiagRows.flat().filter(Boolean).map(([k, val]) => {
+                        const label = titleCaseFromKey(k);
+                        const tip = tooltipForKey(k);
+                        return (
+                          <Table.Tr key={`diag-${k}`}>
+                            <Table.Td style={{ width: '45%', paddingLeft: 0 }}>
+                              {tip ? (
+                                <Tooltip label={tip} multiline maw={360} withArrow>
+                                  <Text size="sm" c="dimmed" style={{ width: 'fit-content' }}>
+                                    {label}
+                                  </Text>
+                                </Tooltip>
+                              ) : (
+                                <Text size="sm" c="dimmed">{label}</Text>
+                              )}
+                            </Table.Td>
+                            <Table.Td style={{ width: '55%', paddingRight: 0 }}>
+                              <Text size="sm" fw={700} style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                {fmtCell(val)}
+                              </Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })
+                    )}
+                  </Table.Tbody>
+                </Table>
+              </Stack>
+            </SimpleGrid>
           </Stack>
         </Stack>
       </Card>
 
+
       <Card withBorder radius="md" shadow="sm" padding="md">
         <Stack gap="sm">
-          <Group justify="space-between" wrap="wrap">
-            <Text fw={600} size="xl">
-              Decoder outputs
+          <Text fw={500} size="xl" align="center">
+            Decoder outputs
+          </Text>
+
+          <Stack gap={6}>
+            <Text size="sm" c="dimmed">
+              Per-sample decoder outputs on the evaluation set.
             </Text>
-            <Group gap="xs" wrap="wrap">
-              <Text size="sm" c="dimmed">
-                Preview: {previewRows.length} / {nTotal ?? '...'}
-              </Text>
-              <Button size="xs" variant="light" onClick={handleExport} disabled={!artifactUid}>
-                Export to CSV
-              </Button>
+
+            <Group gap="md" wrap="wrap">
+              <Tooltip label="Whether a cluster id is available for each sample." multiline maw={320} withArrow>
+                <Text size="sm">
+                  <Text span c="dimmed">Cluster id: </Text>
+                  <Text span fw={700}>{previewColumns.includes('cluster_id') ? 'Available' : 'Not available'}</Text>
+                </Text>
+              </Tooltip>
+
+              <Tooltip label="Whether a noise indicator exists (e.g., DBSCAN)." multiline maw={320} withArrow>
+                <Text size="sm">
+                  <Text span c="dimmed">Noise flag: </Text>
+                  <Text span fw={700}>{previewColumns.includes('is_noise') ? 'Available' : 'Not available'}</Text>
+                </Text>
+              </Tooltip>
+
+              <Tooltip label="Number of rows rendered in the table. Preview may be capped for performance." multiline maw={320} withArrow>
+                <Text size="sm">
+                  <Text span c="dimmed">Previewed samples: </Text>
+                  <Text span fw={700}>{nTotal != null ? `${previewRows.length} / ${nTotal}` : `${previewRows.length}`}</Text>
+                </Text>
+              </Tooltip>
             </Group>
+          </Stack>
+
+          <Divider />
+
+          <Group justify="flex-end" align="center" wrap="wrap">
+            <Button size="xs" variant="light" onClick={handleExport} disabled={!artifactUid}>
+              Export to CSV
+            </Button>
           </Group>
 
           {exportErr ? (
@@ -447,22 +480,22 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
           ) : null}
 
           <ScrollArea h={360} type="auto">
-            <Table striped highlightOnHover withTableBorder withColumnBorders>
-              <Table.Thead>
+            <Table striped highlightOnHover withTableBorder withColumnBorders style={{ tableLayout: 'fixed' }}>
+              <Table.Thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                 <Table.Tr>
                   {previewColumns.map((c) => {
                     const tip = headerTooltip(c);
                     const label = headerLabel(c);
                     return (
-                      <Table.Th key={c} style={{ whiteSpace: 'nowrap' }}>
+                      <Table.Th key={c} style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--mantine-color-gray-8)', textAlign: 'center' }}>
                         {tip ? (
                           <Tooltip label={tip} multiline maw={360} withArrow>
-                            <Text size="xs" fw={600} style={{ width: 'fit-content' }}>
+                            <Text size="xs" fw={600} c="white" style={{ width: 'fit-content' }}>
                               {label}
                             </Text>
                           </Tooltip>
                         ) : (
-                          <Text size="xs" fw={600}>
+                          <Text size="xs" fw={600} c="white">
                             {label}
                           </Text>
                         )}
@@ -475,7 +508,7 @@ export default function UnsupervisedResultsPanel({ trainResult }) {
                 {previewRows.map((r, i) => (
                   <Table.Tr key={i}>
                     {previewColumns.map((c) => (
-                      <Table.Td key={c}>{fmtCell(r?.[c])}</Table.Td>
+                      <Table.Td key={c} style={{ textAlign: 'center' }}>{fmtCell(r?.[c])}</Table.Td>
                     ))}
                   </Table.Tr>
                 ))}

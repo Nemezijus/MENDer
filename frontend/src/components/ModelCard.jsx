@@ -11,6 +11,21 @@ function fmt(val, digits = 4) {
   return Number.isInteger(n) ? String(n) : n.toFixed(digits);
 }
 
+
+function niceUnsupervisedMetricName(name) {
+  if (name == null) return 'Silhouette / Davies–Bouldin / Calinski–Harabasz';
+  const key = String(name);
+  const map = {
+    silhouette: 'Silhouette',
+    davies_bouldin: 'Davies–Bouldin',
+    calinski_harabasz: 'Calinski–Harabasz',
+  };
+  if (map[key]) return map[key];
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function friendlyClassName(classPath) {
   if (!classPath) return 'unknown';
   if (classPath === 'builtins.str') return 'none';
@@ -126,6 +141,7 @@ export default function ModelCard() {
   const inferredTaskRaw = inspectReport?.task_inferred || null;
   const inferredTask = inferredTaskRaw === 'clustering' ? 'unsupervised' : inferredTaskRaw;
   const effectiveTask = taskSelected || inferredTask || null;
+  const isUnsupervised = (artifact?.kind === 'clustering' ? 'unsupervised' : artifact?.kind) === 'unsupervised';
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
@@ -142,10 +158,13 @@ export default function ModelCard() {
   if (artifact && inspectReport) {
     const artifactKind = artifact.kind === 'clustering' ? 'unsupervised' : artifact.kind;
     if (artifactKind && effectiveTask && artifactKind !== effectiveTask) {
-      compatible = false;
-      compatReason =
-        compatReason ||
-        `Task mismatch: model is "${artifactKind}", data is "${effectiveTask}".`;
+      // Allow using an unsupervised model even when y is present and the data is classified as supervised.
+      // In that case, we simply ignore y for training/apply.
+      const allow = artifactKind === 'unsupervised';
+      if (!allow) {
+        compatible = false;
+        compatReason = compatReason || `Task mismatch: model is "${artifactKind}", data is "${effectiveTask}".`;
+      }
     }
 
     if (
@@ -416,14 +435,25 @@ export default function ModelCard() {
               {artifact.created_at ? new Date(artifact.created_at).toLocaleString() : '—'}
             </Text>
 
+            {isUnsupervised ? (
+            <Text size="sm">
+              <strong>Diagnostics:</strong>{' '}
+              {niceUnsupervisedMetricName(artifact.metric_name)}
+            </Text>
+          ) : (
             <Text size="sm">
               <strong>Metric:</strong>{' '}
               {artifact.metric_name ?? '—'} ({fmt(artifact.mean_score)} ± {fmt(artifact.std_score)})
             </Text>
+          )}
 
             <Text size="sm">
               <strong>Data:</strong>{' '}
-              {isKFold ? (
+              {isUnsupervised ? (
+                <>
+                  train {fmt(artifact.n_samples_train, 0)}, features {fmt(artifact.n_features_in, 0)}
+                </>
+              ) : isKFold ? (
                 <>
                   train {fmt(artifact.n_samples_train, 0)} / fold, test {fmt(artifact.n_samples_test, 0)} / fold
                   {kfoldTotalN != null ? ` (N=${fmt(kfoldTotalN, 0)} OOF)` : ''}, features {fmt(artifact.n_features_in, 0)}
@@ -450,7 +480,7 @@ export default function ModelCard() {
             </Text>
 
             <Text size="sm">
-              <strong>Split:</strong> {artifact?.split?.mode ?? '—'}
+              <strong>Split:</strong> {isUnsupervised ? '—' : artifact?.split?.mode ?? '—'}
               {isKFold ? ' (out-of-fold pooled)' : ''}
             </Text>
 

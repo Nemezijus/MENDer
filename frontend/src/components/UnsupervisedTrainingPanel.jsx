@@ -148,13 +148,13 @@ export default function UnsupervisedTrainingPanel() {
 
   return (
     <Stack gap="md">
-      <Title order={2}>Train an unsupervised Model</Title>
+      <Title order={3}>Train an unsupervised Model</Title>
 
       <Card withBorder shadow="sm" radius="md" padding="md">
         <Stack gap="sm">
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Text fw={600}>Configuration</Text>
-            <Button onClick={handleRun} disabled={!canRun} loading={isRunning}>
+            <Button size="xs" onClick={handleRun} disabled={!canRun} loading={isRunning}>
               Run
             </Button>
           </Group>
@@ -179,18 +179,18 @@ export default function UnsupervisedTrainingPanel() {
               </Text>
             </Alert>
           ) : null}
+
+          <ModelSelectionCard
+            model={model}
+            onChange={setModel}
+            schema={schema.models?.schema}
+            enums={schema.enums}
+            models={schema.models}
+            taskOverride="unsupervised"
+            showHelp
+          />
         </Stack>
       </Card>
-
-      <ModelSelectionCard
-        model={model}
-        onChange={setModel}
-        schema={schema.models?.schema}
-        enums={schema.enums}
-        models={schema.models}
-        taskOverride="unsupervised"
-        showHelp
-      />
 
       <Text size="sm" c="dimmed">
         This uses your current global Scaling / Metric / Features settings from the Settings section.

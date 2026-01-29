@@ -657,7 +657,7 @@ export default function ModelSelectionCard({
               }
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-3}
               onChange={(v) => set({ tol: v })}
               step={0.0001}
@@ -957,7 +957,7 @@ export default function ModelSelectionCard({
               onChange={(v) => set({ algorithm: v })}
             />
             <NumberInput
-              label="Leaf size"
+              label="Leaf size (leaf_size)"
               value={m.leaf_size ?? 30}
               onChange={(v) => set({ leaf_size: v })}
               allowDecimal={false}
@@ -1043,7 +1043,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -1097,7 +1097,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-3}
               onChange={(v) => set({ tol: v })}
               step={0.0001}
@@ -1466,7 +1466,7 @@ export default function ModelSelectionCard({
               allowDecimal={false}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -1571,7 +1571,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -1645,7 +1645,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -1702,7 +1702,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -1767,7 +1767,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -1806,7 +1806,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-3}
               onChange={(v) => set({ tol: v })}
               step={1e-4}
@@ -1929,7 +1929,7 @@ export default function ModelSelectionCard({
               step={0.01}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-3}
               onChange={(v) => set({ tol: v })}
               step={1e-4}
@@ -1994,7 +1994,7 @@ export default function ModelSelectionCard({
               onChange={(e) => set({ dual: e.currentTarget.checked })}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -2041,7 +2041,7 @@ export default function ModelSelectionCard({
               onChange={(v) => set({ algorithm: v })}
             />
             <NumberInput
-              label="Leaf size"
+              label="Leaf size (leaf_size)"
               value={m.leaf_size ?? 30}
               onChange={(v) => set({ leaf_size: v })}
               allowDecimal={false}
@@ -2312,7 +2312,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-4}
               onChange={(v) => set({ tol: v })}
               step={1e-5}
@@ -2346,39 +2346,39 @@ export default function ModelSelectionCard({
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <NumberInput
-              label="eps"
+              label="Epsilon (eps)"
               value={m.eps ?? 0.5}
               onChange={(v) => set({ eps: v })}
               step={0.01}
               min={0}
             />
             <NumberInput
-              label="min_samples"
+              label="Minimum samples (min_samples)"
               value={m.min_samples ?? 5}
               onChange={(v) => set({ min_samples: v })}
               allowDecimal={false}
               min={1}
             />
             <TextInput
-              label="Metric"
+              label="Distance metric (metric)"
               value={m.metric ?? 'euclidean'}
               onChange={(e) => set({ metric: e.currentTarget.value })}
             />
             <Select
-              label="Algorithm"
+              label="Search algorithm (algorithm)"
               data={toSelectData(enumFromSubSchema(sub, 'algorithm', ['auto', 'ball_tree', 'kd_tree', 'brute']))}
               value={m.algorithm ?? 'auto'}
               onChange={(v) => set({ algorithm: v })}
             />
             <NumberInput
-              label="Leaf size"
+              label="Leaf size (leaf_size)"
               value={m.leaf_size ?? 30}
               onChange={(v) => set({ leaf_size: v })}
               allowDecimal={false}
               min={1}
             />
             <NumberInput
-              label="p"
+              label="Minkowski power (p)"
               value={m.p ?? null}
               onChange={(v) => set({ p: v })}
             />
@@ -2416,7 +2416,7 @@ export default function ModelSelectionCard({
               onChange={(v) => set({ assign_labels: v })}
             />
             <NumberInput
-              label="n_init"
+              label="Initializations (n_init)"
               value={m.n_init ?? 10}
               onChange={(v) => set({ n_init: v })}
               allowDecimal={false}
@@ -2464,7 +2464,7 @@ export default function ModelSelectionCard({
               onChange={(v) => set({ linkage: v })}
             />
             <TextInput
-              label="Metric"
+              label="Distance metric (metric)"
               value={m.metric ?? 'euclidean'}
               onChange={(e) => set({ metric: e.currentTarget.value })}
             />
@@ -2521,14 +2521,14 @@ export default function ModelSelectionCard({
               onChange={(v) => set({ covariance_type: v })}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-3}
               onChange={(v) => set({ tol: v })}
               step={1e-4}
               min={0}
             />
             <NumberInput
-              label="Reg covar"
+              label="Regularization (reg_covar)"
               value={m.reg_covar ?? 1e-6}
               onChange={(v) => set({ reg_covar: v })}
               step={1e-6}
@@ -2542,7 +2542,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="n_init"
+              label="Initializations (n_init)"
               value={m.n_init ?? 1}
               onChange={(v) => set({ n_init: v })}
               allowDecimal={false}
@@ -2594,14 +2594,14 @@ export default function ModelSelectionCard({
               onChange={(v) => set({ covariance_type: v })}
             />
             <NumberInput
-              label="Tolerance"
+              label="Tolerance (tol)"
               value={m.tol ?? 1e-3}
               onChange={(v) => set({ tol: v })}
               step={1e-4}
               min={0}
             />
             <NumberInput
-              label="Reg covar"
+              label="Regularization (reg_covar)"
               value={m.reg_covar ?? 1e-6}
               onChange={(v) => set({ reg_covar: v })}
               step={1e-6}
@@ -2615,7 +2615,7 @@ export default function ModelSelectionCard({
               min={1}
             />
             <NumberInput
-              label="n_init"
+              label="Initializations (n_init)"
               value={m.n_init ?? 1}
               onChange={(v) => set({ n_init: v })}
               allowDecimal={false}
