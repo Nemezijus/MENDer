@@ -18,6 +18,80 @@ const MENDER_BLUE_SCALE = [
   [1, 'hsl(210, 80%, 45%)'],
 ];
 
+const PLOTLY_COLORS = [
+  '#636EFA',
+  '#EF553B',
+  '#00CC96',
+  '#AB63FA',
+  '#FFA15A',
+  '#19D3F3',
+  '#FF6692',
+  '#B6E880',
+  '#FF97FF',
+  '#FECB52',
+];
+
+const TILE_MIN_HEIGHT = 420;
+const PLOT_HEIGHT = 320;
+
+const TILE_STACK_STYLE = {
+  height: '100%',
+  minHeight: TILE_MIN_HEIGHT,
+  justifyContent: 'flex-start',
+};
+
+const PLOT_BOX_STYLE = {
+  flex: 1,
+  display: 'flex',
+  alignItems: 'flex-end',
+};
+
+const LIGHT_BORDER = '1px solid #e5e7eb';
+
+function ClusterLegend({ entries }) {
+  if (!entries?.length) return null;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 10,
+        justifyContent: 'center',
+        marginTop: 2,
+        marginBottom: 2,
+      }}
+    >
+      {entries.map((e) => (
+        <div
+          key={e.label}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '2px 8px',
+            borderRadius: 999,
+            background: 'rgba(0,0,0,0.03)',
+          }}
+        >
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 999,
+              background: e.color,
+              display: 'inline-block',
+            }}
+          />
+          <Text size="sm" fw={500}>
+            {e.label}
+          </Text>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 function toFiniteNumbers(arr) {
   if (!Array.isArray(arr)) return [];
@@ -25,6 +99,30 @@ function toFiniteNumbers(arr) {
     .map((v) => (typeof v === 'number' ? v : Number(v)))
     .filter((v) => Number.isFinite(v));
 }
+
+function hexToRgba(hex, alpha = 0.25) {
+  if (typeof hex !== 'string' || !hex.startsWith('#') || (hex.length !== 7 && hex.length !== 4)) {
+    return `rgba(0,0,0,${alpha})`;
+  }
+
+  let r;
+  let g;
+  let b;
+
+  if (hex.length === 4) {
+    r = parseInt(hex[1] + hex[1], 16);
+    g = parseInt(hex[2] + hex[2], 16);
+    b = parseInt(hex[3] + hex[3], 16);
+  } else {
+    r = parseInt(hex.slice(1, 3), 16);
+    g = parseInt(hex.slice(3, 5), 16);
+    b = parseInt(hex.slice(5, 7), 16);
+  }
+
+  if (![r, g, b].every((v) => Number.isFinite(v))) return `rgba(0,0,0,${alpha})`;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 
 function histogram(values, nBins = 30) {
   const xs = toFiniteNumbers(values);
@@ -142,13 +240,13 @@ function PlotHeader({ title, help }) {
   const titleNode = (
     <div
       style={{
-        minHeight: 34,
+        minHeight: 46,
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
       }}
     >
-      <Text fw={600} size="md" ta="center">
+      <Text fw={700} size="lg" ta="center">
         {title}
       </Text>
     </div>
@@ -235,11 +333,14 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const traces = [];
     const labels = embLabel && embLabel.length === embX.length ? embLabel : null;
 
+    const legendEntries = [];
+
     if (labels) {
       const unique = Array.from(new Set(labels.map((v) => Number(v)).filter((v) => Number.isFinite(v)))).sort(
         (a, b) => a - b,
       );
-      unique.forEach((lab) => {
+
+      unique.forEach((lab, idx) => {
         const xs = [];
         const ys = [];
         for (let i = 0; i < labels.length; i += 1) {
@@ -250,14 +351,18 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
         }
         if (!xs.length) return;
 
+        const color = PLOTLY_COLORS[idx % PLOTLY_COLORS.length];
+        legendEntries.push({ label: clusterLabel(lab), color });
+
         traces.push({
           type: 'scattergl',
           mode: 'markers',
           name: clusterLabel(lab),
           x: xs,
           y: ys,
-          marker: { size: 6, opacity: 0.75 },
+          marker: { size: 6, opacity: 0.75, color },
           hovertemplate: `Cluster=${clusterLabel(lab)}<br>x=%{x:.3f}<br>y=%{y:.3f}<extra></extra>`,
+          showlegend: false,
         });
       });
     } else {
@@ -278,66 +383,65 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
       gmmEllipses.components.forEach((c, idx) => {
         const pts = ellipsePoints(c.mean, c.cov, 120, 2);
         if (!pts) return;
+        const color = PLOTLY_COLORS[idx % PLOTLY_COLORS.length];
         traces.push({
           type: 'scatter',
           mode: 'lines',
           name: `Component ${idx + 1}`,
           x: pts.x,
           y: pts.y,
-          line: { width: 2 },
+          line: { width: 2, color },
           hoverinfo: 'skip',
+          showlegend: false,
         });
       });
     }
 
-    const nLegendItems = labels
-      ? Array.from(new Set(labels.map((v) => Number(v)).filter((v) => Number.isFinite(v)))).length
-      : 0;
-    const itemsPerRow = 4;
-    const legendRows = Math.max(1, Math.ceil(nLegendItems / itemsPerRow));
-    const height = 340 + Math.max(0, legendRows - 1) * 22;
-
     return (
-      <Stack gap={6} style={{ height: '100%', justifyContent: 'flex-start' }}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="2D embedding scatter"
           help="A 2D projection of your (preprocessed) features. Points are colored by cluster label when available."
         />
-        <Plot
-          data={traces}
-          layout={{
-            margin: { ...PLOT_MARGIN, t: 55, b: 55 },
-            xaxis: {
-              title: AXIS_TITLE('Embedding 1'),
-              tickfont: AXIS_TICK,
-              showgrid: true,
-              gridcolor: 'rgba(200,200,200,0.35)',
-              zeroline: false,
-              showline: true,
-              linecolor: '#000',
-              linewidth: 1,
-              constrain: 'domain',
-            },
-            yaxis: {
-              title: AXIS_TITLE('Embedding 2'),
-              tickfont: AXIS_TICK,
-              showgrid: true,
-              gridcolor: 'rgba(200,200,200,0.35)',
-              zeroline: false,
-              showline: true,
-              linecolor: '#000',
-              linewidth: 1,
-              scaleanchor: 'x',
-              scaleratio: 1,
-              constrain: 'domain',
-            },
-            hovermode: 'closest',
-            ...PLOT_BG,
-            legend: LEGEND_TOP,
-          }}
-          config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height }}
-        />
+        {legendEntries.length ? <ClusterLegend entries={legendEntries} /> : null}
+
+        <div style={PLOT_BOX_STYLE}>
+          <Plot
+            data={traces}
+            layout={{
+              margin: { ...PLOT_MARGIN, t: 20, b: 50 },
+              xaxis: {
+                title: AXIS_TITLE('Embedding 1'),
+                tickfont: AXIS_TICK,
+                showgrid: true,
+                gridcolor: 'rgba(200,200,200,0.35)',
+                zeroline: false,
+                showline: true,
+                linecolor: '#000',
+                linewidth: 1,
+                automargin: true,
+              },
+              yaxis: {
+                title: AXIS_TITLE('Embedding 2'),
+                tickfont: AXIS_TICK,
+                showgrid: true,
+                gridcolor: 'rgba(200,200,200,0.35)',
+                zeroline: false,
+                showline: true,
+                linecolor: '#000',
+                linewidth: 1,
+                scaleanchor: 'x',
+                scaleratio: 1,
+                automargin: true,
+              },
+              hovermode: 'closest',
+              height: PLOT_HEIGHT,
+              ...PLOT_BG,
+            }}
+            config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
+            style={{ width: '100%', height: PLOT_HEIGHT, marginTop: 'auto' }}
+          />
+        </div>
       </Stack>
     );
   };
@@ -345,7 +449,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
   const renderClusterSizeBar = () => {
     if (!sizes.length) return null;
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader title="Cluster size distribution" help="Bar chart of samples per cluster id." />
         <Plot
           data={[
@@ -381,7 +485,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 300 }}
+          style={{ width: '100%', height: 300, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -391,7 +495,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (!lorenz) return null;
     const giniText = lorenz.gini == null ? '' : ` (Gini ≈ ${lorenz.gini.toFixed(3)})`;
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title={`Cluster size inequality${giniText}`}
           help="Lorenz curve of cluster size distribution. Curves closer to the diagonal indicate more even cluster sizes."
@@ -444,7 +548,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 300 }}
+          style={{ width: '100%', height: 300, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -455,7 +559,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const ys = distanceHist?.y;
     if (!Array.isArray(xs) || !Array.isArray(ys) || xs.length === 0 || ys.length === 0) return null;
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="Distance-to-center distribution"
           help="Histogram of per-sample distances to the nearest cluster center (when the estimator supports it, e.g., KMeans)."
@@ -494,7 +598,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 300 }}
+          style={{ width: '100%', height: 300, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -505,236 +609,247 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const clusterIds = centroids?.cluster_ids;
     const featIdx = centroids?.feature_idx;
     const z = centroids?.values;
-    if (!Array.isArray(clusterIds) || !Array.isArray(featIdx) || !Array.isArray(z)) return null;
-    if (!z.length || !Array.isArray(z[0])) return null;
+    if (!Array.isArray(clusterIds) || !Array.isArray(featIdx) || !Array.isArray(z) || !z.length) return null;
+
+    const featureLabels = featIdx.map((i) => `f${i}`);
+    const showFeatureTicks = featureLabels.length <= 25;
 
     return (
-      <Stack gap={6} style={{ height: '100%', justifyContent: 'flex-start' }}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="Per-cluster feature profiles"
-          help="Heatmap of cluster centroids in the preprocessed feature space."
+          help="Mean feature values per cluster (shown for top-variance features)."
         />
-        <Plot
-          data={[
-            {
-              type: 'heatmap',
-              z,
-              x: featIdx.map((i) => `f${i}`),
-              y: clusterIds.map((c) => clusterLabel(c)),
-              hovertemplate: 'Cluster=%{y}<br>Feature=%{x}<br>Value=%{z:.3f}<extra></extra>',
-              colorscale: MENDER_BLUE_SCALE,
-              showscale: false,
-            },
-          ]}
-          layout={{
-            margin: { ...PLOT_MARGIN, l: 60, t: 30, b: 48 },
-            xaxis: {
-              title: AXIS_TITLE('Features'),
-              tickfont: { size: 10 },
-              showgrid: false,
-              zeroline: false,
-              showline: false,
-              ticks: '',
-              automargin: true,
-            },
-            yaxis: {
-              title: { text: '' },
-              tickfont: { size: 10 },
-              showgrid: false,
-              zeroline: false,
-              showline: false,
-              ticks: '',
-              ticklen: 0,
-              automargin: true,
-            },
-            ...PLOT_BG,
-          }}
-          config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
-        />
+
+        <div style={{ width: '100%', border: LIGHT_BORDER, borderRadius: 10, padding: 8 }}>
+          <Plot
+            data={[
+              {
+                type: 'heatmap',
+                z,
+                x: featureLabels,
+                y: clusterIds.map((c) => clusterLabel(c)),
+                hovertemplate: 'Cluster=%{y}<br>Feature=%{x}<br>Value=%{z:.3f}<extra></extra>',
+                colorscale: MENDER_BLUE_SCALE,
+                showscale: false,
+              },
+            ]}
+            layout={{
+              margin: { ...PLOT_MARGIN, l: 60, t: 24, b: 55 },
+              xaxis: {
+                title: AXIS_TITLE('Features'),
+                tickfont: { size: 10 },
+                showgrid: false,
+                zeroline: false,
+                showline: false,
+                ticks: '',
+                showticklabels: showFeatureTicks,
+                tickangle: showFeatureTicks ? -45 : 0,
+                automargin: true,
+              },
+              yaxis: {
+                title: { text: '' },
+                tickfont: { size: 11 },
+                showgrid: false,
+                zeroline: false,
+                showline: false,
+                ticks: '',
+                ticklen: 0,
+                showticklabels: true,
+                automargin: true,
+              },
+              ...PLOT_BG,
+            }}
+            config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
+            style={{ width: '100%', height: PLOT_HEIGHT, marginTop: 'auto' }}
+          />
+        </div>
       </Stack>
     );
   };
 
   const renderSeparationMatrix = () => {
     if (!sepMatrix) return null;
-    const clusterIds = sepMatrix?.cluster_ids;
+    const ids = sepMatrix?.cluster_ids;
     const z = sepMatrix?.values;
-    if (!Array.isArray(clusterIds) || !Array.isArray(z) || !z.length) return null;
+    if (!Array.isArray(ids) || !Array.isArray(z) || !z.length) return null;
 
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="Pairwise cluster separation matrix"
-          help="Heatmap of centroid-to-centroid distances between clusters."
+          help="Pairwise distances between cluster centroids (in feature space)."
         />
-        <Plot
-          data={[
-            {
-              type: 'heatmap',
-              z,
-              x: clusterIds.map((c) => clusterLabel(c)),
-              y: clusterIds.map((c) => clusterLabel(c)),
-              hovertemplate: 'From=%{y}<br>To=%{x}<br>Distance=%{z:.3f}<extra></extra>',
-              colorscale: MENDER_BLUE_SCALE,
-              showscale: false,
-            },
-          ]}
-          layout={{
-            margin: { ...PLOT_MARGIN, l: 70, t: 30 },
-            xaxis: {
-              title: AXIS_TITLE('Cluster'),
-              tickfont: { size: 10 },
-              showgrid: false,
-              zeroline: false,
-              showline: true,
-              linecolor: '#000',
-              linewidth: 1,
-              constrain: 'domain',
-            },
-            yaxis: {
-              title: AXIS_TITLE('Cluster'),
-              tickfont: { size: 10 },
-              showgrid: false,
-              zeroline: false,
-              showline: true,
-              linecolor: '#000',
-              linewidth: 1,
-              scaleanchor: 'x',
-              scaleratio: 1,
-            },
-            ...PLOT_BG,
-          }}
-          config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
-        />
+
+        <div style={{ width: '100%', border: LIGHT_BORDER, borderRadius: 10, padding: 8, marginTop: 'auto' }}>
+          <div style={{ width: '100%', aspectRatio: '1 / 1', minHeight: PLOT_HEIGHT }}>
+            <Plot
+              data={[
+                {
+                  type: 'heatmap',
+                  z,
+                  x: ids.map((c) => clusterLabel(c)),
+                  y: ids.map((c) => clusterLabel(c)),
+                  hovertemplate: '%{y} vs %{x}<br>Distance=%{z:.3f}<extra></extra>',
+                  colorscale: MENDER_BLUE_SCALE,
+                  showscale: false,
+                },
+              ]}
+              layout={{
+                margin: { ...PLOT_MARGIN, l: 60, t: 24, b: 55 },
+                xaxis: {
+                  title: AXIS_TITLE('Cluster'),
+                  tickfont: { size: 10 },
+                  showgrid: false,
+                  zeroline: false,
+                  showline: false,
+                  ticks: '',
+                  automargin: true,
+                  constrain: 'domain',
+                },
+                yaxis: {
+                  title: AXIS_TITLE('Cluster'),
+                  tickfont: { size: 10 },
+                  showgrid: false,
+                  zeroline: false,
+                  showline: false,
+                  ticks: '',
+                  automargin: true,
+                  scaleanchor: 'x',
+                  scaleratio: 1,
+                  constrain: 'domain',
+                },
+                ...PLOT_BG,
+              }}
+              config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        </div>
       </Stack>
     );
   };
 
   const renderSilhouette = () => {
-    if (!silhouette || !Array.isArray(silhouette?.cluster_ids) || !Array.isArray(silhouette?.values)) return null;
+    if (!silhouette) return null;
+    const clusterIds = silhouette?.cluster_ids;
+    const groups = silhouette?.values;
+    if (!Array.isArray(clusterIds) || !Array.isArray(groups) || clusterIds.length !== groups.length) return null;
 
-    const perCluster = silhouette.cluster_ids
-      .map((cid, i) => ({ cluster_id: cid, values: silhouette.values?.[i] }))
-      .filter((c) => c && Array.isArray(c.values) && c.values.length)
-      .sort((a, b) => Number(a.cluster_id) - Number(b.cluster_id));
-    if (!perCluster.length) return null;
-
-    const overall = typeof silhouette?.avg === 'number' && Number.isFinite(silhouette.avg) ? silhouette.avg : null;
-
-    // Classical silhouette plot (sklearn-style): filled regions per cluster along stacked y.
-    const traces = [];
-    const shapes = [];
-    const annotations = [];
+    const avg = Number(silhouette?.avg);
 
     let yLower = 10;
-    perCluster.forEach((c, idx) => {
-      const vals = toFiniteNumbers(c.values).sort((a, b) => a - b);
+    const traces = [];
+    const hoverPoints = [];
+    let globalMin = 1;
+
+    clusterIds.forEach((cid, idx) => {
+      const vals = toFiniteNumbers(groups[idx]).sort((a, b) => a - b);
       if (!vals.length) return;
 
+      globalMin = Math.min(globalMin, vals[0]);
+
       const yUpper = yLower + vals.length;
-      const y = Array.from({ length: vals.length }, (_, i) => yLower + i);
+      const ySeq = Array.from({ length: vals.length }, (_, i) => yLower + i);
+
+      const color = PLOTLY_COLORS[idx % PLOTLY_COLORS.length];
+      const fillcolor = hexToRgba(color, 0.25);
+
+      // Filled polygon (mirrors sklearn's fill_betweenx between x=0 and silhouette values)
+      // Build a simple, non-self-intersecting polygon even when values are negative.
+      const zeros = new Array(vals.length).fill(0);
+      const xPoly = [...zeros, ...vals.slice().reverse(), 0];
+      const yPoly = [...ySeq, ...ySeq.slice().reverse(), ySeq[0]];
 
       traces.push({
         type: 'scatter',
         mode: 'lines',
-        x: vals,
-        y,
-        fill: 'tozerox',
-        line: { width: 0 },
-        name: clusterLabel(c.cluster_id),
-        hovertemplate: `Cluster=${clusterLabel(c.cluster_id)}<br>Silhouette=%{x:.3f}<extra></extra>`,
+        x: xPoly,
+        y: yPoly,
+        fill: 'toself',
+        fillcolor,
+        line: { width: 0, color },
+        hoverinfo: 'skip',
         showlegend: false,
       });
 
-      annotations.push({
-        x: -0.05,
-        xref: 'x',
-        y: (yLower + yUpper) / 2,
-        yref: 'y',
-        text: clusterLabel(c.cluster_id),
-        showarrow: false,
-        font: { size: 12, weight: 'bold' },
-        xanchor: 'right',
+      // Invisible markers to enable per-sample hover
+      hoverPoints.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: vals,
+        y: ySeq,
+        marker: { size: 8, opacity: 0 },
+        hovertemplate: `Cluster=${clusterLabel(cid)}<br>Silhouette=%{x:.3f}<extra></extra>`,
+        showlegend: false,
+      });
+
+      // Cluster label (centered)
+      traces.push({
+        type: 'scatter',
+        mode: 'text',
+        x: [Math.max(0.02, Math.min(0.2, (Math.max(...vals) + Math.min(...vals)) / 2))],
+        y: [(yLower + yUpper) / 2],
+        text: [clusterLabel(cid)],
+        textfont: { size: 11, color },
+        hoverinfo: 'skip',
+        showlegend: false,
       });
 
       yLower = yUpper + 10;
-
-      if (idx !== perCluster.length - 1) {
-        shapes.push({
-          type: 'line',
-          xref: 'paper',
-          x0: 0,
-          x1: 1,
-          y0: yLower - 5,
-          y1: yLower - 5,
-          line: { width: 1, dash: 'dot' },
-        });
-      }
     });
 
     if (!traces.length) return null;
 
-    if (overall != null) {
+    const xMin = Math.max(-1, Math.min(-0.1, globalMin - 0.05));
+
+    const shapes = [];
+    if (Number.isFinite(avg)) {
       shapes.push({
         type: 'line',
-        x0: overall,
-        x1: overall,
+        x0: avg,
+        x1: avg,
         y0: 0,
         y1: yLower,
-        line: { width: 1, dash: 'dash' },
-      });
-      annotations.push({
-        x: overall,
-        xref: 'x',
-        y: 1.02,
-        yref: 'paper',
-        text: `mean=${overall.toFixed(3)}`,
-        showarrow: false,
-        font: { size: 12 },
+        line: { dash: 'dash', width: 2, color: '#000' },
       });
     }
 
     return (
-      <Stack gap={6} style={{ height: '100%', justifyContent: 'flex-start' }}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
-          title="Silhouette plot"
-          help="Standard silhouette plot: sorted per-sample silhouette values stacked per cluster (higher is better)."
+          title="Silhouette scores"
+          help="Silhouette coefficients can be negative when some samples are closer to a neighboring cluster than to their assigned cluster."
         />
         <Plot
-          data={traces}
+          data={[...traces, ...hoverPoints]}
           layout={{
-            margin: { ...PLOT_MARGIN, l: 60, t: 30, b: 45 },
+            margin: { ...PLOT_MARGIN, t: 25, l: 55 },
             xaxis: {
-              title: AXIS_TITLE('Silhouette value'),
+              title: AXIS_TITLE('Silhouette coefficient'),
               tickfont: AXIS_TICK,
+              range: [xMin, 1.0],
               showgrid: true,
-              gridcolor: 'rgba(200,200,200,0.4)',
+              gridcolor: 'rgba(200,200,200,0.35)',
               zeroline: true,
-              zerolinewidth: 1,
-              zerolinecolor: '#000',
+              zerolinecolor: 'rgba(0,0,0,0.35)',
               showline: true,
               linecolor: '#000',
               linewidth: 1,
-              range: [-1, 1],
             },
             yaxis: {
-              title: AXIS_TITLE('Samples (stacked by cluster)'),
-              tickfont: AXIS_TICK,
+              title: { text: '' },
+              tickfont: { size: 10 },
               showgrid: false,
-              zeroline: false,
-              showline: true,
-              linecolor: '#000',
-              linewidth: 1,
               showticklabels: false,
+              zeroline: false,
+              showline: false,
             },
             shapes,
-            annotations,
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: PLOT_HEIGHT, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -744,7 +859,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (!elbow || !Array.isArray(elbow?.x) || !Array.isArray(elbow?.y)) return null;
     if (!elbow.x.length || !elbow.y.length) return null;
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader title="Elbow curve" help="Objective vs number of clusters/components (when computed)." />
         <Plot
           data={[
@@ -781,7 +896,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 320, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -795,7 +910,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (x.length === 0 || y.length === 0 || ids.length !== x.length || ids.length !== y.length) return null;
 
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="Cluster compactness vs separation"
           help="Each point is a cluster: compactness is within-cluster spread, separation is distance to the nearest other cluster centroid."
@@ -839,7 +954,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 320, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -852,7 +967,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const x = Array.from({ length: y.length }, (_, i) => i + 1);
     const kText = typeof kdist?.k === 'number' ? ` (k=${kdist.k})` : '';
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title={`k-distance plot${kText}`}
           help="Sorted distance to the k-th nearest neighbor. Often used to guide DBSCAN eps selection."
@@ -892,7 +1007,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 320, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -905,7 +1020,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const noise = Number(coreCounts?.noise);
     if (![core, border, noise].every((v) => Number.isFinite(v))) return null;
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader title="Core vs border vs noise counts" help="Available for density-based clustering (e.g., DBSCAN)." />
         <Plot
           data={[
@@ -940,7 +1055,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 320, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -952,7 +1067,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (!y.length) return null;
     const x = Array.from({ length: y.length }, (_, i) => i + 1);
     return (
-      <Stack gap={6}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="Spectral eigenvalues"
           help="Eigenvalue spectrum (when available). A large gap may indicate a good cluster count."
@@ -992,7 +1107,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 320, marginTop: 'auto' }}
         />
       </Stack>
     );
@@ -1044,7 +1159,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     }
 
     return (
-      <Stack gap={6} style={{ height: '100%', justifyContent: 'flex-start' }}>
+      <Stack gap={6} style={TILE_STACK_STYLE}>
         <PlotHeader
           title="Dendrogram"
           help="Hierarchical clustering dendrogram (AgglomerativeClustering). Leaf markers are colored by the assigned cluster label."
@@ -1078,7 +1193,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             legend: LEGEND_TOP,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 360 }}
+          style={{ width: '100%', height: 360, marginTop: 'auto' }}
         />
       </Stack>
     );
