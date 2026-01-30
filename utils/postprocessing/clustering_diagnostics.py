@@ -33,6 +33,11 @@ try:
 except Exception:  # pragma: no cover
     silhouette_samples = None  # type: ignore
 
+try:
+    from scipy.cluster.hierarchy import dendrogram  # type: ignore
+except Exception:  # pragma: no cover
+    dendrogram = None  # type: ignore
+
 
 def _as_2d(X: Any) -> Any:
     if np is None:
@@ -71,6 +76,96 @@ def _transform_through_pipeline(model: Any, X: Any) -> Any:
         return Xt
     except Exception:
         return X
+
+
+def _histogram_payload(values: Any, *, bins: int = 30) -> Optional[Mapping[str, Any]]:
+    """Return a small histogram payload {x, y} for JSON transport.
+
+    - x: bin centers
+    - y: counts
+    """
+    if np is None:
+        return None
+    try:
+        v = np.asarray(values, dtype=float).reshape(-1)
+        v = v[np.isfinite(v)]
+        if v.size < 2:
+            return None
+        vmin = float(np.min(v))
+        vmax = float(np.max(v))
+        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmin == vmax:
+            return None
+
+        n_bins = int(max(5, min(int(bins), int(np.floor(np.sqrt(v.size) * 2)))))
+        hist, edges = np.histogram(v, bins=n_bins)
+        centers = (edges[:-1] + edges[1:]) / 2.0
+        return {
+            "x": [float(x) for x in centers.tolist()],
+            "y": [int(c) for c in hist.tolist()],
+        }
+    except Exception:
+        return None
+
+
+def _agglomerative_dendrogram_payload(model: Any, *, max_leaves: int = 200) -> Tuple[Optional[Mapping[str, Any]], List[str]]:
+    """Build a dendrogram payload for AgglomerativeClustering.
+
+    Uses scipy.cluster.hierarchy.dendrogram to get JSON-friendly segments.
+    Returns (payload, warnings).
+    """
+    warnings: List[str] = []
+    if np is None:
+        return None, ["numpy unavailable; cannot compute dendrogram."]
+    if dendrogram is None:
+        return None, ["scipy unavailable; cannot compute dendrogram."]
+
+    est = _final_estimator(model)
+    children = getattr(est, "children_", None)
+    distances = getattr(est, "distances_", None)
+    if children is None:
+        return None, []
+    if distances is None:
+        return None, [
+            "AgglomerativeClustering has no distances_. Enable compute_distances=True to render a dendrogram."
+        ]
+
+    try:
+        children = np.asarray(children, dtype=float)
+        distances = np.asarray(distances, dtype=float).reshape(-1)
+        if children.ndim != 2 or children.shape[1] != 2:
+            return None, ["Invalid children_ shape for dendrogram."]
+
+        n_merges = int(children.shape[0])
+        n_leaves = int(n_merges + 1)
+
+        if n_leaves > int(max_leaves):
+            return None, [f"Dendrogram skipped: too many leaves ({n_leaves}) for display (limit={int(max_leaves)})."]
+
+        # Compute counts per node (required by linkage matrix)
+        counts = np.zeros((n_merges,), dtype=float)
+        for i in range(n_merges):
+            c1, c2 = int(children[i, 0]), int(children[i, 1])
+            cnt1 = 1.0 if c1 < n_leaves else counts[c1 - n_leaves]
+            cnt2 = 1.0 if c2 < n_leaves else counts[c2 - n_leaves]
+            counts[i] = cnt1 + cnt2
+
+        Z = np.column_stack([children, distances[:n_merges], counts])
+        dd = dendrogram(Z, no_plot=True)
+
+        segments = []
+        for xs, ys in zip(dd.get("icoord", []), dd.get("dcoord", [])):
+            segments.append({
+                "x": [float(v) for v in xs],
+                "y": [float(v) for v in ys],
+            })
+
+        return {
+            "segments": segments,
+            "leaf_order": [int(v) for v in dd.get("leaves", [])],
+            "leaf_labels": [str(v) for v in dd.get("ivl", [])],
+        }, warnings
+    except Exception as e:
+        return None, [f"Failed to compute dendrogram: {type(e).__name__}: {e}"]
 
 
 def cluster_summary(labels: Any) -> Mapping[str, Any]:
@@ -495,10 +590,18 @@ def build_plot_data(
         if per_sample is not None:
             if per_sample.get("max_membership_prob") is not None:
                 v = np.asarray(per_sample.get("max_membership_prob")).reshape(-1).astype(float)
-                dec["confidence"] = {"values": [float(x) for x in v[idx].tolist()]}
+                conf_vals = v[idx]
+                dec["confidence"] = {"values": [float(x) for x in conf_vals.tolist()]}
+                h = _histogram_payload(conf_vals, bins=30)
+                if h is not None:
+                    dec["confidence_hist"] = dict(h)
             if per_sample.get("log_likelihood") is not None:
                 v = np.asarray(per_sample.get("log_likelihood")).reshape(-1).astype(float)
-                dec["log_likelihood"] = {"values": [float(x) for x in v[idx].tolist()]}
+                ll_vals = v[idx]
+                dec["log_likelihood"] = {"values": [float(x) for x in ll_vals.tolist()]}
+                h = _histogram_payload(ll_vals, bins=30)
+                if h is not None:
+                    dec["log_likelihood_hist"] = dict(h)
             if per_sample.get("is_noise") is not None:
                 v = np.asarray(per_sample.get("is_noise")).reshape(-1).astype(bool)
                 x = np.arange(v.size, dtype=int)
@@ -513,6 +616,16 @@ def build_plot_data(
 
     if dec:
         out["decoder"] = dec
+
+    # Dendrogram (AgglomerativeClustering), when available
+    try:
+        payload, w = _agglomerative_dendrogram_payload(model)
+        if w:
+            warnings.extend(w)
+        if payload is not None:
+            out["dendrogram"] = dict(payload)
+    except Exception:
+        pass
 
     # Embedding labels aligned to embedding.idx
     try:

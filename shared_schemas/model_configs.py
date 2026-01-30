@@ -614,7 +614,9 @@ class AgglomerativeClusteringConfig(BaseModel):
     linkage: Literal["ward", "complete", "average", "single"] = "ward"
     distance_threshold: Optional[float] = None
     compute_full_tree: Union[bool, Literal["auto"]] = "auto"
-    compute_distances: bool = False
+    # Required for dendrogram rendering (children_ + distances_).
+    # Enabled by default; can be turned off for very large problems.
+    compute_distances: bool = True
 
 
 class GaussianMixtureConfig(BaseModel):

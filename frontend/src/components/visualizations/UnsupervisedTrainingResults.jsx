@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { ActionIcon, Group, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { Divider, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
 const PLOT_MARGIN = { l: 55, r: 20, t: 20, b: 55 };
@@ -12,6 +11,12 @@ const PLOT_BG = {
   plot_bgcolor: '#ffffff',
   paper_bgcolor: 'rgba(0,0,0,0)',
 };
+
+// Match the confusion-matrix look (white → blue).
+const MENDER_BLUE_SCALE = [
+  [0, '#ffffff'],
+  [1, 'hsl(210, 80%, 45%)'],
+];
 
 function toFiniteNumbers(arr) {
   if (!Array.isArray(arr)) return [];
@@ -133,36 +138,29 @@ function ellipsePoints(mean, cov, n = 100, scale = 2) {
 }
 
 function PlotHeader({ title, help }) {
-  return (
-    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
-      <Text fw={600} size="sm">
-        {title}
-      </Text>
-      {help ? (
-        <Tooltip label={help} withArrow position="top-end">
-          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Tooltip>
-      ) : null}
-    </Group>
+  const titleNode = (
+    <Text fw={600} size="sm" ta="center">
+      {title}
+    </Text>
+  );
+
+  return help ? (
+    <Tooltip label={help} withArrow position="top">
+      {titleNode}
+    </Tooltip>
+  ) : (
+    titleNode
   );
 }
 
-function SectionHeader({ title, help }) {
-  return (
-    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
-      <Text fw={600} size="sm">
-        {title}
-      </Text>
-      {help ? (
-        <Tooltip label={help} withArrow position="top-end">
-          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Tooltip>
-      ) : null}
-    </Group>
+function SectionDivider({ title, help }) {
+  const divider = <Divider label={title} labelPosition="center" />;
+  return help ? (
+    <Tooltip label={help} withArrow position="top">
+      <div>{divider}</div>
+    </Tooltip>
+  ) : (
+    divider
   );
 }
 
@@ -200,17 +198,18 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
   const coreCounts = plotData?.core_border_noise_counts || null;
   const spectral = plotData?.spectral_eigenvalues || null;
   const gmmEllipses = plotData?.gmm_ellipses || null;
+  const dendrogram = plotData?.dendrogram || null;
 
   const hasAnyGlobal = Boolean(
     (embedding && embX.length && embY.length) ||
       sizes.length ||
       (distanceHist && Array.isArray(distanceHist?.x) && Array.isArray(distanceHist?.y)) ||
-      featureProfiles ||
+      centroids ||
       sepMatrix ||
       silhouette,
   );
 
-  const hasAnyModelSpecific = Boolean(elbow || compactSep || kdist || coreCounts || spectral || gmmEllipses);
+  const hasAnyModelSpecific = Boolean(elbow || compactSep || kdist || coreCounts || spectral || gmmEllipses || dendrogram);
 
   const renderEmbedding = () => {
     if (!embedding || embX.length === 0 || embY.length === 0) return null;
@@ -486,6 +485,8 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               x: featIdx.map((i) => `f${i}`),
               y: clusterIds.map((c) => `c${c}`),
               hovertemplate: 'Cluster=%{y}<br>Feature=%{x}<br>Value=%{z:.3f}<extra></extra>',
+              colorscale: MENDER_BLUE_SCALE,
+              showscale: false,
             },
           ]}
           layout={{
@@ -498,6 +499,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               showline: true,
               linecolor: '#000',
               linewidth: 1,
+              constrain: 'domain',
             },
             yaxis: {
               title: AXIS_TITLE('Clusters'),
@@ -507,6 +509,8 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               showline: true,
               linecolor: '#000',
               linewidth: 1,
+              scaleanchor: 'x',
+              scaleratio: 1,
             },
             ...PLOT_BG,
           }}
@@ -537,6 +541,8 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               x: clusterIds.map((c) => `c${c}`),
               y: clusterIds.map((c) => `c${c}`),
               hovertemplate: 'From=%{y}<br>To=%{x}<br>Distance=%{z:.3f}<extra></extra>',
+              colorscale: MENDER_BLUE_SCALE,
+              showscale: false,
             },
           ]}
           layout={{
@@ -549,6 +555,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               showline: true,
               linecolor: '#000',
               linewidth: 1,
+              constrain: 'domain',
             },
             yaxis: {
               title: AXIS_TITLE('Cluster'),
@@ -558,6 +565,8 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               showline: true,
               linecolor: '#000',
               linewidth: 1,
+              scaleanchor: 'x',
+              scaleratio: 1,
             },
             ...PLOT_BG,
           }}
@@ -576,76 +585,117 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
       .sort((a, b) => Number(a.cluster_id) - Number(b.cluster_id));
     if (!perCluster.length) return null;
 
-    const traces = perCluster.map((c) => ({
-      type: 'violin',
-      y: c.values,
-      name: `c${c.cluster_id}`,
-      box: { visible: true },
-      meanline: { visible: true },
-      points: false,
-      hovertemplate: 'Silhouette=%{y:.3f}<extra></extra>',
-    }));
-
     const overall = typeof silhouette?.avg === 'number' && Number.isFinite(silhouette.avg) ? silhouette.avg : null;
+
+    // Standard silhouette plot: sorted bars per cluster, stacked on the y-axis.
+    let yCursor = 0;
+    const traces = [];
+    const sepLines = [];
+    const annotations = [];
+
+    perCluster.forEach((c, idx) => {
+      const vals = toFiniteNumbers(c.values).sort((a, b) => a - b);
+      if (!vals.length) return;
+
+      const y = Array.from({ length: vals.length }, (_, i) => yCursor + i);
+
+      traces.push({
+        type: 'bar',
+        orientation: 'h',
+        x: vals,
+        y,
+        name: `c${c.cluster_id}`,
+        hovertemplate: 'Silhouette=%{x:.3f}<extra></extra>',
+      });
+
+      const mid = yCursor + vals.length / 2;
+      annotations.push({
+        x: 0.01,
+        xref: 'paper',
+        y: mid,
+        yref: 'y',
+        text: `c${c.cluster_id}`,
+        showarrow: false,
+        font: { size: 11 },
+        xanchor: 'left',
+      });
+
+      yCursor += vals.length;
+
+      // Spacer + separator between clusters
+      if (idx !== perCluster.length - 1) {
+        sepLines.push({
+          type: 'line',
+          xref: 'paper',
+          x0: 0,
+          x1: 1,
+          y0: yCursor + 0.5,
+          y1: yCursor + 0.5,
+          line: { width: 1, dash: 'dot' },
+        });
+        yCursor += 6;
+      }
+    });
+
+    if (!traces.length) return null;
+
+    const shapes = [...sepLines];
+    if (overall != null) {
+      shapes.push({
+        type: 'line',
+        x0: overall,
+        x1: overall,
+        y0: 0,
+        y1: yCursor,
+        line: { width: 1, dash: 'dash' },
+      });
+      annotations.push({
+        x: overall,
+        xref: 'x',
+        y: 1.02,
+        yref: 'paper',
+        text: `mean=${overall.toFixed(3)}`,
+        showarrow: false,
+        font: { size: 11 },
+      });
+    }
 
     return (
       <Stack gap={6}>
         <PlotHeader
-          title="Silhouette plot (per cluster)"
-          help="Distribution of per-sample silhouette values for each cluster (higher is better)."
+          title="Silhouette plot"
+          help="Standard silhouette plot: sorted per-sample silhouette values stacked per cluster (higher is better)."
         />
         <Plot
           data={traces}
           layout={{
-            margin: { ...PLOT_MARGIN, b: 70, t: 30 },
+            barmode: 'overlay',
+            margin: { ...PLOT_MARGIN, l: 60, t: 30, b: 45 },
             xaxis: {
-              title: AXIS_TITLE('Cluster'),
-              tickfont: { size: 10 },
-              showgrid: false,
-              zeroline: false,
+              title: AXIS_TITLE('Silhouette value'),
+              tickfont: AXIS_TICK,
+              showgrid: true,
+              gridcolor: 'rgba(200,200,200,0.4)',
+              zeroline: true,
+              zerolinewidth: 1,
+              zerolinecolor: '#000',
               showline: true,
               linecolor: '#000',
               linewidth: 1,
             },
             yaxis: {
-              title: AXIS_TITLE('Silhouette value'),
+              title: AXIS_TITLE('Samples (stacked by cluster)'),
               tickfont: AXIS_TICK,
-              showgrid: true,
-              gridcolor: 'rgba(200,200,200,0.4)',
+              showgrid: false,
               zeroline: false,
               showline: true,
               linecolor: '#000',
               linewidth: 1,
+              showticklabels: false,
             },
-            ...(overall != null
-              ? {
-                  shapes: [
-                    {
-                      type: 'line',
-                      x0: -0.5,
-                      x1: perCluster.length - 0.5,
-                      y0: overall,
-                      y1: overall,
-                      line: { width: 1, dash: 'dash' },
-                    },
-                  ],
-                  annotations: [
-                    {
-                      x: 0.02,
-                      xref: 'paper',
-                      y: overall,
-                      yref: 'y',
-                      text: `mean=${overall.toFixed(3)}`,
-                      showarrow: false,
-                      font: { size: 12 },
-                      align: 'left',
-                      bgcolor: 'rgba(255,255,255,0.7)',
-                    },
-                  ],
-                }
-              : {}),
+            shapes,
+            annotations,
             ...PLOT_BG,
-            showlegend: true,
             legend: LEGEND_TOP,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
@@ -913,6 +963,58 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     );
   };
 
+  const renderDendrogram = () => {
+    if (!dendrogram || !Array.isArray(dendrogram?.segments) || dendrogram.segments.length === 0) return null;
+
+    const traces = dendrogram.segments.map((seg, i) => ({
+      type: 'scatter',
+      mode: 'lines',
+      x: seg.x,
+      y: seg.y,
+      hoverinfo: 'skip',
+      showlegend: false,
+      name: `seg-${i}`,
+    }));
+
+    return (
+      <Stack gap={6}>
+        <PlotHeader
+          title="Dendrogram"
+          help="Hierarchical clustering dendrogram (AgglomerativeClustering). Requires compute_distances=true."
+        />
+        <Plot
+          data={traces}
+          layout={{
+            margin: { ...PLOT_MARGIN, t: 30, l: 50 },
+            xaxis: {
+              title: AXIS_TITLE('Leaves'),
+              tickfont: { size: 10 },
+              showgrid: false,
+              zeroline: false,
+              showline: true,
+              linecolor: '#000',
+              linewidth: 1,
+              showticklabels: false,
+            },
+            yaxis: {
+              title: AXIS_TITLE('Distance'),
+              tickfont: AXIS_TICK,
+              showgrid: true,
+              gridcolor: 'rgba(200,200,200,0.4)',
+              zeroline: false,
+              showline: true,
+              linecolor: '#000',
+              linewidth: 1,
+            },
+            ...PLOT_BG,
+          }}
+          config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
+          style={{ width: '100%', height: 320 }}
+        />
+      </Stack>
+    );
+  };
+
   if (!hasAnyGlobal && !hasAnyModelSpecific) {
     return (
       <Text size="sm" c="dimmed">
@@ -923,27 +1025,13 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" align="center">
-        <Text fw={600} size="md">
-          Visualizations
-        </Text>
-        <Tooltip
-          withArrow
-          label="Plots derived from cluster summary, per-sample outputs, and model diagnostics."
-          position="top-end"
-        >
-          <ActionIcon variant="subtle" size="sm" aria-label="Visualizations help">
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-
       {hasAnyGlobal ? (
         <>
-          <Text fw={600} size="sm">
-            Global plots
-          </Text>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+          <SectionDivider
+            title="Common plots"
+            help="Plots derived from cluster summary, per-sample outputs, and generic diagnostics."
+          />
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'end' }}>
             {renderEmbedding()}
             {renderClusterSizeBar()}
             {renderLorenz()}
@@ -957,16 +1045,19 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
 
       {hasAnyModelSpecific ? (
         <>
-          <Text fw={600} size="sm">
-            Model-specific plots
-          </Text>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+          <SectionDivider
+            title="Model-specific plots"
+            help="Diagnostics available only for particular algorithms (e.g., DBSCAN k-distance, spectral eigenvalues, dendrogram)."
+          />
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'end' }}>
             {renderElbow()}
             {renderCompactSep()}
             {renderKdist()}
             {renderCoreCounts()}
             {renderSpectralGap()}
           </SimpleGrid>
+
+          {renderDendrogram()}
 
           {gmmEllipses && gmmEllipses?.components?.length ? (
             <Text size="xs" c="dimmed">

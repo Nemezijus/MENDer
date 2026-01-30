@@ -8,6 +8,7 @@ import { useSettingsStore } from '../state/useSettingsStore.js';
 import { useFeatureStore } from '../state/useFeatureStore.js';
 import { useResultsStore } from '../state/useResultsStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
+import { useUnsupervisedStore } from '../state/useUnsupervisedStore.js';
 
 import ModelSelectionCard from './ModelSelectionCard.jsx';
 import { runUnsupervisedTrainRequest } from '../api/unsupervised.js';
@@ -54,7 +55,27 @@ export default function UnsupervisedTrainingPanel() {
   const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
-  const [model, setModel] = useState(null);
+  const {
+    model,
+    algo,
+    fitScope,
+    metrics,
+    includeClusterProbabilities,
+    embeddingMethod,
+    setModel,
+    hydrateModel,
+  } = useUnsupervisedStore(
+    useShallow((s) => ({
+      model: s.model,
+      algo: s.algo,
+      fitScope: s.fitScope,
+      metrics: s.metrics,
+      includeClusterProbabilities: s.includeClusterProbabilities,
+      embeddingMethod: s.embeddingMethod,
+      setModel: s.setModel,
+      hydrateModel: s.hydrateModel,
+    })),
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState(null);
 
@@ -63,23 +84,38 @@ export default function UnsupervisedTrainingPanel() {
     return schema.getCompatibleAlgos?.('unsupervised') || [];
   }, [schema]);
 
-  // Initialize model defaults when schema loads
+  const shallowEqual = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    const ka = Object.keys(a);
+    const kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (let i = 0; i < ka.length; i += 1) {
+      const k = ka[i];
+      if (a[k] !== b[k]) return false;
+    }
+    return true;
+  };
+
+  // Initialize model defaults once (and keep selections across navigation).
   useEffect(() => {
     if (model?.algo) return;
     if (!unsupAlgos || unsupAlgos.length === 0) return;
-    const first = unsupAlgos[0];
-    const def = schema.getModelDefaults?.(first);
-    setModel(def ? cloneDefaults(def) : { algo: first });
+    const preferredAlgo = algo || unsupAlgos[0];
+    const def = schema.getModelDefaults?.(preferredAlgo);
+    const base = def ? cloneDefaults(def) : { algo: preferredAlgo };
+    hydrateModel(base, model);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unsupAlgos, schema]);
+  }, [unsupAlgos, schema, algo]);
 
-  // Keep model hydrated with backend defaults for current algo
+  // Keep model hydrated with backend defaults for current algo (without resetting user tweaks).
   useEffect(() => {
     if (!model?.algo) return;
     const base = schema.getModelDefaults?.(model.algo) || { algo: model.algo };
-    setModel((prev) => ({ ...cloneDefaults(base), ...(prev || {}) }));
+    const merged = { ...cloneDefaults(base), ...(model || {}) };
+    if (!shallowEqual(merged, model)) setModel(merged);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema.getModelDefaults, model?.algo]);
+  }, [schema, model?.algo]);
 
   const hasX = !!(xPath || npzPath);
   const canRun = hasX && !!model?.algo && !schema.loading && !isRunning;
@@ -119,17 +155,17 @@ export default function UnsupervisedTrainingPanel() {
           y_key: yKey || null,
         },
         // Applying to production is done via the Predictions tab
-        fit_scope: 'train_only',
+        fit_scope: fitScope || 'train_only',
         scale: { method: scaleMethod },
         features: safeFeatures,
         model,
         eval: {
           // Empty list => backend computes default pack (and model-specific diagnostics)
-          metrics: [],
+          metrics: Array.isArray(metrics) ? metrics : [],
           compute_embedding_2d: true,
-          embedding_method: 'pca',
+          embedding_method: embeddingMethod || 'pca',
           per_sample_outputs: true,
-          include_cluster_probabilities: false,
+          include_cluster_probabilities: !!includeClusterProbabilities,
         },
         use_y_for_external_metrics: false,
         external_metrics: [],

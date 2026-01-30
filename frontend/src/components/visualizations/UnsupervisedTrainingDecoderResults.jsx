@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { ActionIcon, Group, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { Divider, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
 const PLOT_MARGIN = { l: 55, r: 20, t: 16, b: 55 };
@@ -20,37 +19,50 @@ function toFiniteNumbers(arr) {
 }
 
 function PlotHeader({ title, help }) {
-  return (
-    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
-      <Text fw={600} size="sm">
-        {title}
-      </Text>
-      {help ? (
-        <Tooltip label={help} withArrow position="top-end">
-          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Tooltip>
-      ) : null}
-    </Group>
+  const titleNode = (
+    <Text fw={600} size="sm" ta="center">
+      {title}
+    </Text>
+  );
+
+  return help ? (
+    <Tooltip label={help} withArrow position="top">
+      {titleNode}
+    </Tooltip>
+  ) : (
+    titleNode
   );
 }
 
-function SectionHeader({ title, help }) {
-  return (
-    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
-      <Text fw={600} size="sm">
-        {title}
-      </Text>
-      {help ? (
-        <Tooltip label={help} withArrow position="top-end">
-          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
-            <IconInfoCircle size={16} />
-          </ActionIcon>
-        </Tooltip>
-      ) : null}
-    </Group>
+function SectionDivider({ title, help }) {
+  const divider = <Divider label={title} labelPosition="center" />;
+  return help ? (
+    <Tooltip label={help} withArrow position="top">
+      <div>{divider}</div>
+    </Tooltip>
+  ) : (
+    divider
   );
+}
+
+function histogram(values, nBins = 30) {
+  const xs = toFiniteNumbers(values);
+  if (!xs.length) return null;
+  const min = Math.min(...xs);
+  const max = Math.max(...xs);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return null;
+
+  const bins = Math.max(5, Math.min(nBins, Math.floor(Math.sqrt(xs.length) * 2)));
+  const width = (max - min) / bins;
+  const counts = new Array(bins).fill(0);
+
+  xs.forEach((v) => {
+    const idx = Math.min(bins - 1, Math.max(0, Math.floor((v - min) / width)));
+    counts[idx] += 1;
+  });
+
+  const centers = Array.from({ length: bins }, (_, i) => min + (i + 0.5) * width);
+  return { x: centers, y: counts };
 }
 
 export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
@@ -62,12 +74,28 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
   const likelihoodHist = decoderData?.log_likelihood_hist || null;
   const noiseTrend = decoderData?.noise_trend || null;
 
-  const hasConfidence = Array.isArray(confidenceHist?.x) && Array.isArray(confidenceHist?.y) && confidenceHist.x.length;
-  const hasLikelihood = Array.isArray(likelihoodHist?.x) && Array.isArray(likelihoodHist?.y) && likelihoodHist.x.length;
+  // Backward/forward compatibility: if backend does not emit histogram-ready arrays,
+  // compute a small histogram locally from the raw per-sample values.
+  const fallbackConfidenceHist = useMemo(() => {
+    if (Array.isArray(confidenceHist?.x) && Array.isArray(confidenceHist?.y)) return confidenceHist;
+    return histogram(decoderData?.confidence?.values);
+  }, [confidenceHist, decoderData]);
+
+  const fallbackLikelihoodHist = useMemo(() => {
+    if (Array.isArray(likelihoodHist?.x) && Array.isArray(likelihoodHist?.y)) return likelihoodHist;
+    return histogram(decoderData?.log_likelihood?.values);
+  }, [likelihoodHist, decoderData]);
+
+  const hasConfidence = Array.isArray(fallbackConfidenceHist?.x) && Array.isArray(fallbackConfidenceHist?.y) && fallbackConfidenceHist.x.length;
+  const hasLikelihood = Array.isArray(fallbackLikelihoodHist?.x) && Array.isArray(fallbackLikelihoodHist?.y) && fallbackLikelihoodHist.x.length;
   const hasNoiseTrend = Array.isArray(noiseTrend?.x) && Array.isArray(noiseTrend?.y) && noiseTrend.x.length;
 
   const noiseX = useMemo(() => toFiniteNumbers(noiseTrend?.x), [noiseTrend]);
   const noiseY = useMemo(() => toFiniteNumbers(noiseTrend?.y), [noiseTrend]);
+  const noiseAllZero = useMemo(
+    () => (noiseY.length ? noiseY.every((v) => Math.abs(v) < 1e-12) : false),
+    [noiseY],
+  );
 
   const plots = [];
 
@@ -82,8 +110,8 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
           data={[
             {
               type: 'bar',
-              x: confidenceHist.x,
-              y: confidenceHist.y,
+              x: fallbackConfidenceHist.x,
+              y: fallbackConfidenceHist.y,
               hovertemplate: 'Confidence≈%{x:.3f}<br>Count=%{y}<extra></extra>',
               showlegend: false,
             },
@@ -129,8 +157,8 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
           data={[
             {
               type: 'bar',
-              x: likelihoodHist.x,
-              y: likelihoodHist.y,
+              x: fallbackLikelihoodHist.x,
+              y: fallbackLikelihoodHist.y,
               hovertemplate: 'LogL≈%{x:.3f}<br>Count=%{y}<extra></extra>',
               showlegend: false,
             },
@@ -166,7 +194,19 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
   }
 
   if (hasNoiseTrend) {
-    if (noiseX.length && noiseY.length && noiseX.length === noiseY.length) {
+    if (noiseAllZero) {
+      plots.push(
+        <Stack key="noise_zero" gap={6}>
+          <PlotHeader
+            title="Noise fraction trend"
+            help="Cumulative fraction of samples marked as noise (label=-1) across sample index order."
+          />
+          <Text size="sm" c="dimmed" ta="center">
+            Noise trend is flat at 0.0 — this run produced no noise labels.
+          </Text>
+        </Stack>,
+      );
+    } else if (noiseX.length && noiseY.length && noiseX.length === noiseY.length) {
       plots.push(
         <Stack key="noise" gap={6}>
           <PlotHeader
@@ -220,11 +260,11 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
 
   return (
     <Stack gap="md">
-      <SectionHeader
-        title="Decoder visualizations"
+      <SectionDivider
+        title="Decoder plots"
         help="Per-sample diagnostics produced by the unsupervised model (when available)."
       />
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'end' }}>
         {plots}
       </SimpleGrid>
     </Stack>
