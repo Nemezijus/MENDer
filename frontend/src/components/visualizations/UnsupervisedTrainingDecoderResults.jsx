@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Divider, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
+import { SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
 const PLOT_MARGIN = { l: 55, r: 20, t: 16, b: 55 };
@@ -20,9 +20,18 @@ function toFiniteNumbers(arr) {
 
 function PlotHeader({ title, help }) {
   const titleNode = (
-    <Text fw={600} size="sm" ta="center">
-      {title}
-    </Text>
+    <div
+      style={{
+        minHeight: 34,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+      }}
+    >
+      <Text fw={600} size="md" ta="center">
+        {title}
+      </Text>
+    </div>
   );
 
   return help ? (
@@ -34,23 +43,14 @@ function PlotHeader({ title, help }) {
   );
 }
 
-function SectionDivider({ title, help }) {
-  const divider = <Divider label={title} labelPosition="center" />;
-  return help ? (
-    <Tooltip label={help} withArrow position="top">
-      <div>{divider}</div>
-    </Tooltip>
-  ) : (
-    divider
-  );
-}
 
 function histogram(values, nBins = 30) {
   const xs = toFiniteNumbers(values);
   if (!xs.length) return null;
   const min = Math.min(...xs);
   const max = Math.max(...xs);
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return null;
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  if (min === max) return { x: [min], y: [xs.length] };
 
   const bins = Math.max(5, Math.min(nBins, Math.floor(Math.sqrt(xs.length) * 2)));
   const width = (max - min) / bins;
@@ -67,6 +67,7 @@ function histogram(values, nBins = 30) {
 
 export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
   const diag = trainResult?.diagnostics || {};
+  const algo = trainResult?.model?.algo || null;
   const plotDataRoot = diag?.plot_data || {};
   const decoderData = plotDataRoot?.decoder || plotDataRoot;
 
@@ -202,7 +203,9 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
             help="Cumulative fraction of samples marked as noise (label=-1) across sample index order."
           />
           <Text size="sm" c="dimmed" ta="center">
-            Noise trend is flat at 0.0 — this run produced no noise labels.
+            {algo === 'dbscan'
+              ? 'Noise trend is flat at 0.0 — this run produced no noise labels.'
+              : 'This model does not produce noise labels — a flat 0.0 noise trend is expected.'}
           </Text>
         </Stack>,
       );
@@ -260,11 +263,7 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
 
   return (
     <Stack gap="md">
-      <SectionDivider
-        title="Decoder plots"
-        help="Per-sample diagnostics produced by the unsupervised model (when available)."
-      />
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'end' }}>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'stretch' }}>
         {plots}
       </SimpleGrid>
     </Stack>

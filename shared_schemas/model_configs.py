@@ -547,7 +547,7 @@ class KMeansConfig(BaseModel):
     task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "unsupervised"
 
-    n_clusters: int = 8
+    n_clusters: int = 2
     init: Literal["k-means++", "random"] = "k-means++"
     n_init: Union[Literal["auto"], int] = "auto"
     max_iter: int = 300
@@ -583,7 +583,7 @@ class SpectralClusteringConfig(BaseModel):
     task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "unsupervised"
 
-    n_clusters: int = 8
+    n_clusters: int = 2
     eigen_solver: Optional[Literal["arpack", "lobpcg", "amg"]] = None
     n_components: Optional[int] = None
     random_state: Optional[int] = None
@@ -627,7 +627,7 @@ class GaussianMixtureConfig(BaseModel):
     task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "mixture"
 
-    n_components: int = 1
+    n_components: int = 2
     covariance_type: Literal["full", "tied", "diag", "spherical"] = "full"
     tol: float = 1e-3
     reg_covar: float = 1e-6
@@ -649,7 +649,7 @@ class BayesianGaussianMixtureConfig(BaseModel):
     task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "mixture"
 
-    n_components: int = 1
+    n_components: int = 2
     covariance_type: Literal["full", "tied", "diag", "spherical"] = "full"
     tol: float = 1e-3
     reg_covar: float = 1e-6
@@ -693,7 +693,7 @@ class BirchConfig(BaseModel):
 
     threshold: float = 0.5
     branching_factor: int = 50
-    n_clusters: Optional[int] = 3
+    n_clusters: Optional[int] = 2
     compute_labels: bool = True
     copy: bool = True
 

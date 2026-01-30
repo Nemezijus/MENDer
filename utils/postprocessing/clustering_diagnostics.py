@@ -107,11 +107,22 @@ def _histogram_payload(values: Any, *, bins: int = 30) -> Optional[Mapping[str, 
         return None
 
 
-def _agglomerative_dendrogram_payload(model: Any, *, max_leaves: int = 200) -> Tuple[Optional[Mapping[str, Any]], List[str]]:
+def _agglomerative_dendrogram_payload(
+    model: Any,
+    labels: Any = None,
+    *,
+    max_leaves: int = 200,
+) -> Tuple[Optional[Mapping[str, Any]], List[str]]:
     """Build a dendrogram payload for AgglomerativeClustering.
 
     Uses scipy.cluster.hierarchy.dendrogram to get JSON-friendly segments.
     Returns (payload, warnings).
+
+    Notes
+    -----
+    Plotly does not provide rich hover for dendrogram "segments" (lines) by default,
+    so we additionally emit leaf coordinates + leaf cluster ids so the frontend
+    can render leaf markers with hover tooltips and cluster coloring.
     """
     warnings: List[str] = []
     if np is None:
@@ -140,7 +151,6 @@ def _agglomerative_dendrogram_payload(model: Any, *, max_leaves: int = 200) -> T
 
         if n_leaves > int(max_leaves):
             return None, [f"Dendrogram skipped: too many leaves ({n_leaves}) for display (limit={int(max_leaves)})."]
-
         # Compute counts per node (required by linkage matrix)
         counts = np.zeros((n_merges,), dtype=float)
         for i in range(n_merges):
@@ -152,18 +162,35 @@ def _agglomerative_dendrogram_payload(model: Any, *, max_leaves: int = 200) -> T
         Z = np.column_stack([children, distances[:n_merges], counts])
         dd = dendrogram(Z, no_plot=True)
 
+        leaf_order = [int(v) for v in dd.get("leaves", [])]
+        leaf_labels = [str(v) for v in dd.get("ivl", [])]
+
+        # SciPy uses fixed x positions: 5, 15, 25, ... in leaf-order.
+        leaf_x = [float(5 + 10 * i) for i in range(len(leaf_order))]
+
+        leaf_cluster_ids: Optional[List[int]] = None
+        if labels is not None:
+            try:
+                y = np.asarray(labels).reshape(-1)
+                if y.size >= len(leaf_order) and len(leaf_order) > 0:
+                    leaf_cluster_ids = [int(y[i]) for i in leaf_order]
+            except Exception:
+                leaf_cluster_ids = None
+
         segments = []
         for xs, ys in zip(dd.get("icoord", []), dd.get("dcoord", [])):
-            segments.append({
-                "x": [float(v) for v in xs],
-                "y": [float(v) for v in ys],
-            })
+            segments.append({"x": [float(v) for v in xs], "y": [float(v) for v in ys]})
 
-        return {
+        payload: Dict[str, Any] = {
             "segments": segments,
-            "leaf_order": [int(v) for v in dd.get("leaves", [])],
-            "leaf_labels": [str(v) for v in dd.get("ivl", [])],
-        }, warnings
+            "leaf_order": leaf_order,
+            "leaf_labels": leaf_labels,
+            "leaf_x": leaf_x,
+        }
+        if leaf_cluster_ids is not None:
+            payload["leaf_cluster_ids"] = leaf_cluster_ids
+
+        return payload, warnings
     except Exception as e:
         return None, [f"Failed to compute dendrogram: {type(e).__name__}: {e}"]
 
@@ -619,7 +646,7 @@ def build_plot_data(
 
     # Dendrogram (AgglomerativeClustering), when available
     try:
-        payload, w = _agglomerative_dendrogram_payload(model)
+        payload, w = _agglomerative_dendrogram_payload(model, labels=labels)
         if w:
             warnings.extend(w)
         if payload is not None:
