@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
-import { Card, Divider, SimpleGrid, Stack, Text } from '@mantine/core';
+import { ActionIcon, Group, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
+import { IconInfoCircle } from '@tabler/icons-react';
 import Plot from 'react-plotly.js';
 
-const PLOT_MARGIN = { l: 55, r: 20, t: 20, b: 55 };
-const AXIS_TITLE = (text) => ({ text, font: { size: 16, weight: 'bold' } });
-const AXIS_TICK = { size: 14 };
+const PLOT_MARGIN = { l: 55, r: 20, t: 16, b: 55 };
+const AXIS_TITLE = (text) => ({ text, font: { size: 13, weight: 'bold' } });
+const AXIS_TICK = { size: 11 };
+const LEGEND_TOP = { orientation: 'h', y: 1.12, x: 0, xanchor: 'left', yanchor: 'bottom', font: { size: 11 } };
 const PLOT_BG = {
   plot_bgcolor: '#ffffff',
   paper_bgcolor: 'rgba(0,0,0,0)',
@@ -17,28 +19,48 @@ function toFiniteNumbers(arr) {
     .filter((v) => Number.isFinite(v));
 }
 
-function plotTitle(title, help) {
+function PlotHeader({ title, help }) {
   return (
-    <Stack gap={2}>
+    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
       <Text fw={600} size="sm">
         {title}
       </Text>
       {help ? (
-        <Text size="xs" c="dimmed">
-          {help}
-        </Text>
+        <Tooltip label={help} withArrow position="top-end">
+          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
+            <IconInfoCircle size={16} />
+          </ActionIcon>
+        </Tooltip>
       ) : null}
-    </Stack>
+    </Group>
+  );
+}
+
+function SectionHeader({ title, help }) {
+  return (
+    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+      <Text fw={600} size="sm">
+        {title}
+      </Text>
+      {help ? (
+        <Tooltip label={help} withArrow position="top-end">
+          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
+            <IconInfoCircle size={16} />
+          </ActionIcon>
+        </Tooltip>
+      ) : null}
+    </Group>
   );
 }
 
 export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
   const diag = trainResult?.diagnostics || {};
-  const plotData = diag?.plot_data || {};
+  const plotDataRoot = diag?.plot_data || {};
+  const decoderData = plotDataRoot?.decoder || plotDataRoot;
 
-  const confidenceHist = plotData?.confidence_hist || null;
-  const likelihoodHist = plotData?.log_likelihood_hist || null;
-  const noiseTrend = plotData?.noise_trend || null;
+  const confidenceHist = decoderData?.confidence_hist || null;
+  const likelihoodHist = decoderData?.log_likelihood_hist || null;
+  const noiseTrend = decoderData?.noise_trend || null;
 
   const hasConfidence = Array.isArray(confidenceHist?.x) && Array.isArray(confidenceHist?.y) && confidenceHist.x.length;
   const hasLikelihood = Array.isArray(likelihoodHist?.x) && Array.isArray(likelihoodHist?.y) && likelihoodHist.x.length;
@@ -47,16 +69,15 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
   const noiseX = useMemo(() => toFiniteNumbers(noiseTrend?.x), [noiseTrend]);
   const noiseY = useMemo(() => toFiniteNumbers(noiseTrend?.y), [noiseTrend]);
 
-  const cards = [];
+  const plots = [];
 
   if (hasConfidence) {
-    cards.push(
-      <Card key="conf" withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          'Assignment confidence distribution',
-          'Histogram of the maximum cluster membership probability (when available, e.g., GaussianMixture).',
-        )}
-        <Divider my="sm" />
+    plots.push(
+      <Stack key="conf" gap={6}>
+        <PlotHeader
+          title="Assignment confidence distribution"
+          help="Histogram of the maximum cluster membership probability (when available, e.g., GaussianMixture)."
+        />
         <Plot
           data={[
             {
@@ -93,18 +114,17 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 300 }}
         />
-      </Card>,
+      </Stack>,
     );
   }
 
   if (hasLikelihood) {
-    cards.push(
-      <Card key="lik" withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          'Outlier score / likelihood distribution',
-          'Histogram of per-sample log-likelihood (when available). Lower likelihood typically indicates more outlier-like samples.',
-        )}
-        <Divider my="sm" />
+    plots.push(
+      <Stack key="lik" gap={6}>
+        <PlotHeader
+          title="Outlier score / likelihood distribution"
+          help="Histogram of per-sample log-likelihood (when available). Lower likelihood typically indicates more outlier-like samples."
+        />
         <Plot
           data={[
             {
@@ -141,19 +161,18 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 300 }}
         />
-      </Card>,
+      </Stack>,
     );
   }
 
   if (hasNoiseTrend) {
     if (noiseX.length && noiseY.length && noiseX.length === noiseY.length) {
-      cards.push(
-        <Card key="noise" withBorder radius="md" shadow="sm" padding="md">
-          {plotTitle(
-            'Noise fraction trend',
-            'Cumulative fraction of samples marked as noise (label=-1) across sample index order.',
-          )}
-          <Divider my="sm" />
+      plots.push(
+        <Stack key="noise" gap={6}>
+          <PlotHeader
+            title="Noise fraction trend"
+            help="Cumulative fraction of samples marked as noise (label=-1) across sample index order."
+          />
           <Plot
             data={[
               {
@@ -192,20 +211,21 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
             config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
             style={{ width: '100%', height: 300 }}
           />
-        </Card>,
+        </Stack>,
       );
     }
   }
 
-  if (!cards.length) return null;
+  if (!plots.length) return null;
 
   return (
     <Stack gap="md">
-      <Text fw={600} size="sm">
-        Decoder visualizations
-      </Text>
+      <SectionHeader
+        title="Decoder visualizations"
+        help="Per-sample diagnostics produced by the unsupervised model (when available)."
+      />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-        {cards}
+        {plots}
       </SimpleGrid>
     </Stack>
   );

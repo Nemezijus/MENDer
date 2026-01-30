@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { Card, Divider, SimpleGrid, Stack, Text } from '@mantine/core';
+import { ActionIcon, Group, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
+import { IconInfoCircle } from '@tabler/icons-react';
 import Plot from 'react-plotly.js';
 
 const PLOT_MARGIN = { l: 55, r: 20, t: 20, b: 55 };
 
-const AXIS_TITLE = (text) => ({ text, font: { size: 16, weight: 'bold' } });
-const AXIS_TICK = { size: 14 };
+const AXIS_TITLE = (text) => ({ text, font: { size: 13, weight: 'bold' } });
+const AXIS_TICK = { size: 11 };
 
 const PLOT_BG = {
   plot_bgcolor: '#ffffff',
@@ -17,6 +18,26 @@ function toFiniteNumbers(arr) {
   return arr
     .map((v) => (typeof v === 'number' ? v : Number(v)))
     .filter((v) => Number.isFinite(v));
+}
+
+function histogram(values, nBins = 30) {
+  const xs = toFiniteNumbers(values);
+  if (!xs.length) return null;
+  const min = Math.min(...xs);
+  const max = Math.max(...xs);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return null;
+
+  const bins = Math.max(5, Math.min(nBins, Math.floor(Math.sqrt(xs.length) * 2)));
+  const width = (max - min) / bins;
+  const counts = new Array(bins).fill(0);
+
+  xs.forEach((v) => {
+    const idx = Math.min(bins - 1, Math.max(0, Math.floor((v - min) / width)));
+    counts[idx] += 1;
+  });
+
+  const centers = Array.from({ length: bins }, (_, i) => min + (i + 0.5) * width);
+  return { x: centers, y: counts };
 }
 
 function safeClusterSizes(clusterSummary) {
@@ -111,20 +132,48 @@ function ellipsePoints(mean, cov, n = 100, scale = 2) {
   return { x: xs, y: ys };
 }
 
-function plotTitle(title, help) {
+function PlotHeader({ title, help }) {
   return (
-    <Stack gap={2}>
+    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
       <Text fw={600} size="sm">
         {title}
       </Text>
       {help ? (
-        <Text size="xs" c="dimmed">
-          {help}
-        </Text>
+        <Tooltip label={help} withArrow position="top-end">
+          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
+            <IconInfoCircle size={16} />
+          </ActionIcon>
+        </Tooltip>
       ) : null}
-    </Stack>
+    </Group>
   );
 }
+
+function SectionHeader({ title, help }) {
+  return (
+    <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+      <Text fw={600} size="sm">
+        {title}
+      </Text>
+      {help ? (
+        <Tooltip label={help} withArrow position="top-end">
+          <ActionIcon variant="subtle" size="sm" aria-label={`${title} help`}>
+            <IconInfoCircle size={16} />
+          </ActionIcon>
+        </Tooltip>
+      ) : null}
+    </Group>
+  );
+}
+
+const LEGEND_TOP = {
+  orientation: 'h',
+  yanchor: 'bottom',
+  y: 1.12,
+  xanchor: 'left',
+  x: 0,
+  font: { size: 11 },
+};
 
 export default function UnsupervisedTrainingResults({ trainResult }) {
   const clusterSummary = trainResult?.cluster_summary || {};
@@ -139,8 +188,10 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
   const embY = useMemo(() => toFiniteNumbers(embedding?.y), [embedding]);
   const embLabel = useMemo(() => (Array.isArray(embedding?.label) ? embedding.label : null), [embedding]);
 
-  const distanceHist = plotData?.distance_to_center_hist || null;
-  const featureProfiles = plotData?.feature_profiles || null;
+  const distanceToCenter = plotData?.distance_to_center || null;
+  const distanceHist = useMemo(() => histogram(distanceToCenter?.values), [distanceToCenter]);
+
+  const centroids = plotData?.centroids || null;
   const sepMatrix = plotData?.separation_matrix || null;
   const silhouette = plotData?.silhouette || null;
   const compactSep = plotData?.compactness_separation || null;
@@ -215,21 +266,20 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     }
 
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          '2D embedding scatter',
-          'A 2D projection of your (preprocessed) features. Points are colored by cluster id when available.',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="2D embedding scatter"
+          help="A 2D projection of your (preprocessed) features. Points are colored by cluster id when available."
+        />
         <Plot
           data={traces}
           layout={{
-            margin: PLOT_MARGIN,
+            margin: { ...PLOT_MARGIN, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Embedding 1'),
               tickfont: AXIS_TICK,
               showgrid: true,
-              gridcolor: 'rgba(200,200,200,0.4)',
+              gridcolor: 'rgba(200,200,200,0.35)',
               zeroline: false,
               showline: true,
               linecolor: '#000',
@@ -239,7 +289,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               title: AXIS_TITLE('Embedding 2'),
               tickfont: AXIS_TICK,
               showgrid: true,
-              gridcolor: 'rgba(200,200,200,0.4)',
+              gridcolor: 'rgba(200,200,200,0.35)',
               zeroline: false,
               showline: true,
               linecolor: '#000',
@@ -247,21 +297,20 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
             hovermode: 'closest',
             ...PLOT_BG,
-            legend: { font: { size: 12 } },
+            legend: LEGEND_TOP,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 340 }}
+          style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
   const renderClusterSizeBar = () => {
     if (!sizes.length) return null;
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle('Cluster size distribution', 'Bar chart of samples per cluster id.')}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader title="Cluster size distribution" help="Bar chart of samples per cluster id." />
         <Plot
           data={[
             {
@@ -273,7 +322,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
           ]}
           layout={{
-            margin: PLOT_MARGIN,
+            margin: { ...PLOT_MARGIN, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Cluster id'),
               tickfont: AXIS_TICK,
@@ -296,9 +345,9 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 300 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -306,12 +355,11 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (!lorenz) return null;
     const giniText = lorenz.gini == null ? '' : ` (Gini ≈ ${lorenz.gini.toFixed(3)})`;
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          `Cluster size inequality${giniText}`,
-          'Lorenz curve of cluster size distribution. Curves closer to the diagonal indicate more even cluster sizes.',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title={`Cluster size inequality${giniText}`}
+          help="Lorenz curve of cluster size distribution. Curves closer to the diagonal indicate more even cluster sizes."
+        />
         <Plot
           data={[
             {
@@ -333,7 +381,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
           ]}
           layout={{
-            margin: PLOT_MARGIN,
+            margin: { ...PLOT_MARGIN, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Cumulative share of clusters'),
               tickfont: AXIS_TICK,
@@ -356,13 +404,13 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
               linecolor: '#000',
               linewidth: 1,
             },
-            legend: { font: { size: 12 } },
+            legend: LEGEND_TOP,
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 300 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -371,12 +419,11 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const ys = distanceHist?.y;
     if (!Array.isArray(xs) || !Array.isArray(ys) || xs.length === 0 || ys.length === 0) return null;
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          'Distance-to-center distribution',
-          'Histogram of per-sample distances to the nearest cluster center (when the estimator supports it, e.g., KMeans).',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="Distance-to-center distribution"
+          help="Histogram of per-sample distances to the nearest cluster center (when the estimator supports it, e.g., KMeans)."
+        />
         <Plot
           data={[
             {
@@ -388,7 +435,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
           ]}
           layout={{
-            margin: PLOT_MARGIN,
+            margin: { ...PLOT_MARGIN, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Distance to nearest center'),
               tickfont: AXIS_TICK,
@@ -411,27 +458,26 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 320 }}
+          style={{ width: '100%', height: 300 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
   const renderFeatureProfiles = () => {
-    if (!featureProfiles) return null;
-    const clusterIds = featureProfiles?.cluster_ids;
-    const featIdx = featureProfiles?.feature_indices;
-    const z = featureProfiles?.centroids;
+    if (!centroids) return null;
+    const clusterIds = centroids?.cluster_ids;
+    const featIdx = centroids?.feature_idx;
+    const z = centroids?.values;
     if (!Array.isArray(clusterIds) || !Array.isArray(featIdx) || !Array.isArray(z)) return null;
     if (!z.length || !Array.isArray(z[0])) return null;
 
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          'Per-cluster feature profiles',
-          'Heatmap of cluster centroids in the preprocessed feature space (top varying features).',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="Per-cluster feature profiles"
+          help="Heatmap of cluster centroids in the preprocessed feature space."
+        />
         <Plot
           data={[
             {
@@ -443,10 +489,10 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
           ]}
           layout={{
-            margin: { ...PLOT_MARGIN, l: 70 },
+            margin: { ...PLOT_MARGIN, l: 70, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Features'),
-              tickfont: { size: 12 },
+              tickfont: { size: 10 },
               showgrid: false,
               zeroline: false,
               showline: true,
@@ -455,7 +501,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
             yaxis: {
               title: AXIS_TITLE('Clusters'),
-              tickfont: { size: 12 },
+              tickfont: { size: 10 },
               showgrid: false,
               zeroline: false,
               showline: true,
@@ -465,22 +511,24 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 340 }}
+          style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
   const renderSeparationMatrix = () => {
     if (!sepMatrix) return null;
     const clusterIds = sepMatrix?.cluster_ids;
-    const z = sepMatrix?.matrix;
+    const z = sepMatrix?.values;
     if (!Array.isArray(clusterIds) || !Array.isArray(z) || !z.length) return null;
 
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle('Pairwise cluster separation matrix', 'Heatmap of centroid-to-centroid distances between clusters.')}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="Pairwise cluster separation matrix"
+          help="Heatmap of centroid-to-centroid distances between clusters."
+        />
         <Plot
           data={[
             {
@@ -492,10 +540,10 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
           ]}
           layout={{
-            margin: { ...PLOT_MARGIN, l: 70 },
+            margin: { ...PLOT_MARGIN, l: 70, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Cluster'),
-              tickfont: { size: 12 },
+              tickfont: { size: 10 },
               showgrid: false,
               zeroline: false,
               showline: true,
@@ -504,7 +552,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             },
             yaxis: {
               title: AXIS_TITLE('Cluster'),
-              tickfont: { size: 12 },
+              tickfont: { size: 10 },
               showgrid: false,
               zeroline: false,
               showline: true,
@@ -514,15 +562,16 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 340 }}
+          style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
   const renderSilhouette = () => {
-    if (!silhouette || !Array.isArray(silhouette?.per_cluster)) return null;
-    const perCluster = silhouette.per_cluster
+    if (!silhouette || !Array.isArray(silhouette?.cluster_ids) || !Array.isArray(silhouette?.values)) return null;
+    const perCluster = silhouette.cluster_ids
+      .map((cid, i) => ({ cluster_id: cid, values: silhouette.values?.[i] }))
       .filter((c) => c && Array.isArray(c.values) && c.values.length)
       .sort((a, b) => Number(a.cluster_id) - Number(b.cluster_id));
     if (!perCluster.length) return null;
@@ -537,22 +586,21 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
       hovertemplate: 'Silhouette=%{y:.3f}<extra></extra>',
     }));
 
-    const overall = typeof silhouette?.mean === 'number' && Number.isFinite(silhouette.mean) ? silhouette.mean : null;
+    const overall = typeof silhouette?.avg === 'number' && Number.isFinite(silhouette.avg) ? silhouette.avg : null;
 
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          'Silhouette plot (per cluster)',
-          'Distribution of per-sample silhouette values for each cluster (higher is better).',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="Silhouette plot (per cluster)"
+          help="Distribution of per-sample silhouette values for each cluster (higher is better)."
+        />
         <Plot
           data={traces}
           layout={{
-            margin: { ...PLOT_MARGIN, b: 70 },
+            margin: { ...PLOT_MARGIN, b: 70, t: 30 },
             xaxis: {
               title: AXIS_TITLE('Cluster'),
-              tickfont: { size: 12 },
+              tickfont: { size: 10 },
               showgrid: false,
               zeroline: false,
               showline: true,
@@ -597,12 +645,13 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
                 }
               : {}),
             ...PLOT_BG,
-            showlegend: false,
+            showlegend: true,
+            legend: LEGEND_TOP,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 340 }}
+          style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -610,9 +659,8 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (!elbow || !Array.isArray(elbow?.x) || !Array.isArray(elbow?.y)) return null;
     if (!elbow.x.length || !elbow.y.length) return null;
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle('Elbow curve', 'Objective vs number of clusters/components (if computed).')}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader title="Elbow curve" help="Objective vs number of clusters/components (when computed)." />
         <Plot
           data={[
             {
@@ -650,7 +698,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -662,12 +710,11 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (x.length === 0 || y.length === 0 || ids.length !== x.length || ids.length !== y.length) return null;
 
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          'Cluster compactness vs separation',
-          'Each point is a cluster: compactness is within-cluster spread, separation is distance to the nearest other cluster centroid.',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="Cluster compactness vs separation"
+          help="Each point is a cluster: compactness is within-cluster spread, separation is distance to the nearest other cluster centroid."
+        />
         <Plot
           data={[
             {
@@ -709,7 +756,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -720,12 +767,11 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const x = Array.from({ length: y.length }, (_, i) => i + 1);
     const kText = typeof kdist?.k === 'number' ? ` (k=${kdist.k})` : '';
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle(
-          `k-distance plot${kText}`,
-          'Sorted distance to the k-th nearest neighbor. Often used to guide DBSCAN eps selection.',
-        )}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title={`k-distance plot${kText}`}
+          help="Sorted distance to the k-th nearest neighbor. Often used to guide DBSCAN eps selection."
+        />
         <Plot
           data={[
             {
@@ -763,7 +809,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -774,9 +820,8 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     const noise = Number(coreCounts?.noise);
     if (![core, border, noise].every((v) => Number.isFinite(v))) return null;
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle('Core vs border vs noise counts', 'Available for density-based clustering (e.g., DBSCAN).')}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader title="Core vs border vs noise counts" help="Available for density-based clustering (e.g., DBSCAN)." />
         <Plot
           data={[
             {
@@ -812,7 +857,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
@@ -822,9 +867,11 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
     if (!y.length) return null;
     const x = Array.from({ length: y.length }, (_, i) => i + 1);
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        {plotTitle('Spectral eigenvalues', 'Eigenvalue spectrum (when available). A large gap may indicate a good cluster count.')}
-        <Divider my="sm" />
+      <Stack gap={6}>
+        <PlotHeader
+          title="Spectral eigenvalues"
+          help="Eigenvalue spectrum (when available). A large gap may indicate a good cluster count."
+        />
         <Plot
           data={[
             {
@@ -862,25 +909,34 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
           style={{ width: '100%', height: 320 }}
         />
-      </Card>
+      </Stack>
     );
   };
 
   if (!hasAnyGlobal && !hasAnyModelSpecific) {
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
-        <Text size="sm" c="dimmed">
-          No visualization payload was returned for this run.
-        </Text>
-      </Card>
+      <Text size="sm" c="dimmed">
+        No visualization payload was returned for this run.
+      </Text>
     );
   }
 
   return (
     <Stack gap="md">
-      <Stack gap={4}>
-        <GroupHeader label="Visualizations" help="Plots derived from cluster summary, per-sample outputs, and model diagnostics." />
-      </Stack>
+      <Group justify="space-between" align="center">
+        <Text fw={600} size="md">
+          Visualizations
+        </Text>
+        <Tooltip
+          withArrow
+          label="Plots derived from cluster summary, per-sample outputs, and model diagnostics."
+          position="top-end"
+        >
+          <ActionIcon variant="subtle" size="sm" aria-label="Visualizations help">
+            <IconInfoCircle size={16} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
 
       {hasAnyGlobal ? (
         <>
@@ -920,22 +976,5 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
         </>
       ) : null}
     </Stack>
-  );
-}
-
-function GroupHeader({ label, help }) {
-  return (
-    <Stack gap={2}>
-      <GroupLabel label={label} />
-      {help ? <Text size="xs" c="dimmed">{help}</Text> : null}
-    </Stack>
-  );
-}
-
-function GroupLabel({ label }) {
-  return (
-    <Text fw={600} size="md">
-      {label}
-    </Text>
   );
 }
