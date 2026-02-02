@@ -33,8 +33,31 @@ export default function GridSearchResultsPanel({ result }) {
   const axisColor = isDark ? theme.colors.dark[2] : '#222';
 
   const metricFromSettings = useSettingsStore((s) => s.metric);
+  const metricFromSettingsScalar = Array.isArray(metricFromSettings)
+    ? metricFromSettings[0]
+    : metricFromSettings;
   const metricLabel =
-    (result && result.metric_used) || metricFromSettings || 'Metric';
+    (result && result.metric_used) || metricFromSettingsScalar || 'Metric';
+
+  function pickScoreArray(cv) {
+    const candidates = [
+      { key: 'mean_test_score', label: 'validation' },
+      { key: 'mean_score', label: 'validation' },
+      { key: 'mean_train_score', label: 'train' },
+      { key: 'mean_train_scores', label: 'train' },
+      { key: 'mean_test_scores', label: 'validation' },
+    ];
+    for (const c of candidates) {
+      const arr = cv[c.key];
+      if (Array.isArray(arr) && arr.some((v) => typeof v === 'number' && Number.isFinite(v))) {
+        return { scores: arr, source: c.label };
+      }
+    }
+    // Last resort: accept numeric-or-null arrays (still plottable)
+    const loose = cv.mean_test_score || cv.mean_score || cv.mean_train_score || cv.mean_train_scores || null;
+    if (Array.isArray(loose)) return { scores: loose, source: 'unknown' };
+    return { scores: null, source: null };
+  }
 
   const gridData = useMemo(() => {
     if (!result) return null;
@@ -57,8 +80,8 @@ export default function GridSearchResultsPanel({ result }) {
 
     const vals1 = cv[p1Key] || [];
     const vals2 = cv[p2Key] || [];
-    const scores =
-      cv.mean_test_score || cv.mean_score || cv['mean_test_scores'] || [];
+    const { scores, source } = pickScoreArray(cv);
+    if (!scores) return null;
 
     if (
       !Array.isArray(vals1) ||
@@ -113,6 +136,7 @@ export default function GridSearchResultsPanel({ result }) {
       bestPoint,
       pipelineName1,
       pipelineName2,
+      scoreSource: source,
     };
   }, [result]);
 
@@ -136,6 +160,16 @@ export default function GridSearchResultsPanel({ result }) {
 
         {result && gridData && (
           <>
+            {result.note && (
+              <Text size="sm" c="dimmed">
+                {result.note}
+              </Text>
+            )}
+            {!result.note && gridData.scoreSource === 'train' && (
+              <Text size="sm" c="dimmed">
+                Validation scores were not available; this plot reflects train-side scores.
+              </Text>
+            )}
             <GridSearchResults
               param1Name={gridData.param1Name}
               param2Name={gridData.param2Name}

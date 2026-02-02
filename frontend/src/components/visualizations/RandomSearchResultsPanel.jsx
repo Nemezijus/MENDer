@@ -13,8 +13,30 @@ export default function RandomSearchResultsPanel({ result }) {
   const axisColor = isDark ? theme.colors.dark[2] : '#222';
 
   const metricFromSettings = useSettingsStore((s) => s.metric);
+  const metricFromSettingsScalar = Array.isArray(metricFromSettings)
+    ? metricFromSettings[0]
+    : metricFromSettings;
   const metricLabel =
-    (result && result.metric_used) || metricFromSettings || 'Metric';
+    (result && result.metric_used) || metricFromSettingsScalar || 'Metric';
+
+  function pickScoreArray(cv) {
+    const candidates = [
+      { key: 'mean_test_score', label: 'validation' },
+      { key: 'mean_score', label: 'validation' },
+      { key: 'mean_train_score', label: 'train' },
+      { key: 'mean_train_scores', label: 'train' },
+      { key: 'mean_test_scores', label: 'validation' },
+    ];
+    for (const c of candidates) {
+      const arr = cv[c.key];
+      if (Array.isArray(arr) && arr.some((v) => typeof v === 'number' && Number.isFinite(v))) {
+        return { scores: arr, source: c.label };
+      }
+    }
+    const loose = cv.mean_test_score || cv.mean_score || cv.mean_train_score || cv.mean_train_scores || null;
+    if (Array.isArray(loose)) return { scores: loose, source: 'unknown' };
+    return { scores: null, source: null };
+  }
 
   const rsData = useMemo(() => {
     if (!result) return null;
@@ -35,8 +57,8 @@ export default function RandomSearchResultsPanel({ result }) {
 
     const vals1 = cv[p1Key] || [];
     const vals2 = cv[p2Key] || [];
-    const scores =
-      cv.mean_test_score || cv.mean_score || cv['mean_test_scores'] || [];
+    const { scores, source } = pickScoreArray(cv);
+    if (!scores) return null;
 
     if (
       !Array.isArray(vals1) ||
@@ -67,6 +89,7 @@ export default function RandomSearchResultsPanel({ result }) {
       pipelineName2,
       shortName1,
       shortName2,
+      scoreSource: source,
     };
   }, [result]);
 
@@ -90,6 +113,16 @@ export default function RandomSearchResultsPanel({ result }) {
 
         {result && rsData && (
           <>
+            {result.note && (
+              <Text size="sm" c="dimmed">
+                {result.note}
+              </Text>
+            )}
+            {!result.note && rsData.scoreSource === 'train' && (
+              <Text size="sm" c="dimmed">
+                Validation scores were not available; this plot reflects train-side scores.
+              </Text>
+            )}
             <RandomSearchResults
               param1Name={rsData.param1Name}
               param2Name={rsData.param2Name}

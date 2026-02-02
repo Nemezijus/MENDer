@@ -16,6 +16,24 @@ export default function ValidationCurveAnalyticsResults({
   const { best, minimal } = analytics;
   const metricText = metricLabel || 'score';
 
+  // In unsupervised mode, validation can be unavailable (no predict()).
+  // Show N/A rather than crashing.
+  if (!best || !minimal) {
+    return (
+      <Box mt="sm">
+        <Text size="sm">
+          <Text span fw={600}>Peak validation</Text>: N/A
+        </Text>
+        <Text size="sm">
+          <Text span fw={600}>
+            Recommended (≥ {(withinPct * 100).toFixed(0)}% of peak)
+          </Text>
+          : N/A
+        </Text>
+      </Box>
+    );
+  }
+
   return (
     <Box mt="sm">
       <Text size="sm">

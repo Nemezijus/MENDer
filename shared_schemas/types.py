@@ -53,8 +53,6 @@ RegressionMetricName: TypeAlias = Literal[
     "mape",
 ]
 
-# Union used by EvalModel
-MetricName: TypeAlias = Union[ClassificationMetricName, RegressionMetricName]
 
 # SVM helpers
 SVMKernel: TypeAlias = Literal["linear", "poly", "rbf", "sigmoid"]
@@ -132,4 +130,11 @@ UnsupervisedMetricName: TypeAlias = Literal[
     "silhouette",
     "davies_bouldin",
     "calinski_harabasz",
+]
+
+# Union used by EvalModel / tuning (classification + regression + unsupervised)
+MetricName: TypeAlias = Union[
+    ClassificationMetricName,
+    RegressionMetricName,
+    UnsupervisedMetricName,
 ]

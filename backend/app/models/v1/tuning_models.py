@@ -62,8 +62,10 @@ class LearningCurveRequest(BaseTuningRequest):
 
 class LearningCurveResponse(BaseModel):
     """
-    Aggregated learning-curve statistics for train/validation scores.
+    Aggregated learning-curve statistics for train/validation scores\.
     """
+    metric_used: Optional[str] = None
+    note: Optional[str] = None
     train_sizes: List[Optional[int]]
     train_scores_mean: List[Optional[float]]
     train_scores_std: List[Optional[float]]
@@ -98,8 +100,10 @@ class ValidationCurveRequest(BaseTuningRequest):
 
 class ValidationCurveResponse(BaseModel):
     """
-    Aggregated validation-curve statistics for train/validation scores.
+    Aggregated validation-curve statistics for train/validation scores\.
     """
+    metric_used: Optional[str] = None
+    note: Optional[str] = None
     param_name: str
     param_range: List[ParamValue]
     train_scores_mean: List[Optional[float]]
@@ -141,8 +145,10 @@ class GridSearchRequest(BaseTuningRequest):
 
 class GridSearchResponse(BaseModel):
     """
-    Summary of a GridSearchCV run.
+    Summary of a GridSearchCV run\.
     """
+    metric_used: Optional[str] = None
+    note: Optional[str] = None
     best_params: Dict[str, Any]
     best_score: Optional[float]
     best_index: Optional[int]
@@ -194,8 +200,10 @@ class RandomSearchRequest(BaseTuningRequest):
 
 class RandomSearchResponse(BaseModel):
     """
-    Summary of a RandomizedSearchCV run.
+    Summary of a RandomizedSearchCV run\.
     """
+    metric_used: Optional[str] = None
+    note: Optional[str] = None
     best_params: Dict[str, Any]
     best_score: Optional[float]
     best_index: Optional[int]

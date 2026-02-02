@@ -21,6 +21,8 @@ from sklearn.metrics import (
     matthews_corrcoef,
 )
 
+from utils.postprocessing.unsupervised_scoring import compute_unsupervised_metrics
+
 
 # ------------------------- Helpers -------------------------
 
@@ -60,9 +62,10 @@ def make_estimator_scorer(kind: str, metric: str):
     """
 
     def _scorer(estimator, X, y):
-        y_true = _as_1d(y)
-
+        # y may be None for unsupervised runs
         if kind == "classification":
+            y_true = _as_1d(y)
+
             if metric in PROBA_METRICS:
                 # Metrics that need probabilities or decision scores
                 if hasattr(estimator, "predict_proba"):
@@ -96,7 +99,33 @@ def make_estimator_scorer(kind: str, metric: str):
                     metric=metric,
                 )
 
+        elif kind == "unsupervised":
+            # Unsupervised metrics ignore y. We compute them on the feature space
+            # that the estimator actually sees (i.e., after Pipeline preprocessing).
+            #
+            # NOTE: validation-side scoring requires a working predict() method.
+            # Many clustering estimators (e.g., DBSCAN, Agglomerative, Spectral)
+            # do not support predicting labels for unseen points; in that case we
+            # return NaN so callers can render N/A and provide an explanatory note.
+            try:
+                if hasattr(estimator, "predict"):
+                    labels = estimator.predict(X)
+                    # If this is a Pipeline, slice off the final estimator to get
+                    # the preprocessing transform; otherwise use X as-is.
+                    try:
+                        Z = estimator[:-1].transform(X)
+                    except Exception:
+                        Z = np.asarray(X)
+                    metrics, _warnings = compute_unsupervised_metrics(Z, labels, [metric])
+                    v = metrics.get(metric)
+                    return float(v) if v is not None else float('nan')
+                return float('nan')
+            except Exception:
+                return float('nan')
+
+
         elif kind == "regression":
+            y_true = _as_1d(y)
             y_pred = estimator.predict(X)
             return score(
                 y_true,
