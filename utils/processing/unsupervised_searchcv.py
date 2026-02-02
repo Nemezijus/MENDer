@@ -133,6 +133,9 @@ class _BaseUnsupervisedSearchCV:
     return_train_score: bool = False
     shuffle: bool = False
     random_state: Optional[int] = None
+    # When shuffle=True, allow an independent random state for CV splitting so
+    # parameter sampling RNG can remain stable.
+    cv_random_state: Optional[int] = None
 
     # public sklearn-ish attributes
     best_params_: Dict[str, Any] | None = None
@@ -144,7 +147,8 @@ class _BaseUnsupervisedSearchCV:
 
     def _cv_splitter(self):
         if isinstance(self.cv, int):
-            return _make_kfold(self.cv, shuffle=self.shuffle, random_state=self.random_state)
+            rs = self.cv_random_state if self.cv_random_state is not None else self.random_state
+            return _make_kfold(self.cv, shuffle=self.shuffle, random_state=rs)
         return self.cv
 
     def _evaluate_params(self, X: np.ndarray, params: Dict[str, Any], predict_supported: bool) -> tuple[float, float, float, float]:
@@ -215,6 +219,7 @@ class UnsupervisedGridSearchCV(_BaseUnsupervisedSearchCV):
         return_train_score: bool = False,
         shuffle: bool = False,
         random_state: Optional[int] = None,
+        cv_random_state: Optional[int] = None,
     ):
         super().__init__(
             estimator=estimator,
@@ -224,6 +229,7 @@ class UnsupervisedGridSearchCV(_BaseUnsupervisedSearchCV):
             return_train_score=return_train_score,
             shuffle=shuffle,
             random_state=random_state,
+            cv_random_state=cv_random_state,
         )
         self.param_grid = param_grid or {}
 
@@ -307,6 +313,7 @@ class UnsupervisedRandomizedSearchCV(_BaseUnsupervisedSearchCV):
         cv: Any = 5,
         refit: bool = True,
         random_state: Optional[int] = None,
+        cv_random_state: Optional[int] = None,
         return_train_score: bool = False,
         shuffle: bool = False,
     ):
@@ -318,6 +325,7 @@ class UnsupervisedRandomizedSearchCV(_BaseUnsupervisedSearchCV):
             return_train_score=return_train_score,
             shuffle=shuffle,
             random_state=random_state,
+            cv_random_state=cv_random_state,
         )
         self.param_distributions = param_distributions or {}
         self.n_iter = int(n_iter)

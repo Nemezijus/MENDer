@@ -61,7 +61,13 @@ def make_estimator_scorer(kind: str, metric: str):
     It uses YOUR unified metric names and YOUR score(...) implementation.
     """
 
-    def _scorer(estimator, X, y):
+    # NOTE: sklearn may call scorers without `y` when `y=None` is passed
+    # (common for unsupervised settings). Therefore `y` must be optional.
+    def _scorer(estimator, X, y=None):
+        if y is None and kind in {"classification", "regression"}:
+            raise ValueError(
+                f"y is required for {kind} scoring, but got y=None (metric={metric!r})."
+            )
         # y may be None for unsupervised runs
         if kind == "classification":
             y_true = _as_1d(y)

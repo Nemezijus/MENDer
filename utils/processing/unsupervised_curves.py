@@ -39,6 +39,26 @@ def _sanitize(values: Sequence[float]) -> List[Optional[float]]:
     return out
 
 
+def _nanrow_stat(a: np.ndarray, *, fn: str) -> List[float]:
+    """Row-wise nanmean/nanstd without emitting RuntimeWarning on all-NaN rows."""
+    a = np.asarray(a, dtype=float)
+    if a.ndim != 2:
+        a = np.asarray(a).reshape(1, -1)
+
+    out: List[float] = []
+    for row in a:
+        if row.size == 0 or np.all(np.isnan(row)):
+            out.append(float("nan"))
+            continue
+        if fn == "mean":
+            out.append(float(np.nanmean(row)))
+        elif fn == "std":
+            out.append(float(np.nanstd(row)))
+        else:
+            raise ValueError(f"Unknown fn for _nanrow_stat: {fn!r}")
+    return out
+
+
 def _predict_supported(estimator) -> bool:
     """Return True iff the *final estimator* supports predict()."""
     try:
@@ -91,10 +111,10 @@ def compute_unsupervised_learning_curve(
         return_times=False,
     )
 
-    train_mean = np.nanmean(train_scores, axis=1).tolist()
-    train_std = np.nanstd(train_scores, axis=1).tolist()
-    val_mean = np.nanmean(val_scores, axis=1).tolist()
-    val_std = np.nanstd(val_scores, axis=1).tolist()
+    train_mean = _nanrow_stat(train_scores, fn="mean")
+    train_std = _nanrow_stat(train_scores, fn="std")
+    val_mean = _nanrow_stat(val_scores, fn="mean")
+    val_std = _nanrow_stat(val_scores, fn="std")
 
     predict_supported = _predict_supported(estimator)
     note = None
@@ -141,13 +161,15 @@ def compute_unsupervised_validation_curve(
         cv=cv,
         scoring=scorer,
         n_jobs=n_jobs,
-        error_score="raise",
+        # Never crash the backend for a single failing split/param.
+        # Let the UI render N/A instead.
+        error_score=np.nan,
     )
 
-    train_mean = np.nanmean(train_scores, axis=1).tolist()
-    train_std = np.nanstd(train_scores, axis=1).tolist()
-    val_mean = np.nanmean(val_scores, axis=1).tolist()
-    val_std = np.nanstd(val_scores, axis=1).tolist()
+    train_mean = _nanrow_stat(train_scores, fn="mean")
+    train_std = _nanrow_stat(train_scores, fn="std")
+    val_mean = _nanrow_stat(val_scores, fn="mean")
+    val_std = _nanrow_stat(val_scores, fn="std")
 
     predict_supported = _predict_supported(estimator)
     note = None
