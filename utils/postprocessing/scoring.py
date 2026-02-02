@@ -103,25 +103,46 @@ def make_estimator_scorer(kind: str, metric: str):
             # Unsupervised metrics ignore y. We compute them on the feature space
             # that the estimator actually sees (i.e., after Pipeline preprocessing).
             #
-            # NOTE: validation-side scoring requires a working predict() method.
-            # Many clustering estimators (e.g., DBSCAN, Agglomerative, Spectral)
-            # do not support predicting labels for unseen points; in that case we
-            # return NaN so callers can render N/A and provide an explanatory note.
+            # NOTE: many clustering estimators do not implement predict() for
+            # unseen samples. For such models:
+            #   * train-side scoring can still work via labels_ (post-fit)
+            #   * validation-side scoring is undefined → return NaN
             try:
+                # If this is a Pipeline, the final estimator is in steps[-1][1].
+                final_est = None
+                try:
+                    if hasattr(estimator, "steps") and estimator.steps:
+                        final_est = estimator.steps[-1][1]
+                except Exception:
+                    final_est = None
+
+                # Prefer labels_ when it matches the requested X length.
+                labels = getattr(final_est, "labels_", None) if final_est is not None else getattr(estimator, "labels_", None)
+                if labels is not None:
+                    labels = np.asarray(labels)
+                    if labels.shape[0] == np.asarray(X).shape[0]:
+                        try:
+                            Z = estimator[:-1].transform(X)
+                        except Exception:
+                            Z = np.asarray(X)
+                        metrics, _warnings = compute_unsupervised_metrics(Z, labels, [metric])
+                        v = metrics.get(metric)
+                        return float(v) if v is not None else float("nan")
+
+                # Otherwise, fall back to predict() (validation-side scoring).
                 if hasattr(estimator, "predict"):
                     labels = estimator.predict(X)
-                    # If this is a Pipeline, slice off the final estimator to get
-                    # the preprocessing transform; otherwise use X as-is.
                     try:
                         Z = estimator[:-1].transform(X)
                     except Exception:
                         Z = np.asarray(X)
                     metrics, _warnings = compute_unsupervised_metrics(Z, labels, [metric])
                     v = metrics.get(metric)
-                    return float(v) if v is not None else float('nan')
-                return float('nan')
+                    return float(v) if v is not None else float("nan")
+
+                return float("nan")
             except Exception:
-                return float('nan')
+                return float("nan")
 
 
         elif kind == "regression":
