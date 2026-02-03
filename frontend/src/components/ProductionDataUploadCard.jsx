@@ -165,7 +165,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifac
                 setXBackendPath(null);
                 if (file) setXPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".mat,.npz,.npy,.csv,.txt"
+              accept=".mat,.npz,.npy,.csv,.tsv,.txt,.h5,.hdf5,.xlsx"
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -199,7 +199,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifac
                 setYBackendPath(null);
                 if (file) setYPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".mat,.npz,.npy,.csv,.txt"
+              accept=".mat,.npz,.npy,.csv,.tsv,.txt,.h5,.hdf5,.xlsx"
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -319,7 +319,7 @@ function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
                 setNpzBackendPath(null);
                 if (file) setNpzPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".npz,.mat"
+              accept=".npz,.mat,.h5,.hdf5,.xlsx"
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">

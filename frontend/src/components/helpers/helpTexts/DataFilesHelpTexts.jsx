@@ -1,5 +1,11 @@
 import { Stack, Text } from '@mantine/core';
 
+const SupportedFormatsText = () => (
+  <Text size="sm" c="dimmed">
+    Supported formats: <code>.mat</code>, <code>.npz</code>, <code>.npy</code>, <code>.csv</code>, <code>.tsv</code>, <code>.txt</code>, <code>.h5/.hdf5</code>, <code>.xlsx</code>.
+  </Text>
+);
+
 // -------------------------
 // Training data
 // -------------------------
@@ -18,6 +24,12 @@ export function TrainingDataIntroText() {
         pixel intensities, sensor readings). <b>Labels (y)</b> are what you want the model to predict
         (e.g. class IDs for classification or a continuous value for regression).
       </Text>
+      <SupportedFormatsText />
+      <Text size="sm" c="dimmed">
+        For tabular files (<code>.csv/.tsv/.txt/.xlsx</code>), a first-row header is allowed.
+        If present, MENDer will strip it from the numeric matrix and preserve the column titles as
+        feature names for future visualizations.
+      </Text>
     </Stack>
   );
 }
@@ -27,6 +39,7 @@ export function TrainingIndividualFilesText() {
     <Text size="sm" c="dimmed">
       Use this option when features and labels are stored in <b>separate files</b>.
       You can paste a file path or browse and upload the file(s).
+      For HDF5 (<code>.h5/.hdf5</code>), use the <b>X key</b>/<b>y key</b> fields to specify the dataset names.
     </Text>
   );
 }
@@ -34,8 +47,9 @@ export function TrainingIndividualFilesText() {
 export function TrainingCompoundFileText() {
   return (
     <Text size="sm" c="dimmed">
-      Use this option when your dataset is stored in a <b>single compound file</b> (e.g. <code>.npz</code>).
-      You may need to specify <b>X key</b> and <b>y key</b> to identify which arrays contain features and labels.
+      Use this option when your dataset is stored in a <b>single compound file</b>.
+      For <code>.npz</code> and HDF5 (<code>.h5/.hdf5</code>), set <b>X key</b> and <b>y key</b> to the array/dataset names.
+      For <code>.xlsx</code>, keys can refer to sheet names (or indices).
     </Text>
   );
 }
@@ -54,6 +68,11 @@ export function ProductionDataIntroText() {
         Typically you provide <b>features (X)</b>. <b>Labels (y)</b> are optional—if present, you can score
         predictions later.
       </Text>
+      <SupportedFormatsText />
+      <Text size="sm" c="dimmed">
+        For tabular files (<code>.csv/.tsv/.txt/.xlsx</code>), a first-row header is allowed and will be
+        preserved as feature names.
+      </Text>
     </Stack>
   );
 }
@@ -63,6 +82,7 @@ export function ProductionIndividualFilesText() {
     <Text size="sm" c="dimmed">
       Use this option when production features (and optionally labels) are stored in <b>separate files</b>.
       Paste a file path or browse and upload.
+      For HDF5 (<code>.h5/.hdf5</code>), use the <b>X key</b>/<b>y key</b> fields to specify the dataset names.
     </Text>
   );
 }
@@ -70,8 +90,10 @@ export function ProductionIndividualFilesText() {
 export function ProductionCompoundFileText() {
   return (
     <Text size="sm" c="dimmed">
-      Use this option when production inputs are stored in a <b>single compound file</b> (e.g. <code>.npz</code>).
-      This is convenient for deployment and avoids mismatched file paths.
+      Use this option when production inputs are stored in a <b>single compound file</b>.
+      For <code>.npz</code> and HDF5 (<code>.h5/.hdf5</code>), keys select the arrays/datasets.
+      For <code>.xlsx</code>, keys can refer to sheet names (or indices).
+      This is convenient for deployment and helps avoid mismatched file paths.
     </Text>
   );
 }

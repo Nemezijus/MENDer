@@ -13,7 +13,7 @@ from backend.utils.upload_index import (
 
 # In Docker we set UPLOAD_DIR=/data/uploads; in dev we default to ./uploads
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
-ALLOWED_EXTS = {".mat", ".npz", ".npy", ".csv", ".txt"}
+ALLOWED_EXTS = {".mat", ".npz", ".npy", ".csv", ".tsv", ".txt", ".h5", ".hdf5", ".xlsx"}
 
 router = APIRouter()
 

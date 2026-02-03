@@ -178,33 +178,31 @@ def load_X_optional_y(
     y_path: Optional[str],
     expected_n_features: Optional[int] = None,
 ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-    """
-    Prediction helper: X is required, y is optional.
+    """Prediction helper: X is required, y is optional.
 
-    Cases
+    Notes
     -----
-    - Single .npz (npz_path or x_path ending with .npz):
-        * Always load X from x_key.
-        * If y_key is present -> run full _coerce_shapes(X, y).
-        * If y_key is missing -> return X (rows as observations) and y=None.
-    - MAT pair (x_path + y_path provided):
-        * Delegate to the standard loader via make_data_loader (training semantics).
-    - Single MAT (x_path only):
-        * Load variable from x_path, ensure X is 2D, return y=None.
+    - For X-only .npz inputs, we special-case loading because some workflows store
+      only X in the archive. If y is not present, we return (X, None).
+    - For all other file types (including .mat, .npy, .csv/.tsv/.txt, .h5/.hdf5, .xlsx)
+      we delegate to the BL AutoLoader via make_data_loader.
+
+    If expected_n_features is provided, we apply a best-effort transpose fix for
+    X-only inputs when the data appears to be (n_features, n_samples).
     """
     try:
         cfg = build_data_config(npz_path, x_key, y_key, x_path, y_path)
 
-        # --- NPZ-based loading ------------------------------------------------
+        # --- NPZ-based loading (supports X-only archives) ---------------------
         if cfg.npz_path or (cfg.x_path and cfg.x_path.lower().endswith(".npz")):
-            path = cfg.npz_path or cfg.x_path
-            if not path:
+            path_npz = cfg.npz_path or cfg.x_path
+            if not path_npz:
                 raise LoadError("NPZ loading requires npz_path or x_path pointing to a .npz file.")
-            data = np.load(path, allow_pickle=True)
+            data = np.load(path_npz, allow_pickle=True)
 
-            if cfg.x_key not in data:
+            if cfg.x_key not in data.files:
                 raise LoadError(
-                    f"Key '{cfg.x_key}' not found in {path}. Available keys: {list(data.keys())}"
+                    f"Key '{cfg.x_key}' not found in {path_npz}. Available keys: {list(data.keys())}"
                 )
 
             X_raw = np.asarray(data[cfg.x_key])
@@ -215,7 +213,7 @@ def load_X_optional_y(
                 X, y = _coerce_shapes(X_raw, y_raw)
                 return X, y
 
-            # X-only NPZ: be conservative, just ensure X is 2D.
+            # X-only NPZ: ensure X is 2D.
             X = np.asarray(X_raw)
             if X.ndim == 1:
                 X = X[:, None]
@@ -232,32 +230,22 @@ def load_X_optional_y(
 
             return X, None
 
-        # --- MAT pair: both X and y provided ---------------------------------
-        if cfg.x_path and cfg.y_path:
-            loader = make_data_loader(cfg)
-            X, y = loader.load()
-            return X, y
+        # --- All other formats: delegate to BL loader ------------------------
+        if not cfg.x_path:
+            raise LoadError("You must provide at least one feature source (npz_path or x_path) for prediction.")
 
-        # --- Single MAT: X only ----------------------------------------------
-        if cfg.x_path and not cfg.y_path:
-            X_raw = np.asarray(load_mat_variable(cfg.x_path))
-            X = X_raw
-            if X.ndim == 1:
-                X = X[:, None]
-            if X.ndim != 2:
-                raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
+        loader = make_data_loader(cfg)
+        X, y = loader.load()
 
-            if expected_n_features is not None:
-                try:
-                    exp = int(expected_n_features)
-                    if X.shape[1] != exp and X.shape[0] == exp:
-                        X = X.T
-                except Exception:
-                    pass
+        if expected_n_features is not None:
+            try:
+                exp = int(expected_n_features)
+                if X.ndim == 2 and X.shape[1] != exp and X.shape[0] == exp:
+                    X = X.T
+            except Exception:
+                pass
 
-            return X, None
-
-        raise LoadError("You must provide at least one feature source (npz_path or x_path) for prediction.")
+        return X, y
 
     except LoadError:
         raise
