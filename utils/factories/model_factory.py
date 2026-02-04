@@ -57,7 +57,9 @@ from utils.strategies.models import (
   BirchBuilder,
 )
 
-def make_model(cfg: ModelConfig, *, seed: int | None = None):
+from utils.strategies.interfaces import ModelBuilder
+
+def make_model(cfg: ModelConfig, *, seed: int | None = None) -> ModelBuilder:
     if isinstance(cfg, LogRegConfig):         return LogRegBuilder(cfg, seed=seed)
     if isinstance(cfg, SVMConfig):            return SVMBuilder(cfg, seed=seed)
     if isinstance(cfg, TreeConfig):           return DecisionTreeBuilder(cfg, seed=seed)

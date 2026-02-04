@@ -46,7 +46,7 @@ class LabelShuffleBaseline(BaselineRunner):
         Xtr, Xte = scaler.fit_transform(Xtr, Xte)
         _, Xtr_fx, Xte_fx = features.fit_transform_train_test(Xtr, Xte, ytr)
 
-        model = model_bld.build()
+        model = model_bld.make_estimator()
         model = trainer.fit(model, Xtr_fx, ytr)
         y_pred = predictor.predict(model, Xte_fx)
 
@@ -78,7 +78,7 @@ class LabelShuffleBaseline(BaselineRunner):
             Xtr_s, Xte_s = scaler.fit_transform(Xtr, Xte)
             _, Xtr_fx, Xte_fx = features.fit_transform_train_test(Xtr_s, Xte_s, ytr)
 
-            model = model_bld.build()
+            model = model_bld.make_estimator()
             model = trainer.fit(model, Xtr_fx, ytr)
             y_pred = predictor.predict(model, Xte_fx)
             fold_scores.append(float(evaluator.score(yte, y_pred)))

@@ -51,11 +51,8 @@ class FeatureExtractor(Protocol):
         ...
 
 class ModelBuilder(Protocol):
-    def build(self) -> Any:
-        """Return a configured, unfitted estimator (e.g., LogisticRegression)."""
-        ...
-    # expose the configured sklearn transformer so a Pipeline can use it directly
-    def make_transformer(self) -> Any:
+    def make_estimator(self) -> Any:
+        """Return a configured, unfitted estimator (classifier/regressor/clusterer)."""
         ...
 
 class Trainer(Protocol):
@@ -90,16 +87,16 @@ class Predictor(Protocol):
         X_test: np.ndarray,
         *,
         positive_class_label: Optional[Any] = None,
-        want_decision_scores: bool = True,
-        want_proba: bool = True,
+        include_decision_scores: bool = True,
+        include_probabilities: bool = True,
     ) -> Dict[str, Any]:
         """
         Return decoder-style per-sample outputs for classification:
 
         - y_pred: hard predictions
         - classes: class ordering (if available)
-        - decision_scores: decision_function(X) (if available and want_decision_scores)
-        - proba: predict_proba(X) (if available and want_proba)
+        - decision_scores: decision_function(X) (if available and include_decision_scores)
+        - proba: predict_proba(X) (if available and include_probabilities)
         - positive_class_index / positive_score / positive_proba when positive_class_label is provided
         - margin: simple confidence proxy
 

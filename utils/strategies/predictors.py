@@ -32,13 +32,16 @@ class SklearnPredictor(Predictor):
         X_test: np.ndarray,
         *,
         positive_class_label: Optional[Any] = None,
-        want_decision_scores: bool = True,
-        want_proba: bool = True,
+        include_decision_scores: bool = True,
+        include_probabilities: bool = True,
     ) -> Dict[str, Any]:
-        return compute_decoder_outputs(
+        dec = compute_decoder_outputs(
             model,
             X_test,
             positive_class_label=positive_class_label,
-            want_decision_scores=want_decision_scores,
-            want_proba=want_proba,
+            include_decision_scores=include_decision_scores,
+            include_probabilities=include_probabilities,
         )
+
+        # Return JSON-friendly output (lists/scalars). This matches the Predictor protocol.
+        return dec.to_dict()

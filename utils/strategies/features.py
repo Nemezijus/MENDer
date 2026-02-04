@@ -139,7 +139,7 @@ class SFSFeatures(FeatureExtractor):
 
         # Build the estimator used inside SFS to evaluate subsets.
         # use the model factory so selection matches the downstream model
-        sel_model = make_model(self.model_cfg).build()
+        sel_model = make_model(self.model_cfg).make_estimator()
 
         selector, Xtr_sel, Xte_sel = sfs_fit_transform_train_test(
             X_train,
@@ -157,7 +157,7 @@ class SFSFeatures(FeatureExtractor):
         return selector, Xtr_sel, Xte_sel
     
     def make_transformer(self) -> Any:
-        sel_model = make_model(self.model_cfg).build()
+        sel_model = make_model(self.model_cfg).make_estimator()
         skf = StratifiedKFold(
             n_splits=int(self.cfg.sfs_cv),
             shuffle=True,
