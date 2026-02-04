@@ -1,4 +1,6 @@
 import numpy as np
+
+from engine.contracts.results.decoder import DecoderOutputs
 from typing import Dict, Any, Optional, Sequence
 
 from shared_schemas.ensemble_run_config import EnsembleRunConfig
@@ -458,6 +460,10 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 "preview_rows": [],
             }
 
+    # Normalize decoder payload to the shared DecoderOutputs contract
+    if decoder_payload is not None and isinstance(decoder_payload, dict):
+        decoder_payload = DecoderOutputs.model_validate(decoder_payload)
+
     # Regression decoder outputs (no decision scores / probabilities)
     if decoder_enabled and eval_kind == "regression":
         try:
@@ -831,4 +837,6 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     if n_shuffles > 0:
         result["notes"].append("Shuffle baseline is not yet supported for ensembles.")
 
-    return result
+    from engine.contracts.results.ensemble import EnsembleResult
+
+    return EnsembleResult.model_validate(result).model_dump()

@@ -23,6 +23,13 @@ from shared_schemas.tuning_configs import (
 )
 from shared_schemas.unsupervised_configs import UnsupervisedRunConfig, UnsupervisedEvalModel
 
+from engine.contracts.results import (
+    LearningCurveResult,
+    ValidationCurveResult,
+    GridSearchResult,
+    RandomSearchResult,
+)
+
 from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.pipeline_factory import make_pipeline, make_unsupervised_pipeline
@@ -120,7 +127,7 @@ class LearningCurveRunner(TuningStrategy):
 
         task = get_model_task(cfg.model)
         if task == "unsupervised":
-            return self._run_unsupervised()
+            return LearningCurveResult.model_validate(self._run_unsupervised())
 
         eval_kind = "regression" if task == "regression" else "classification"
         scorer = make_estimator_scorer(eval_kind, cfg.eval.metric)
@@ -156,13 +163,14 @@ class LearningCurveRunner(TuningStrategy):
         val_mean = np.mean(val_scores, axis=1).tolist()
         val_std = np.std(val_scores, axis=1).tolist()
 
-        return {
+        payload = {
             "train_sizes": sizes_abs.tolist(),
             "train_scores_mean": _sanitize_floats(train_mean),
             "train_scores_std": _sanitize_floats(train_std),
             "val_scores_mean": _sanitize_floats(val_mean),
             "val_scores_std": _sanitize_floats(val_std),
         }
+        return LearningCurveResult.model_validate(payload)
 
     def _run_unsupervised(self) -> Dict[str, Any]:
         cfg = self.cfg
@@ -219,7 +227,7 @@ class ValidationCurveRunner(TuningStrategy):
 
         task = get_model_task(cfg.model)
         if task == "unsupervised":
-            return self._run_unsupervised()
+            return ValidationCurveResult.model_validate(self._run_unsupervised())
 
         eval_kind = "regression" if task == "regression" else "classification"
         scorer = make_estimator_scorer(eval_kind, cfg.eval.metric)
@@ -252,7 +260,7 @@ class ValidationCurveRunner(TuningStrategy):
         val_mean = np.mean(val_scores, axis=1).tolist()
         val_std = np.std(val_scores, axis=1).tolist()
 
-        return {
+        payload = {
             "param_name": raw_name,
             "param_range": list(param_range),
             "train_scores_mean": _sanitize_floats(train_mean),
@@ -260,6 +268,7 @@ class ValidationCurveRunner(TuningStrategy):
             "val_scores_mean": _sanitize_floats(val_mean),
             "val_scores_std": _sanitize_floats(val_std),
         }
+        return ValidationCurveResult.model_validate(payload)
 
     def _run_unsupervised(self) -> Dict[str, Any]:
         cfg = self.cfg
@@ -321,7 +330,7 @@ class GridSearchRunner(TuningStrategy):
 
         task = get_model_task(cfg.model)
         if task == "unsupervised":
-            return self._run_unsupervised()
+            return GridSearchResult.model_validate(self._run_unsupervised())
 
         eval_kind = "regression" if task == "regression" else "classification"
         scorer = make_estimator_scorer(eval_kind, cfg.eval.metric)
@@ -362,13 +371,14 @@ class GridSearchRunner(TuningStrategy):
 
         cv_results_sanitized = {k: [_to_py(v) for v in vs] for k, vs in results.items()}
 
-        return {
+        payload = {
             "metric_used": str(cfg.eval.metric),
             "best_params": gs.best_params_,
             "best_score": float(gs.best_score_),
             "best_index": int(gs.best_index_),
             "cv_results": cv_results_sanitized,
         }
+        return GridSearchResult.model_validate(payload)
 
     def _run_unsupervised(self) -> Dict[str, Any]:
         cfg = self.cfg
@@ -439,7 +449,7 @@ class RandomizedSearchRunner(TuningStrategy):
 
         task = get_model_task(cfg.model)
         if task == "unsupervised":
-            return self._run_unsupervised()
+            return RandomSearchResult.model_validate(self._run_unsupervised())
 
         eval_kind = "regression" if task == "regression" else "classification"
         scorer = make_estimator_scorer(eval_kind, cfg.eval.metric)
@@ -482,13 +492,14 @@ class RandomizedSearchRunner(TuningStrategy):
 
         cv_results_sanitized = {k: [_to_py(v) for v in vs] for k, vs in results.items()}
 
-        return {
+        payload = {
             "metric_used": str(cfg.eval.metric),
             "best_params": rs.best_params_,
             "best_score": float(rs.best_score_),
             "best_index": int(rs.best_index_),
             "cv_results": cv_results_sanitized,
         }
+        return RandomSearchResult.model_validate(payload)
 
     def _run_unsupervised(self) -> Dict[str, Any]:
         cfg = self.cfg

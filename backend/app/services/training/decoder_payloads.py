@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
+from engine.contracts.results.decoder import DecoderOutputs
+
 from utils.postprocessing.decoder_summaries import compute_decoder_summaries
 from utils.predicting.prediction_results import build_decoder_output_table
 
@@ -118,7 +120,7 @@ def build_decoder_outputs_payload(
         for r in rows:
             r["fold_id"] = 1
 
-    return {
+    payload = {
         "classes": decoder_classes.tolist() if decoder_classes is not None else None,
         "positive_class_label": positive_class_label,
         "positive_class_index": positive_class_index,
@@ -129,3 +131,5 @@ def build_decoder_outputs_payload(
         "n_rows_total": int(np.asarray(y_pred_all).shape[0]) if y_pred_all is not None else 0,
         "preview_rows": rows,
     }
+
+    return DecoderOutputs.model_validate(payload)

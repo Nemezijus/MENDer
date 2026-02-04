@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from engine.contracts.results.decoder import DecoderOutputs
+
 from utils.postprocessing.regression_diagnostics import (
     regression_diagnostics,
     regression_summary,
@@ -96,7 +98,7 @@ def build_regression_decoder_outputs_payload(
     except Exception:
         summary = None
 
-    return {
+    payload = {
         "classes": None,
         "positive_class_label": None,
         "positive_class_index": None,
@@ -108,3 +110,5 @@ def build_regression_decoder_outputs_payload(
         "n_rows_total": int(np.asarray(y_pred_all).shape[0]) if y_pred_all is not None else 0,
         "preview_rows": rows,
     }
+
+    return DecoderOutputs.model_validate(payload)

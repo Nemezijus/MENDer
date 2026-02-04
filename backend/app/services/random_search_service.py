@@ -10,6 +10,8 @@ from ..models.v1.tuning_models import (
     RandomSearchResponse,
 )
 
+from .common.result_coercion import to_payload
+
 
 def compute_random_search(req: RandomSearchRequest) -> RandomSearchResponse:
     """
@@ -43,7 +45,7 @@ def compute_random_search(req: RandomSearchRequest) -> RandomSearchResponse:
 
     # 3) Delegate to the tuning strategy
     runner = make_random_search_runner(run_cfg, rs_cfg)
-    result_dict = runner.run()
+    result = runner.run()
 
     # 4) Adapt to API response model
-    return RandomSearchResponse(**result_dict)
+    return RandomSearchResponse(**to_payload(result))

@@ -9,6 +9,8 @@ from ..models.v1.tuning_models import (
     GridSearchResponse,
 )
 
+from .common.result_coercion import to_payload
+
 
 def compute_grid_search(req: GridSearchRequest) -> GridSearchResponse:
     """
@@ -40,7 +42,7 @@ def compute_grid_search(req: GridSearchRequest) -> GridSearchResponse:
 
     # 3) Delegate to the tuning strategy
     runner = make_grid_search_runner(run_cfg, gs_cfg)
-    result_dict = runner.run()
+    result = runner.run()
 
     # 4) Adapt to API response model
-    return GridSearchResponse(**result_dict)
+    return GridSearchResponse(**to_payload(result))

@@ -447,7 +447,9 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             f"Shuffle baseline: mean={float(np.mean(scores)):.4f} ± {float(np.std(scores)):.4f}, p≈{float(p_val):.4f}"
         )
 
-    return result
+    from engine.contracts.results.training import TrainResult
+
+    return TrainResult.model_validate(result).model_dump()
 
 
 def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
@@ -630,7 +632,7 @@ def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
         pass
     warnings_all.extend(apply_notes)
 
-    return {
+    out = {
         "task": "unsupervised",
         "n_train": int(X.shape[0]),
         "n_features": n_features_in,
@@ -655,3 +657,7 @@ def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
         },
         "notes": [],
     }
+
+    from engine.contracts.results.unsupervised import UnsupervisedResult
+
+    return UnsupervisedResult.model_validate(out).model_dump()

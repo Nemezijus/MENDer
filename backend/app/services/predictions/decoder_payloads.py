@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
+from engine.contracts.results.decoder import DecoderOutputs
+
 from utils.postprocessing.decoder_outputs import compute_decoder_outputs
 from utils.predicting.prediction_results import (
     build_decoder_output_table,
@@ -34,7 +36,11 @@ def add_decoder_outputs_preview(
     decoder_calibrate_probabilities = bool(getattr(decoder_cfg, "calibrate_probabilities", False)) if decoder_cfg is not None else False
 
     n_samples = int(X_arr.shape[0])
-    decoder_preview_cap = int(getattr(decoder_cfg, "max_preview_rows", max_preview_rows) or max_preview_rows) if decoder_cfg is not None else max_preview_rows
+    decoder_preview_cap = (
+        int(getattr(decoder_cfg, "max_preview_rows", max_preview_rows) or max_preview_rows)
+        if decoder_cfg is not None
+        else max_preview_rows
+    )
     n_preview_dec = min(decoder_preview_cap, n_samples)
 
     try:
@@ -47,9 +53,21 @@ def add_decoder_outputs_preview(
             calibrate_probabilities=decoder_calibrate_probabilities,
         )
 
-        ds_preview = np.asarray(dec.decision_scores)[:n_preview_dec] if (dec.decision_scores is not None and decoder_include_scores) else None
-        pr_preview = np.asarray(dec.proba)[:n_preview_dec] if (dec.proba is not None and decoder_include_probabilities) else None
-        mg_preview = np.asarray(dec.margin)[:n_preview_dec] if (decoder_include_margin and dec.margin is not None) else None
+        ds_preview = (
+            np.asarray(dec.decision_scores)[:n_preview_dec]
+            if (dec.decision_scores is not None and decoder_include_scores)
+            else None
+        )
+        pr_preview = (
+            np.asarray(dec.proba)[:n_preview_dec]
+            if (dec.proba is not None and decoder_include_probabilities)
+            else None
+        )
+        mg_preview = (
+            np.asarray(dec.margin)[:n_preview_dec]
+            if (decoder_include_margin and dec.margin is not None)
+            else None
+        )
 
         y_true_dec_preview = y_arr[:n_preview_dec] if y_arr is not None else None
         y_pred_dec_preview = np.asarray(dec.y_pred).ravel()[:n_preview_dec]
@@ -66,8 +84,10 @@ def add_decoder_outputs_preview(
             positive_class_index=dec.positive_class_index,
         )
 
-        result["decoder_outputs"] = {
-            "classes": (dec.classes.tolist() if hasattr(dec.classes, "tolist") else dec.classes) if dec.classes is not None else None,
+        payload = {
+            "classes": (dec.classes.tolist() if hasattr(dec.classes, "tolist") else dec.classes)
+            if dec.classes is not None
+            else None,
             "positive_class_label": dec.positive_class_label,
             "positive_class_index": dec.positive_class_index,
             "has_decision_scores": bool(dec.decision_scores is not None and decoder_include_scores),
@@ -76,8 +96,9 @@ def add_decoder_outputs_preview(
             "preview_rows": rows,
             "n_rows_total": int(n_samples),
         }
+        result["decoder_outputs"] = DecoderOutputs.model_validate(payload)
     except Exception as e:
-        result["decoder_outputs"] = {
+        payload = {
             "classes": None,
             "positive_class_label": decoder_positive_label,
             "positive_class_index": None,
@@ -87,6 +108,7 @@ def add_decoder_outputs_preview(
             "preview_rows": [],
             "n_rows_total": None,
         }
+        result["decoder_outputs"] = DecoderOutputs.model_validate(payload)
 
 
 def maybe_merge_decoder_into_export_table(

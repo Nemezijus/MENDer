@@ -10,6 +10,8 @@ from ..models.v1.tuning_models import (
     ValidationCurveResponse,
 )
 
+from .common.result_coercion import to_payload
+
 
 def compute_validation_curve(
     req: ValidationCurveRequest,
@@ -42,7 +44,7 @@ def compute_validation_curve(
 
     # 3) Delegate to the tuning strategy
     runner = make_validation_curve_runner(run_cfg, vc_cfg)
-    result_dict = runner.run()
+    result = runner.run()
 
     # 4) Adapt to API response model
-    return ValidationCurveResponse(**result_dict)
+    return ValidationCurveResponse(**to_payload(result))

@@ -9,6 +9,8 @@ from ..models.v1.tuning_models import (
     LearningCurveResponse,
 )
 
+from .common.result_coercion import to_payload
+
 
 def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
     """
@@ -38,7 +40,7 @@ def compute_learning_curve(req: LearningCurveRequest) -> LearningCurveResponse:
 
     # 3) Delegate to the tuning strategy
     runner = make_learning_curve_runner(run_cfg, lc_cfg)
-    result_dict = runner.run()
+    result = runner.run()
 
     # 4) Adapt to API response model
-    return LearningCurveResponse(**result_dict)
+    return LearningCurveResponse(**to_payload(result))

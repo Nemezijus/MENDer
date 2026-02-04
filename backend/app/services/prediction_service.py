@@ -72,7 +72,7 @@ def apply_model_to_arrays(
             for i in range(n_preview)
         ]
 
-        return {
+        out = {
             "n_samples": n_samples,
             "n_features": n_features,
             "task": "unsupervised",
@@ -82,6 +82,10 @@ def apply_model_to_arrays(
                 "Cluster assignments were produced via pipeline.predict(X).",
             ],
         }
+
+        from engine.contracts.results.prediction import UnsupervisedApplyResult
+
+        return UnsupervisedApplyResult.model_validate(out).model_dump()
 
     pipeline, X_arr, y_arr, task, ev, eval_kind = setup_prediction(
         artifact_uid=artifact_uid,
@@ -148,7 +152,9 @@ def apply_model_to_arrays(
         max_preview_rows=max_preview_rows,
     )
 
-    return result
+    from engine.contracts.results.prediction import PredictionResult
+
+    return PredictionResult.model_validate(result).model_dump()
 
 
 def export_predictions_to_csv(
