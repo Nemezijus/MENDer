@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
-from .types import UnsupervisedMetricName
+from .choices import FitScopeName, UnsupervisedMetricName
 from .run_config import DataModel
 from .scale_configs import ScaleModel
 from .feature_configs import FeaturesModel
@@ -18,10 +18,6 @@ DEFAULT_CLUSTERING_METRICS: List[UnsupervisedMetricName] = [
     "davies_bouldin",
     "calinski_harabasz",
 ]
-
-
-FitScopeName = Literal["train_only", "train_and_predict"]
-
 
 class UnsupervisedEvalModel(BaseModel):
     """Evaluation / diagnostics settings for clustering.

@@ -1,8 +1,9 @@
 # shared_schemas/metrics_configs.py
 from __future__ import annotations
 
-from typing import Literal
 from pydantic import BaseModel
+
+from .choices import ProblemKind
 
 
 class MetricsModel(BaseModel):
@@ -24,6 +25,6 @@ class MetricsModel(BaseModel):
         If True, ROC curves (and AUC) are computed when scores/probabilities
         are provided.
     """
-    kind: Literal["classification", "regression"] = "classification"
+    kind: ProblemKind = "classification"
     compute_confusion: bool = True
     compute_roc: bool = True

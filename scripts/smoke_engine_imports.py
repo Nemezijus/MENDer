@@ -34,6 +34,7 @@ def main() -> int:
     modules = [
         "engine",
         "engine.contracts",
+        "engine.contracts.choices",
         "engine.contracts.decoder_configs",
         "engine.contracts.ensemble_configs",
         "engine.contracts.ensemble_run_config",

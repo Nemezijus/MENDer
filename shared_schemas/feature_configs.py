@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, Union, Literal, List
+from typing import List, Optional, Union
 from pydantic import BaseModel, field_validator
 
-from .types import FeatureName, LDASolver
+from .choices import FeatureName, LDASolver, SFSDirection, SFSK
+
 
 class FeaturesModel(BaseModel):
     method: FeatureName = "none"
@@ -21,8 +22,8 @@ class FeaturesModel(BaseModel):
     lda_priors: Optional[List[float]] = None
 
     # SFS (Sequential Feature Selection)
-    sfs_k: Union[int, Literal["auto"]] = "auto"
-    sfs_direction: Literal["forward", "backward"] = "forward"
+    sfs_k: SFSK = "auto"
+    sfs_direction: SFSDirection = "forward"
     sfs_cv: int = 5
     sfs_n_jobs: Optional[int] = None
 

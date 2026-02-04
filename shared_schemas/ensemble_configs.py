@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Optional, Union
 from pydantic import BaseModel, Field, field_validator
 
 from .model_configs import ModelConfig
-from .types import EnsembleKind
+from .choices import EnsembleKind, ProblemKind
 
 
 # -----------------------------
@@ -43,7 +43,7 @@ class BaggingEnsembleConfig(BaseModel):
     kind: Literal["bagging"] = "bagging"
 
     # needed to choose BaggingClassifier vs BaggingRegressor when base_estimator is None
-    problem_kind: Literal["classification", "regression"] = "classification"
+    problem_kind: ProblemKind = "classification"
 
     # optional override; if None, BL uses sklearn default base estimator for the chosen problem_kind
     base_estimator: Optional[ModelConfig] = None
@@ -87,7 +87,7 @@ class AdaBoostEnsembleConfig(BaseModel):
     kind: Literal["adaboost"] = "adaboost"
 
     # needed to choose AdaBoostClassifier vs AdaBoostRegressor when base_estimator is None
-    problem_kind: Literal["classification", "regression"] = "classification"
+    problem_kind: ProblemKind = "classification"
 
     # optional override; if None, BL uses sklearn default base estimator for the chosen problem_kind
     base_estimator: Optional[ModelConfig] = None
@@ -109,7 +109,7 @@ class AdaBoostEnsembleConfig(BaseModel):
 class XGBoostEnsembleConfig(BaseModel):
     kind: Literal["xgboost"] = "xgboost"
 
-    problem_kind: Literal["classification", "regression"] = "classification"
+    problem_kind: ProblemKind = "classification"
 
     n_estimators: int = 300
     learning_rate: float = 0.1

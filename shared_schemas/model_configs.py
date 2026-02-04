@@ -3,11 +3,27 @@ from __future__ import annotations
 from typing import Dict, Optional, Union, Literal, Annotated, ClassVar, TypedDict, List
 from pydantic import BaseModel, Field
 
-from .types import (
-    PenaltyName, SVMKernel, SVMDecisionShape,
-    TreeCriterion, TreeSplitter, MaxFeaturesName,
-    RidgeSolver, SGDLoss, SGDPenalty, SGDLearningRate, HGBLoss,
-    RegTreeCriterion, CoordinateDescentSelection, LinearSVRLoss,
+from .choices import (
+    ClassWeightBalanced,
+    CoordinateDescentSelection,
+    ForestClassWeight,
+    HGBLoss,
+    KNNAlgorithm,
+    KNNMetric,
+    KNNWeights,
+    LinearSVRLoss,
+    LogRegSolver,
+    MaxFeaturesName,
+    PenaltyName,
+    RegTreeCriterion,
+    RidgeSolver,
+    SGDLearningRate,
+    SGDLoss,
+    SGDPenalty,
+    SVMDecisionShape,
+    SVMKernel,
+    TreeCriterion,
+    TreeSplitter,
 )
 
 class ModelMeta(TypedDict):
@@ -78,9 +94,9 @@ class LogRegConfig(BaseModel):
 
     C: float = 1.0
     penalty: PenaltyName = "l2"
-    solver: Literal["lbfgs", "liblinear", "saga", "newton-cg", "sag"] = "lbfgs"
+    solver: LogRegSolver = "lbfgs"
     max_iter: int = 1000
-    class_weight: Optional[Literal["balanced"]] = None
+    class_weight: ClassWeightBalanced = None
     # only relevant for elasticnet penalty
     l1_ratio: Optional[float] = 0.5
 
@@ -122,7 +138,7 @@ class TreeConfig(BaseModel):
     max_features: Optional[Union[int, float, MaxFeaturesName]] = None
     max_leaf_nodes: Optional[int] = None
     min_impurity_decrease: float = 0.0
-    class_weight: Optional[Literal["balanced"]] = None
+    class_weight: ClassWeightBalanced = None
     ccp_alpha: float = 0.0
 
 
@@ -146,7 +162,7 @@ class ForestConfig(BaseModel):
     n_jobs: Optional[int] = None
     random_state: Optional[int] = None
     warm_start: bool = False
-    class_weight: Optional[Literal["balanced", "balanced_subsample"]] = None
+    class_weight: ForestClassWeight = None
     ccp_alpha: float = 0.0
     max_samples: Optional[Union[int, float]] = None
 
@@ -158,11 +174,11 @@ class KNNConfig(BaseModel):
     family: ClassVar[str] = "knn"
 
     n_neighbors: int = 5
-    weights: Literal["uniform", "distance"] = "uniform"
-    algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
+    weights: KNNWeights = "uniform"
+    algorithm: KNNAlgorithm = "auto"
     leaf_size: int = 30
     p: int = 2
-    metric: Literal["minkowski", "euclidean", "manhattan", "chebyshev"] = "minkowski"
+    metric: KNNMetric = "minkowski"
     n_jobs: Optional[int] = None
 
 
@@ -188,7 +204,7 @@ class RidgeClassifierConfig(BaseModel):
 
     alpha: float = 1.0
     fit_intercept: bool = True
-    class_weight: Optional[Literal["balanced"]] = None
+    class_weight: ClassWeightBalanced = None
     solver: RidgeSolver = "auto"
     max_iter: Optional[int] = None
     tol: float = 1e-4
@@ -224,7 +240,7 @@ class SGDClassifierConfig(BaseModel):
     validation_fraction: float = 0.1
     n_iter_no_change: int = 5
 
-    class_weight: Optional[Literal["balanced"]] = None
+    class_weight: ClassWeightBalanced = None
     warm_start: bool = False
     average: Union[bool, int] = False
 
@@ -251,7 +267,7 @@ class ExtraTreesConfig(BaseModel):
     n_jobs: Optional[int] = None
     random_state: Optional[int] = None
     warm_start: bool = False
-    class_weight: Optional[Literal["balanced", "balanced_subsample"]] = None
+    class_weight: ForestClassWeight = None
     ccp_alpha: float = 0.0
     max_samples: Optional[Union[int, float]] = None
 
@@ -284,7 +300,7 @@ class HistGradientBoostingConfig(BaseModel):
 
     verbose: int = 0
     random_state: Optional[int] = None
-    class_weight: Optional[Literal["balanced"]] = None
+    class_weight: ClassWeightBalanced = None
 
 #------------------------------------------
 #               REGRESSORS
@@ -480,11 +496,11 @@ class KNNRegressorConfig(BaseModel):
     family: ClassVar[str] = "knn"
 
     n_neighbors: int = 5
-    weights: Literal["uniform", "distance"] = "uniform"
-    algorithm: Literal["auto", "ball_tree", "kd_tree", "brute"] = "auto"
+    weights: KNNWeights = "uniform"
+    algorithm: KNNAlgorithm = "auto"
     leaf_size: int = 30
     p: int = 2
-    metric: Literal["minkowski", "euclidean", "manhattan", "chebyshev"] = "minkowski"
+    metric: KNNMetric = "minkowski"
     n_jobs: Optional[int] = None
 
 

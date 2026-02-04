@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
-from typing_extensions import Literal
+
+from .choices import TuningKind
 
 
 class LearningCurveConfig(BaseModel):
@@ -52,10 +53,6 @@ class RandomizedSearchConfig(BaseModel):
     refit: bool = True
     random_state: Optional[int] = None
     return_train_score: bool = False
-
-
-# Optional: a discriminated union if you later want a single "tuning" field
-TuningKind = Literal["learning_curve", "validation_curve", "grid_search", "random_search"]
 
 
 class TuningConfig(BaseModel):
