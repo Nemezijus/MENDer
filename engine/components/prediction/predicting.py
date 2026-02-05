@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any, Literal, Optional, Tuple
 import numpy as np
 
+# Canonical decoder API (Segment 6)
+from .decoder_api import predict_decoder_outputs  # noqa: F401
+
 
 def predict_labels(model: Any, X_test: np.ndarray) -> np.ndarray:
     """

@@ -4,8 +4,7 @@ from typing import Any, Tuple, Literal, Optional, Dict
 import numpy as np
 
 from utils.strategies.interfaces import Predictor
-from engine.components.prediction.predicting import predict_labels, predict_scores
-from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
+from engine.components.prediction import predict_labels, predict_scores, predict_decoder_outputs
 
 @dataclass
 class SklearnPredictor(Predictor):
@@ -35,13 +34,15 @@ class SklearnPredictor(Predictor):
         include_decision_scores: bool = True,
         include_probabilities: bool = True,
     ) -> Dict[str, Any]:
-        dec = compute_decoder_outputs(
+        dec = predict_decoder_outputs(
             model,
             X_test,
             positive_class_label=positive_class_label,
             include_decision_scores=include_decision_scores,
             include_probabilities=include_probabilities,
+            include_summary=False,
+            max_preview_rows=200,
         )
 
-        # Return JSON-friendly output (lists/scalars). This matches the Predictor protocol.
-        return dec.to_dict()
+        # Predictor protocol expects a JSON-friendly dict.
+        return dec.model_dump()

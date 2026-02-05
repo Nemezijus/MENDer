@@ -81,6 +81,8 @@ def main() -> int:
 
     
     import engine.components.prediction.predicting
+    import engine.components.prediction.decoder_extraction
+    import engine.components.prediction.decoder_api
     import engine.reporting.prediction.prediction_results
     import engine.reporting.decoder.decoder_outputs
     import engine.components.evaluation.scoring

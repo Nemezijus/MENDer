@@ -41,8 +41,8 @@ from engine.reporting.ensembles.adaboost_ensemble_reporting import (
 )
 from engine.reporting.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
 
-from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
-from engine.reporting.prediction.prediction_results import build_decoder_output_table
+from engine.components.prediction.decoder_extraction import compute_decoder_outputs_raw
+from engine.components.prediction.decoder_api import build_decoder_outputs_from_arrays
 
 from .training.regression_payloads import (
     build_regression_diagnostics_payload,
@@ -201,7 +201,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 decoder_fold_ids.append(np.full((n_fold_rows,), fold_id, dtype=int))
 
                 try:
-                    dec = compute_decoder_outputs(
+                    dec = compute_decoder_outputs_raw(
                         model,
                         Xte,
                         positive_class_label=decoder_positive_label,
@@ -392,7 +392,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
         row_indices_arr = np.arange(int(y_pred_all_arr.shape[0]), dtype=int)
 
     # --- Aggregate decoder outputs across folds (out-of-sample) -------------
-    decoder_payload = None
+    decoder_payload: Optional[DecoderOutputs] = None
     if decoder_enabled and eval_kind == "classification":
         try:
             ds_arr = np.concatenate(decoder_scores_all, axis=0) if decoder_scores_all else None
@@ -411,58 +411,43 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
                 if fold_ids_arr is not None and fold_ids_arr.shape[0] == order.shape[0]:
                     fold_ids_arr = fold_ids_arr[order]
 
-            preview_rows = build_decoder_output_table(
-                indices=[int(v) for v in np.asarray(row_indices_arr).ravel().tolist()],
+            decoder_payload = build_decoder_outputs_from_arrays(
                 y_pred=y_pred_all_arr,
+                y_true=(
+                    y_true_all_arr
+                    if (y_true_all_arr is not None and np.asarray(y_true_all_arr).size)
+                    else None
+                ),
+                indices=row_indices_arr,
                 classes=decoder_classes,
-                decision_scores=ds_arr,
-                proba=pr_arr,
-                margin=mg_arr,
                 positive_class_label=decoder_positive_label,
                 positive_class_index=decoder_positive_index,
-                y_true=y_true_all_arr,
-                max_rows=decoder_max_preview_rows if decoder_max_preview_rows > 0 else None,
-            )
-
-            # Add fold_id column when available (kfold); for holdout, fold_id will be 1.
-            if fold_ids_arr is not None and len(preview_rows) > 0:
-                for i, r in enumerate(preview_rows):
-                    try:
-                        r["fold_id"] = int(fold_ids_arr[i])
-                    except Exception:
-                        pass
-            elif mode == "holdout" and len(preview_rows) > 0:
-                for r in preview_rows:
-                    r["fold_id"] = 1
-
-            decoder_payload = {
-                "classes": decoder_classes.tolist() if decoder_classes is not None else None,
-                "positive_class_label": decoder_positive_label,
-                "positive_class_index": decoder_positive_index,
-                "has_decision_scores": ds_arr is not None,
-                "has_proba": pr_arr is not None,
-                "proba_source": decoder_proba_source,
-                "notes": dedupe_preserve_order(decoder_notes),
-                "n_rows_total": int(len(y_pred_all_arr)),
-                "preview_rows": preview_rows,
-            }
-        except Exception as e:
-            decoder_payload = {
-                "classes": decoder_classes.tolist() if decoder_classes is not None else None,
-                "positive_class_label": decoder_positive_label,
-                "positive_class_index": decoder_positive_index,
-                "has_decision_scores": False,
-                "has_proba": False,
-                "notes": dedupe_preserve_order(
-                    decoder_notes + [f"decoder aggregation failed: {type(e).__name__}: {e}"]
+                decision_scores=ds_arr,
+                proba=pr_arr,
+                proba_source=decoder_proba_source,
+                margin=mg_arr,
+                fold_ids=fold_ids_arr,
+                notes=dedupe_preserve_order(decoder_notes),
+                max_preview_rows=(
+                    decoder_max_preview_rows if decoder_max_preview_rows > 0 else None
                 ),
-                "n_rows_total": int(len(y_pred_all_arr)) if y_pred_all_arr is not None else None,
-                "preview_rows": [],
-            }
-
-    # Normalize decoder payload to the shared DecoderOutputs contract
-    if decoder_payload is not None and isinstance(decoder_payload, dict):
-        decoder_payload = DecoderOutputs.model_validate(decoder_payload)
+                include_summary=True,
+            )
+        except Exception as e:
+            decoder_payload = DecoderOutputs.model_validate(
+                {
+                    "classes": decoder_classes.tolist() if decoder_classes is not None else None,
+                    "positive_class_label": decoder_positive_label,
+                    "positive_class_index": decoder_positive_index,
+                    "has_decision_scores": False,
+                    "has_proba": False,
+                    "notes": dedupe_preserve_order(
+                        decoder_notes + [f"decoder aggregation failed: {type(e).__name__}: {e}"]
+                    ),
+                    "n_rows_total": int(len(y_pred_all_arr)) if y_pred_all_arr is not None else None,
+                    "preview_rows": [],
+                }
+            )
 
     # Regression decoder outputs (no decision scores / probabilities)
     if decoder_enabled and eval_kind == "regression":
