@@ -7,7 +7,7 @@ import numpy as np
 
 from shared_schemas.metrics_configs import MetricsModel
 from utils.strategies.interfaces import MetricsComputer
-from utils.postprocessing.scoring import (
+from engine.components.evaluation.scoring import (
     confusion_matrix_metrics,
     binary_roc_curve_from_scores,
     multiclass_roc_curves_from_scores,

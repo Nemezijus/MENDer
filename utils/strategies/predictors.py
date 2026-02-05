@@ -4,8 +4,8 @@ from typing import Any, Tuple, Literal, Optional, Dict
 import numpy as np
 
 from utils.strategies.interfaces import Predictor
-from utils.postprocessing.predicting import predict_labels, predict_scores
-from utils.postprocessing.decoder_outputs import compute_decoder_outputs
+from engine.components.prediction.predicting import predict_labels, predict_scores
+from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
 
 @dataclass
 class SklearnPredictor(Predictor):

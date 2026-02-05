@@ -15,7 +15,7 @@ from utils.permutations.rng import RngManager
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
 from utils.persistence.artifact_cache import artifact_cache
 from utils.persistence.eval_outputs_cache import EvalOutputs, eval_outputs_cache
-from utils.postprocessing.scoring import PROBA_METRICS
+from engine.components.evaluation.scoring import PROBA_METRICS
 
 from ..adapters.io_adapter import LoadError
 
@@ -27,22 +27,22 @@ from shared_schemas.ensemble_configs import (
     XGBoostEnsembleConfig,
 )
 
-from utils.postprocessing.ensembles.voting_ensemble_reporting import (
+from engine.reporting.ensembles.voting_ensemble_reporting import (
     VotingEnsembleReportAccumulator,
     VotingEnsembleRegressorReportAccumulator,
 )
-from utils.postprocessing.ensembles.bagging_ensemble_reporting import (
+from engine.reporting.ensembles.bagging_ensemble_reporting import (
     BaggingEnsembleReportAccumulator,
     BaggingEnsembleRegressorReportAccumulator,
 )
-from utils.postprocessing.ensembles.adaboost_ensemble_reporting import (
+from engine.reporting.ensembles.adaboost_ensemble_reporting import (
     AdaBoostEnsembleReportAccumulator,
     AdaBoostEnsembleRegressorReportAccumulator,
 )
-from utils.postprocessing.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
+from engine.reporting.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
 
-from utils.postprocessing.decoder_outputs import compute_decoder_outputs
-from utils.predicting.prediction_results import build_decoder_output_table
+from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
+from engine.reporting.prediction.prediction_results import build_decoder_output_table
 
 from .training.regression_payloads import (
     build_regression_diagnostics_payload,

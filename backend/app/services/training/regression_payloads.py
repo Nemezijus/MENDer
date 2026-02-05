@@ -12,11 +12,11 @@ import numpy as np
 
 from engine.contracts.results.decoder import DecoderOutputs
 
-from utils.postprocessing.regression_diagnostics import (
+from engine.reporting.diagnostics.regression_diagnostics import (
     regression_diagnostics,
     regression_summary,
 )
-from utils.predicting.prediction_results import build_prediction_table
+from engine.reporting.prediction.prediction_results import build_prediction_table
 
 
 def build_regression_diagnostics_payload(

@@ -8,8 +8,8 @@ from sklearn.metrics import classification_report
 from utils.preprocessing.general.trial_split import split
 from utils.preprocessing.general.feature_scaling import scale_train_test
 from utils.processing.fitting import fit_model
-from utils.postprocessing.predicting import predict_labels
-from utils.postprocessing.scoring import score
+from engine.components.prediction.predicting import predict_labels
+from engine.components.evaluation.scoring import score
 from utils.preprocessing.general.feature_extraction.pca import pca_fit_transform_train_test
 
 FeatureScaling = Literal["none", "pca"]  # extend later: "lda", etc.

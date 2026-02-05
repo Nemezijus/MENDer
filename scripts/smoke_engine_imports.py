@@ -79,6 +79,12 @@ def main() -> int:
         print("\nFix imports before continuing the refactor.")
         return 1
 
+    
+    import engine.components.prediction.predicting
+    import engine.reporting.prediction.prediction_results
+    import engine.reporting.decoder.decoder_outputs
+    import engine.components.evaluation.scoring
+
     print("ENGINE IMPORT SMOKE TEST: OK")
     return 0
 

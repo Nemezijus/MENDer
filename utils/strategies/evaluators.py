@@ -6,9 +6,9 @@ import numpy as np
 from shared_schemas.eval_configs import EvalModel
 from shared_schemas.unsupervised_configs import UnsupervisedEvalModel
 from utils.strategies.interfaces import Evaluator, UnsupervisedEvaluator
-from utils.postprocessing.scoring import score as score_fn
-from utils.postprocessing.unsupervised_scoring import compute_unsupervised_metrics
-from utils.postprocessing.clustering_diagnostics import (
+from engine.components.evaluation.scoring import score as score_fn
+from engine.components.evaluation.unsupervised_scoring import compute_unsupervised_metrics
+from engine.reporting.diagnostics.clustering_diagnostics import (
     cluster_summary,
     embedding_2d,
     model_diagnostics,

@@ -15,8 +15,8 @@ from utils.factories.baseline_factory import make_baseline
 from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
 from utils.persistence.artifact_cache import artifact_cache
 from utils.persistence.eval_outputs_cache import EvalOutputs, eval_outputs_cache
-from utils.postprocessing.scoring import PROBA_METRICS
-from utils.postprocessing.decoder_outputs import compute_decoder_outputs
+from engine.components.evaluation.scoring import PROBA_METRICS
+from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS

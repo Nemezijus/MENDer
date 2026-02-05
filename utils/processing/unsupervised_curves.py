@@ -18,7 +18,7 @@ import numpy as np
 from sklearn.model_selection import learning_curve as sk_learning_curve
 from sklearn.model_selection import validation_curve as sk_validation_curve
 
-from utils.postprocessing.scoring import make_estimator_scorer
+from engine.components.evaluation.scoring import make_estimator_scorer
 
 
 UNSUPERVISED_METRICS = {"silhouette", "davies_bouldin", "calinski_harabasz"}

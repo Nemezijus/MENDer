@@ -16,7 +16,7 @@ def make_metrics_computer(
     """Factory for the metrics strategy.
 
     This keeps the backend isolated from the concrete implementation in
-    utils.postprocessing.scoring and utils.strategies.metrics.
+    engine.components.evaluation.scoring and utils.strategies.metrics.
 
     Parameters
     ----------

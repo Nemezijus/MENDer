@@ -7,7 +7,7 @@ import numpy as np
 from utils.factories.predict_factory import make_predictor
 from utils.factories.eval_factory import make_evaluator
 from utils.factories.export_factory import make_exporter
-from utils.predicting.prediction_results import build_prediction_table
+from engine.reporting.prediction.prediction_results import build_prediction_table
 from utils.io.export.result_export import ExportResult
 from utils.persistence.eval_outputs_cache import eval_outputs_cache
 from utils.persistence.artifact_cache import artifact_cache

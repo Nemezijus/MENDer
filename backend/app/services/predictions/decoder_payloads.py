@@ -6,8 +6,8 @@ import numpy as np
 
 from engine.contracts.results.decoder import DecoderOutputs
 
-from utils.postprocessing.decoder_outputs import compute_decoder_outputs
-from utils.predicting.prediction_results import (
+from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
+from engine.reporting.prediction.prediction_results import (
     build_decoder_output_table,
     merge_prediction_and_decoder_tables,
 )

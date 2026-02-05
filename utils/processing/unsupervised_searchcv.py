@@ -29,7 +29,7 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.model_selection import KFold, ParameterGrid, ParameterSampler
 
-from utils.postprocessing.unsupervised_scoring import compute_unsupervised_metrics
+from engine.components.evaluation.unsupervised_scoring import compute_unsupervised_metrics
 
 
 UNSUPERVISED_METRICS = {"silhouette", "davies_bouldin", "calinski_harabasz"}

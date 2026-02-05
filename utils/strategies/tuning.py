@@ -34,7 +34,7 @@ from utils.factories.data_loading_factory import make_data_loader
 from utils.factories.sanity_factory import make_sanity_checker
 from utils.factories.pipeline_factory import make_pipeline, make_unsupervised_pipeline
 from utils.permutations.rng import RngManager
-from utils.postprocessing.scoring import make_estimator_scorer
+from engine.components.evaluation.scoring import make_estimator_scorer
 from utils.processing.unsupervised_curves import (
     compute_unsupervised_learning_curve,
     compute_unsupervised_validation_curve,

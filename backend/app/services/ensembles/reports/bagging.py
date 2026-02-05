@@ -3,8 +3,8 @@ from typing import Any, Tuple
 
 from shared_schemas.ensemble_run_config import EnsembleRunConfig
 
-from utils.postprocessing.scoring import PROBA_METRICS
-from utils.postprocessing.ensembles.bagging_ensemble_reporting import (
+from engine.components.evaluation.scoring import PROBA_METRICS
+from engine.reporting.ensembles.bagging_ensemble_reporting import (
     BaggingEnsembleReportAccumulator,
     BaggingEnsembleRegressorReportAccumulator,
 )

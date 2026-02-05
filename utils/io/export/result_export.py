@@ -148,7 +148,7 @@ def export_to_csv(
     data:
         Data to export. Supported shapes are described in `_to_rows_and_header`.
         In particular, this accepts the list-of-dicts produced by
-        `utils.predicting.prediction_results.build_prediction_table`.
+        `engine.reporting.prediction.prediction_results.build_prediction_table`.
     dest:
         Optional destination path or directory.
 
