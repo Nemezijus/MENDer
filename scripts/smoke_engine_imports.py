@@ -56,6 +56,7 @@ def main() -> int:
         "engine.contracts.results.tuning",
         "engine.contracts.results.unsupervised",
         "engine.core",
+        "engine.core.shapes",
         "engine.components",
         "engine.registries",
         "engine.registries.base",
@@ -73,6 +74,10 @@ def main() -> int:
         "engine.registries.builtins.exporters",
         "engine.io",
         "engine.io.artifacts",
+        "engine.io.readers",
+        "engine.io.readers.auto_reader",
+        "engine.io.readers.mat_reader",
+        "engine.io.readers.tabular_reader",
         "engine.io.artifacts.store",
         "engine.io.artifacts.filesystem_store",
         "engine.io.artifacts.serialization",
@@ -85,6 +90,7 @@ def main() -> int:
         "engine.use_cases",
         "engine.compat",
         "engine.extras",
+        "engine.extras.datasets",
 
         # Segment 7: split mega-modules
         "engine.components.evaluation.metrics",

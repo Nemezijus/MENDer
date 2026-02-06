@@ -3,9 +3,9 @@ import os
 import numpy as np
 
 from shared_schemas.run_config import DataModel
-from utils.factories.data_loading_factory import make_data_loader
-from utils.strategies.data_loaders import _coerce_shapes
-from utils.parse.data_read import load_mat_variable
+
+# Prefer Engine readers directly (backend-independent parsing adapters).
+from engine.io.readers import load_from_data_model
 
 # Read-only datasets inside the container image (and/or optionally overridden by env)
 DATA_ROOT = os.path.abspath(os.getenv("DATA_ROOT", "/app/data"))
@@ -161,8 +161,9 @@ def load_X_y(
     """
     try:
         cfg = build_data_config(npz_path, x_key, y_key, x_path, y_path)
-        loader = make_data_loader(cfg)
-        X, y = loader.load()
+        X, y, _feature_names = load_from_data_model(cfg)
+        if y is None:
+            raise LoadError("y is required for this operation, but was not found in the provided inputs.")
         return X, y
     except LoadError:
         raise
@@ -182,60 +183,14 @@ def load_X_optional_y(
 
     Notes
     -----
-    - For X-only .npz inputs, we special-case loading because some workflows store
-      only X in the archive. If y is not present, we return (X, None).
-    - For all other file types (including .mat, .npy, .csv/.tsv/.txt, .h5/.hdf5, .xlsx)
-      we delegate to the BL AutoLoader via make_data_loader.
-
-    If expected_n_features is provided, we apply a best-effort transpose fix for
-    X-only inputs when the data appears to be (n_features, n_samples).
+    - Parsing is delegated to Engine readers (:func:`engine.io.readers.load_from_data_model`).
+    - If expected_n_features is provided, we apply a best-effort transpose fix for
+      X-only inputs when the data appears to be (n_features, n_samples).
     """
     try:
         cfg = build_data_config(npz_path, x_key, y_key, x_path, y_path)
 
-        # --- NPZ-based loading (supports X-only archives) ---------------------
-        if cfg.npz_path or (cfg.x_path and cfg.x_path.lower().endswith(".npz")):
-            path_npz = cfg.npz_path or cfg.x_path
-            if not path_npz:
-                raise LoadError("NPZ loading requires npz_path or x_path pointing to a .npz file.")
-            data = np.load(path_npz, allow_pickle=True)
-
-            if cfg.x_key not in data.files:
-                raise LoadError(
-                    f"Key '{cfg.x_key}' not found in {path_npz}. Available keys: {list(data.keys())}"
-                )
-
-            X_raw = np.asarray(data[cfg.x_key])
-
-            # If y is present in the file, use the full training-like alignment.
-            if cfg.y_key in data.files:
-                y_raw = np.asarray(data[cfg.y_key]).ravel()
-                X, y = _coerce_shapes(X_raw, y_raw)
-                return X, y
-
-            # X-only NPZ: ensure X is 2D.
-            X = np.asarray(X_raw)
-            if X.ndim == 1:
-                X = X[:, None]
-            if X.ndim != 2:
-                raise LoadError(f"X must be 1D or 2D array; got shape {X.shape}")
-
-            if expected_n_features is not None:
-                try:
-                    exp = int(expected_n_features)
-                    if X.shape[1] != exp and X.shape[0] == exp:
-                        X = X.T
-                except Exception:
-                    pass
-
-            return X, None
-
-        # --- All other formats: delegate to BL loader ------------------------
-        if not cfg.x_path:
-            raise LoadError("You must provide at least one feature source (npz_path or x_path) for prediction.")
-
-        loader = make_data_loader(cfg)
-        X, y = loader.load()
+        X, y, _feature_names = load_from_data_model(cfg)
 
         if expected_n_features is not None:
             try:

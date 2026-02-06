@@ -7,7 +7,7 @@ from sklearn.base import clone
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import StratifiedKFold
 
-from utils.preprocessing.general.shapes import ensure_xy_aligned as _coerce_xy
+from engine.core.shapes import ensure_xy_aligned
 
 
 def perform_sfs(
@@ -26,7 +26,7 @@ def perform_sfs(
     """
     Fit Sequential Feature Selector (SFS) on all data (X,y); return (selector, X_selected).
     """
-    X, y = _coerce_xy(X, y)
+    X, y = ensure_xy_aligned(X, y)
     base = clone(estimator)
 
     skf = StratifiedKFold(
@@ -64,7 +64,7 @@ def sfs_fit_transform_train_test(
     """
     Fit SFS on TRAIN only, then transform train and test.
     """
-    X_train, y_train = _coerce_xy(X_train, y_train)
+    X_train, y_train = ensure_xy_aligned(X_train, y_train)
     X_test = np.asarray(X_test)
     if X_test.ndim != 2:
         raise ValueError(f"X_test must be 2D. Got {X_test.shape}.")

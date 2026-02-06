@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Tuple, Sequence, Union, Literal
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from utils.preprocessing.general.shapes import ensure_xy_aligned as _coerce_xy
+from engine.core.shapes import ensure_xy_aligned
 
 
 SolverName = Literal["svd", "lsqr", "eigen"]
@@ -70,7 +70,7 @@ def perform_lda(
     lda : fitted LinearDiscriminantAnalysis instance
     X_lda : transformed data, shape (n_samples, n_components_eff)
     """
-    X, y = _coerce_xy(X, y)
+    X, y = ensure_xy_aligned(X, y)
     classes = np.unique(y)
     k = _cap_n_components(n_components, n_features=X.shape[1], n_classes=classes.size)
 
@@ -112,7 +112,7 @@ def lda_fit_transform_train_test(
     X_train_lda : transformed train data, shape (n_train, n_components_eff)
     X_test_lda  : transformed test data,  shape (n_test,  n_components_eff)
     """
-    X_train, y_train = _coerce_xy(X_train, y_train)
+    X_train, y_train = ensure_xy_aligned(X_train, y_train)
     X_test = np.asarray(X_test)
     if X_test.ndim != 2:
         raise ValueError(f"X_test must be 2D. Got {X_test.shape}.")
