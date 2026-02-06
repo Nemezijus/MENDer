@@ -87,7 +87,15 @@ def main() -> int:
         "engine.runtime.caches.artifact_cache",
         "engine.runtime.caches.eval_outputs_cache",
         "engine.reporting",
+        "engine.reporting.common",
+        "engine.reporting.common.json_safety",
+        "engine.reporting.training",
+        "engine.reporting.training.metrics_payloads",
+        "engine.reporting.training.decoder_payloads",
+        "engine.reporting.training.regression_payloads",
         "engine.use_cases",
+        "engine.use_cases._deps",
+        "engine.use_cases.facade",
         "engine.compat",
 
         # Segment 7: split mega-modules
@@ -137,6 +145,9 @@ def main() -> int:
     import engine.io.artifacts  # noqa: F401
     import engine.runtime.caches  # noqa: F401
     import engine.use_cases.artifacts  # noqa: F401
+    import engine.use_cases.facade  # noqa: F401
+    import engine.reporting.common.json_safety  # noqa: F401
+    import engine.reporting.training.metrics_payloads  # noqa: F401
 
     # Exercise registries so built-ins must actually register.
     from engine.registries.models import list_model_algos
