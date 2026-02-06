@@ -9,8 +9,8 @@ from utils.factories.eval_factory import make_evaluator
 from utils.factories.export_factory import make_exporter
 from engine.reporting.prediction.prediction_results import build_prediction_table
 from utils.io.export.result_export import ExportResult
-from utils.persistence.eval_outputs_cache import eval_outputs_cache
-from utils.persistence.artifact_cache import artifact_cache
+from engine.runtime.caches.eval_outputs_cache import eval_outputs_cache
+from engine.runtime.caches.artifact_cache import artifact_cache
 
 from .predictions.helpers import (
     build_preview_rows,

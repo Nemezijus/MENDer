@@ -7,7 +7,7 @@ import numpy as np
 from shared_schemas.eval_configs import EvalModel
 
 from utils.factories.sanity_factory import make_sanity_checker
-from utils.persistence.artifact_cache import artifact_cache
+from engine.runtime.caches.artifact_cache import artifact_cache
 
 
 def safe_float_optional(v: Any) -> Optional[float]:

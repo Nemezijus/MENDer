@@ -72,6 +72,15 @@ def main() -> int:
         "engine.registries.builtins.ensembles",
         "engine.registries.builtins.exporters",
         "engine.io",
+        "engine.io.artifacts",
+        "engine.io.artifacts.store",
+        "engine.io.artifacts.filesystem_store",
+        "engine.io.artifacts.serialization",
+        "engine.io.artifacts.meta",
+        "engine.runtime",
+        "engine.runtime.caches",
+        "engine.runtime.caches.artifact_cache",
+        "engine.runtime.caches.eval_outputs_cache",
         "engine.reporting",
         "engine.use_cases",
         "engine.compat",
@@ -104,6 +113,9 @@ def main() -> int:
     import engine.reporting.prediction.prediction_results  # noqa: F401
     import engine.reporting.decoder.decoder_outputs  # noqa: F401
     import engine.components.evaluation.scoring  # noqa: F401
+    import engine.io.artifacts  # noqa: F401
+    import engine.runtime.caches  # noqa: F401
+    import engine.use_cases.artifacts  # noqa: F401
 
     # Exercise registries so built-ins must actually register.
     from engine.registries.models import list_model_algos

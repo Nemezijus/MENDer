@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Tuple, Dict, Any
 from fastapi import HTTPException, status
 
-from utils.persistence.artifact_cache import artifact_cache
-from utils.persistence.model_io import save_model_artifact, load_model_artifact
+from engine.runtime.caches.artifact_cache import artifact_cache
+from engine.use_cases.artifacts import save_model_bytes, load_model_bytes
 
 
 def save_model_service(artifact_uid: str, artifact_meta: Dict[str, Any]) -> Tuple[bytes, Dict[str, Any]]:
@@ -20,7 +20,7 @@ def save_model_service(artifact_uid: str, artifact_meta: Dict[str, Any]) -> Tupl
             detail="Model is no longer available for saving (cache expired). Re-run training or load a saved model.",
         )
 
-    result = save_model_artifact(pipeline, artifact_meta)  # returns SaveResult
+    result = save_model_bytes(pipeline, artifact_meta)  # returns SaveResult
     return result.content_bytes, {"size": result.size, "sha256": result.sha256}
 
 
@@ -29,7 +29,7 @@ def load_model_service(file_bytes: bytes) -> Dict[str, Any]:
     Load a model artifact from bytes, validate it, place the pipeline into cache,
     and return the artifact meta for UI display.
     """
-    pipeline, meta = load_model_artifact(file_bytes)
+    pipeline, meta = load_model_bytes(file_bytes)
 
     uid = meta.get("uid")
     if not uid:

@@ -12,9 +12,9 @@ from utils.factories.eval_factory import make_evaluator
 from utils.factories.metrics_factory import make_metrics_computer
 from utils.factories.ensemble_factory import make_ensemble_strategy
 from utils.permutations.rng import RngManager
-from utils.persistence.modelArtifact import ArtifactBuilderInput, build_model_artifact_meta
-from utils.persistence.artifact_cache import artifact_cache
-from utils.persistence.eval_outputs_cache import EvalOutputs, eval_outputs_cache
+from engine.io.artifacts.meta import ArtifactBuilderInput, build_model_artifact_meta
+from engine.runtime.caches.artifact_cache import artifact_cache
+from engine.runtime.caches.eval_outputs_cache import EvalOutputs, eval_outputs_cache
 from engine.components.evaluation.scoring import PROBA_METRICS
 
 from ..adapters.io_adapter import LoadError
