@@ -58,6 +58,19 @@ def main() -> int:
         "engine.core",
         "engine.components",
         "engine.registries",
+        "engine.registries.base",
+        "engine.registries.models",
+        "engine.registries.features",
+        "engine.registries.splitters",
+        "engine.registries.ensembles",
+        "engine.registries.exporters",
+        "engine.registries.metrics",
+        "engine.registries.builtins",
+        "engine.registries.builtins.models",
+        "engine.registries.builtins.features",
+        "engine.registries.builtins.splitters",
+        "engine.registries.builtins.ensembles",
+        "engine.registries.builtins.exporters",
         "engine.io",
         "engine.reporting",
         "engine.use_cases",
@@ -91,6 +104,19 @@ def main() -> int:
     import engine.reporting.prediction.prediction_results  # noqa: F401
     import engine.reporting.decoder.decoder_outputs  # noqa: F401
     import engine.components.evaluation.scoring  # noqa: F401
+
+    # Exercise registries so built-ins must actually register.
+    from engine.registries.models import list_model_algos
+    from engine.registries.features import list_feature_methods
+    from engine.registries.splitters import list_split_modes
+    from engine.registries.ensembles import list_ensemble_kinds
+    from engine.registries.exporters import list_export_formats
+
+    assert list_model_algos(), "model registry looks empty"
+    assert list_feature_methods(), "feature registry looks empty"
+    assert list_split_modes(), "splitter registry looks empty"
+    assert list_ensemble_kinds(), "ensemble registry looks empty"
+    assert list_export_formats(), "exporter registry looks empty"
 
     print("ENGINE IMPORT SMOKE TEST: OK")
     return 0

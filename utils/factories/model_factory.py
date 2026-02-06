@@ -1,99 +1,18 @@
 # utils/factories/model_factory.py
-from shared_schemas.model_configs import (
-  ModelConfig,
-  LogRegConfig, SVMConfig, TreeConfig, ForestConfig, KNNConfig,
-  GaussianNBConfig, RidgeClassifierConfig, SGDClassifierConfig,
-  ExtraTreesConfig, HistGradientBoostingConfig,
-  LinearRegConfig,
+from __future__ import annotations
 
-  RidgeRegressorConfig,
-  RidgeCVRegressorConfig,
-  ElasticNetRegressorConfig,
-  ElasticNetCVRegressorConfig,
-  LassoRegressorConfig,
-  LassoCVRegressorConfig,
-  BayesianRidgeRegressorConfig,
-  SVRRegressorConfig,
-  LinearSVRRegressorConfig,
-  KNNRegressorConfig,
-  DecisionTreeRegressorConfig,
-  RandomForestRegressorConfig,
+from shared_schemas.model_configs import ModelConfig
 
-  KMeansConfig,
-  DBSCANConfig,
-  SpectralClusteringConfig,
-  AgglomerativeClusteringConfig,
-  GaussianMixtureConfig,
-  BayesianGaussianMixtureConfig,
-  MeanShiftConfig,
-  BirchConfig,
-)
-from utils.strategies.models import (
-  LogRegBuilder, SVMBuilder, DecisionTreeBuilder, RandomForestBuilder, KNNBuilder,
-  GaussianNBBuilder, RidgeClassifierBuilder, SGDClassifierBuilder,
-  ExtraTreesBuilder, HistGradientBoostingBuilder,
-  LinRegBuilder,
+from engine.registries.models import make_model_builder
 
-  RidgeRegressorBuilder,
-  RidgeCVRegressorBuilder,
-  ElasticNetRegressorBuilder,
-  ElasticNetCVRegressorBuilder,
-  LassoRegressorBuilder,
-  LassoCVRegressorBuilder,
-  BayesianRidgeRegressorBuilder,
-  SVRRegressorBuilder,
-  LinearSVRRegressorBuilder,
-  KNNRegressorBuilder,
-  DecisionTreeRegressorBuilder,
-  RandomForestRegressorBuilder,
-
-  KMeansBuilder,
-  DBSCANBuilder,
-  SpectralClusteringBuilder,
-  AgglomerativeClusteringBuilder,
-  GaussianMixtureBuilder,
-  BayesianGaussianMixtureBuilder,
-  MeanShiftBuilder,
-  BirchBuilder,
-)
-
+# NOTE: interface currently in utils; will migrate to engine later.
 from utils.strategies.interfaces import ModelBuilder
 
+
 def make_model(cfg: ModelConfig, *, seed: int | None = None) -> ModelBuilder:
-    if isinstance(cfg, LogRegConfig):         return LogRegBuilder(cfg, seed=seed)
-    if isinstance(cfg, SVMConfig):            return SVMBuilder(cfg, seed=seed)
-    if isinstance(cfg, TreeConfig):           return DecisionTreeBuilder(cfg, seed=seed)
-    if isinstance(cfg, ForestConfig):         return RandomForestBuilder(cfg, seed=seed)
-    if isinstance(cfg, KNNConfig):            return KNNBuilder(cfg)
-    if isinstance(cfg, GaussianNBConfig):     return GaussianNBBuilder(cfg)
-    if isinstance(cfg, RidgeClassifierConfig): return RidgeClassifierBuilder(cfg, seed=seed)
-    if isinstance(cfg, SGDClassifierConfig):  return SGDClassifierBuilder(cfg, seed=seed)
-    if isinstance(cfg, ExtraTreesConfig):     return ExtraTreesBuilder(cfg, seed=seed)
-    if isinstance(cfg, HistGradientBoostingConfig): return HistGradientBoostingBuilder(cfg, seed=seed)
+    """Thin wrapper around engine registries.
 
-    # ---------------- regressors ----------------
-    if isinstance(cfg, LinearRegConfig):      return LinRegBuilder(cfg)
-    if isinstance(cfg, RidgeRegressorConfig): return RidgeRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, RidgeCVRegressorConfig): return RidgeCVRegressorBuilder(cfg)
-    if isinstance(cfg, ElasticNetRegressorConfig): return ElasticNetRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, ElasticNetCVRegressorConfig): return ElasticNetCVRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, LassoRegressorConfig): return LassoRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, LassoCVRegressorConfig): return LassoCVRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, BayesianRidgeRegressorConfig): return BayesianRidgeRegressorBuilder(cfg)
-    if isinstance(cfg, SVRRegressorConfig):   return SVRRegressorBuilder(cfg)
-    if isinstance(cfg, LinearSVRRegressorConfig): return LinearSVRRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, KNNRegressorConfig):   return KNNRegressorBuilder(cfg)
-    if isinstance(cfg, DecisionTreeRegressorConfig): return DecisionTreeRegressorBuilder(cfg, seed=seed)
-    if isinstance(cfg, RandomForestRegressorConfig): return RandomForestRegressorBuilder(cfg, seed=seed)
+    Kept for backwards compatibility with existing call sites.
+    """
 
-    # ---------------- unsupervised ----------------
-    if isinstance(cfg, KMeansConfig):         return KMeansBuilder(cfg, seed=seed)
-    if isinstance(cfg, DBSCANConfig):         return DBSCANBuilder(cfg)
-    if isinstance(cfg, SpectralClusteringConfig): return SpectralClusteringBuilder(cfg, seed=seed)
-    if isinstance(cfg, AgglomerativeClusteringConfig): return AgglomerativeClusteringBuilder(cfg)
-    if isinstance(cfg, GaussianMixtureConfig): return GaussianMixtureBuilder(cfg, seed=seed)
-    if isinstance(cfg, BayesianGaussianMixtureConfig): return BayesianGaussianMixtureBuilder(cfg, seed=seed)
-    if isinstance(cfg, MeanShiftConfig):      return MeanShiftBuilder(cfg)
-    if isinstance(cfg, BirchConfig):          return BirchBuilder(cfg)
-
-    raise ValueError(f"Unsupported algo: {getattr(cfg, 'algo', None)}")
+    return make_model_builder(cfg, seed=seed)
