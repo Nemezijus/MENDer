@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Compatibility shim.
 
-The canonical AllenSDK fetchers moved to :mod:`engine.extras.datasets.allen`.
+The canonical Allen Institute fetchers live under :mod:`engine.extras.allen_institute`.
 """
 
-from engine.extras.datasets.allen.visual_behavior import *  # noqa: F401,F403
+from engine.extras.allen_institute.datafetch.visual_behavior import *  # noqa: F401,F403

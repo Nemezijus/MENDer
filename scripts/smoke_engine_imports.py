@@ -89,8 +89,6 @@ def main() -> int:
         "engine.reporting",
         "engine.use_cases",
         "engine.compat",
-        "engine.extras",
-        "engine.extras.datasets",
 
         # Segment 7: split mega-modules
         "engine.components.evaluation.metrics",
@@ -105,6 +103,16 @@ def main() -> int:
         except BaseException as e:  # noqa: BLE001 - this is a smoke test
             failures.append((mod, e))
 
+    # Guard: core Engine imports should not pull in optional extras
+    extras_loaded = [m for m in sys.modules if m == 'engine.extras' or m.startswith('engine.extras.') ]
+    if extras_loaded:
+        print('ENGINE IMPORT SMOKE TEST: FAILED\n')
+        print('Core imports unexpectedly loaded engine.extras:')
+        for m in sorted(set(extras_loaded)):
+            print(f'- {m}')
+        print('\nCore must not import extras; move dataset/example code under engine/extras and keep it optional.')
+        return 1
+
     if failures:
         print("ENGINE IMPORT SMOKE TEST: FAILED\n")
         for mod, e in failures:
@@ -112,6 +120,13 @@ def main() -> int:
         print("\nFix imports before continuing the refactor.")
         return 1
 
+    # Guardrail: core Engine packages must not import extras automatically.
+    assert not any(m == 'engine.extras' or m.startswith('engine.extras.') for m in sys.modules), (
+        'Engine core imported engine.extras unexpectedly; keep extras isolated.'
+    )
+
+    # Import extras package itself (should be lightweight).
+    import engine.extras  # noqa: F401
     # A few extra explicit imports to exercise key submodules.
     import engine.components.prediction.predicting  # noqa: F401
     import engine.components.prediction.decoder_extraction  # noqa: F401

@@ -1,11 +1,11 @@
-from utils.datafetch.allen_institute.visual_behavior import load_visual_behavior_experiment
-from utils.preprocessing.allen_institute.visual_behavior.natural_images import build_natural_image_trials
-from utils.preprocessing.allen_institute.common import save_trial_dataset_npz
+from engine.extras.allen_institute.datafetch.visual_behavior import load_visual_behavior_experiment
+from engine.extras.allen_institute.preprocessing.visual_behavior.natural_images import build_natural_image_trials
+from engine.extras.allen_institute.preprocessing.common import save_trial_dataset_npz
 from instances.logreg_classify_with_shuffle import run_logreg_decoding
 from instances.ridge_shuffle_decoding import run_ridge_decoding
 
-from utils.datafetch.allen_institute.visual_coding import load_vc_experiment
-from utils.preprocessing.allen_institute.visual_coding.drifting_gratings import build_vc_drifting_gratings_trials
+from engine.extras.allen_institute.datafetch.visual_coding import load_vc_experiment
+from engine.extras.allen_institute.preprocessing.visual_coding.drifting_gratings import build_vc_drifting_gratings_trials
 from visualizations.allen_institute.allen_vc_plots import (
     plot_orientation_distribution,
     plot_population_means,
