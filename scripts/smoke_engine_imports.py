@@ -63,6 +63,11 @@ def main() -> int:
         "engine.use_cases",
         "engine.compat",
         "engine.extras",
+
+        # Segment 7: split mega-modules
+        "engine.components.evaluation.metrics",
+        "engine.reporting.diagnostics.clustering",
+        "shared_schemas.model_families",
     ]
 
     failures: list[tuple[str, BaseException]] = []
@@ -79,13 +84,13 @@ def main() -> int:
         print("\nFix imports before continuing the refactor.")
         return 1
 
-    
-    import engine.components.prediction.predicting
-    import engine.components.prediction.decoder_extraction
-    import engine.components.prediction.decoder_api
-    import engine.reporting.prediction.prediction_results
-    import engine.reporting.decoder.decoder_outputs
-    import engine.components.evaluation.scoring
+    # A few extra explicit imports to exercise key submodules.
+    import engine.components.prediction.predicting  # noqa: F401
+    import engine.components.prediction.decoder_extraction  # noqa: F401
+    import engine.components.prediction.decoder_api  # noqa: F401
+    import engine.reporting.prediction.prediction_results  # noqa: F401
+    import engine.reporting.decoder.decoder_outputs  # noqa: F401
+    import engine.components.evaluation.scoring  # noqa: F401
 
     print("ENGINE IMPORT SMOKE TEST: OK")
     return 0
