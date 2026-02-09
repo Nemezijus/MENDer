@@ -1,27 +1,23 @@
+"""Backend tuning service: grid search.
+
+Segment 12B: delegate orchestration to the Engine façade.
+"""
+
 from __future__ import annotations
+
+from engine.use_cases.facade import grid_search as bl_grid_search
 
 from shared_schemas.run_config import RunConfig
 from shared_schemas.tuning_configs import GridSearchConfig
-from utils.factories.tuning_factory import make_grid_search_runner
 
-from ..models.v1.tuning_models import (
-    GridSearchRequest,
-    GridSearchResponse,
-)
+from ..models.v1.tuning_models import GridSearchRequest, GridSearchResponse
 
 from .common.result_coercion import to_payload
 
 
 def compute_grid_search(req: GridSearchRequest) -> GridSearchResponse:
-    """
-    Thin service wrapper for GridSearchCV-based tuning.
+    """Compute a GridSearchCV-based tuning run for the given request."""
 
-    All heavy lifting (data loading, pipeline construction, GridSearchCV)
-    is handled in the business-logic layer (GridSearchRunner); this service
-    only maps the API models to shared configs and back.
-    """
-
-    # 1) Build the shared RunConfig used across training / tuning
     run_cfg = RunConfig(
         data=req.data,
         split=req.split,
@@ -31,7 +27,6 @@ def compute_grid_search(req: GridSearchRequest) -> GridSearchResponse:
         eval=req.eval,
     )
 
-    # 2) Build the tuning-specific config
     gs_cfg = GridSearchConfig(
         param_grid=req.param_grid,
         cv=req.cv,
@@ -40,9 +35,5 @@ def compute_grid_search(req: GridSearchRequest) -> GridSearchResponse:
         return_train_score=req.return_train_score,
     )
 
-    # 3) Delegate to the tuning strategy
-    runner = make_grid_search_runner(run_cfg, gs_cfg)
-    result = runner.run()
-
-    # 4) Adapt to API response model
+    result = bl_grid_search(run_cfg, gs_cfg)
     return GridSearchResponse(**to_payload(result))

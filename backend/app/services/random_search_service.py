@@ -1,28 +1,23 @@
-# backend/app/services/random_search_service.py
+"""Backend tuning service: random search.
+
+Segment 12B: delegate orchestration to the Engine façade.
+"""
+
 from __future__ import annotations
+
+from engine.use_cases.facade import random_search as bl_random_search
 
 from shared_schemas.run_config import RunConfig
 from shared_schemas.tuning_configs import RandomizedSearchConfig
-from utils.factories.tuning_factory import make_random_search_runner
 
-from ..models.v1.tuning_models import (
-    RandomSearchRequest,
-    RandomSearchResponse,
-)
+from ..models.v1.tuning_models import RandomSearchRequest, RandomSearchResponse
 
 from .common.result_coercion import to_payload
 
 
 def compute_random_search(req: RandomSearchRequest) -> RandomSearchResponse:
-    """
-    Thin service wrapper for RandomizedSearchCV-based tuning.
+    """Compute a RandomizedSearchCV-based tuning run for the given request."""
 
-    All heavy lifting (data loading, pipeline construction, RandomizedSearchCV)
-    is handled in the business-logic layer (RandomizedSearchRunner); this
-    service only maps the API models to shared configs and back.
-    """
-
-    # 1) Build the shared RunConfig used across training / tuning
     run_cfg = RunConfig(
         data=req.data,
         split=req.split,
@@ -32,7 +27,6 @@ def compute_random_search(req: RandomSearchRequest) -> RandomSearchResponse:
         eval=req.eval,
     )
 
-    # 2) Build the tuning-specific config
     rs_cfg = RandomizedSearchConfig(
         param_distributions=req.param_distributions,
         n_iter=req.n_iter,
@@ -43,9 +37,5 @@ def compute_random_search(req: RandomSearchRequest) -> RandomSearchResponse:
         return_train_score=req.return_train_score,
     )
 
-    # 3) Delegate to the tuning strategy
-    runner = make_random_search_runner(run_cfg, rs_cfg)
-    result = runner.run()
-
-    # 4) Adapt to API response model
+    result = bl_random_search(run_cfg, rs_cfg)
     return RandomSearchResponse(**to_payload(result))
