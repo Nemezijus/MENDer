@@ -9,13 +9,20 @@ implementations are added in later patches (12A3+).
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, Union
 
 from engine.contracts.run_config import RunConfig
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.eval_configs import EvalModel
+from engine.contracts.tuning_configs import (
+    LearningCurveConfig,
+    ValidationCurveConfig,
+    GridSearchConfig,
+    RandomizedSearchConfig,
+)
 from engine.contracts.results.ensemble import EnsembleResult
-from engine.contracts.results.prediction import PredictionResult
+from engine.contracts.results.prediction import PredictionResult, UnsupervisedApplyResult
 from engine.contracts.results.training import TrainResult
 from engine.contracts.results.tuning import (
     GridSearchResult,
@@ -67,65 +74,99 @@ def train_ensemble(
 
 
 def predict(
-    run_config: RunConfig,
     *,
+    artifact_uid: str,
+    artifact_meta: Any,
+    X: Any,
+    y: Optional[Any] = None,
+    eval_override: Optional[EvalModel] = None,
+    max_preview_rows: int = 100,
     store: Optional[ArtifactStore] = None,
-    rng: Optional[int] = None,
-) -> PredictionResult:
-    """Apply a trained artifact to data and return :class:`PredictionResult`."""
+) -> Union[PredictionResult, UnsupervisedApplyResult]:
+    """Apply a cached/persisted artifact to arrays.
 
-    raise NotImplementedError(
-        "predict is introduced in Segment 12 Patch 12A5 (or later)."
+    Parameters
+    ----------
+    artifact_uid:
+        UID of a previously trained artifact.
+    artifact_meta:
+        Artifact meta (typically from the training response). Used to infer
+        task kind, feature counts, and stored eval/decoder defaults.
+    X, y:
+        Arrays to apply the model to. ``y`` is optional and used only for
+        scoring/preview columns.
+    eval_override:
+        Optional EvalModel used to override stored eval/decoder settings
+        (useful for enabling/disabling decoder outputs on apply).
+    store:
+        Optional ArtifactStore. If the pipeline is not in the runtime cache,
+        the use-case will attempt to load it from the provided store.
+    """
+
+    from engine.use_cases.prediction import apply_model_to_arrays as _apply
+
+    return _apply(
+        artifact_uid=artifact_uid,
+        artifact_meta=artifact_meta,
+        X=X,
+        y=y,
+        eval_override=eval_override,
+        max_preview_rows=max_preview_rows,
+        store=store,
     )
 
 
 def tune_learning_curve(
     run_config: RunConfig,
+    lc_cfg: LearningCurveConfig,
     *,
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> LearningCurveResult:
     """Run learning curve and return a typed :class:`LearningCurveResult`."""
 
-    raise NotImplementedError(
-        "tune_learning_curve is introduced in Segment 12 Patch 12A5 (or later)."
-    )
+    from engine.use_cases.tuning import tune_learning_curve as _run
+
+    return _run(run_config, lc_cfg, store=store, rng=rng)
 
 
 def tune_validation_curve(
     run_config: RunConfig,
+    vc_cfg: ValidationCurveConfig,
     *,
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> ValidationCurveResult:
     """Run validation curve and return :class:`ValidationCurveResult`."""
 
-    raise NotImplementedError(
-        "tune_validation_curve is introduced in Segment 12 Patch 12A5 (or later)."
-    )
+    from engine.use_cases.tuning import tune_validation_curve as _run
+
+    return _run(run_config, vc_cfg, store=store, rng=rng)
 
 
 def grid_search(
     run_config: RunConfig,
+    gs_cfg: GridSearchConfig,
     *,
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> GridSearchResult:
     """Run grid search and return :class:`GridSearchResult`."""
 
-    raise NotImplementedError(
-        "grid_search is introduced in Segment 12 Patch 12A5 (or later)."
-    )
+    from engine.use_cases.tuning import grid_search as _run
+
+    return _run(run_config, gs_cfg, store=store, rng=rng)
 
 
 def random_search(
     run_config: RunConfig,
+    rs_cfg: RandomizedSearchConfig,
     *,
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> RandomSearchResult:
     """Run random search and return :class:`RandomSearchResult`."""
 
-    raise NotImplementedError(
-        "random_search is introduced in Segment 12 Patch 12A5 (or later)."
-    )
+    from engine.use_cases.tuning import random_search as _run
+
+    return _run(run_config, rs_cfg, store=store, rng=rng)

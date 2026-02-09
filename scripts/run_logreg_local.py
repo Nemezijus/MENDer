@@ -8,7 +8,7 @@ from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.model_configs import ModelConfig
 from shared_schemas.eval_configs import EvalModel
 
-from instances.logreg_classify_with_shuffle import run_logreg_decoding
+from engine.use_cases.facade import train_supervised
 
 # ==== EDIT THESE VALUES AS YOU LIKE ==========================================
 # Example A: NPZ bundle (Allen)
@@ -71,7 +71,17 @@ def main():
         data=DATA, split=SPLIT, scale=SCALE,
         features=FEATURE, model=MODEL, eval=EVAL,
     )
-    run_logreg_decoding(cfg)
+    result = train_supervised(cfg)
+
+    print("\n=== TRAIN RESULT ===")
+    print(f"Task: {result.task}")
+    print(f"Metric: {result.metric_name} = {result.metric_value}")
+    if result.artifact_meta is not None:
+        print(f"Artifact UID: {result.artifact_meta.uid}")
+    if result.notes:
+        print("Notes:")
+        for n in result.notes:
+            print(f"- {n}")
 
 if __name__ == "__main__":
     main()

@@ -99,6 +99,8 @@ def main() -> int:
         "engine.use_cases.supervised_training",
         "engine.use_cases.unsupervised_training",
         "engine.use_cases.ensembles",
+        "engine.use_cases.prediction",
+        "engine.use_cases.tuning",
         "engine.reporting.ensembles.helpers",
         "engine.reporting.ensembles.reports",
         "engine.reporting.ensembles.reports.voting",
@@ -158,6 +160,8 @@ def main() -> int:
     import engine.use_cases.supervised_training  # noqa: F401
     import engine.use_cases.unsupervised_training  # noqa: F401
     import engine.use_cases.ensembles  # noqa: F401
+    import engine.use_cases.prediction  # noqa: F401
+    import engine.use_cases.tuning  # noqa: F401
     import engine.reporting.common.json_safety  # noqa: F401
     import engine.reporting.training.metrics_payloads  # noqa: F401
 
