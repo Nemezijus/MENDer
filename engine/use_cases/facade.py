@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import Optional
 
 from engine.contracts.run_config import RunConfig
+from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.contracts.results.ensemble import EnsembleResult
 from engine.contracts.results.prediction import PredictionResult
 from engine.contracts.results.training import TrainResult
@@ -31,49 +33,37 @@ def train_supervised(
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> TrainResult:
-    """Train a supervised model and return a typed :class:`TrainResult`.
+    """Train a supervised model and return a typed :class:`TrainResult`."""
 
-    Parameters
-    ----------
-    run_config:
-        Full run configuration (data + split + features + model + eval).
-    store:
-        Optional :class:`~engine.io.artifacts.store.ArtifactStore`.
-        When provided (or when defaulted in later patches), trained artifacts
-        can be persisted.
-    rng:
-        Optional deterministic seed override.
-    """
+    from engine.use_cases.supervised_training import train_supervised as _train
 
-    raise NotImplementedError(
-        "train_supervised is introduced in Segment 12 Patch 12A3 (or later)."
-    )
+    return _train(run_config, store=store, rng=rng)
 
 
 def train_unsupervised(
-    run_config: RunConfig,
+    run_config: UnsupervisedRunConfig,
     *,
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> UnsupervisedResult:
     """Train an unsupervised model and return a typed :class:`UnsupervisedResult`."""
 
-    raise NotImplementedError(
-        "train_unsupervised is introduced in Segment 12 Patch 12A3 (or later)."
-    )
+    from engine.use_cases.unsupervised_training import train_unsupervised as _train
+
+    return _train(run_config, store=store, rng=rng)
 
 
 def train_ensemble(
-    run_config: RunConfig,
+    run_config: EnsembleRunConfig,
     *,
     store: Optional[ArtifactStore] = None,
     rng: Optional[int] = None,
 ) -> EnsembleResult:
     """Train a supervised ensemble and return :class:`EnsembleResult`."""
 
-    raise NotImplementedError(
-        "train_ensemble is introduced in Segment 12 Patch 12A4 (or later)."
-    )
+    from engine.use_cases.ensembles import train_ensemble as _train
+
+    return _train(run_config, store=store, rng=rng)
 
 
 def predict(

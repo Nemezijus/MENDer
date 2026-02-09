@@ -96,6 +96,15 @@ def main() -> int:
         "engine.use_cases",
         "engine.use_cases._deps",
         "engine.use_cases.facade",
+        "engine.use_cases.supervised_training",
+        "engine.use_cases.unsupervised_training",
+        "engine.use_cases.ensembles",
+        "engine.reporting.ensembles.helpers",
+        "engine.reporting.ensembles.reports",
+        "engine.reporting.ensembles.reports.voting",
+        "engine.reporting.ensembles.reports.bagging",
+        "engine.reporting.ensembles.reports.adaboost",
+        "engine.reporting.ensembles.reports.xgboost",
         "engine.compat",
 
         # Segment 7: split mega-modules
@@ -146,6 +155,9 @@ def main() -> int:
     import engine.runtime.caches  # noqa: F401
     import engine.use_cases.artifacts  # noqa: F401
     import engine.use_cases.facade  # noqa: F401
+    import engine.use_cases.supervised_training  # noqa: F401
+    import engine.use_cases.unsupervised_training  # noqa: F401
+    import engine.use_cases.ensembles  # noqa: F401
     import engine.reporting.common.json_safety  # noqa: F401
     import engine.reporting.training.metrics_payloads  # noqa: F401
 
