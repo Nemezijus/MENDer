@@ -7,7 +7,7 @@ from shared_schemas.scale_configs import ScaleModel
 from shared_schemas.feature_configs import FeaturesModel
 from shared_schemas.model_configs import ModelConfig
 from shared_schemas.eval_configs import EvalModel
-from engine.use_cases.facade import train_supervised
+from engine.api import train_supervised
 
 # ==== EDIT THESE AS YOU LIKE ==================================================
 # Example A: NPZ bundle

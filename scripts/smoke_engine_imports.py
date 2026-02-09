@@ -33,6 +33,7 @@ def main() -> int:
 
     modules = [
         "engine",
+        "engine.api",
         "engine.contracts",
         "engine.contracts.choices",
         "engine.contracts.decoder_configs",
@@ -157,6 +158,7 @@ def main() -> int:
     import engine.runtime.caches  # noqa: F401
     import engine.use_cases.artifacts  # noqa: F401
     import engine.use_cases.facade  # noqa: F401
+    import engine.api  # noqa: F401
     import engine.use_cases.supervised_training  # noqa: F401
     import engine.use_cases.unsupervised_training  # noqa: F401
     import engine.use_cases.ensembles  # noqa: F401
