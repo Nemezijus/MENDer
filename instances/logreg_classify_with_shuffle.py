@@ -7,21 +7,21 @@ from sklearn.metrics import confusion_matrix
 from sklearn.feature_selection import SequentialFeatureSelector
 
 from visualizations.general.plot_decision_regions import plot_decision_regions
-from utils.permutations.rng import RngManager
+from engine.runtime.random.rng import RngManager
 
-from shared_schemas.run_config import RunConfig, DataModel
-from shared_schemas.split_configs import SplitHoldoutModel
-from shared_schemas.scale_configs import ScaleModel
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelConfig
-from shared_schemas.eval_configs import EvalModel
+from engine.contracts.run_config import RunConfig, DataModel
+from engine.contracts.split_configs import SplitHoldoutModel
+from engine.contracts.scale_configs import ScaleModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.model_configs import ModelConfig
+from engine.contracts.eval_configs import EvalModel
 
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.sanity_factory import make_sanity_checker
-from utils.factories.split_factory import make_splitter
-from utils.factories.eval_factory import make_evaluator
-from utils.factories.baseline_factory import make_baseline
-from utils.factories.pipeline_factory import make_pipeline, make_preproc_pipeline
+from engine.factories.data_loading_factory import make_data_loader
+from engine.factories.sanity_factory import make_sanity_checker
+from engine.factories.split_factory import make_splitter
+from engine.factories.eval_factory import make_evaluator
+from engine.factories.baseline_factory import make_baseline
+from engine.factories.pipeline_factory import make_pipeline, make_preproc_pipeline
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 

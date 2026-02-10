@@ -22,12 +22,12 @@ import numpy as np
 from engine.use_cases.facade import train_supervised as bl_train_supervised
 from engine.use_cases.facade import train_unsupervised as bl_train_unsupervised
 
-from shared_schemas.run_config import RunConfig
-from shared_schemas.unsupervised_configs import UnsupervisedRunConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
 
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.baseline_factory import make_baseline
-from utils.permutations.rng import RngManager
+from engine.factories.data_loading_factory import make_data_loader
+from engine.factories.baseline_factory import make_baseline
+from engine.runtime.random.rng import RngManager
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS

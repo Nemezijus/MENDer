@@ -6,7 +6,7 @@ from typing import Optional
 
 from engine.registries.splitters import SplitConfig, SplitterFactory, register_splitter
 
-from utils.strategies.splitters import HoldOutSplitter, KFoldSplitter
+from engine.components.splitters.splitters import HoldOutSplitter, KFoldSplitter
 
 
 @register_splitter("holdout")

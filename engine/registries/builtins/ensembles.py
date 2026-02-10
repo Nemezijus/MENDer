@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from engine.registries.ensembles import register_ensemble_kind
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from utils.strategies.ensembles import (
+from engine.components.ensembles.strategies import (
     VotingEnsembleStrategy,
     BaggingEnsembleStrategy,
     AdaBoostEnsembleStrategy,

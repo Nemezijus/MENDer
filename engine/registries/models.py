@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from typing import Callable, Optional, Type
 
-from shared_schemas.model_configs import ModelConfig
+from engine.contracts.model_configs import ModelConfig
 
 from engine.registries.base import Registry
 
-# NOTE: These interfaces currently live under utils. As we migrate fully to engine,
-# these Protocols/classes will move as well. Keeping them here avoids changing
-# large call sites during the refactor.
-from utils.strategies.interfaces import ModelBuilder
+from engine.components.interfaces import ModelBuilder
 
 
 # Factory takes (cfg, seed) and returns a ModelBuilder.

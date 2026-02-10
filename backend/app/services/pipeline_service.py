@@ -1,15 +1,15 @@
 from __future__ import annotations
 from typing import Dict, Any, List
 
-from shared_schemas.run_config import RunConfig, DataModel
-from shared_schemas.split_configs import SplitHoldoutModel
-from shared_schemas.scale_configs import ScaleModel
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelConfig
-from shared_schemas.eval_configs import EvalModel
+from engine.contracts.run_config import RunConfig, DataModel
+from engine.contracts.split_configs import SplitHoldoutModel
+from engine.contracts.scale_configs import ScaleModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.model_configs import ModelConfig
+from engine.contracts.eval_configs import EvalModel
 
-from utils.permutations.rng import RngManager
-from utils.factories.pipeline_factory import make_pipeline
+from engine.runtime.random.rng import RngManager
+from engine.factories.pipeline_factory import make_pipeline
 
 
 def _class_path(obj: Any) -> str:

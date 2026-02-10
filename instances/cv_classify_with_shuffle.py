@@ -8,13 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import StratifiedKFold, KFold
 
-from shared_schemas.run_config import RunConfig
-from utils.permutations.rng import RngManager
+from engine.contracts.run_config import RunConfig
+from engine.runtime.random.rng import RngManager
 
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.sanity_factory import make_sanity_checker
-from utils.factories.pipeline_factory import make_pipeline, make_preproc_pipeline
-from utils.factories.eval_factory import make_evaluator
+from engine.factories.data_loading_factory import make_data_loader
+from engine.factories.sanity_factory import make_sanity_checker
+from engine.factories.pipeline_factory import make_pipeline, make_preproc_pipeline
+from engine.factories.eval_factory import make_evaluator
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 

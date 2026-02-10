@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from engine.use_cases.facade import grid_search as bl_grid_search
 
-from shared_schemas.run_config import RunConfig
-from shared_schemas.tuning_configs import GridSearchConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.tuning_configs import GridSearchConfig
 
 from ..models.v1.tuning_models import GridSearchRequest, GridSearchResponse
 

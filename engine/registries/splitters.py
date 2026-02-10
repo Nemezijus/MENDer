@@ -4,9 +4,9 @@ from typing import Callable, Optional, Union
 
 from engine.registries.base import Registry
 
-from shared_schemas.split_configs import SplitHoldoutModel, SplitCVModel
+from engine.contracts.split_configs import SplitHoldoutModel, SplitCVModel
 
-from utils.strategies.interfaces import Splitter
+from engine.components.interfaces import Splitter
 
 SplitConfig = Union[SplitHoldoutModel, SplitCVModel]
 

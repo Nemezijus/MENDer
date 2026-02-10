@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from engine.use_cases.facade import random_search as bl_random_search
 
-from shared_schemas.run_config import RunConfig
-from shared_schemas.tuning_configs import RandomizedSearchConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.tuning_configs import RandomizedSearchConfig
 
 from ..models.v1.tuning_models import RandomSearchRequest, RandomSearchResponse
 

@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from .model_artifact import ModelArtifactMeta
 from .data_models import DataInspectRequest, Label
 from .decoder_models import DecoderOutputs
-from shared_schemas.eval_configs import EvalModel
-from shared_schemas.unsupervised_configs import UnsupervisedEvalModel
+from engine.contracts.eval_configs import EvalModel
+from engine.contracts.unsupervised_configs import UnsupervisedEvalModel
 
 
 class SaveModelRequest(BaseModel):

@@ -20,10 +20,10 @@ from engine.runtime.caches.eval_outputs_cache import EvalOutputs, eval_outputs_c
 from engine.use_cases._deps import resolve_seed, resolve_store
 from engine.use_cases.artifacts import save_model_to_store
 
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.eval_factory import make_unsupervised_evaluator
-from utils.factories.pipeline_factory import make_unsupervised_pipeline
-from utils.permutations.rng import RngManager
+from engine.factories.data_loading_factory import make_data_loader
+from engine.factories.eval_factory import make_unsupervised_evaluator
+from engine.factories.pipeline_factory import make_unsupervised_pipeline
+from engine.runtime.random.rng import RngManager
 
 
 def train_unsupervised(

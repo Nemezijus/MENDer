@@ -4,9 +4,9 @@ from typing import Callable
 
 from engine.registries.base import Registry
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from utils.strategies.interfaces import EnsembleBuilder
+from engine.components.interfaces import EnsembleBuilder
 
 EnsembleFactory = Callable[[EnsembleRunConfig], EnsembleBuilder]
 

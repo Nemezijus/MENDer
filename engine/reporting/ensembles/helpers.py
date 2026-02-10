@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 
 def _unwrap_final_estimator(model):

@@ -5,7 +5,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
 
-from shared_schemas.types import UnsupervisedMetricName
+from engine.contracts.types import UnsupervisedMetricName
 
 DEFAULT_UNSUPERVISED_METRICS: List[UnsupervisedMetricName] = [
     "silhouette",

@@ -13,7 +13,7 @@ from typing import Any, Dict
 
 from engine.use_cases.facade import train_ensemble as bl_train_ensemble
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from ..adapters.io_adapter import LoadError
 

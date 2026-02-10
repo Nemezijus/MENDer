@@ -5,8 +5,7 @@ These registries replace factory if/else sprawl. The core idea is:
 - register it
 - the rest of the system stays closed for modification
 
-During refactor, some implementations still live under utils, but the
-registry API surface is stable and will remain in engine.
+
 """
 
 from .models import make_model_builder, register_model_builder, list_model_algos

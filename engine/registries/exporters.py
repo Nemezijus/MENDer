@@ -4,7 +4,7 @@ from typing import Callable
 
 from engine.registries.base import Registry
 
-from utils.strategies.data_export import DataExporter
+from engine.components.exporters.data_export import DataExporter
 
 ExporterFactory = Callable[[], DataExporter]
 

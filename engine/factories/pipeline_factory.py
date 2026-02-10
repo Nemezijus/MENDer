@@ -1,0 +1,137 @@
+from __future__ import annotations
+from sklearn.pipeline import Pipeline
+
+from engine.contracts.run_config import RunConfig
+from engine.contracts.scale_configs import ScaleModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.eval_configs import EvalModel
+from engine.contracts.model_configs import ModelConfig
+from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
+from engine.runtime.random.rng import RngManager
+
+from engine.factories.scale_factory import make_scaler
+from engine.factories.feature_factory import make_features
+from engine.factories.model_factory import make_model
+
+def make_pipeline(cfg: RunConfig, rngm: RngManager, *, stream: str = "real") -> Pipeline:
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy  = make_scaler(cfg.scale)
+    feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=cfg.eval)
+    model_seed = rngm.child_seed(f"{stream}/model")
+    model_builder = make_model(cfg.model, seed=model_seed)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat",  feature_strategy.make_transformer()),
+        ("clf",   model_builder.make_estimator()),
+    ])
+
+
+def make_unsupervised_pipeline(cfg: UnsupervisedRunConfig, rngm: RngManager, *, stream: str = "real") -> Pipeline:
+    """Build a (scale -> features -> estimator) pipeline for unsupervised learning.
+
+    Notes
+    -----
+    - The step name "clf" is used consistently across the project as the final estimator step.
+      For unsupervised estimators it still represents the model/estimator.
+    """
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy = make_scaler(cfg.scale)
+    feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=None)
+    model_seed = rngm.child_seed(f"{stream}/model")
+    model_builder = make_model(cfg.model, seed=model_seed)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat", feature_strategy.make_transformer()),
+        ("clf", model_builder.make_estimator()),
+    ])
+
+def make_preproc_pipeline(cfg: RunConfig, rngm: RngManager, *, stream: str = "real") -> Pipeline:
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy  = make_scaler(cfg.scale)
+    feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=cfg.eval)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat",  feature_strategy.make_transformer()),
+    ])
+
+
+def make_unsupervised_preproc_pipeline(cfg: UnsupervisedRunConfig, rngm: RngManager, *, stream: str = "real") -> Pipeline:
+    """Build a preprocessing-only pipeline for unsupervised learning: (scale -> features)."""
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy = make_scaler(cfg.scale)
+
+    # Unsupervised feature strategies should not depend on supervised evaluation config.
+    # If a caller selects a feature method that requires `eval_cfg` (e.g. SFS),
+    # make_features will raise a clear error.
+    feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=None)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat", feature_strategy.make_transformer()),
+    ])
+
+
+def make_pipeline_for_model_cfg(
+    scale: ScaleModel,
+    features: FeaturesModel,
+    model_cfg: ModelConfig,
+    eval_cfg: EvalModel,
+    rngm: RngManager,
+    *,
+    stream: str = "real",
+) -> Pipeline:
+    """Build a (scale -> features -> estimator) pipeline for an explicit ModelConfig.
+
+    This is useful for ensembles, where each base estimator may have a different
+    ModelConfig but should share the same preprocessing config.
+    """
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy  = make_scaler(scale)
+    feature_strategy = make_features(features, seed=features_seed, model_cfg=model_cfg, eval_cfg=eval_cfg)
+    model_seed = rngm.child_seed(f"{stream}/model")
+    model_builder = make_model(model_cfg, seed=model_seed)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat",  feature_strategy.make_transformer()),
+        ("clf",   model_builder.make_estimator()),
+    ])
+
+def make_preproc_pipeline_for_model_cfg(
+    scale: ScaleModel,
+    features: FeaturesModel,
+    model_cfg: ModelConfig | None,
+    eval_cfg: EvalModel,
+    rngm: RngManager,
+    *,
+    stream: str = "real",
+) -> Pipeline:
+    """Build a preprocessing-only pipeline: (scale -> features).
+
+    Used by boosting-style ensembles (e.g. AdaBoost) where the ensemble needs to
+    pass `sample_weight` into the base estimator. If the base estimator were a
+    full sklearn Pipeline, AdaBoost would pass `sample_weight` to Pipeline.fit()
+    which is not supported, causing:
+        "Pipeline doesn't support sample_weight".
+
+    `model_cfg` is provided so feature strategies (e.g. SFS) can configure themselves
+    consistently with the estimator family. For default cases it may be None; if a
+    feature strategy requires `model_cfg`, it should raise a clear error.
+    """
+    features_seed = rngm.child_seed(f"{stream}/features")
+
+    scaler_strategy  = make_scaler(scale)
+    feature_strategy = make_features(features, seed=features_seed, model_cfg=model_cfg, eval_cfg=eval_cfg)
+
+    return Pipeline(steps=[
+        ("scale", scaler_strategy.make_transformer()),
+        ("feat",  feature_strategy.make_transformer()),
+    ])

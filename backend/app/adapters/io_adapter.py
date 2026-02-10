@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 import os
 import numpy as np
 
-from shared_schemas.run_config import DataModel
+from engine.contracts.run_config import DataModel
 
 # Prefer Engine readers directly (backend-independent parsing adapters).
 from engine.io.readers import load_from_data_model

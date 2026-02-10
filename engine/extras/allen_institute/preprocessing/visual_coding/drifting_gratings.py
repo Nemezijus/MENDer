@@ -1,4 +1,3 @@
-# utils/preprocessing/allen_vc/drifting_gratings.py
 from __future__ import annotations
 from typing import Dict, Tuple, List
 import numpy as np

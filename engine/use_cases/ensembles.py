@@ -5,27 +5,27 @@ import numpy as np
 from engine.contracts.results.decoder import DecoderOutputs
 from typing import Dict, Any, Optional, Sequence
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from engine.io.artifacts.store import ArtifactStore
 from engine.use_cases._deps import resolve_seed, resolve_store
 from engine.use_cases.artifacts import save_model_to_store
 
 
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.sanity_factory import make_sanity_checker
-from utils.factories.split_factory import make_splitter
-from utils.factories.eval_factory import make_evaluator
-from utils.factories.metrics_factory import make_metrics_computer
-from utils.factories.ensemble_factory import make_ensemble_strategy
-from utils.permutations.rng import RngManager
+from engine.factories.data_loading_factory import make_data_loader
+from engine.factories.sanity_factory import make_sanity_checker
+from engine.factories.split_factory import make_splitter
+from engine.factories.eval_factory import make_evaluator
+from engine.factories.metrics_factory import make_metrics_computer
+from engine.factories.ensemble_factory import make_ensemble_strategy
+from engine.runtime.random.rng import RngManager
 from engine.io.artifacts.meta import ArtifactBuilderInput, build_model_artifact_meta
 from engine.runtime.caches.artifact_cache import artifact_cache
 from engine.runtime.caches.eval_outputs_cache import EvalOutputs, eval_outputs_cache
 from engine.components.evaluation.scoring import PROBA_METRICS
 
 from sklearn.ensemble import VotingClassifier, VotingRegressor
-from shared_schemas.ensemble_configs import (
+from engine.contracts.ensemble_configs import (
     VotingEnsembleConfig,
     BaggingEnsembleConfig,
     AdaBoostEnsembleConfig,

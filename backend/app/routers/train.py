@@ -10,8 +10,8 @@ from ..models.v1.train_models import (
 )
 from ..services.train_service import train, train_unsupervised
 
-from shared_schemas.run_config import RunConfig
-from shared_schemas.unsupervised_configs import UnsupervisedRunConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
 
 router = APIRouter()
 

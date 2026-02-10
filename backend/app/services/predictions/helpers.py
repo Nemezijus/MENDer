@@ -4,9 +4,9 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 import math
 import numpy as np
 
-from shared_schemas.eval_configs import EvalModel
+from engine.contracts.eval_configs import EvalModel
 
-from utils.factories.sanity_factory import make_sanity_checker
+from engine.factories.sanity_factory import make_sanity_checker
 from engine.runtime.caches.artifact_cache import artifact_cache
 
 

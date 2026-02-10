@@ -4,12 +4,12 @@ from typing import List, Optional, Union, Any, Dict
 
 from pydantic import BaseModel, Field
 
-from shared_schemas.model_configs import ModelConfig
-from shared_schemas.run_config import DataModel
-from shared_schemas.split_configs import SplitCVModel
-from shared_schemas.scale_configs import ScaleModel
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.eval_configs import EvalModel
+from engine.contracts.model_configs import ModelConfig
+from engine.contracts.run_config import DataModel
+from engine.contracts.split_configs import SplitCVModel
+from engine.contracts.scale_configs import ScaleModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.eval_configs import EvalModel
 
 Number = Union[int, float]
 ParamValue = Union[int, float, str, bool]

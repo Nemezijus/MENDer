@@ -1,3 +1,7 @@
-"""Temporary contract shim (see ``engine.contracts.run_config``)."""
+from __future__ import annotations
 
-from shared_schemas.scale_configs import *  # noqa: F401,F403
+from pydantic import BaseModel
+from .types import ScaleName
+
+class ScaleModel(BaseModel):
+    method: ScaleName = "standard"

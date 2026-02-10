@@ -6,7 +6,7 @@ This module implements the orchestration previously living in
 Design goals
 ------------
 - Backend-free: no imports from backend.
-- Script-friendly: can run with only the Engine + utils packages.
+- Script-friendly: can run with only the Engine
 - Uses the canonical Segment-6 prediction/decoder API.
 - Returns Segment-4 result contracts.
 
@@ -39,7 +39,7 @@ from engine.runtime.caches.artifact_cache import artifact_cache
 from engine.use_cases.artifacts import load_model_from_store
 from engine.io.artifacts.store import ArtifactStore
 
-from utils.factories.eval_factory import make_evaluator
+from engine.factories.eval_factory import make_evaluator
 
 
 def _meta_get(meta: Any, key: str, default: Any = None) -> Any:

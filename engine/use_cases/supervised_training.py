@@ -35,14 +35,14 @@ from engine.reporting.training.regression_payloads import (
 
 from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
 
-from utils.factories.baseline_factory import make_baseline
-from utils.factories.data_loading_factory import make_data_loader
-from utils.factories.eval_factory import make_evaluator
-from utils.factories.metrics_factory import make_metrics_computer
-from utils.factories.pipeline_factory import make_pipeline
-from utils.factories.sanity_factory import make_sanity_checker
-from utils.factories.split_factory import make_splitter
-from utils.permutations.rng import RngManager
+from engine.factories.baseline_factory import make_baseline
+from engine.factories.data_loading_factory import make_data_loader
+from engine.factories.eval_factory import make_evaluator
+from engine.factories.metrics_factory import make_metrics_computer
+from engine.factories.pipeline_factory import make_pipeline
+from engine.factories.sanity_factory import make_sanity_checker
+from engine.factories.split_factory import make_splitter
+from engine.runtime.random.rng import RngManager
 from sklearn.pipeline import Pipeline
 
 
@@ -119,7 +119,7 @@ def train_supervised(
     splitter = make_splitter(cfg.split, seed=split_seed)
 
     # --- Task kind + evaluators -------------------------------------------
-    from shared_schemas.model_configs import get_model_task
+    from engine.contracts.model_configs import get_model_task
 
     eval_kind = get_model_task(cfg.model)
     metrics_computer = make_metrics_computer(kind=eval_kind)

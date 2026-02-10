@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from engine.use_cases.facade import tune_learning_curve as bl_tune_learning_curve
 
-from shared_schemas.run_config import RunConfig
-from shared_schemas.tuning_configs import LearningCurveConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.tuning_configs import LearningCurveConfig
 
 from ..models.v1.tuning_models import LearningCurveRequest, LearningCurveResponse
 

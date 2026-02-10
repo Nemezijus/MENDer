@@ -1,6 +1,6 @@
 from typing import Any
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from engine.reporting.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
 

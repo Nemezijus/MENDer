@@ -6,11 +6,11 @@ from typing import Optional
 
 from engine.registries.features import FeatureFactory, register_feature_extractor
 
-from shared_schemas.eval_configs import EvalModel
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelConfig
+from engine.contracts.eval_configs import EvalModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.model_configs import ModelConfig
 
-from utils.strategies.features import NoOpFeatures, PCAFeatures, LDAFeatures, SFSFeatures
+from engine.components.features.strategies import NoOpFeatures, PCAFeatures, LDAFeatures, SFSFeatures
 
 
 @register_feature_extractor("none")

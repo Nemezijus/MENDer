@@ -1,11 +1,9 @@
-# utils/postprocessing/ensembles/voting_ensemble_reporting.py
 """Ensemble reporting utilities.
 
-These helpers live in the business-logic layer (utils/) so they can be used by:
+These helpers live in the business-logic layer so they can be used by:
   - backend services
   - standalone scripts (no backend/frontend)
 
-For now we focus on Voting ensembles.
 """
 
 from __future__ import annotations
@@ -290,7 +288,6 @@ class VotingEnsembleRegressorReportAccumulator:
       - prediction similarity / diversity (pairwise Pearson correlation, abs-diff)
       - error summaries (RMSE/MAE/median AE) for ensemble and best base estimator
 
-    This lives in utils/ so it can be used by backend services and standalone scripts.
     """
 
     estimator_names: List[str]

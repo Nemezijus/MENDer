@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Any, Tuple
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from engine.components.evaluation.scoring import PROBA_METRICS
 from engine.reporting.ensembles.adaboost_ensemble_reporting import (

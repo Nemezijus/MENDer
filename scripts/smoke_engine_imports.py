@@ -113,7 +113,7 @@ def main() -> int:
         # Segment 7: split mega-modules
         "engine.components.evaluation.metrics",
         "engine.reporting.diagnostics.clustering",
-        "shared_schemas.model_families",
+        "engine.contracts.model_families",
     ]
 
     failures: list[tuple[str, BaseException]] = []

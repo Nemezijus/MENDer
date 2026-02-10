@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Any, Tuple
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from sklearn.ensemble import VotingClassifier, VotingRegressor
 
 from engine.reporting.ensembles.voting_ensemble_reporting import (

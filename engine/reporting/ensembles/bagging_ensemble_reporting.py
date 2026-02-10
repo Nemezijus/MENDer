@@ -1,4 +1,3 @@
-# utils/postprocessing/ensembles/bagging_ensemble_reporting.py
 """Bagging ensemble reporting utilities (business-logic layer).
 
 Goal: provide ensemble-specific insights across folds, similar to voting.

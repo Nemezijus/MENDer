@@ -3,8 +3,6 @@
 Readers are responsible for *format parsing* only (MAT/NPY/NPZ/CSV/XLSX/HDF5).
 Orientation/shape coercion lives in :mod:`engine.core.shapes`.
 
-The legacy API in ``utils.parse.data_read`` is kept as a compatibility shim that
-re-exports the functions defined here.
 """
 
 from .base import LoadedArray, Reader

@@ -2,13 +2,13 @@ from typing import Optional, List, Union, Dict, Any, Literal
 
 from pydantic import BaseModel, Field
 
-from shared_schemas.types import MetricName
-from shared_schemas.ensemble_configs import EnsembleConfig
-from shared_schemas.run_config import DataModel
-from shared_schemas.split_configs import SplitCVModel, SplitHoldoutModel
-from shared_schemas.scale_configs import ScaleModel
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.eval_configs import EvalModel
+from engine.contracts.types import MetricName
+from engine.contracts.ensemble_configs import EnsembleConfig
+from engine.contracts.run_config import DataModel
+from engine.contracts.split_configs import SplitCVModel, SplitHoldoutModel
+from engine.contracts.scale_configs import ScaleModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.eval_configs import EvalModel
 
 from .model_artifact import ModelArtifactMeta
 from .metrics_models import ConfusionMatrix, RocMetrics, RegressionDiagnostics

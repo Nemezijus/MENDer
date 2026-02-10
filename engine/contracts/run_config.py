@@ -1,10 +1,35 @@
-"""Temporary contract shim.
+from __future__ import annotations
 
-Segment 1 of the BL refactor: we expose contracts under ``engine.contracts``
-while the underlying implementations still live in ``shared_schemas``.
+from typing import Optional, Union
 
-Later segments will migrate contract definitions into ``engine/contracts``
-directly and this shim will be removed.
-"""
+from pydantic import BaseModel
 
-from shared_schemas.run_config import *  # noqa: F401,F403
+from .split_configs import SplitHoldoutModel, SplitCVModel
+from .scale_configs import ScaleModel
+from .feature_configs import FeaturesModel
+from .model_configs import ModelConfig
+from .eval_configs import EvalModel
+
+
+class DataModel(BaseModel):
+    x_path: Optional[str] = None
+    y_path: Optional[str] = None
+    npz_path: Optional[str] = None
+    x_key: Optional[str] = None
+    y_key: Optional[str] = None
+
+    # Optional parsing hints for tabular/container formats.
+    # These are used by some loaders (csv/tsv/txt, xlsx, h5/hdf5).
+    delimiter: Optional[str] = None
+    has_header: Optional[bool] = None
+    encoding: Optional[str] = None
+    sheet_name: Optional[Union[str, int]] = None
+
+
+class RunConfig(BaseModel):
+    data: DataModel
+    split: Union[SplitHoldoutModel, SplitCVModel]
+    scale: ScaleModel
+    features: FeaturesModel
+    model: ModelConfig
+    eval: EvalModel

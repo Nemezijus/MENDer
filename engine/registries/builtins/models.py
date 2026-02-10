@@ -8,8 +8,6 @@ To add a new model:
     1) create a new builder class/factory
     2) register it via register_model_builder
 
-In later segments we will migrate builders out of utils into engine, but
-registries already provide the stable extension surface.
 """
 
 from __future__ import annotations
@@ -18,7 +16,7 @@ from typing import Optional, Type
 
 from engine.registries.models import ModelBuilderFactory, register_model_builder
 
-from shared_schemas.model_configs import (
+from engine.contracts.model_configs import (
     LogRegConfig,
     SVMConfig,
     TreeConfig,
@@ -54,7 +52,7 @@ from shared_schemas.model_configs import (
     BirchConfig,
 )
 
-from utils.strategies.models import (
+from engine.components.models.builders import (
     LogRegBuilder,
     SVMBuilder,
     DecisionTreeBuilder,

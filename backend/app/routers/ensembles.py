@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from shared_schemas.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from ..models.v1.ensemble_models import EnsembleTrainRequest, EnsembleTrainResponse
 from ..services.ensemble_train_service import train_ensemble

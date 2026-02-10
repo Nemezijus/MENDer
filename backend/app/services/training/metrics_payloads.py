@@ -6,7 +6,7 @@ from ..common.json_safety import safe_float_list, safe_float_scalar
 
 
 def normalize_confusion(confusion_payload: Optional[Dict[str, Any]]) -> Tuple[List[Any], List[List[Any]], List[Any], Any, Any, Any]:
-    """Normalize confusion payload from utils.metrics into JSON-friendly pieces.
+    """Normalize confusion payload from metrics_computer into JSON-friendly pieces.
 
     Returns: (labels_out, matrix_out, per_class, overall, macro_avg, weighted_avg)
     """

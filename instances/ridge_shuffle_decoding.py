@@ -5,12 +5,12 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Ridge
 from sklearn.metrics import r2_score, mean_squared_error, root_mean_squared_error
-from utils.parse.data_read import load_mat_variable
+from engine.io.readers import load_mat_variable
 
 import matplotlib.pyplot as plt
 
-from utils.permutations.shuffle import shuffle_simple_vector
-from utils.filters.filter_out_uncorrelating_features import filter_out_uncorrelating_features
+from engine.runtime.random.shuffle import shuffle_simple_vector
+from engine.components.features.filtering.correlation_filter import filter_out_uncorrelating_features
 
 """
 Ridge regression decoding with label-shuffle validation (permutation baseline).

@@ -68,7 +68,7 @@ class AutoReader:
 
 
 def load_from_data_model(cfg: DataModel) -> Tuple[np.ndarray, Optional[np.ndarray], Optional[list[str]]]:
-    """Load X and optional y using a :class:`~shared_schemas.run_config.DataModel`.
+    """Load X and optional y using a :class:`~engine.contracts.run_config.DataModel`.
 
     Returns
     -------

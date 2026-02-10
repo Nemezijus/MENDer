@@ -4,11 +4,11 @@ from typing import Callable, Optional
 
 from engine.registries.base import Registry
 
-from shared_schemas.eval_configs import EvalModel
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.model_configs import ModelConfig
+from engine.contracts.eval_configs import EvalModel
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.model_configs import ModelConfig
 
-from utils.strategies.interfaces import FeatureExtractor
+from engine.components.interfaces import FeatureExtractor
 
 
 FeatureFactory = Callable[

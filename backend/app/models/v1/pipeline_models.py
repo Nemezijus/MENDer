@@ -1,8 +1,8 @@
 from typing import Optional, Literal, Union, List, Dict, Any
 from pydantic import BaseModel, Field
-from shared_schemas.model_configs import ModelConfig
-from shared_schemas.feature_configs import FeaturesModel
-from shared_schemas.types import ScaleName, MetricName
+from engine.contracts.model_configs import ModelConfig
+from engine.contracts.feature_configs import FeaturesModel
+from engine.contracts.types import ScaleName, MetricName
 #can also do 'from shared_schemas import FeaturesModel, ScaleModel, SplitCVModel, EvalModel, ModelConfig, DataModel, RunConfig'
 
 # ---- Request models (mirror config knobs for a dry-fit) ----

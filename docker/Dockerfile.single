@@ -32,7 +32,7 @@ COPY data/allen_vc/ /app/data/allen_vc/
 
 # Copy backend + shared Python code
 COPY backend ./backend
-COPY utils ./utils
+COPY engine ./engine
 COPY instances ./instances
 COPY scripts ./scripts
 

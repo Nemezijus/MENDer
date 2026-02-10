@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from engine.use_cases.facade import tune_validation_curve as bl_tune_validation_curve
 
-from shared_schemas.run_config import RunConfig
-from shared_schemas.tuning_configs import ValidationCurveConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.tuning_configs import ValidationCurveConfig
 
 from ..models.v1.tuning_models import ValidationCurveRequest, ValidationCurveResponse
 

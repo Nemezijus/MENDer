@@ -1,10 +1,5 @@
 """Tuning use-cases (learning/validation curves, grid/random search).
 
-This module provides backend- and script-friendly wrappers around the
-existing tuning strategies in :mod:`utils.strategies.tuning`.
-
-Segment 12 goal
----------------
 Expose a single public BL entry point (the façade) while keeping orchestration
 out of backend services.
 """
@@ -32,7 +27,7 @@ from engine.io.artifacts.store import ArtifactStore
 
 from engine.use_cases._deps import resolve_seed
 
-from utils.factories.tuning_factory import (
+from engine.factories.tuning_factory import (
     make_learning_curve_runner,
     make_validation_curve_runner,
     make_grid_search_runner,
