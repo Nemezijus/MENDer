@@ -1,4 +1,5 @@
 .venv/
+.mender/
 __pycache__/
 /data/calcium/
 /data/regression/
