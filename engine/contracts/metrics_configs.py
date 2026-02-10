@@ -1,4 +1,3 @@
-# shared_schemas/metrics_configs.py
 from __future__ import annotations
 
 from pydantic import BaseModel

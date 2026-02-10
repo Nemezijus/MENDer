@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from engine.contracts.model_configs import ModelConfig
 from engine.contracts.feature_configs import FeaturesModel
 from engine.contracts.types import ScaleName, MetricName
-#can also do 'from shared_schemas import FeaturesModel, ScaleModel, SplitCVModel, EvalModel, ModelConfig, DataModel, RunConfig'
+
 
 # ---- Request models (mirror config knobs for a dry-fit) ----
 

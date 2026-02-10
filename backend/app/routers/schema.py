@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from pydantic import TypeAdapter
 from typing import Literal, Union, get_args, get_origin
-from shared_schemas import types as T
+from engine.contracts import types as T
 
 from engine.contracts.model_configs import (
     ModelConfig,           # ← discriminated union
@@ -380,7 +380,7 @@ def get_all_defaults():
 
 @router.get("/enums")
 def get_enums():
-    """Expose centralized enum values defined in shared_schemas/types.py."""
+    """Expose centralized enum values defined in engine/contracts/types.py."""
     enums = _enums_payload()
     return {"enums": enums}
 

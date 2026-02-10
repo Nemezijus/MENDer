@@ -1,16 +1,15 @@
-"""Shared schema contracts.
+"""Engine contracts.
 
-This package contains Pydantic models and Literal-based choice types used to
-validate configuration payloads across MENDer.
+Configuration/result schemas and Literal-based choice types used by MENDer.
 
 Export policy:
-- Keep module imports explicit in most of the codebase:
+- Prefer explicit imports in most places:
     from engine.contracts.run_config import RunConfig
-- The names re-exported here are intended as a small set of convenience
-  imports for callers that prefer a single namespace.
+- The names re-exported here are convenience imports for callers that prefer a
+  single namespace.
 """
 
-from ...engine.contracts.choices import (
+from .choices import (
     EnsembleKind,
     FeatureName,
     FitScopeName,
@@ -27,8 +26,8 @@ from ...engine.contracts.choices import (
     TuningKind,
 )
 
-from ...engine.contracts.decoder_configs import DecoderOutputsConfig
-from ...engine.contracts.ensemble_configs import (
+from .decoder_configs import DecoderOutputsConfig
+from .ensemble_configs import (
     AdaBoostEnsembleConfig,
     BaggingEnsembleConfig,
     EnsembleConfig,
@@ -36,22 +35,22 @@ from ...engine.contracts.ensemble_configs import (
     VotingEstimatorSpec,
     XGBoostEnsembleConfig,
 )
-from ...engine.contracts.ensemble_run_config import EnsembleRunConfig
-from ...engine.contracts.eval_configs import EvalModel
-from ...engine.contracts.feature_configs import FeaturesModel
-from ...engine.contracts.metrics_configs import MetricsModel
-from ...engine.contracts.model_configs import ModelConfig
-from ...engine.contracts.run_config import DataModel, RunConfig
-from ...engine.contracts.scale_configs import ScaleModel
-from ...engine.contracts.split_configs import SplitCVModel, SplitHoldoutModel
-from ...engine.contracts.tuning_configs import (
+from .ensemble_run_config import EnsembleRunConfig
+from .eval_configs import EvalModel
+from .feature_configs import FeaturesModel
+from .metrics_configs import MetricsModel
+from .model_configs import ModelConfig
+from .run_config import DataModel, RunConfig
+from .scale_configs import ScaleModel
+from .split_configs import SplitCVModel, SplitHoldoutModel
+from .tuning_configs import (
     GridSearchConfig,
     LearningCurveConfig,
     RandomizedSearchConfig,
     TuningConfig,
     ValidationCurveConfig,
 )
-from ...engine.contracts.unsupervised_configs import UnsupervisedEvalModel, UnsupervisedRunConfig
+from .unsupervised_configs import UnsupervisedEvalModel, UnsupervisedRunConfig
 
 __all__ = [
     # choice types
