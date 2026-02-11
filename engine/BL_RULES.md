@@ -104,12 +104,6 @@ To prevent a “Jenga tower”, imports must follow these rules:
 - Any randomness must come from an explicit RNG manager / seed passed down.
 - No `np.random.*` in deep code without a seed source.
 
----
-
-## Transitional notes (Segment 1)
-
-During early refactor segments, `engine/contracts/*` may re-export the existing `shared_schemas/*`.
-This is intentional to allow switching imports to `engine.contracts` early, before moving files.
 
 ---
 
