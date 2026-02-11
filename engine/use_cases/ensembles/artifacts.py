@@ -14,7 +14,12 @@ from engine.use_cases.artifacts import save_model_to_store
 def extra_stats_from_ensemble_report(ensemble_report: Optional[dict]) -> Dict[str, Any]:
     """Derive a small set of scalar extra-stats for artifact meta.
 
-    This is best-effort and must never raise.
+    Best-effort and must never raise.
+
+    Note
+    ----
+    These stats belong in the *artifact meta* (meta["extra_stats"]) rather than the
+    top-level EnsembleResult payload (which is strict and forbids extra fields).
     """
 
     out: Dict[str, Any] = {}
@@ -40,7 +45,6 @@ def extra_stats_from_ensemble_report(ensemble_report: Optional[dict]) -> Dict[st
                     }
                 )
             else:
-                # regression
                 out.update(
                     {
                         "ensemble_n_estimators": ensemble_report.get("n_estimators"),
@@ -51,16 +55,19 @@ def extra_stats_from_ensemble_report(ensemble_report: Optional[dict]) -> Dict[st
         elif kind == "voting":
             task = (ensemble_report.get("task") or "classification")
             if task == "classification":
+                agreement = ensemble_report.get("agreement") or {}
+                vote = ensemble_report.get("vote") or {}
+                change = ensemble_report.get("change_vs_best") or {}
                 out.update(
                     {
                         "ensemble_n_estimators": ensemble_report.get("n_estimators"),
-                        "ensemble_all_agree_rate": (ensemble_report.get("agreement") or {}).get("all_agree_rate"),
-                        "ensemble_pairwise_agreement": (ensemble_report.get("agreement") or {}).get("pairwise_mean_agreement"),
-                        "ensemble_tie_rate": (ensemble_report.get("vote") or {}).get("tie_rate"),
-                        "ensemble_mean_margin": (ensemble_report.get("vote") or {}).get("mean_margin"),
+                        "ensemble_all_agree_rate": agreement.get("all_agree_rate"),
+                        "ensemble_pairwise_agreement": agreement.get("pairwise_mean_agreement"),
+                        "ensemble_tie_rate": vote.get("tie_rate"),
+                        "ensemble_mean_margin": vote.get("mean_margin"),
                         "ensemble_best_estimator": (ensemble_report.get("best_estimator") or {}).get("name"),
-                        "ensemble_corrected_vs_best": (ensemble_report.get("change_vs_best") or {}).get("corrected"),
-                        "ensemble_harmed_vs_best": (ensemble_report.get("change_vs_best") or {}).get("harmed"),
+                        "ensemble_corrected_vs_best": change.get("corrected"),
+                        "ensemble_harmed_vs_best": change.get("harmed"),
                     }
                 )
             else:
@@ -73,41 +80,43 @@ def extra_stats_from_ensemble_report(ensemble_report: Optional[dict]) -> Dict[st
 
         elif kind == "bagging":
             task = (ensemble_report.get("task") or "classification")
+            bag = ensemble_report.get("bagging") or {}
+            oob = ensemble_report.get("oob") or {}
             if task == "classification":
-                sim = ensemble_report.get("diversity") or {}
+                div = ensemble_report.get("diversity") or {}
                 errs = ensemble_report.get("errors") or {}
                 out.update(
                     {
-                        "ensemble_n_estimators": (ensemble_report.get("bagging") or {}).get("n_estimators"),
-                        "ensemble_base_algo": (ensemble_report.get("bagging") or {}).get("base_algo"),
-                        "ensemble_oob_score": (ensemble_report.get("oob") or {}).get("score"),
-                        "ensemble_pairwise_mean_diversity": sim.get("pairwise_mean_diversity"),
-                        "ensemble_pairwise_min_diversity": sim.get("pairwise_min_diversity"),
-                        "ensemble_pairwise_max_diversity": sim.get("pairwise_max_diversity"),
+                        "ensemble_n_estimators": bag.get("n_estimators"),
+                        "ensemble_base_algo": bag.get("base_algo"),
+                        "ensemble_oob_score": oob.get("score"),
+                        "ensemble_pairwise_mean_diversity": div.get("pairwise_mean_diversity"),
+                        "ensemble_pairwise_min_diversity": div.get("pairwise_min_diversity"),
+                        "ensemble_pairwise_max_diversity": div.get("pairwise_max_diversity"),
                         "ensemble_estimator_error_rate": errs.get("estimator_error_rate"),
                     }
                 )
             else:
                 out.update(
                     {
-                        "ensemble_n_estimators": (ensemble_report.get("bagging") or {}).get("n_estimators"),
-                        "ensemble_base_algo": (ensemble_report.get("bagging") or {}).get("base_algo"),
-                        "ensemble_oob_score": (ensemble_report.get("oob") or {}).get("score"),
+                        "ensemble_n_estimators": bag.get("n_estimators"),
+                        "ensemble_base_algo": bag.get("base_algo"),
+                        "ensemble_oob_score": oob.get("score"),
                     }
                 )
 
         elif kind == "adaboost":
             task = (ensemble_report.get("task") or "classification")
             if task == "classification":
-                sim = ensemble_report.get("diversity") or {}
+                div = ensemble_report.get("diversity") or {}
                 errs = ensemble_report.get("errors") or {}
                 out.update(
                     {
                         "ensemble_n_estimators": ensemble_report.get("n_estimators"),
                         "ensemble_base_algo": ensemble_report.get("base_algo"),
-                        "ensemble_pairwise_mean_diversity": sim.get("pairwise_mean_diversity"),
-                        "ensemble_pairwise_min_diversity": sim.get("pairwise_min_diversity"),
-                        "ensemble_pairwise_max_diversity": sim.get("pairwise_max_diversity"),
+                        "ensemble_pairwise_mean_diversity": div.get("pairwise_mean_diversity"),
+                        "ensemble_pairwise_min_diversity": div.get("pairwise_min_diversity"),
+                        "ensemble_pairwise_max_diversity": div.get("pairwise_max_diversity"),
                         "ensemble_estimator_error_rate": errs.get("estimator_error_rate"),
                     }
                 )
@@ -122,7 +131,7 @@ def extra_stats_from_ensemble_report(ensemble_report: Optional[dict]) -> Dict[st
     except Exception:
         return {}
 
-    # filter for json-safe scalars only
+    # Keep only JSON-safe scalars
     filtered: Dict[str, Any] = {}
     for k, v in out.items():
         if isinstance(v, (str, int, float, bool)) or v is None:
@@ -146,11 +155,16 @@ def attach_artifact_and_persist(
     ensemble_report: Optional[dict],
     store: Any,
 ) -> Dict[str, Any]:
+    """Build artifact meta, cache outputs, and persist to store.
+
+    Important: do NOT add extra fields to `result` that are not part of the
+    strict `EnsembleResult` contract.
+    """
+
     store_resolved = resolve_store(store)
 
+    # Extra stats belong in artifact meta only
     extra_stats = extra_stats_from_ensemble_report(ensemble_report)
-    if extra_stats:
-        result.setdefault("extra_stats", {}).update(extra_stats)
 
     classes_list = None
     try:
@@ -180,24 +194,31 @@ def attach_artifact_and_persist(
     )
 
     meta = build_model_artifact_meta(artifact_inp)
-    artifact_cache.put(meta["uid"], meta)
 
-    # cache eval outputs (used for exports)
+    # Cache fitted pipeline for quick access
+    try:
+        artifact_cache.put(str(meta["uid"]), model)
+    except Exception:
+        pass
+
+    # Cache eval outputs (used for exports)
     try:
         eval_outputs_cache.put(
-            meta["uid"],
+            str(meta["uid"]),
             EvalOutputs(
-                uid=meta["uid"],
-                kind=eval_kind,
+                task=eval_kind,
+                indices=row_indices,
+                fold_ids=fold_ids,
                 y_true=y_true,
                 y_pred=y_pred,
-                row_indices=row_indices,
-                fold_ids=fold_ids,
+                classes=classes_list,
             ),
         )
     except Exception:
         pass
 
-    save_model_to_store(meta, model, store_resolved)
+    # Persist artifact bytes + meta
+    save_model_to_store(store_resolved, model, meta)
+
     result["artifact"] = meta
     return meta
