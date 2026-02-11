@@ -6,19 +6,19 @@ from engine.contracts.ensemble_configs import (
     VotingEnsembleConfig,
     XGBoostEnsembleConfig,
 )
-from engine.reporting.ensembles.adaboost_ensemble_reporting import (
+from engine.reporting.ensembles.adaboost import (
     AdaBoostEnsembleReportAccumulator,
     AdaBoostEnsembleRegressorReportAccumulator,
 )
-from engine.reporting.ensembles.bagging_ensemble_reporting import (
+from engine.reporting.ensembles.bagging import (
     BaggingEnsembleReportAccumulator,
     BaggingEnsembleRegressorReportAccumulator,
 )
-from engine.reporting.ensembles.voting_ensemble_reporting import (
+from engine.reporting.ensembles.voting import (
     VotingEnsembleReportAccumulator,
     VotingEnsembleRegressorReportAccumulator,
 )
-from engine.reporting.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
+from engine.reporting.ensembles.xgboost import XGBoostEnsembleReportAccumulator
 
 from .types import ReportState
 

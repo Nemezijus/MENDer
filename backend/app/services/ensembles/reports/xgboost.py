@@ -2,7 +2,7 @@ from typing import Any
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from engine.reporting.ensembles.xgboost_ensemble_reporting import XGBoostEnsembleReportAccumulator
+from engine.reporting.ensembles.xgboost import XGBoostEnsembleReportAccumulator
 
 from ..helpers import _unwrap_final_estimator
 

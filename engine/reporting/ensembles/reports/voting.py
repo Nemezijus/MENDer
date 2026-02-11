@@ -4,7 +4,7 @@ from typing import Any, Tuple
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from sklearn.ensemble import VotingClassifier, VotingRegressor
 
-from engine.reporting.ensembles.voting_ensemble_reporting import (
+from engine.reporting.ensembles.voting import (
     VotingEnsembleReportAccumulator,
     VotingEnsembleRegressorReportAccumulator,
 )

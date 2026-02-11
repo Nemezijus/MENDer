@@ -4,7 +4,7 @@ from typing import Any, Tuple
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from engine.components.evaluation.scoring import PROBA_METRICS
-from engine.reporting.ensembles.bagging_ensemble_reporting import (
+from engine.reporting.ensembles.bagging import (
     BaggingEnsembleReportAccumulator,
     BaggingEnsembleRegressorReportAccumulator,
 )
