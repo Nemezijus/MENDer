@@ -95,3 +95,11 @@ def error_row(*, where: str, exc: BaseException, context: Optional[Dict[str, Any
     err: List[ReportError] = []
     add_report_error(err, where=where, exc=exc, context=context)
     return {"__error__": True, "errors": err}
+
+
+def error_row_from_errors(errors: List[ReportError]) -> Dict[str, Any]:
+    """Create a table-friendly error marker row from an existing error list."""
+    try:
+        return {"__error__": True, "errors": list(errors)}
+    except Exception:
+        return {"__error__": True, "errors": []}

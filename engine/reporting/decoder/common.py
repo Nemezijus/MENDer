@@ -4,6 +4,8 @@ from typing import Any, Dict, Sequence
 
 import numpy as np
 
+from engine.reporting.common.json_safety import safe_float_scalar as safe_float
+
 
 def as_1d(x: Any) -> np.ndarray:
     a = np.asarray(x)
@@ -21,17 +23,6 @@ def as_2d(x: Any) -> np.ndarray:
     if a.ndim != 2:
         raise ValueError(f"Expected 2D array; got shape {a.shape}.")
     return a
-
-
-def safe_float(x: Any) -> float:
-    """Convert to a finite float (nan/inf become finite)."""
-    try:
-        v = float(x)
-    except Exception:
-        return 0.0
-    if not np.isfinite(v):
-        v = float(np.nan_to_num(v, nan=0.0, posinf=1.0, neginf=0.0))
-    return float(v)
 
 
 def quantile_dict(a: np.ndarray, qs: Sequence[float], prefix: str) -> Dict[str, float]:

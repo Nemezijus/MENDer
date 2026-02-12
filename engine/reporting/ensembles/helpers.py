@@ -2,42 +2,18 @@ import numpy as np
 from typing import Optional
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
+from engine.core.sklearn_utils import transform_through_pipeline as _transform_through_pipeline_core
+from engine.core.sklearn_utils import unwrap_final_estimator as _unwrap_final_estimator_core
 
 
 def _unwrap_final_estimator(model):
-    """
-    If model is a sklearn Pipeline, return its last step estimator.
-    Otherwise return model unchanged.
-    """
-    try:
-        if hasattr(model, "steps") and isinstance(getattr(model, "steps"), list) and len(model.steps) > 0:
-            return model.steps[-1][1]
-    except Exception:
-        pass
-    return model
+    """Back-compat alias for :func:`engine.core.sklearn_utils.unwrap_final_estimator`."""
+    return _unwrap_final_estimator_core(model)
 
 
 def _transform_through_pipeline(model, X):
-    """
-    If model is a fitted sklearn Pipeline, transform X through all steps except the last estimator.
-    If any step cannot transform, return X unchanged.
-    """
-    try:
-        if not (hasattr(model, "steps") and isinstance(getattr(model, "steps"), list) and len(model.steps) > 1):
-            return X
-
-        Xt = X
-        for _, step in model.steps[:-1]:
-            if step is None or step == "passthrough":
-                continue
-            if hasattr(step, "transform"):
-                Xt = step.transform(Xt)
-            else:
-                # Can't safely transform (no refit). Fall back to raw X.
-                return X
-        return Xt
-    except Exception:
-        return X
+    """Back-compat alias for :func:`engine.core.sklearn_utils.transform_through_pipeline`."""
+    return _transform_through_pipeline_core(model, X)
 
 
 def _slice_X_by_features(X, feat_idx):

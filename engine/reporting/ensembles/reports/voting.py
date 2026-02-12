@@ -10,6 +10,7 @@ from engine.reporting.ensembles.voting import (
 )
 
 from ..helpers import _unwrap_final_estimator
+from ..common import attach_report_error
 
 
 def update_voting_report(
@@ -141,7 +142,11 @@ def update_voting_report(
                     base_preds={k: np.asarray(v) for k, v in base_preds.items()},
                     base_scores=base_scores,
                 )
-    except Exception:
+    except Exception as e:
+        if voting_cls_acc is not None:
+            attach_report_error(voting_cls_acc, where="ensembles.reports.voting", exc=e, context={"fold_id": fold_id, "eval_kind": eval_kind})
+        if voting_reg_acc is not None:
+            attach_report_error(voting_reg_acc, where="ensembles.reports.voting", exc=e, context={"fold_id": fold_id, "eval_kind": eval_kind})
         return voting_cls_acc, voting_reg_acc
 
     return voting_cls_acc, voting_reg_acc

@@ -27,6 +27,8 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
+from engine.core.sklearn_utils import transform_through_pipeline, unwrap_final_estimator
+
 
 def _as_2d(X: Any) -> np.ndarray:
     X = np.asarray(X)
@@ -35,33 +37,8 @@ def _as_2d(X: Any) -> np.ndarray:
     return X
 
 
-def _final_estimator(model: Any) -> Any:
-    """Return the final estimator for a Pipeline-like model, else the model itself."""
-    if hasattr(model, "steps") and isinstance(getattr(model, "steps"), list):
-        try:
-            return model.steps[-1][1]
-        except Exception:
-            return model
-    return model
-
-
-def _transform_through_pipeline(model: Any, X: np.ndarray) -> np.ndarray:
-    """If model is a fitted sklearn Pipeline, transform X through all steps except last estimator."""
-    try:
-        if not (hasattr(model, "steps") and isinstance(getattr(model, "steps"), list) and len(model.steps) > 1):
-            return X
-        Xt = X
-        for _, step in model.steps[:-1]:
-            if step is None or step == "passthrough":
-                continue
-            if hasattr(step, "transform"):
-                Xt = step.transform(Xt)
-            else:
-                # Unknown step type; safest is to return original X
-                return X
-        return Xt
-    except Exception:
-        return X
+_final_estimator = unwrap_final_estimator
+_transform_through_pipeline = transform_through_pipeline
 
 
 def _get_classes(model: Any) -> Optional[np.ndarray]:

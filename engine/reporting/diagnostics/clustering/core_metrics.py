@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from engine.reporting.common.json_safety import ReportError, add_report_error
+from engine.core.sklearn_utils import transform_through_pipeline as _transform_through_pipeline_core
+from engine.core.sklearn_utils import unwrap_final_estimator
 
 try:
     import numpy as np  # type: ignore
@@ -20,36 +22,13 @@ def _as_2d(X: Any) -> Any:
     return a
 
 
-def _final_estimator(model: Any) -> Any:
-    if hasattr(model, "steps") and isinstance(getattr(model, "steps"), list):
-        try:
-            return model.steps[-1][1]
-        except Exception:
-            return model
-    return model
+_final_estimator = unwrap_final_estimator
 
 
 def _transform_through_pipeline(model: Any, X: Any) -> Any:
     if np is None:
         return X
-    try:
-        if not (
-            hasattr(model, "steps")
-            and isinstance(getattr(model, "steps"), list)
-            and len(model.steps) > 1
-        ):
-            return X
-        Xt = np.asarray(X)
-        for _, step in model.steps[:-1]:
-            if step is None or step == "passthrough":
-                continue
-            if hasattr(step, "transform"):
-                Xt = step.transform(Xt)
-            else:
-                return X
-        return Xt
-    except Exception:
-        return X
+    return _transform_through_pipeline_core(model, X)
 
 
 def cluster_summary(labels: Any) -> Mapping[str, Any]:

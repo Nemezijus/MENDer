@@ -267,7 +267,11 @@ def update_adaboost_report(
                         weight_mass_topk=weight_mass_topk,
                     )
 
-    except Exception:
+    except Exception as e:
+        if adaboost_cls_acc is not None:
+            attach_report_error(adaboost_cls_acc, where="ensembles.reports.adaboost", exc=e, context={"fold_id": fold_id, "eval_kind": eval_kind})
+        if adaboost_reg_acc is not None:
+            attach_report_error(adaboost_reg_acc, where="ensembles.reports.adaboost", exc=e, context={"fold_id": fold_id, "eval_kind": eval_kind})
         return adaboost_cls_acc, adaboost_reg_acc
 
     return adaboost_cls_acc, adaboost_reg_acc

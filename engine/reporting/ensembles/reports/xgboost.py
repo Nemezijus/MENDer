@@ -89,7 +89,9 @@ def update_xgboost_report(
             feature_names=feature_names,
         )
 
-    except Exception:
+    except Exception as e:
+        if xgb_acc is not None:
+            attach_report_error(xgb_acc, where="ensembles.reports.xgboost", exc=e, context={"fold_id": fold_id})
         return xgb_acc
 
     return xgb_acc

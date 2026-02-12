@@ -209,7 +209,11 @@ def update_bagging_report(
                         oob_prediction=oob_pred,
                         base_estimator_scores=base_scores_list if base_scores_list else None,
                     )
-    except Exception:
+    except Exception as e:
+        if bagging_cls_acc is not None:
+            attach_report_error(bagging_cls_acc, where="ensembles.reports.bagging", exc=e, context={"fold_id": fold_id, "eval_kind": eval_kind})
+        if bagging_reg_acc is not None:
+            attach_report_error(bagging_reg_acc, where="ensembles.reports.bagging", exc=e, context={"fold_id": fold_id, "eval_kind": eval_kind})
         return bagging_cls_acc, bagging_reg_acc
 
     return bagging_cls_acc, bagging_reg_acc

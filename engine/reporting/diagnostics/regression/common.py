@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Tuple
 
-from engine.reporting.common.json_safety import ReportError, add_report_error
-
-import math
+from engine.reporting.common.json_safety import ReportError, add_report_error, safe_float_scalar as safe_float
 
 try:
     import numpy as np  # type: ignore
@@ -23,16 +21,6 @@ def as_1d(x: Any) -> Any:
     if a.ndim == 0:
         return a.reshape(1)
     return a.reshape(-1)
-
-
-def safe_float(x: Any) -> float:
-    try:
-        v = float(x)
-    except Exception:
-        return 0.0
-    if not math.isfinite(v):
-        return 0.0
-    return float(v)
 
 
 def maybe_corr(x: Any, y: Any) -> Tuple[Optional[float], Optional[float]]:
