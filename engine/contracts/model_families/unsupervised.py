@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Dict, Literal, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class KMeansConfig(BaseModel):
@@ -133,6 +133,9 @@ class MeanShiftConfig(BaseModel):
 class BirchConfig(BaseModel):
     algo: Literal["birch"] = "birch"
 
+    # Allow both internal `copy_` and external payload field name `copy`.
+    model_config = ConfigDict(populate_by_name=True)
+
     task: ClassVar[str] = "unsupervised"
     family: ClassVar[str] = "unsupervised"
 
@@ -140,4 +143,4 @@ class BirchConfig(BaseModel):
     branching_factor: int = 50
     n_clusters: Optional[int] = 2
     compute_labels: bool = True
-    copy: bool = True
+    copy_: bool = Field(True, alias="copy")

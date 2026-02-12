@@ -1,5 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import warnings
+
 import numpy as np
 
 @dataclass
@@ -13,4 +15,8 @@ class BasicClassificationSanity:
         if classes.size < 2:
             raise ValueError("y must contain at least two classes.")
         if self.warn_on_few_per_class and X.shape[0] < self.min_per_class_factor * classes.size:
-            print("[WARN] Few trials per class; results may be unstable.")
+            warnings.warn(
+                "Few trials per class; results may be unstable.",
+                RuntimeWarning,
+                stacklevel=2,
+            )

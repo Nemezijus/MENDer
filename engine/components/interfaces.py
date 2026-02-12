@@ -5,7 +5,6 @@ import numpy as np
 
 from engine.components.splitters.types import Split
 from engine.contracts.results.decoder import DecoderOutputs
-from engine.components.evaluation.types import MetricsPayload
 
 class DataLoader(Protocol):
     def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -206,5 +205,5 @@ class EnsembleBuilder(Protocol):
         *,
         rngm: Optional[Any] = None,
         stream: str = "ensemble",
-    ) -> MetricsPayload:
+    ) -> Any:
         ...
