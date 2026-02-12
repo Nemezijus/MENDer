@@ -8,6 +8,7 @@ The public surface remains in :mod:`engine.reporting.prediction.prediction_resul
 from typing import Any, Iterable, List, Mapping, Optional
 
 from .coercion import numpy, slice_first_n, to_1d_array
+from engine.reporting.common.json_safety import error_row
 
 
 def build_prediction_table(
@@ -18,7 +19,33 @@ def build_prediction_table(
     y_true: Optional[Any] = None,
     max_rows: Optional[int] = None,
 ) -> List[Mapping[str, Any]]:
-    """Build a table (list of dicts) summarizing prediction results."""
+    """Build a table (list of dicts) summarizing prediction results.
+
+    Reporting policy: best-effort. If table building fails entirely, return
+    an explicit error-marker row instead of silently returning an empty list.
+    """
+
+    try:
+        return _build_prediction_table_impl(
+            indices=indices,
+            y_true=y_true,
+            y_pred=y_pred,
+            task=task,
+            max_rows=max_rows,
+        )
+    except Exception as e:
+        return [error_row(where="reporting.prediction.build_prediction_table", exc=e)]
+
+
+def _build_prediction_table_impl(
+    *,
+    indices: Optional[Iterable[int]],
+    y_pred: Any,
+    task: str,
+    y_true: Optional[Any],
+    max_rows: Optional[int],
+) -> List[Mapping[str, Any]]:
+    """Internal implementation for build_prediction_table."""
 
     np = numpy()
 

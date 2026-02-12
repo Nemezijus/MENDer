@@ -12,7 +12,7 @@ Policy
 * -inf     -> 0.0
 """
 
-from typing import Any, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, TypedDict
 import math
 
 import numpy as np
@@ -57,3 +57,41 @@ def dedupe_preserve_order(seq: Iterable[Any]) -> List[Any]:
         seen.add(x)
         out.append(x)
     return out
+
+
+class ReportError(TypedDict, total=False):
+    """Lightweight, JSON-friendly error marker for reporting layers."""
+
+    where: str
+    error: str
+    error_type: str
+    context: Dict[str, Any]
+
+
+def add_report_error(
+    errors: List[ReportError],
+    *,
+    where: str,
+    exc: BaseException,
+    context: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Append a structured error marker (best-effort, never raises)."""
+    try:
+        errors.append(
+            {
+                "where": str(where),
+                "error": str(exc),
+                "error_type": type(exc).__name__,
+                "context": dict(context) if context else {},
+            }
+        )
+    except Exception:
+        # Reporting must not fail due to error formatting.
+        pass
+
+
+def error_row(*, where: str, exc: BaseException, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Create a single-row table-friendly error marker."""
+    err: List[ReportError] = []
+    add_report_error(err, where=where, exc=exc, context=context)
+    return {"__error__": True, "errors": err}

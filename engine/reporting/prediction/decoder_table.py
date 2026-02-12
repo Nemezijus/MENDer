@@ -8,11 +8,14 @@ import math
 import re
 
 from .coercion import numpy, slice_first_n, to_1d_array, to_2d_array
+from engine.reporting.common.json_safety import ReportError, add_report_error
 
 
 def _sanitize_col_suffix(label: Any) -> str:
     """Make a stable, CSV/JSON-friendly column suffix from a class label."""
     np = numpy()
+
+    errors: List[ReportError] = []
 
     # unwrap numpy scalars
     try:
@@ -38,8 +41,8 @@ def _sanitize_col_suffix(label: Any) -> str:
             if re.fullmatch(r"-?\d+\.0+", s):
                 try:
                     s = str(int(float(s)))
-                except Exception:
-                    pass
+                except Exception as e:
+                    add_report_error(errors, where="reporting.prediction.decoder_table.proba_cols", exc=e, context={"row": i})
     except Exception:
         s = str(label).strip()
 
@@ -71,6 +74,8 @@ def build_decoder_output_table(
     """Build a per-sample table for decoder outputs."""
 
     np = numpy()
+
+    errors: List[ReportError] = []
 
     y_pred_arr = to_1d_array(y_pred)
     y_true_arr = to_1d_array(y_true) if y_true is not None else None
@@ -220,8 +225,8 @@ def build_decoder_output_table(
                         ncol = int(ds_arr.shape[1]) if np is not None and isinstance(ds_arr, np.ndarray) else len(ds_arr[i])
                         for j in range(ncol):
                             row[f"score_{j}"] = _get_2d_val(ds_arr, i, j)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        add_report_error(errors, where="reporting.prediction.decoder_table.score_cols", exc=e, context={"row": i})
 
         # probabilities
         if pr_arr is not None:
@@ -233,8 +238,8 @@ def build_decoder_output_table(
                     ncol = int(pr_arr.shape[1]) if np is not None and isinstance(pr_arr, np.ndarray) else len(pr_arr[i])
                     for j in range(ncol):
                         row[f"p_{j}"] = _get_2d_val(pr_arr, i, j)
-                except Exception:
-                    pass
+                except Exception as e:
+                    add_report_error(errors, where="reporting.prediction.decoder_table.proba_cols", exc=e, context={"row": i})
 
         # positive class convenience outputs
         if positive_class_index is not None:
@@ -255,5 +260,8 @@ def build_decoder_output_table(
             row["margin"] = _get_1d_val(mg_arr, i)
 
         rows.append(row)
+
+    if errors:
+        rows.append({"__error__": True, "errors": errors})
 
     return rows

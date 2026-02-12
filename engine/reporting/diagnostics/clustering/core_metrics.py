@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from engine.reporting.common.json_safety import ReportError, add_report_error
+
 try:
     import numpy as np  # type: ignore
 except Exception:  # pragma: no cover
@@ -51,6 +53,7 @@ def _transform_through_pipeline(model: Any, X: Any) -> Any:
 
 
 def cluster_summary(labels: Any) -> Mapping[str, Any]:
+    errors: List[ReportError] = []
     if np is None:
         return {
             "n_clusters": None,
@@ -79,12 +82,14 @@ def cluster_summary(labels: Any) -> Mapping[str, Any]:
             "noise_ratio": noise_ratio,
             "cluster_sizes": sizes,
         }
-    except Exception:
+    except Exception as e:
+        add_report_error(errors, where="reporting.clustering.cluster_summary", exc=e)
         return {
             "n_clusters": None,
             "n_noise": None,
             "noise_ratio": None,
             "cluster_sizes": None,
+            "errors": errors,
         }
 
 

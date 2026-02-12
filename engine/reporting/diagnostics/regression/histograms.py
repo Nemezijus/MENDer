@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, List, Mapping, Optional, Tuple
 
+from engine.reporting.common.json_safety import ReportError, add_report_error
+
 from .common import numpy
 
 

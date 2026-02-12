@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping
 
+from engine.reporting.common.json_safety import ReportError, add_report_error
+
 import math
 
 from .common import as_1d, maybe_corr, numpy, safe_float

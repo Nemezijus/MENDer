@@ -28,6 +28,7 @@ from .binary import summarize_decision_scores, summarize_margin, summarize_max_p
 from .calibration import calibration_ece_top1
 from .common import as_1d, as_2d, normalize_proba, safe_float
 from .multiclass import log_loss_fallback, multiclass_brier
+from engine.reporting.common.json_safety import ReportError, add_report_error
 
 
 def compute_decoder_summaries(
@@ -57,6 +58,7 @@ def compute_decoder_summaries(
 
     summary: Dict[str, Any] = {}
     notes: List[str] = []
+    errors: List[ReportError] = []
 
     if y_true is None:
         notes.append("Decoder summary: y_true missing; skipping label-dependent metrics")
@@ -125,6 +127,7 @@ def compute_decoder_summaries(
                             if ll is not None:
                                 summary["log_loss"] = safe_float(ll)
                     except Exception as e:
+                        add_report_error(errors, where="reporting.decoder.log_loss", exc=e)
                         notes.append(f"Log loss: failed ({type(e).__name__}: {e})")
 
                 # Brier score (multiclass-safe)
@@ -134,6 +137,7 @@ def compute_decoder_summaries(
                         if br is not None:
                             summary["brier"] = safe_float(br)
                     except Exception as e:
+                        add_report_error(errors, where="reporting.decoder.brier", exc=e)
                         notes.append(f"Brier: failed ({type(e).__name__}: {e})")
 
             # ECE + reliability bins (top-1 confidence)
@@ -154,6 +158,7 @@ def compute_decoder_summaries(
                     if include_reliability_bins and bins is not None:
                         summary["reliability_bins"] = bins
                 except Exception as e:
+                    add_report_error(errors, where="reporting.decoder.ece", exc=e)
                     notes.append(f"ECE: failed ({type(e).__name__}: {e})")
         else:
             notes.append(f"Decoder summary: proba has invalid shape {p.shape}")
@@ -163,6 +168,9 @@ def compute_decoder_summaries(
         try:
             summary.update(summarize_decision_scores(decision_scores=decision_scores, quantiles=quantiles))
         except Exception as e:
+            add_report_error(errors, where="reporting.decoder.decision_scores", exc=e)
             notes.append(f"Decision score summaries: failed ({type(e).__name__}: {e})")
 
+    if errors:
+        summary["errors"] = errors
     return summary, notes

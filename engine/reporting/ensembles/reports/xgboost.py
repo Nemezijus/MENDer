@@ -5,7 +5,7 @@ from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.reporting.ensembles.xgboost import XGBoostEnsembleReportAccumulator
 
 from ..helpers import _unwrap_final_estimator
-
+from ..common import attach_report_error
 
 def update_xgboost_report(
     *,
@@ -22,6 +22,7 @@ def update_xgboost_report(
     """Update XGBoost report accumulator for the current fold (best-effort, never raises)."""
     try:
         inner = _unwrap_final_estimator(model)
+
 
         # If pipeline-wrapped, prefer named_steps['clf'] (consistent with how you build pipelines)
         if hasattr(model, "named_steps") and isinstance(getattr(model, "named_steps"), dict):

@@ -6,7 +6,9 @@ This module is the stable public entrypoint used by the rest of the BL.
 Implementation helpers live in the :mod:`engine.reporting.diagnostics.regression` package.
 """
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, List
+
+from engine.reporting.common.json_safety import add_report_error, ReportError
 
 from .regression import (
     binned_error_by_true,
@@ -36,23 +38,28 @@ def regression_diagnostics(
     """
 
     np = numpy()
+    errors: List[ReportError] = []
     if np is None:
-        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred)}
+        add_report_error(errors, where="regression_diagnostics", exc=RuntimeError("numpy unavailable"))
+        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred), "errors": errors}
 
     try:
         yt = np.asarray(as_1d(y_true), dtype=float).reshape(-1)
         yp = np.asarray(as_1d(y_pred), dtype=float).reshape(-1)
-    except Exception:
-        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred)}
+    except Exception as e:
+        add_report_error(errors, where="regression_diagnostics.asarray", exc=e)
+        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred), "errors": errors}
 
     if yt.size == 0 or yp.size == 0 or yt.size != yp.size:
-        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred)}
+        add_report_error(errors, where="regression_diagnostics.shape", exc=ValueError("empty/mismatched arrays"))
+        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred), "errors": errors}
 
     m = np.isfinite(yt) & np.isfinite(yp)
     yt = yt[m]
     yp = yp[m]
     if yt.size == 0:
-        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred)}
+        add_report_error(errors, where="regression_diagnostics.finite", exc=ValueError("no finite samples"))
+        return {"summary": regression_summary(y_true=y_true, y_pred=y_pred), "errors": errors}
 
     residuals = yt - yp
 
@@ -70,8 +77,11 @@ def regression_diagnostics(
         hi = float(max(float(np.max(yt)), float(np.max(yp))))
         if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
             payload["ideal_line"] = {"x": [lo, hi], "y": [lo, hi]}
-    except Exception:
-        pass
+    except Exception as e:
+        add_report_error(errors, where="regression_diagnostics.ideal_line", exc=e)
+
+    if errors:
+        payload["errors"] = errors
 
     return payload
 

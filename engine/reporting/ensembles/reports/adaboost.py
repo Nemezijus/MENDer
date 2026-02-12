@@ -18,6 +18,7 @@ from ..helpers import (
     _extract_base_estimator_algo_from_cfg,
 )
 
+from ..common import attach_report_error
 
 def update_adaboost_report(
     *,

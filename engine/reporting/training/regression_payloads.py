@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from engine.reporting.common.json_safety import ReportError, add_report_error
+
 import numpy as np
 
 from engine.contracts.results.decoder import DecoderOutputs
@@ -40,8 +42,8 @@ def build_regression_diagnostics_payload(
         if isinstance(summ, dict):
             if "median_abs_error" in summ and "median_ae" not in summ:
                 summ["median_ae"] = summ.get("median_abs_error")
-    except Exception:
-        pass
+    except Exception as e:
+        add_report_error(errors, where="reporting.training.regression_payloads", exc=e)
     return payload
 
 
