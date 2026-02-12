@@ -13,21 +13,37 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from threading import Lock
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple, TypeAlias, Union
+
+import numpy as np
+
+
+# Keep numpy typing simple and non-invasive.
+NDArray: TypeAlias = np.ndarray
 
 
 @dataclass
 class EvalOutputs:
     task: Optional[str] = None
-    indices: Optional[Any] = None
-    fold_ids: Optional[Any] = None
-    y_true: Optional[Any] = None
-    y_pred: Optional[Any] = None
-    proba: Optional[Any] = None
-    decision_scores: Optional[Any] = None
-    margin: Optional[Any] = None
-    classes: Optional[Any] = None
-    cluster_id: Optional[Any] = None
+    # Row indices corresponding to y_true/y_pred order (if available)
+    indices: Optional[NDArray] = None
+    # Fold id per row (k-fold/OOF), aligned with indices/y_true/y_pred (if available)
+    fold_ids: Optional[NDArray] = None
+
+    # Core outputs
+    y_true: Optional[NDArray] = None
+    y_pred: Optional[NDArray] = None
+
+    # Classification extras (optional)
+    proba: Optional[NDArray] = None
+    decision_scores: Optional[NDArray] = None
+    margin: Optional[NDArray] = None
+    classes: Optional[Union[Sequence[Any], NDArray]] = None
+
+    # Unsupervised extras (optional)
+    cluster_id: Optional[NDArray] = None
+
+    # Per-sample decoder / UI payloads (best-effort)
     per_sample: Optional[Dict[str, Any]] = None
     extra: Optional[Dict[str, Any]] = None
 

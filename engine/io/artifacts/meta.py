@@ -2,23 +2,32 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import uuid
 
 import numpy as np
+
+from sklearn.base import BaseEstimator
+from sklearn.pipeline import Pipeline
+
+from engine.contracts.ensemble_run_config import EnsembleRunConfig
+from engine.contracts.run_config import RunConfig
+from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
+
+from .meta_models import ArtifactSummary, ModelArtifactMetaDict
 
 
 @dataclass
 class ArtifactBuilderInput:
     """Inputs required to build a ModelArtifactMeta-like dict."""
 
-    cfg: Any
-    pipeline: Any  # fitted sklearn Pipeline (or compatible)
+    cfg: Union[RunConfig, EnsembleRunConfig, UnsupervisedRunConfig]
+    pipeline: Union[Pipeline, BaseEstimator]  # fitted sklearn Pipeline or estimator
     n_train: Optional[int]
     n_test: Optional[int]
     n_features: Optional[int]
     classes: Optional[List[Any]]
-    summary: Dict[str, Any]  # scores, notes, n_splits, metric name/value
+    summary: ArtifactSummary  # scores, notes, n_splits, metric name/value
     kind: Optional[Literal["classification", "regression", "unsupervised"]] = None
 
 
@@ -37,7 +46,7 @@ def _safe_params_dict(step) -> Dict[str, Any]:
     return out
 
 
-def _estimate_param_stats(pipeline: Any) -> Tuple[Optional[int], Dict[str, Any]]:
+def _estimate_param_stats(pipeline: Union[Pipeline, BaseEstimator]) -> Tuple[Optional[int], Dict[str, Any]]:
     """Best-effort model complexity stats from the fitted pipeline.
 
     Returns (n_parameters, extra_stats). Must never raise.
@@ -131,7 +140,7 @@ def _estimate_param_stats(pipeline: Any) -> Tuple[Optional[int], Dict[str, Any]]
     return n_parameters, extra
 
 
-def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
+def build_model_artifact_meta(inp: ArtifactBuilderInput) -> ModelArtifactMetaDict:
     """Return a dict compatible with backend ModelArtifactMeta(**dict)."""
 
     steps: List[Dict[str, Any]] = []
@@ -173,7 +182,7 @@ def build_model_artifact_meta(inp: ArtifactBuilderInput) -> Dict[str, Any]:
 
     n_parameters, extra_stats = _estimate_param_stats(inp.pipeline)
 
-    extra_from_summary = inp.summary.get("extra_stats") if isinstance(inp.summary, dict) else None
+    extra_from_summary = inp.summary.get("extra_stats")
     if isinstance(extra_from_summary, dict):
         for k, v in extra_from_summary.items():
             if isinstance(v, (str, int, float, bool)) or v is None:
