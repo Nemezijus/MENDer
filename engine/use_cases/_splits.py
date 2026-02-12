@@ -9,26 +9,15 @@ Use-cases should not duplicate heuristics for these shapes. This module provides
 one helper for normalizing split outputs.
 """
 
-from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
-
-@dataclass(frozen=True)
-class NormalizedSplit:
-    """Canonical split container."""
-
-    Xtr: Any
-    Xte: Any
-    ytr: Any
-    yte: Any
-    idx_tr: Optional[np.ndarray]
-    idx_te: Optional[np.ndarray]
+from engine.components.splitters.types import Split
 
 
-def unpack_split(split: Any) -> NormalizedSplit:
-    """Normalize splitter yields into :class:`NormalizedSplit`.
+def unpack_split(split: Any) -> Split:
+    """Normalize a splitter yield into :class:`engine.components.splitters.types.Split`.
 
     Supported formats:
       - (Xtr, Xte, ytr, yte)
@@ -42,9 +31,12 @@ def unpack_split(split: Any) -> NormalizedSplit:
     through as-is and may be numpy arrays, pandas objects, etc.
     """
 
+    if isinstance(split, Split):
+        return split
+
     if isinstance(split, (tuple, list)) and len(split) == 4:
         Xtr, Xte, ytr, yte = split
-        return NormalizedSplit(Xtr=Xtr, Xte=Xte, ytr=ytr, yte=yte, idx_tr=None, idx_te=None)
+        return Split(Xtr=np.asarray(Xtr), Xte=np.asarray(Xte), ytr=np.asarray(ytr), yte=np.asarray(yte))
 
     if isinstance(split, (tuple, list)) and len(split) == 6:
         a0, a1, a2, a3, a4, a5 = split
@@ -60,28 +52,28 @@ def unpack_split(split: Any) -> NormalizedSplit:
 
         # indices-first: (idx_tr, idx_te, Xtr, Xte, ytr, yte)
         if _looks_like_indices(a0) and _looks_like_indices(a1):
-            return NormalizedSplit(
-                Xtr=a2,
-                Xte=a3,
-                ytr=a4,
-                yte=a5,
+            return Split(
+                Xtr=np.asarray(a2),
+                Xte=np.asarray(a3),
+                ytr=np.asarray(a4),
+                yte=np.asarray(a5),
                 idx_tr=np.asarray(a0, dtype=int).ravel(),
                 idx_te=np.asarray(a1, dtype=int).ravel(),
             )
 
         # indices-last: (Xtr, Xte, ytr, yte, idx_tr, idx_te)
         if _looks_like_indices(a4) and _looks_like_indices(a5):
-            return NormalizedSplit(
-                Xtr=a0,
-                Xte=a1,
-                ytr=a2,
-                yte=a3,
+            return Split(
+                Xtr=np.asarray(a0),
+                Xte=np.asarray(a1),
+                ytr=np.asarray(a2),
+                yte=np.asarray(a3),
                 idx_tr=np.asarray(a4, dtype=int).ravel(),
                 idx_te=np.asarray(a5, dtype=int).ravel(),
             )
 
         # fallback: treat as (Xtr, Xte, ytr, yte, idx_tr, idx_te) but indices absent
-        return NormalizedSplit(Xtr=a0, Xte=a1, ytr=a2, yte=a3, idx_tr=None, idx_te=None)
+        return Split(Xtr=np.asarray(a0), Xte=np.asarray(a1), ytr=np.asarray(a2), yte=np.asarray(a3))
 
     raise ValueError(
         "Splitter yielded an unsupported split tuple; expected 4 or 6 items. "

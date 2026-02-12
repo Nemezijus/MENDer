@@ -9,7 +9,6 @@ from engine.reporting.ensembles.reports.adaboost import update_adaboost_report
 from engine.reporting.ensembles.reports.bagging import update_bagging_report
 from engine.reporting.ensembles.reports.voting import update_voting_report
 from engine.reporting.ensembles.reports.xgboost import update_xgboost_report
-from engine.use_cases._splits import unpack_split
 
 from .types import DecoderState, FoldState, ReportState
 
@@ -38,10 +37,9 @@ def run_ensemble_folds(
 
     last_model = None
 
-    for fold_id, split in enumerate(splitter.split(X, y), start=1):
-        ns = unpack_split(split)
-        Xtr, Xte, ytr, yte = ns.Xtr, ns.Xte, ns.ytr, ns.yte
-        idx_te = ns.idx_te
+    for fold_id, s in enumerate(splitter.split(X, y), start=1):
+        Xtr, Xte, ytr, yte = s.Xtr, s.Xte, s.ytr, s.yte
+        idx_te = s.idx_te
 
         if idx_te is not None:
             fold_state.test_indices_parts.append(np.asarray(idx_te, dtype=int).ravel())

@@ -6,7 +6,6 @@ import numpy as np
 
 from engine.factories.pipeline_factory import make_pipeline
 from engine.reporting.decoder.decoder_outputs import compute_decoder_outputs
-from engine.use_cases._splits import unpack_split
 
 from .types import FoldRunOutputs
 
@@ -32,10 +31,9 @@ def run_supervised_folds(
 
     out = FoldRunOutputs()
 
-    for fold_id, split in enumerate(splitter.split(X, y), start=1):
-        ns = unpack_split(split)
-        Xtr, Xte, ytr, yte = ns.Xtr, ns.Xte, ns.ytr, ns.yte
-        idx_te = ns.idx_te
+    for fold_id, s in enumerate(splitter.split(X, y), start=1):
+        Xtr, Xte, ytr, yte = s.Xtr, s.Xte, s.ytr, s.yte
+        idx_te = s.idx_te
 
         pipeline = make_pipeline(cfg, rngm, stream=f"{mode}/fold{fold_id}")
         pipeline.fit(Xtr, ytr)

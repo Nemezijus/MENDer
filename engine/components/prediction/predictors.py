@@ -1,10 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Tuple, Literal, Optional, Dict
+from typing import Any, Tuple, Literal, Optional
 import numpy as np
 
 from engine.components.interfaces import Predictor
 from engine.components.prediction import predict_labels, predict_scores, predict_decoder_outputs
+from engine.contracts.results.decoder import DecoderOutputs
 
 @dataclass
 class SklearnPredictor(Predictor):
@@ -33,8 +34,8 @@ class SklearnPredictor(Predictor):
         positive_class_label: Optional[Any] = None,
         include_decision_scores: bool = True,
         include_probabilities: bool = True,
-    ) -> Dict[str, Any]:
-        dec = predict_decoder_outputs(
+    ) -> DecoderOutputs:
+        return predict_decoder_outputs(
             model,
             X_test,
             positive_class_label=positive_class_label,
@@ -43,6 +44,3 @@ class SklearnPredictor(Predictor):
             include_summary=False,
             max_preview_rows=200,
         )
-
-        # Predictor protocol expects a JSON-friendly dict.
-        return dec.model_dump()

@@ -1,11 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Tuple, Optional, Iterator
+from typing import Optional, Iterator
 import numpy as np
 
 from engine.contracts.split_configs import SplitHoldoutModel, SplitCVModel
 from engine.components.splitters.trial_split import split as split_trials
 from engine.components.splitters.cv_split import generate_folds
+from engine.components.splitters.types import Split
 from ..interfaces import Splitter
 
 
@@ -15,7 +16,7 @@ class HoldOutSplitter(Splitter):
     seed: Optional[int] = None
     use_custom: bool = False
 
-    def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Split]:
         Xtr, Xte, ytr, yte = split_trials(
             X,
             y,
@@ -24,7 +25,7 @@ class HoldOutSplitter(Splitter):
             stratify=self.cfg.stratified,
             rng=self.seed,
         )
-        yield Xtr, Xte, ytr, yte
+        yield Split(Xtr=Xtr, Xte=Xte, ytr=ytr, yte=yte, idx_tr=None, idx_te=None)
 
 
 @dataclass
@@ -32,7 +33,7 @@ class KFoldSplitter(Splitter):
     cfg: SplitCVModel
     seed: Optional[int] = None
 
-    def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    def split(self, X: np.ndarray, y: np.ndarray) -> Iterator[Split]:
         yield from generate_folds(
             X,
             y,

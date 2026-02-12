@@ -1,7 +1,9 @@
 from __future__ import annotations
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, KFold
-from typing import Iterator, Tuple, Union
+from typing import Iterator, Union
+
+from engine.components.splitters.types import Split
 
 
 def generate_folds(
@@ -11,10 +13,8 @@ def generate_folds(
     stratified: bool = True,
     shuffle: bool = True,
     random_state: Union[int, None] = None,
-) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
-    """
-    Generator yielding (X_train, X_test, y_train, y_test) for each fold.
-    """
+) -> Iterator[Split]:
+    """Yield :class:`Split` for each fold."""
     X = np.asarray(X)
     y = np.asarray(y).ravel()
     if X.shape[0] != y.shape[0]:
@@ -28,4 +28,11 @@ def generate_folds(
     )
 
     for train_idx, test_idx in splitter.split(X, y):
-        yield X[train_idx], X[test_idx], y[train_idx], y[test_idx]
+        yield Split(
+            Xtr=X[train_idx],
+            Xte=X[test_idx],
+            ytr=y[train_idx],
+            yte=y[test_idx],
+            idx_tr=np.asarray(train_idx, dtype=int),
+            idx_te=np.asarray(test_idx, dtype=int),
+        )

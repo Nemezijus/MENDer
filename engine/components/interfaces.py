@@ -3,6 +3,10 @@ from typing import Protocol, Tuple, Any, Optional, Literal, Sequence, Iterator, 
 
 import numpy as np
 
+from engine.components.splitters.types import Split
+from engine.contracts.results.decoder import DecoderOutputs
+from engine.components.evaluation.types import MetricsPayload
+
 class DataLoader(Protocol):
     def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """Return (X, y). For unsupervised/X-only data, y may be None."""
@@ -18,8 +22,11 @@ class Splitter(Protocol):
         self,
         X: np.ndarray,
         y: np.ndarray,
-    ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
-        """Preferred: always yield an iterator of (Xtr, Xte, ytr, yte)."""
+    ) -> Iterator[Split]:
+        """Yield a sequence of train/test splits.
+
+        Implementations must yield :class:`engine.components.splitters.types.Split`.
+        """
         ...
 
 class Scaler(Protocol):
@@ -89,7 +96,7 @@ class Predictor(Protocol):
         positive_class_label: Optional[Any] = None,
         include_decision_scores: bool = True,
         include_probabilities: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> DecoderOutputs:
         """
         Return decoder-style per-sample outputs for classification:
 
@@ -174,7 +181,7 @@ class MetricsComputer(Protocol):
         y_proba: Optional[np.ndarray] = None,
         y_score: Optional[np.ndarray] = None,
         labels: Optional[Sequence] = None,
-    ) -> Any:
+    ) -> "MetricsPayload":
         ...
 
 class EnsembleBuilder(Protocol):
@@ -199,5 +206,5 @@ class EnsembleBuilder(Protocol):
         *,
         rngm: Optional[Any] = None,
         stream: str = "ensemble",
-    ) -> Any:
+    ) -> MetricsPayload:
         ...

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Literal, Dict
+from typing import Any, Optional, Sequence, Dict
 
 import numpy as np
 
 from engine.contracts.metrics_configs import MetricsModel
 from engine.components.interfaces import MetricsComputer
+from engine.components.evaluation.types import MetricsPayload
 from engine.components.evaluation.scoring import (
     confusion_matrix_metrics,
     binary_roc_curve_from_scores,
@@ -37,7 +38,7 @@ class SklearnMetrics(MetricsComputer):
         y_proba: Optional[np.ndarray] = None,
         y_score: Optional[np.ndarray] = None,
         labels: Optional[Sequence] = None,
-    ) -> Dict[str, Any]:
+    ) -> MetricsPayload:
         """
         Parameters
         ----------
@@ -68,10 +69,7 @@ class SklearnMetrics(MetricsComputer):
 
         # Currently we only define these metrics for classification.
         if self.cfg.kind != "classification":
-            return {
-                "confusion": None,
-                "roc": None,
-            }
+            return {"confusion": None, "roc": None}
 
         # ---------------- Confusion-matrix-based metrics -----------------
         confusion = None
@@ -132,7 +130,4 @@ class SklearnMetrics(MetricsComputer):
                             labels=labels,
                         )
 
-        return {
-            "confusion": confusion,
-            "roc": roc,
-        }
+        return {"confusion": confusion, "roc": roc}

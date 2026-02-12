@@ -3,6 +3,11 @@ from __future__ import annotations
 from typing import Optional, Sequence
 
 import numpy as np
+from engine.components.evaluation.types import (
+    ConfusionPayload,
+    BinaryRocPayload,
+    MulticlassRocPayload,
+)
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
@@ -32,7 +37,7 @@ def confusion_matrix_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
     labels: Optional[Sequence] = None,
-) -> dict:
+) -> ConfusionPayload:
     """Compute a structured set of confusion-matrix-based metrics.
 
     Returns a dict with:
@@ -155,7 +160,7 @@ def binary_roc_curve_from_scores(
     y_score: np.ndarray,
     *,
     pos_label: Optional[float] = None,
-) -> dict:
+) -> BinaryRocPayload:
     """Compute a ROC curve for binary classification from a 1D score/proba array."""
     y_true = _as_1d(y_true)
     y_score = _as_1d(y_score)
@@ -191,7 +196,7 @@ def multiclass_roc_curves_from_scores(
     y_true: np.ndarray,
     y_score: np.ndarray,
     labels: Optional[Sequence] = None,
-) -> dict:
+) -> MulticlassRocPayload:
     """Compute one-vs-rest ROC curves for multiclass classification from a 2D score/proba array."""
     y_true = _as_1d(y_true)
     Y = np.asarray(y_score)
