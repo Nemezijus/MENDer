@@ -16,6 +16,7 @@ from engine.factories.model_factory import make_model
 from engine.factories.training_factory import make_trainer
 from engine.factories.predict_factory import make_predictor
 from engine.factories.eval_factory import make_evaluator
+from engine.components.splitters.types import Split
 
 
 @dataclass
@@ -42,7 +43,8 @@ class LabelShuffleBaseline(BaselineRunner):
         eval_kind  = self._get_eval_kind()
         evaluator  = make_evaluator(self.cfg.eval, kind=eval_kind)
 
-        Xtr, Xte, ytr, yte = next(splitter.split(X, y))
+        split: Split = next(splitter.split(X, y))
+        Xtr, Xte, ytr, yte = split.Xtr, split.Xte, split.ytr, split.yte
         Xtr, Xte = scaler.fit_transform(Xtr, Xte)
         _, Xtr_fx, Xte_fx = features.fit_transform_train_test(Xtr, Xte, ytr)
 
@@ -65,7 +67,8 @@ class LabelShuffleBaseline(BaselineRunner):
         splitter_master = make_splitter(self.cfg.split, seed=seed_base)
 
         # Iterate folds
-        for fold_id, (Xtr, Xte, ytr, yte) in enumerate(splitter_master.split(X, y), start=1):
+        for fold_id, split in enumerate(splitter_master.split(X, y), start=1):
+            Xtr, Xte, ytr, yte = split.Xtr, split.Xte, split.ytr, split.yte
             # Derive a fold-specific seed so feature/model randomness is stable
             fold_seed = self.rngm.child_seed(f"cv/fold{fold_id}@{seed_base}")
 
