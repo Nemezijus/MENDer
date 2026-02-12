@@ -173,9 +173,10 @@ def train_unsupervised(
     store_resolved = resolve_store(store)
     try:
         save_model_to_store(store_resolved, pipeline, artifact_meta)
-    except Exception:
-        # Persistence failures should not prevent returning results
-        pass
+    except Exception as e:
+        raise RuntimeError(
+            f"Persisting unsupervised model artifact failed (uid={artifact_meta.get('uid')!r})."
+        ) from e
 
     try:
         uid = artifact_meta["uid"]
@@ -190,10 +191,10 @@ def train_unsupervised(
                     per_sample=per_sample,
                 ),
             )
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as e:
+            apply_notes.append(f"eval_outputs_cache.put failed: {type(e).__name__}: {e}")
+    except Exception as e:
+        apply_notes.append(f"artifact_cache.put failed: {type(e).__name__}: {e}")
 
     # --- Assemble response --------------------------------------------------
     out_metrics: Dict[str, Optional[float]] = {}
@@ -204,8 +205,8 @@ def train_unsupervised(
     warnings_all: list[str] = []
     try:
         warnings_all.extend([str(x) for x in (diag.get("warnings") or [])])
-    except Exception:
-        pass
+    except Exception as e:
+        apply_notes.append(f"artifact_cache.put failed: {type(e).__name__}: {e}")
     warnings_all.extend(apply_notes)
 
     out = {

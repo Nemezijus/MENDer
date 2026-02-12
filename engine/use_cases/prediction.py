@@ -18,6 +18,8 @@ Notes
 
 from __future__ import annotations
 
+import warnings
+
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 import math
 
@@ -103,7 +105,13 @@ def _load_pipeline(
         )
 
     pipeline, _meta = load_model_from_store(store, artifact_uid)
-    artifact_cache.put(artifact_uid, pipeline)
+    try:
+        artifact_cache.put(artifact_uid, pipeline)
+    except Exception as e:
+        warnings.warn(
+            f"artifact_cache.put failed for artifact_uid={artifact_uid!r}: {type(e).__name__}: {e}",
+            RuntimeWarning,
+        )
     return pipeline
 
 

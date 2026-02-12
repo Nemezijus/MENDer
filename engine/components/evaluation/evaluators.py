@@ -118,8 +118,9 @@ class SklearnUnsupervisedEvaluator(UnsupervisedEvaluator):
             if emb is not None and plot_data.get("embedding_labels") is not None:
                 emb = dict(emb)
                 emb["label"] = [int(v) for v in plot_data.get("embedding_labels", [])]
-        except Exception:
+        except Exception as e:
             plot_data = {}
+            warnings.append(f"build_plot_data failed: {type(e).__name__}: {e}")
 
         return {
             "metrics": metrics,

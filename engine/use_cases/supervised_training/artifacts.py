@@ -66,29 +66,41 @@ def attach_artifact_and_persist(
     store_resolved = resolve_store(store)
     try:
         save_model_to_store(store_resolved, pipeline, artifact_meta)
-    except Exception:
-        pass
+    except Exception as e:
+        raise RuntimeError(
+            f"Persisting trained model artifact failed (uid={artifact_meta.get('uid')!r})."
+        ) from e
 
     # Cache fitted pipeline (process-local)
+    uid = str(artifact_meta.get("uid"))
     try:
-        uid = artifact_meta["uid"]
         artifact_cache.put(uid, pipeline)
+    except Exception as e:
+        try:
+            notes = result.get("notes") if isinstance(result, dict) else None
+            if isinstance(notes, list):
+                notes.append(f"artifact_cache.put failed: {type(e).__name__}: {e}")
+        except Exception:
+            pass
 
-        if y_pred is not None and y_true is not None and np.asarray(y_true).size:
+    if y_pred is not None and y_true is not None and np.asarray(y_true).size:
+        try:
+            eval_outputs_cache.put(
+                uid,
+                EvalOutputs(
+                    task=eval_kind,
+                    indices=row_indices,
+                    fold_ids=fold_ids,
+                    y_true=y_true,
+                    y_pred=y_pred,
+                ),
+            )
+        except Exception as e:
             try:
-                eval_outputs_cache.put(
-                    uid,
-                    EvalOutputs(
-                        task=eval_kind,
-                        indices=row_indices,
-                        fold_ids=fold_ids,
-                        y_true=y_true,
-                        y_pred=y_pred,
-                    ),
-                )
+                notes = result.get("notes") if isinstance(result, dict) else None
+                if isinstance(notes, list):
+                    notes.append(f"eval_outputs_cache.put failed: {type(e).__name__}: {e}")
             except Exception:
                 pass
-    except Exception:
-        pass
 
     return artifact_meta

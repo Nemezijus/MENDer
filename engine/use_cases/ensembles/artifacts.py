@@ -198,8 +198,14 @@ def attach_artifact_and_persist(
     # Cache fitted pipeline for quick access
     try:
         artifact_cache.put(str(meta["uid"]), model)
-    except Exception:
-        pass
+    except Exception as e:
+        # Cache failures should not abort training, but must be visible.
+        try:
+            notes = result.get("notes") if isinstance(result, dict) else None
+            if isinstance(notes, list):
+                notes.append(f"artifact_cache.put failed: {type(e).__name__}: {e}")
+        except Exception:
+            pass
 
     # Cache eval outputs (used for exports)
     try:
@@ -214,8 +220,14 @@ def attach_artifact_and_persist(
                 classes=classes_list,
             ),
         )
-    except Exception:
-        pass
+    except Exception as e:
+        # Cache failures should not abort training, but must be visible.
+        try:
+            notes = result.get("notes") if isinstance(result, dict) else None
+            if isinstance(notes, list):
+                notes.append(f"eval_outputs_cache.put failed: {type(e).__name__}: {e}")
+        except Exception:
+            pass
 
     # Persist artifact bytes + meta
     save_model_to_store(store_resolved, model, meta)

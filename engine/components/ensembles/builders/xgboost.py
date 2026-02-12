@@ -204,8 +204,11 @@ def fit_xgboost_ensemble(
         # Set on estimator for broad version compatibility (instead of passing to fit()).
         try:
             model.set_params(early_stopping_rounds=patience)
-        except Exception:
-            # if unsupported, we just proceed without ES
+        except Exception as e:
+            warnings.warn(
+                f"xgboost: early_stopping_rounds not supported by this xgboost version ({type(e).__name__}: {e}). Disabling early stopping.",
+                UserWarning,
+            )
             patience = None
             use_es = False
 
@@ -220,8 +223,11 @@ def fit_xgboost_ensemble(
                 model.set_params(objective="binary:logistic")
             else:
                 model.set_params(objective="multi:softprob", num_class=n_classes)
-        except Exception:
-            pass
+        except Exception as e:
+            warnings.warn(
+                f"xgboost: failed to set objective/num_class params ({type(e).__name__}: {e}). Continuing with estimator defaults.",
+                UserWarning,
+            )
 
         X_np = np.asarray(X_train)
         y_np = np.asarray(y_enc).ravel()
@@ -256,8 +262,11 @@ def fit_xgboost_ensemble(
         # Set eval_metric on the estimator (older sklearn API compatibility)
         try:
             model.set_params(eval_metric=eval_metric)
-        except Exception:
-            pass
+        except Exception as e:
+            warnings.warn(
+                f"xgboost: failed to set eval_metric ({type(e).__name__}: {e}). Continuing with estimator defaults.",
+                UserWarning,
+            )
 
         # Fit with eval_set (try verbose=False, fall back if unsupported)
         try:

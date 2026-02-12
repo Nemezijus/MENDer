@@ -189,8 +189,10 @@ def load_from_data_model(cfg: DataModel) -> Tuple[np.ndarray, Optional[np.ndarra
             y = np.asarray(y_loaded.array).ravel()
             X, y = align_X_y(X_loaded.array, y)
             return X, y, X_loaded.feature_names
-        except Exception:
-            y = None
+        except Exception as e:
+            raise ValueError(
+                f"Failed to load y_key={cfg.y_key!r} from HDF5 file {x_path!r}."
+            ) from e
 
     if x_lower.endswith(".npz") and cfg.y_key:
         try:
@@ -198,8 +200,8 @@ def load_from_data_model(cfg: DataModel) -> Tuple[np.ndarray, Optional[np.ndarra
             y = np.asarray(y_loaded.array).ravel()
             X, y = align_X_y(X_loaded.array, y)
             return X, y, X_loaded.feature_names
-        except Exception:
-            y = None
+        except Exception as e:
+            raise ValueError(f"Failed to load y_key={cfg.y_key!r} from NPZ file {x_path!r}.") from e
 
     X = coerce_X_only(X_loaded.array)
     return X, None, X_loaded.feature_names

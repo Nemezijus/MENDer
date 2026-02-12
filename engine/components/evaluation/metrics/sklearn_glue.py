@@ -75,8 +75,10 @@ def make_estimator_scorer(kind: str, metric: str):
                     return float(v) if v is not None else float("nan")
 
                 return float("nan")
-            except Exception:
-                return float("nan")
+            except Exception as e:
+                raise RuntimeError(
+                    f"Unsupervised scorer failed for metric={metric!r} on estimator={type(estimator).__name__}: {type(e).__name__}: {e}"
+                ) from e
 
         if kind == "regression":
             y_true = _as_1d(y)
