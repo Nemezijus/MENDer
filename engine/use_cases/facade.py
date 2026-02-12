@@ -32,6 +32,7 @@ from engine.contracts.results.tuning import (
 )
 from engine.contracts.results.unsupervised import UnsupervisedResult
 from engine.io.artifacts.store import ArtifactStore
+from engine.io.artifacts.meta_models import ModelArtifactMetaDict
 
 
 def train_supervised(
@@ -76,7 +77,7 @@ def train_ensemble(
 def predict(
     *,
     artifact_uid: str,
-    artifact_meta: Any,
+    artifact_meta: ModelArtifactMetaDict,
     X: Any,
     y: Optional[Any] = None,
     eval_override: Optional[EvalModel] = None,

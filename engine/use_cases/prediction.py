@@ -25,6 +25,8 @@ import math
 
 import numpy as np
 
+from engine.core.shapes import coerce_X_only, maybe_transpose_for_expected_n_features
+
 from engine.contracts.eval_configs import EvalModel
 from engine.contracts.results.prediction import (
     PredictionResult,
@@ -40,6 +42,7 @@ from engine.runtime.caches.artifact_cache import artifact_cache
 
 from engine.use_cases.artifacts import load_model_from_store
 from engine.io.artifacts.store import ArtifactStore
+from engine.io.artifacts.meta_models import ModelArtifactMetaDict
 
 from engine.factories.eval_factory import make_evaluator
 
@@ -64,29 +67,16 @@ def _safe_float_optional(v: Any) -> Optional[float]:
     return f
 
 
-def _coerce_2d(X: Any) -> np.ndarray:
-    X_arr = np.asarray(X)
-    if X_arr.ndim == 1:
-        X_arr = X_arr.reshape(-1, 1)
+def _maybe_validate_n_features(X_arr: np.ndarray, n_features_expected: Optional[int]) -> None:
+    if n_features_expected is None:
+        return
+    exp = int(n_features_expected)
     if X_arr.ndim != 2:
         raise ValueError(f"Expected 2D X for prediction; got shape {X_arr.shape}.")
-    return X_arr
-
-
-def _maybe_transpose_to_match_features(X_arr: np.ndarray, n_features_expected: Optional[int]) -> np.ndarray:
-    if n_features_expected is None:
-        return X_arr
-    n_features_expected = int(n_features_expected)
-
-    if X_arr.shape[1] == n_features_expected:
-        return X_arr
-    if X_arr.shape[0] == n_features_expected:
-        return X_arr.T
-
-    raise ValueError(
-        f"Feature mismatch: model expects {n_features_expected} features, "
-        f"but X has shape {X_arr.shape}."
-    )
+    if X_arr.shape[1] != exp:
+        raise ValueError(
+            f"Feature mismatch: model expects {exp} features, but X has shape {X_arr.shape}."
+        )
 
 
 def _load_pipeline(
@@ -118,7 +108,7 @@ def _load_pipeline(
 def apply_model_to_arrays(
     *,
     artifact_uid: str,
-    artifact_meta: Any,
+    artifact_meta: ModelArtifactMetaDict,
     X: Any,
     y: Optional[Any] = None,
     eval_override: Optional[EvalModel] = None,
@@ -135,9 +125,10 @@ def apply_model_to_arrays(
 
     pipeline = _load_pipeline(artifact_uid=artifact_uid, store=store)
 
-    X_arr = _coerce_2d(X)
+    X_arr = coerce_X_only(X)
     n_features_expected = _meta_get(artifact_meta, "n_features_in", None) or _meta_get(artifact_meta, "n_features", None)
-    X_arr = _maybe_transpose_to_match_features(X_arr, n_features_expected)
+    X_arr = maybe_transpose_for_expected_n_features(X_arr, expected_n_features=n_features_expected)
+    _maybe_validate_n_features(X_arr, n_features_expected)
 
     task = str(_meta_get(artifact_meta, "kind", "classification"))
     if task not in {"classification", "regression", "unsupervised"}:

@@ -15,9 +15,43 @@ Some loaders accept X provided as (n_features, n_samples) and will transpose whe
 needed to align with y.
 """
 
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
+
+
+def coerce_1d(x: Any) -> np.ndarray:
+    """Coerce input to a 1D numpy array.
+
+    - Scalars become shape (1,)
+    - Higher-d arrays are flattened to (n,)
+    """
+
+    a = np.asarray(x)
+    if a.ndim == 0:
+        return a.reshape(1)
+    return a.reshape(-1)
+
+
+def coerce_2d_optional(x: Any | None) -> Optional[np.ndarray]:
+    """Coerce input to a 2D numpy array, or return None.
+
+    - None -> None
+    - Scalars -> (1, 1)
+    - 1D -> (n, 1)
+    - 2D -> unchanged
+    """
+
+    if x is None:
+        return None
+    a = np.asarray(x)
+    if a.ndim == 0:
+        return a.reshape(1, 1)
+    if a.ndim == 1:
+        return a.reshape(-1, 1)
+    if a.ndim == 2:
+        return a
+    raise ValueError(f"Expected 2D array; got shape {a.shape}.")
 
 
 def coerce_X_only(X: np.ndarray) -> np.ndarray:

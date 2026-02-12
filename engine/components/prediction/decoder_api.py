@@ -22,6 +22,8 @@ from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
+from engine.core.shapes import coerce_1d, coerce_2d_optional
+
 from engine.contracts.results.decoder import DecoderOutputs
 
 from .decoder_extraction import RawDecoderOutputs, compute_decoder_outputs_raw
@@ -42,23 +44,15 @@ def _dedupe_preserve_order(items: Sequence[str]) -> List[str]:
 
 
 def _as_1d(x: Any) -> np.ndarray:
-    a = np.asarray(x)
-    if a.ndim == 0:
-        return a.reshape(1)
-    return a.reshape(-1)
+    """Back-compat wrapper; use engine.core.shapes.coerce_1d."""
+
+    return coerce_1d(x)
 
 
 def _as_2d_or_none(x: Any | None) -> Optional[np.ndarray]:
-    if x is None:
-        return None
-    a = np.asarray(x)
-    if a.ndim == 0:
-        return a.reshape(1, 1)
-    if a.ndim == 1:
-        return a.reshape(-1, 1)
-    if a.ndim == 2:
-        return a
-    raise ValueError(f"Expected 2D array; got shape {a.shape}.")
+    """Back-compat wrapper; use engine.core.shapes.coerce_2d_optional."""
+
+    return coerce_2d_optional(x)
 
 
 def _ensure_indices(indices: Optional[Iterable[int]], n: int) -> List[int]:

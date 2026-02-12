@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Optional, Sequence
 
 import numpy as np
+
+from engine.core.shapes import coerce_1d
 from engine.components.evaluation.types import (
     ConfusionPayload,
     BinaryRocPayload,
@@ -22,8 +24,9 @@ from sklearn.metrics import (
 
 
 def _as_1d(a: np.ndarray) -> np.ndarray:
-    a = np.asarray(a)
-    return a.ravel()
+    """Back-compat wrapper; use engine.core.shapes.coerce_1d."""
+
+    return coerce_1d(a)
 
 
 def _check_len(y_true: np.ndarray, y_pred_like: np.ndarray, name: str):
