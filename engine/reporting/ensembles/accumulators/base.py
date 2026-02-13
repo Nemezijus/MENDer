@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from engine.reporting.ensembles.common import _mean_std, _safe_float
@@ -8,43 +8,29 @@ from engine.reporting.ensembles.common import _mean_std, _safe_float
 
 @dataclass
 class FoldAccumulatorBase:
-    """Minimal shared base for fold-based accumulators.
+    """Fold accumulator base that tracks an internal fold counter."""
 
-    The goal is not to be clever — just to standardize the most common book-keeping
-    fields so accumulator implementations stay consistent.
-    """
-
-    _n_folds: int = 0
+    _n_folds: int = field(default=0, init=False)
 
     def _bump_fold(self) -> None:
         self._n_folds += 1
 
 
-@dataclass
 class PerEstimatorFoldAccumulatorBase(FoldAccumulatorBase):
-    """Shared base for accumulators that track per-estimator fold scores.
+    """Mixin/base with helpers for per-estimator fold score bookkeeping.
 
-    Many ensemble report accumulators repeat the same scaffolding:
-      - create(): init per-estimator score lists
-      - add_fold(): append base scores
-      - finalize(): compute mean/std per estimator + pick the best
-
-    Centralizing that book-keeping prevents drift when you add new common
-    fields (e.g. additional summary stats) across families/tasks.
+    This is intentionally NOT a dataclass to avoid dataclass field-order issues
+    in subclasses that have required (non-default) fields.
     """
 
-    estimator_names: List[str] = None
-    estimator_algos: List[str] = None
-    metric_name: str = ""
-
-    _scores: Dict[str, List[float]] = None
+    _scores: Dict[str, List[float]] | None
 
     def _init_scores(self) -> None:
-        names = list(self.estimator_names or [])
+        names = list(getattr(self, 'estimator_names', None) or [])
         self._scores = {n: [] for n in names}
 
     def _record_fold_scores(self, base_scores: Dict[str, float]) -> None:
-        if not base_scores or not self._scores:
+        if not base_scores or not getattr(self, '_scores', None):
             return
         for name, s in base_scores.items():
             if name in self._scores:
@@ -58,17 +44,20 @@ class PerEstimatorFoldAccumulatorBase(FoldAccumulatorBase):
         best_name: Optional[str] = None
         best_mean: Optional[float] = None
 
-        for name, algo in zip(self.estimator_names or [], self.estimator_algos or []):
-            scores = (self._scores or {}).get(name, [])
+        estimator_names: Sequence[str] = getattr(self, 'estimator_names', None) or []
+        estimator_algos: Sequence[str] = getattr(self, 'estimator_algos', None) or []
+
+        for name, algo in zip(estimator_names, estimator_algos):
+            scores = (getattr(self, '_scores', None) or {}).get(name, [])
             mean, std = _mean_std(scores)
             per_est.append(
                 {
-                    "name": name,
-                    "algo": algo,
-                    "fold_scores": [float(s) for s in scores] if scores else None,
-                    "mean": _safe_float(mean),
-                    "std": _safe_float(std),
-                    "n": len(scores),
+                    'name': name,
+                    'algo': algo,
+                    'fold_scores': [float(s) for s in scores] if scores else None,
+                    'mean': _safe_float(mean),
+                    'std': _safe_float(std),
+                    'n': len(scores),
                 }
             )
 
@@ -77,7 +66,7 @@ class PerEstimatorFoldAccumulatorBase(FoldAccumulatorBase):
                 best_name = name
 
         best = {
-            "name": best_name,
-            "mean": _safe_float(best_mean) if best_mean is not None else None,
+            'name': best_name,
+            'mean': _safe_float(best_mean) if best_mean is not None else None,
         }
         return per_est, best
