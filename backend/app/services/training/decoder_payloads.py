@@ -6,7 +6,7 @@ import numpy as np
 
 from engine.contracts.results.decoder import DecoderOutputs
 
-from engine.components.prediction.decoder_api import build_decoder_outputs_from_parts
+from engine.components.prediction.decoder.api import build_decoder_outputs_from_parts
 
 def build_decoder_outputs_payload(
     *,

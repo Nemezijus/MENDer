@@ -4,7 +4,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from engine.components.prediction.decoder_api import build_decoder_outputs_from_arrays
+from engine.components.prediction.decoder.api import build_decoder_outputs_from_arrays
 from engine.reporting.common.json_safety import dedupe_preserve_order
 from engine.reporting.training.regression_payloads import build_regression_decoder_outputs_payload
 

@@ -150,7 +150,7 @@ def main() -> int:
     # A few extra explicit imports to exercise key submodules.
     import engine.components.prediction.predicting  # noqa: F401
     import engine.components.prediction.decoder_extraction  # noqa: F401
-    import engine.components.prediction.decoder_api  # noqa: F401
+    import engine.components.prediction.decoder.api  # noqa: F401
     import engine.reporting.prediction.prediction_results  # noqa: F401
     import engine.reporting.decoder.decoder_outputs  # noqa: F401
     import engine.components.evaluation.scoring  # noqa: F401

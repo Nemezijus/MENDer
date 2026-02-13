@@ -11,7 +11,7 @@ from typing import Any, List, Optional
 import numpy as np
 
 from engine.contracts.results.decoder import DecoderOutputs
-from engine.components.prediction.decoder_api import build_decoder_outputs_from_parts
+from engine.components.prediction.decoder.api import build_decoder_outputs_from_parts
 
 
 def build_decoder_outputs_payload(
@@ -35,7 +35,7 @@ def build_decoder_outputs_payload(
 
     This wrapper exists to keep training-related reporting concerns in the
     reporting layer, while delegating canonical assembly to
-    :func:`engine.components.prediction.decoder_api.build_decoder_outputs_from_parts`.
+    :func:`engine.components.prediction.decoder.api.build_decoder_outputs_from_parts`.
     """
 
     return build_decoder_outputs_from_parts(

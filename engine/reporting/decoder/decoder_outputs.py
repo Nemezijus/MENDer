@@ -9,7 +9,7 @@ Canonical compute location:
     engine.components.prediction.decoder_extraction
 
 Canonical end-to-end decoder API (returns result contracts):
-    engine.components.prediction.decoder_api.predict_decoder_outputs
+    engine.components.prediction.decoder.api.predict_decoder_outputs
 
 This module remains as a thin re-export to avoid import drift during the
 refactor.

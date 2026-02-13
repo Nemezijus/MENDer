@@ -13,7 +13,7 @@ This module extracts *per-sample* decoder values from a fitted classifier
 
 It intentionally does *not* build UI/report tables. Reporting is handled by
 `engine.reporting.*` modules and the canonical public API in
-`engine.components.prediction.decoder_api`.
+`engine.components.prediction.decoder.api`.
 
 Special case: VotingClassifier with voting='hard'
 ----------------------------------------------
