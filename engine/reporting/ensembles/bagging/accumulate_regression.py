@@ -5,11 +5,14 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
+from engine.reporting.ensembles.accumulators import FoldAccumulatorBase
+from engine.reporting.ensembles.accumulators.common_sections import concat_parts, mae, rmse
+
 from ..common import _mean_std, _safe_float, _safe_int
 
 
 @dataclass
-class BaggingEnsembleRegressorReportAccumulator:
+class BaggingEnsembleRegressorReportAccumulator(FoldAccumulatorBase):
     """Accumulate regression-specific insights across folds (BaggingRegressor)."""
 
     metric_name: str
@@ -22,7 +25,6 @@ class BaggingEnsembleRegressorReportAccumulator:
     bootstrap_features: bool
     oob_score_enabled: bool
 
-    _n_folds: int = 0
     _oob_scores: List[float] = None
 
     _y_true_parts: List[np.ndarray] = None
@@ -68,7 +70,7 @@ class BaggingEnsembleRegressorReportAccumulator:
         oob_score: Optional[float] = None,
         base_estimator_scores: Optional[Sequence[float]] = None,
     ) -> None:
-        self._n_folds += 1
+        self._bump_fold()
 
         if oob_score is not None:
             self._oob_scores.append(float(oob_score))
@@ -85,31 +87,16 @@ class BaggingEnsembleRegressorReportAccumulator:
                     pass
 
     def finalize(self) -> Dict[str, Any]:
-        y_true = np.concatenate(self._y_true_parts) if self._y_true_parts else np.asarray([], dtype=float)
-        y_ens = np.concatenate(self._y_ens_pred_parts) if self._y_ens_pred_parts else np.asarray([], dtype=float)
+        y_true = concat_parts(self._y_true_parts, dtype=float)
+        y_ens = concat_parts(self._y_ens_pred_parts, dtype=float)
 
         # base_preds concatenated as list of (n_fold, m)
         base_mat = None
         if self._y_base_pred_parts:
             base_mat = np.concatenate(self._y_base_pred_parts, axis=0)
 
-        # basic error summaries
-        def _rmse(a: np.ndarray, b: np.ndarray) -> float:
-            a = np.asarray(a, dtype=float).ravel()
-            b = np.asarray(b, dtype=float).ravel()
-            if a.size == 0:
-                return 0.0
-            return float(np.sqrt(np.mean((b - a) ** 2)))
-
-        def _mae(a: np.ndarray, b: np.ndarray) -> float:
-            a = np.asarray(a, dtype=float).ravel()
-            b = np.asarray(b, dtype=float).ravel()
-            if a.size == 0:
-                return 0.0
-            return float(np.mean(np.abs(b - a)))
-
-        ens_rmse = _rmse(y_true, y_ens)
-        ens_mae = _mae(y_true, y_ens)
+        ens_rmse = rmse(y_true, y_ens)
+        ens_mae = mae(y_true, y_ens)
 
         base_rmse_mean = None
         base_mae_mean = None
@@ -118,8 +105,8 @@ class BaggingEnsembleRegressorReportAccumulator:
             maes = []
             for i in range(base_mat.shape[1]):
                 yp = base_mat[:, i]
-                rmses.append(_rmse(y_true, yp))
-                maes.append(_mae(y_true, yp))
+                rmses.append(rmse(y_true, yp))
+                maes.append(mae(y_true, yp))
             base_rmse_mean = float(np.mean(np.asarray(rmses))) if rmses else None
             base_mae_mean = float(np.mean(np.asarray(maes))) if maes else None
 

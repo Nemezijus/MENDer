@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
+from engine.reporting.ensembles.accumulators import FoldAccumulatorBase
+
 from ..common import _mean_std, _safe_float, _safe_int
 from .helpers import (
     _aggregate_curve_mean,
@@ -15,14 +17,12 @@ from .helpers import (
 
 
 @dataclass
-class XGBoostEnsembleReportAccumulator:
+class XGBoostEnsembleReportAccumulator(FoldAccumulatorBase):
     metric_name: str
     # store params (opaque dict is fine; service populates)
     params: Dict[str, Any]
     train_eval_metric: Optional[str]
     task: Optional[str] = None
-
-    _n_folds: int = 0
 
     _best_iterations: List[int] = None
     _best_scores: List[float] = None
@@ -69,7 +69,7 @@ class XGBoostEnsembleReportAccumulator:
           {"validation_0": {"mlogloss": [...], "auc": [...]}, "validation_1": {...}}
         We'll flatten into keys: "validation_0:mlogloss".
         """
-        self._n_folds += 1
+        self._bump_fold()
 
         if best_iteration is not None:
             self._best_iterations.append(int(best_iteration))

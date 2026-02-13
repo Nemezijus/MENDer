@@ -6,17 +6,21 @@ from typing import Any, Dict, List, Optional, Sequence
 import numpy as np
 
 from engine.reporting.ensembles.accumulators.common_sections import (
+    classification_effect_vs_best,
+    concat_parts,
     finalize_pairwise_agreement,
     hist_add_inplace,
     margins_strengths_and_ties,
     update_all_agree_and_pairwise,
 )
 
-from ..common import _mean_std, _safe_float, _safe_int
+from engine.reporting.ensembles.accumulators import PerEstimatorFoldAccumulatorBase
+
+from ..common import _safe_float, _safe_int
 
 
 @dataclass
-class VotingEnsembleReportAccumulator:
+class VotingEnsembleReportAccumulator(PerEstimatorFoldAccumulatorBase):
     """Accumulate ensemble-specific insights across folds (VotingClassifier)."""
 
     estimator_names: List[str]
@@ -24,8 +28,6 @@ class VotingEnsembleReportAccumulator:
     metric_name: str
     weights: Optional[List[float]]
     voting: str
-
-    _scores: Dict[str, List[float]]
 
     _y_true_parts: List[np.ndarray]
     _y_ens_pred_parts: List[np.ndarray]
@@ -67,13 +69,12 @@ class VotingEnsembleReportAccumulator:
 
         edges_strength = np.linspace(0.0, 1.0, num=21)
 
-        return cls(
+        acc = cls(
             estimator_names=names,
             estimator_algos=algos,
             metric_name=str(metric_name),
             weights=w,
             voting=str(voting),
-            _scores={n: [] for n in names},
             _y_true_parts=[],
             _y_ens_pred_parts=[],
             _y_base_pred_parts={n: [] for n in names},
@@ -89,6 +90,9 @@ class VotingEnsembleReportAccumulator:
             _strength_hist_edges=edges_strength,
         )
 
+        acc._init_scores()
+        return acc
+
     def add_fold(
         self,
         *,
@@ -97,9 +101,7 @@ class VotingEnsembleReportAccumulator:
         base_preds: Dict[str, np.ndarray],
         base_scores: Dict[str, float],
     ) -> None:
-        for name, s in base_scores.items():
-            if name in self._scores:
-                self._scores[name].append(float(s))
+        self._record_fold_scores(base_scores)
 
         self._y_true_parts.append(np.asarray(y_true))
         self._y_ens_pred_parts.append(np.asarray(y_ensemble_pred))
@@ -124,26 +126,8 @@ class VotingEnsembleReportAccumulator:
         hist_add_inplace(counts=self._strength_hist_counts, edges=self._strength_hist_edges, values=strengths)
 
     def finalize(self) -> Dict[str, Any]:
-        per_est = []
-        best_name = None
-        best_mean = None
-
-        for name, algo in zip(self.estimator_names, self.estimator_algos):
-            scores = self._scores.get(name, [])
-            mean, std = _mean_std(scores)
-            entry = {
-                "name": name,
-                "algo": algo,
-                "fold_scores": [float(s) for s in scores] if scores else None,
-                "mean": _safe_float(mean),
-                "std": _safe_float(std),
-                "n": len(scores),
-            }
-            per_est.append(entry)
-
-            if best_mean is None or mean > best_mean:
-                best_mean = mean
-                best_name = name
+        per_est, best = self._finalize_estimator_summaries()
+        best_name = best.get("name") if best else None
 
         denom = float(self._n_total) if self._n_total > 0 else 1.0
         all_agree_rate = float(self._all_agree_count / denom) if denom else 0.0
@@ -156,16 +140,12 @@ class VotingEnsembleReportAccumulator:
 
         corrected = harmed = disagreed = total = 0
         if best_name is not None and self._y_true_parts:
-            y_true = np.concatenate(self._y_true_parts)
-            y_ens = np.concatenate(self._y_ens_pred_parts)
-            y_best = np.concatenate(self._y_base_pred_parts.get(best_name, []))
-            if y_true.size and y_ens.size and y_best.size:
-                total = int(y_true.size)
-                best_ok = y_best == y_true
-                ens_ok = y_ens == y_true
-                corrected = int(np.sum((~best_ok) & ens_ok))
-                harmed = int(np.sum(best_ok & (~ens_ok)))
-                disagreed = int(np.sum(y_best != y_ens))
+            y_true = concat_parts(self._y_true_parts)
+            y_ens = concat_parts(self._y_ens_pred_parts)
+            y_best = concat_parts(self._y_base_pred_parts.get(best_name, []))
+            corrected, harmed, disagreed, total = classification_effect_vs_best(
+                y_true=y_true, y_ensemble_pred=y_ens, y_best_pred=y_best
+            )
 
         report: Dict[str, Any] = {
             "kind": "voting",
@@ -175,10 +155,7 @@ class VotingEnsembleReportAccumulator:
             "n_estimators": len(self.estimator_names),
             "weights": self.weights,
             "estimators": per_est,
-            "best_estimator": {
-                "name": best_name,
-                "mean": _safe_float(best_mean) if best_mean is not None else None,
-            },
+            "best_estimator": best,
             "agreement": {
                 "all_agree_rate": _safe_float(all_agree_rate),
                 "pairwise_mean_agreement": _safe_float(pairwise_mean) if pairwise_mean is not None else None,

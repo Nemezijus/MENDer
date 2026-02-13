@@ -7,6 +7,55 @@ import numpy as np
 from engine.reporting.ensembles.common import vote_margin_and_strength
 
 
+def concat_parts(parts: Sequence[np.ndarray], *, dtype: Any = None) -> np.ndarray:
+    """Concatenate a list of arrays safely.
+
+    Returns an empty array if parts is falsy.
+    """
+    if not parts:
+        return np.asarray([], dtype=dtype if dtype is not None else float)
+    if dtype is None:
+        return np.concatenate([np.asarray(p) for p in parts])
+    return np.concatenate([np.asarray(p, dtype=dtype) for p in parts])
+
+
+def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    y_true = np.asarray(y_true, dtype=float).ravel()
+    y_pred = np.asarray(y_pred, dtype=float).ravel()
+    if y_true.size == 0:
+        return 0.0
+    return float(np.sqrt(np.mean((y_pred - y_true) ** 2)))
+
+
+def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    y_true = np.asarray(y_true, dtype=float).ravel()
+    y_pred = np.asarray(y_pred, dtype=float).ravel()
+    if y_true.size == 0:
+        return 0.0
+    return float(np.mean(np.abs(y_pred - y_true)))
+
+
+def classification_effect_vs_best(
+    *,
+    y_true: np.ndarray,
+    y_ensemble_pred: np.ndarray,
+    y_best_pred: np.ndarray,
+) -> tuple[int, int, int, int]:
+    """Compute (corrected, harmed, disagreed, total) versus best estimator."""
+    yt = np.asarray(y_true)
+    ye = np.asarray(y_ensemble_pred)
+    yb = np.asarray(y_best_pred)
+    if yt.size == 0 or ye.size == 0 or yb.size == 0:
+        return 0, 0, 0, 0
+    total = int(yt.size)
+    best_ok = yb == yt
+    ens_ok = ye == yt
+    corrected = int(np.sum((~best_ok) & ens_ok))
+    harmed = int(np.sum(best_ok & (~ens_ok)))
+    disagreed = int(np.sum(yb != ye))
+    return corrected, harmed, disagreed, total
+
+
 def update_all_agree_and_pairwise(
     *,
     base_preds: np.ndarray,

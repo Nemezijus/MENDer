@@ -13,9 +13,11 @@ from .helpers import (
     _weighted_margin_strength_tie,
 )
 
+from engine.reporting.ensembles.accumulators import FoldAccumulatorBase
+
 
 @dataclass
-class AdaBoostEnsembleReportAccumulator:
+class AdaBoostEnsembleReportAccumulator(FoldAccumulatorBase):
     metric_name: str
     base_algo: str
 
@@ -23,7 +25,6 @@ class AdaBoostEnsembleReportAccumulator:
     learning_rate: float
     algorithm: Optional[str] = None  # SAMME / SAMME.R (sklearn varies by version)
 
-    _n_folds: int = 0
     _n_eval_total: int = 0
 
     # vote stats (weighted)
@@ -72,7 +73,7 @@ class AdaBoostEnsembleReportAccumulator:
         estimator_weights: Optional[Sequence[float]] = None,
         estimator_errors: Optional[Sequence[float]] = None,
     ) -> None:
-        self._n_folds += 1
+        self._bump_fold()
 
         P = np.asarray(base_preds)
         if P.ndim != 2:

@@ -4,8 +4,9 @@ This package exists to reduce drift across ensemble-family accumulators (voting/
 AdaBoost/XGBoost) and across task types (classification/regression).
 """
 
-from .base import FoldAccumulatorBase
+from .base import FoldAccumulatorBase, PerEstimatorFoldAccumulatorBase
 
 __all__ = [
     "FoldAccumulatorBase",
+    "PerEstimatorFoldAccumulatorBase",
 ]

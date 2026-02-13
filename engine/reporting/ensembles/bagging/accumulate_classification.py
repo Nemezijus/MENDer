@@ -12,12 +12,14 @@ from engine.reporting.ensembles.accumulators.common_sections import (
     update_all_agree_and_pairwise,
 )
 
+from engine.reporting.ensembles.accumulators import FoldAccumulatorBase
+
 from ..common import _mean_std, _safe_float, _safe_int
 from .helpers import oob_coverage_from_decision_function as _oob_coverage_from_decision_function
 
 
 @dataclass
-class BaggingEnsembleReportAccumulator:
+class BaggingEnsembleReportAccumulator(FoldAccumulatorBase):
     """Accumulate bagging-specific insights across folds."""
 
     metric_name: str
@@ -36,7 +38,6 @@ class BaggingEnsembleReportAccumulator:
     replacement: Optional[bool] = None
 
     # accumulators
-    _n_folds: int = 0
 
     _oob_scores: List[float] = None
     _oob_coverages: List[float] = None
@@ -112,7 +113,7 @@ class BaggingEnsembleReportAccumulator:
         oob_decision_function: Any = None,
         base_estimator_scores: Optional[Sequence[float]] = None,
     ) -> None:
-        self._n_folds += 1
+        self._bump_fold()
 
         if oob_score is not None:
             self._oob_scores.append(float(oob_score))

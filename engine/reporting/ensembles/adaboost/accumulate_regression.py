@@ -12,9 +12,11 @@ from .helpers import (
     _hist_init,
 )
 
+from engine.reporting.ensembles.accumulators import FoldAccumulatorBase
+
 
 @dataclass
-class AdaBoostEnsembleRegressorReportAccumulator:
+class AdaBoostEnsembleRegressorReportAccumulator(FoldAccumulatorBase):
     """Accumulate regression-specific AdaBoost insights across folds."""
 
     metric_name: str
@@ -24,7 +26,6 @@ class AdaBoostEnsembleRegressorReportAccumulator:
     learning_rate: float
     loss: Optional[str] = None  # linear / square / exponential (sklearn)
 
-    _n_folds: int = 0
     _n_eval_total: int = 0
 
     # weights/errors across folds
@@ -68,7 +69,7 @@ class AdaBoostEnsembleRegressorReportAccumulator:
         base_estimator_scores: Optional[Sequence[float]] = None,
         n_eval: Optional[int] = None,
     ) -> None:
-        self._n_folds += 1
+        self._bump_fold()
 
         if n_eval is not None:
             self._n_eval_total += int(n_eval)
