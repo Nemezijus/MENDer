@@ -1,4 +1,4 @@
-from .classification import BaggingEnsembleReportAccumulator
-from .regression import BaggingEnsembleRegressorReportAccumulator
+from .accumulate_classification import BaggingEnsembleReportAccumulator
+from .accumulate_regression import BaggingEnsembleRegressorReportAccumulator
 
 __all__ = ["BaggingEnsembleReportAccumulator", "BaggingEnsembleRegressorReportAccumulator"]

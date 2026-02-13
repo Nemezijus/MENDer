@@ -1,4 +1,4 @@
-from .classification import VotingEnsembleReportAccumulator
-from .regression import VotingEnsembleRegressorReportAccumulator
+from .accumulate_classification import VotingEnsembleReportAccumulator
+from .accumulate_regression import VotingEnsembleRegressorReportAccumulator
 
 __all__ = ["VotingEnsembleReportAccumulator", "VotingEnsembleRegressorReportAccumulator"]

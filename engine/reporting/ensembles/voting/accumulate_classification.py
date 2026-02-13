@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
+from engine.reporting.ensembles.accumulators.common_sections import (
+    finalize_pairwise_agreement,
+    hist_add_inplace,
+    margins_strengths_and_ties,
+    update_all_agree_and_pairwise,
+)
+
 from ..common import _mean_std, _safe_float, _safe_int
-from .helpers import vote_margin_and_strength as _vote_margin_and_strength
 
 
 @dataclass
 class VotingEnsembleReportAccumulator:
-    """Accumulate ensemble-specific insights across folds."""
+    """Accumulate ensemble-specific insights across folds (VotingClassifier)."""
 
     estimator_names: List[str]
     estimator_algos: List[str]
@@ -104,38 +110,18 @@ class VotingEnsembleReportAccumulator:
         names = self.estimator_names
         pred_cols = [np.asarray(base_preds[n]) for n in names]
         P = np.stack(pred_cols, axis=1)  # (n, m)
-        n = int(P.shape[0])
-        m = int(P.shape[1])
 
-        self._n_total += n
+        all_agree_count, n = update_all_agree_and_pairwise(base_preds=P, pairwise_same=self._pairwise_same)
+        self._n_total += int(n)
+        self._all_agree_count += int(all_agree_count)
 
-        all_agree = np.all(P == P[:, [0]], axis=1)
-        self._all_agree_count += int(np.sum(all_agree))
-
-        for i in range(m):
-            for j in range(i, m):
-                same = float(np.sum(P[:, i] == P[:, j]))
-                self._pairwise_same[i, j] += same
-                self._pairwise_same[j, i] += same if i != j else 0.0
-
-        w = self.weights
-        margins = np.zeros(n, dtype=float)
-        strengths = np.zeros(n, dtype=float)
-        ties = 0
-        for r in range(n):
-            margin, strength, tie = _vote_margin_and_strength(P[r, :], weights=w)
-            margins[r] = margin
-            strengths[r] = strength
-            ties += 1 if tie else 0
-
-        self._tie_count += ties
+        margins, strengths, ties = margins_strengths_and_ties(base_preds=P, weights=self.weights)
+        self._tie_count += int(ties)
         self._margin_sum += float(np.sum(margins))
         self._strength_sum += float(np.sum(strengths))
 
-        mh, _ = np.histogram(margins, bins=self._margin_hist_edges)
-        sh, _ = np.histogram(strengths, bins=self._strength_hist_edges)
-        self._margin_hist_counts += mh
-        self._strength_hist_counts += sh
+        hist_add_inplace(counts=self._margin_hist_counts, edges=self._margin_hist_edges, values=margins)
+        hist_add_inplace(counts=self._strength_hist_counts, edges=self._strength_hist_edges, values=strengths)
 
     def finalize(self) -> Dict[str, Any]:
         per_est = []
@@ -160,17 +146,8 @@ class VotingEnsembleReportAccumulator:
                 best_name = name
 
         denom = float(self._n_total) if self._n_total > 0 else 1.0
-        pairwise = self._pairwise_same / denom
-        pairwise_mean = None
-        if pairwise.size:
-            m = pairwise.shape[0]
-            if m > 1:
-                mask = ~np.eye(m, dtype=bool)
-                pairwise_mean = float(np.mean(pairwise[mask]))
-            else:
-                pairwise_mean = 1.0
-
         all_agree_rate = float(self._all_agree_count / denom) if denom else 0.0
+        pairwise_mean, pairwise_mat = finalize_pairwise_agreement(pairwise_same=self._pairwise_same, n_total=self._n_total)
 
         n_total = float(self._n_total) if self._n_total > 0 else 1.0
         mean_margin = float(self._margin_sum / n_total)
@@ -206,7 +183,7 @@ class VotingEnsembleReportAccumulator:
                 "all_agree_rate": _safe_float(all_agree_rate),
                 "pairwise_mean_agreement": _safe_float(pairwise_mean) if pairwise_mean is not None else None,
                 "labels": list(self.estimator_names),
-                "matrix": pairwise.tolist() if pairwise is not None else None,
+                "matrix": pairwise_mat,
             },
             "vote": {
                 "mean_margin": _safe_float(mean_margin),
@@ -221,16 +198,12 @@ class VotingEnsembleReportAccumulator:
                     "counts": [float(x) for x in self._strength_hist_counts.tolist()],
                 },
             },
-            "change_vs_best": {
-                "best_name": best_name,
+            "effect": {
+                "corrected_vs_best": _safe_int(corrected),
+                "harmed_vs_best": _safe_int(harmed),
+                "disagreed_with_best": _safe_int(disagreed),
                 "total": _safe_int(total),
-                "corrected": _safe_int(corrected),
-                "harmed": _safe_int(harmed),
-                "net": _safe_int(corrected - harmed),
-                "disagreed": _safe_int(disagreed),
             },
         }
 
         return report
-
-__all__ = ["VotingEnsembleReportAccumulator"]

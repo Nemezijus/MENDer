@@ -1,4 +1,4 @@
-from .classification import AdaBoostEnsembleReportAccumulator
-from .regression import AdaBoostEnsembleRegressorReportAccumulator
+from .accumulate_classification import AdaBoostEnsembleReportAccumulator
+from .accumulate_regression import AdaBoostEnsembleRegressorReportAccumulator
 
 __all__ = ["AdaBoostEnsembleReportAccumulator", "AdaBoostEnsembleRegressorReportAccumulator"]
