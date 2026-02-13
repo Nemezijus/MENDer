@@ -148,7 +148,6 @@ class UnsupervisedEvaluator(Protocol):
 class BaselineRunner(Protocol):
     def run(
         self,
-        model: Any,
         X: np.ndarray,
         y: np.ndarray,
     ) -> np.ndarray:

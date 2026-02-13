@@ -96,7 +96,13 @@ class LabelShuffleBaseline(BaselineRunner):
         - K-fold:   each element is the mean CV score across folds for that shuffle.
         Progress registry is injected via self._progress and self.progress_id.
         """
-        n_shuffles = int(getattr(self, "_progress_total", 0) or 0)
+        # Prefer explicit config, but allow backend/service injection to override.
+        # Historically, the backend injected `_progress_total` to drive a progress bar.
+        n_shuffles = int(
+            getattr(self, "_progress_total", 0)
+            or getattr(getattr(self.cfg, "eval", None), "n_shuffles", 0)
+            or 0
+        )
         progress_id: Optional[str] = getattr(self, "progress_id", None)
         PROGRESS = getattr(self, "_progress", None)  # injected by service
 

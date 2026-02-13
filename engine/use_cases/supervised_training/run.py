@@ -187,15 +187,31 @@ def train_supervised(
         result["decoder_outputs"] = decoder_payload
 
     # --- Shuffle baseline --------------------------------------------------
+    # The backend owns progress reporting for shuffles (and may run them when
+    # `progress_id` is present). To avoid double-running (and double notes), we
+    # only run shuffles here when no progress_id is provided.
     n_shuffles = int(getattr(cfg.eval, "n_shuffles", 0) or 0)
-    if n_shuffles > 0:
+    progress_id = getattr(cfg.eval, "progress_id", None)
+    if n_shuffles > 0 and not progress_id:
         baseline = make_baseline(cfg, rngm=rngm)
         try:
-            base_score = baseline.score(splitter=splitter, evaluator=evaluator)
+            # Ensure standalone BL runs do not require backend injection.
+            setattr(baseline, "_progress_total", n_shuffles)
+
+            scores = np.asarray(baseline.run(X, y), dtype=float).ravel()
+
+            # Compare baseline against the trained model's mean score.
+            ref_score_f = float(mean_score)
+            ge = int(np.sum(scores >= ref_score_f))
+            p_val = (ge + 1.0) / (scores.size + 1.0) if scores.size else float("nan")
+
+            result["shuffled_scores"] = [float(v) for v in scores.tolist()]
+            result["p_value"] = float(p_val)
             result["notes"].append(
-                f"Shuffle baseline ({n_shuffles} shuffles): {base_score:.4f}"
+                f"Shuffle baseline: mean={float(np.mean(scores)):.4f} ± {float(np.std(scores)):.4f}, p≈{float(p_val):.4f}"
             )
         except Exception as e:
+            # Baseline errors must not break training.
             result["notes"].append(
                 f"Shuffle baseline failed: {type(e).__name__}: {e}"
             )
