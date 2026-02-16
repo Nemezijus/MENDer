@@ -504,4 +504,50 @@ def build_plot_data(
     except Exception:
         pass
 
+    # Optional: overlay covariance ellipses in embedding space.
+    # The frontend will render these as "rings" around clusters/components.
+    # This is most useful for mixture models, but is generic.
+    try:
+        if embedding is not None:
+            ex = embedding.get("x", None)
+            ey = embedding.get("y", None)
+            eidx = embedding.get("idx", None)
+            if (
+                isinstance(ex, list)
+                and isinstance(ey, list)
+                and isinstance(eidx, list)
+                and len(ex) == len(ey) == len(eidx)
+            ):
+                eidx_a = np.asarray(eidx, dtype=int)
+                if eidx_a.size and int(np.max(eidx_a)) < n:
+                    labs = y[eidx_a]
+                    comps = []
+                    ex_a = np.asarray(ex, dtype=float)
+                    ey_a = np.asarray(ey, dtype=float)
+                    for cid in sorted(set(int(v) for v in labs.tolist() if int(v) != -1)):
+                        msk = labs == cid
+                        if int(np.sum(msk)) < 5:
+                            continue
+                        pts = np.column_stack([ex_a[msk], ey_a[msk]])
+                        mu = np.mean(pts, axis=0)
+                        cov = np.cov(pts.T)
+                        if cov.shape == (2, 2) and np.all(np.isfinite(cov)):
+                            comps.append(
+                                {
+                                    "cluster_id": int(cid),
+                                    "mean": [float(mu[0]), float(mu[1])],
+                                    "cov": [
+                                        [float(cov[0, 0]), float(cov[0, 1])],
+                                        [float(cov[1, 0]), float(cov[1, 1])],
+                                    ],
+                                }
+                            )
+
+                    # Keep the pre-refactor behavior: only emit when the estimator
+                    # supports probabilistic membership (mixture-like models).
+                    if comps and hasattr(est, "predict_proba"):
+                        out["gmm_ellipses"] = {"components": comps}
+    except Exception:
+        pass
+
     return out, warnings

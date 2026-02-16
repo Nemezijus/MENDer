@@ -151,69 +151,122 @@ class BaggingEnsembleReportAccumulator(FoldAccumulatorBase):
             )
 
     def finalize(self) -> dict:
-        denom = float(self._n_total_eval) if self._n_total_eval > 0 else 1.0
+        n_total = int(self._n_total_eval)
+        denom = float(n_total) if n_total > 0 else 1.0
+
+        # agreement / diversity
         all_agree_rate = float(self._all_agree_count / denom) if denom else 0.0
-        pairwise_mean, pairwise_mat = finalize_pairwise_agreement(pairwise_same=self._pairwise_same, n_total=self._n_total_eval)
+        pairwise_mean, pairwise_mat = finalize_pairwise_agreement(pairwise_same=self._pairwise_same, n_total=n_total)
 
-        n_total = float(self._n_total_eval) if self._n_total_eval > 0 else 1.0
-        mean_margin = float(self._margin_sum / n_total)
-        mean_strength = float(self._strength_sum / n_total)
-        tie_rate = float(self._tie_count / n_total)
+        # vote stats
+        mean_margin = float(self._margin_sum / denom) if denom else 0.0
+        mean_strength = float(self._strength_sum / denom) if denom else 0.0
+        tie_rate = float(self._tie_count / denom) if denom else 0.0
 
+        # OOB stats
         oob_mean, oob_std = _mean_std(self._oob_scores or [])
         cov_mean, cov_std = _mean_std(self._oob_coverages or [])
-        base_score_mean, base_score_std = _mean_std(self._base_scores_all or [])
 
-        return {
+        # base estimator score distribution (optional)
+        base_mean, base_std = _mean_std(self._base_scores_all or [])
+
+        # keep payload size bounded (legacy behavior)
+        MAX_MATRIX_ESTIMATORS = 100
+        matrix_out = None
+        labels_out = None
+        if pairwise_mat is not None and int(self.n_estimators) <= MAX_MATRIX_ESTIMATORS:
+            matrix_out = pairwise_mat
+            labels_out = [f"est_{i+1}" for i in range(int(self.n_estimators))]
+
+        report = {
             "kind": "bagging",
             "task": "classification",
             "metric_name": self.metric_name,
-            "base_algo": self.base_algo,
-            "n_estimators": _safe_int(self.n_estimators),
-            "params": {
+
+            # -----------------------------
+            # legacy nested keys (frontend)
+            # -----------------------------
+            "bagging": {
+                "base_algo": self.base_algo,
+                "n_estimators": _safe_int(self.n_estimators),
                 "max_samples": self.max_samples,
                 "max_features": self.max_features,
-                "bootstrap": self.bootstrap,
-                "bootstrap_features": self.bootstrap_features,
-                "oob_score": self.oob_score_enabled,
-                "balanced": self.balanced,
+                "bootstrap": bool(self.bootstrap),
+                "bootstrap_features": bool(self.bootstrap_features),
+                "oob_score_enabled": bool(self.oob_score_enabled),
+                "balanced": bool(self.balanced),
                 "sampling_strategy": self.sampling_strategy,
                 "replacement": self.replacement,
             },
             "oob": {
-                "n_folds": _safe_int(self._n_folds),
-                "scores": [float(x) for x in (self._oob_scores or [])] or None,
+                "score": _safe_float(oob_mean) if (self._oob_scores) else None,
+                "score_std": _safe_float(oob_std) if (self._oob_scores) else None,
+                "coverage_rate": _safe_float(cov_mean) if (self._oob_coverages) else None,
+                "coverage_std": _safe_float(cov_std) if (self._oob_coverages) else None,
+                "n_folds_with_oob": _safe_int(len(self._oob_scores or [])),
+
+                # keep the new keys too (harmless)
+                "enabled": bool(self.oob_score_enabled),
+                "scores": [float(x) for x in (self._oob_scores or [])] if (self._oob_scores) else None,
                 "score_mean": _safe_float(oob_mean),
-                "score_std": _safe_float(oob_std),
+                "score_mean_std": _safe_float(oob_std),
                 "coverage_mean": _safe_float(cov_mean),
-                "coverage_std": _safe_float(cov_std),
+                "coverage_mean_std": _safe_float(cov_std),
             },
-            "agreement": {
+            "diversity": {
                 "all_agree_rate": _safe_float(all_agree_rate),
                 "pairwise_mean_agreement": _safe_float(pairwise_mean) if pairwise_mean is not None else None,
-                "matrix": pairwise_mat,
+                "labels": labels_out,
+                "matrix": matrix_out,
             },
             "vote": {
                 "mean_margin": _safe_float(mean_margin),
                 "mean_strength": _safe_float(mean_strength),
                 "tie_rate": _safe_float(tie_rate),
                 "margin_hist": {
-                    "edges": [float(x) for x in self._margin_hist_edges.tolist()],
-                    "counts": [float(x) for x in self._margin_hist_counts.tolist()],
+                    "edges": [float(x) for x in (self._margin_hist_edges.tolist() if self._margin_hist_edges is not None else [])],
+                    "counts": [float(x) for x in (self._margin_hist_counts.tolist() if self._margin_hist_counts is not None else [])],
                 },
                 "strength_hist": {
-                    "edges": [float(x) for x in self._strength_hist_edges.tolist()],
-                    "counts": [float(x) for x in self._strength_hist_counts.tolist()],
+                    "edges": [float(x) for x in (self._strength_hist_edges.tolist() if self._strength_hist_edges is not None else [])],
+                    "counts": [float(x) for x in (self._strength_hist_counts.tolist() if self._strength_hist_counts is not None else [])],
                 },
             },
             "base_estimator_scores": {
-                "mean": _safe_float(base_score_mean),
-                "std": _safe_float(base_score_std),
+                "mean": _safe_float(base_mean) if (self._base_scores_all) else None,
+                "std": _safe_float(base_std) if (self._base_scores_all) else None,
                 "hist": {
-                    "edges": [float(x) for x in self._base_score_hist_edges.tolist()],
-                    "counts": [float(x) for x in self._base_score_hist_counts.tolist()],
+                    "edges": [float(x) for x in (self._base_score_hist_edges.tolist() if self._base_score_hist_edges is not None else [])],
+                    "counts": [float(x) for x in (self._base_score_hist_counts.tolist() if self._base_score_hist_counts is not None else [])],
                 }
-                if self._base_score_hist_edges is not None
+                if (self._base_scores_all)
                 else None,
             },
+            "meta": {
+                "n_folds": _safe_int(self._n_folds),
+                "n_eval_samples_total": _safe_int(self._n_total_eval),
+            },
+
+            # -----------------------
+            # new/flat keys (engine)
+            # -----------------------
+            "base_algo": self.base_algo,
+            "n_estimators": _safe_int(self.n_estimators),
+            "params": {
+                "n_estimators": _safe_int(self.n_estimators),
+                "max_samples": self.max_samples,
+                "max_features": self.max_features,
+                "bootstrap": bool(self.bootstrap),
+                "bootstrap_features": bool(self.bootstrap_features),
+                "oob_score_enabled": bool(self.oob_score_enabled),
+                "balanced": bool(self.balanced),
+                "sampling_strategy": self.sampling_strategy,
+                "replacement": self.replacement,
+            },
+            "agreement": {
+                "all_agree_rate": _safe_float(all_agree_rate),
+                "pairwise_mean_agreement": _safe_float(pairwise_mean) if pairwise_mean is not None else None,
+                "matrix": matrix_out,
+            },
         }
+        return report

@@ -181,6 +181,13 @@ class VotingEnsembleReportAccumulator(PerEstimatorFoldAccumulatorBase):
                 "disagreed_with_best": _safe_int(disagreed),
                 "total": _safe_int(total),
             },
+            "change_vs_best": {
+                "best_name": (best.get("name") if best else None),
+                "corrected": _safe_int(corrected),
+                "harmed": _safe_int(harmed),
+                "net": _safe_int(corrected - harmed),
+            },
+
         }
 
         return report
