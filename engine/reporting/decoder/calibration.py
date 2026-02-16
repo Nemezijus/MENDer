@@ -90,7 +90,18 @@ def calibration_ece_top1(
 
         nb = int(np.sum(m))
         if nb == 0:
-            bins.append({"bin_lo": lo, "bin_hi": hi, "n": 0})
+            # Keep legacy (pre-refactor) keys so the existing frontend can render.
+            bins.append(
+                {
+                    "bin": int(b),
+                    "bin_lo": lo,
+                    "bin_hi": hi,
+                    "count": 0,
+                    "avg_confidence": None,
+                    "accuracy": None,
+                    "gap": None,
+                }
+            )
             continue
 
         acc = float(np.mean(correct[m]))
@@ -102,11 +113,12 @@ def calibration_ece_top1(
 
         bins.append(
             {
+                "bin": int(b),
                 "bin_lo": lo,
                 "bin_hi": hi,
-                "n": nb,
-                "acc": acc,
-                "avg_conf": avg_conf,
+                "count": nb,
+                "avg_confidence": avg_conf,
+                "accuracy": acc,
                 "gap": gap,
             }
         )

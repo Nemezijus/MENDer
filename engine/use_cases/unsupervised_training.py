@@ -52,7 +52,16 @@ def train_unsupervised(
         )
 
     # --- RNG ----------------------------------------------------------------
-    seed = resolve_seed(getattr(cfg.eval, "seed", None), fallback=0) if rng is None else int(rng)
+    # Match the pre-refactor behavior:
+    # - If the caller passes an explicit `rng`, use it.
+    # - Otherwise, respect `cfg.eval.seed` when provided.
+    # - When no seed is provided, pass None (the RngManager remains deterministic
+    #   by design, but this preserves the original contract/intent).
+    if rng is not None:
+        seed = int(rng)
+    else:
+        seed = None if getattr(cfg.eval, "seed", None) is None else int(cfg.eval.seed)
+
     rngm = RngManager(seed)
 
     # --- Build + fit pipeline ----------------------------------------------

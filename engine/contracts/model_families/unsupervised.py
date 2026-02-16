@@ -18,6 +18,8 @@ class KMeansConfig(BaseModel):
     tol: float = 1e-4
     verbose: int = 0
     random_state: Optional[int] = None
+    # Keep parity with pre-refactor config defaults and sklearn signature.
+    algorithm: Union[Literal["lloyd", "elkan", "auto"], str] = "lloyd"
 
 
 class DBSCANConfig(BaseModel):
@@ -29,10 +31,10 @@ class DBSCANConfig(BaseModel):
     eps: float = 0.5
     min_samples: int = 5
     metric: str = "euclidean"
-    metric_params: Optional[dict] = None
-    algorithm: str = "auto"
+    metric_params: Optional[Dict[str, float]] = None
+    algorithm: Union[Literal["auto", "ball_tree", "kd_tree", "brute"], str] = "auto"
     leaf_size: int = 30
-    p: Optional[int] = None
+    p: Optional[float] = None
     n_jobs: Optional[int] = None
 
 
@@ -44,7 +46,8 @@ class SpectralClusteringConfig(BaseModel):
 
     n_clusters: int = 2
     eigen_solver: Optional[str] = None
-    n_components: int = 2
+    # sklearn defaults to n_clusters when None; keep pre-refactor behavior.
+    n_components: Optional[int] = None
     random_state: Optional[int] = None
     n_init: int = 10
     gamma: float = 1.0
@@ -69,7 +72,9 @@ class AgglomerativeClusteringConfig(BaseModel):
     linkage: str = "ward"
     distance_threshold: Optional[float] = None
     compute_full_tree: Union[bool, Literal["auto"]] = "auto"
-    compute_distances: bool = False
+    # Required for dendrogram rendering (children_ + distances_).
+    # Enabled by default; can be turned off for very large problems.
+    compute_distances: bool = True
 
 
 class GaussianMixtureConfig(BaseModel):
