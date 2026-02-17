@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from sklearn.linear_model import LogisticRegression, RidgeClassifier, SGDClassifier
 from sklearn.svm import SVC
@@ -23,6 +23,7 @@ from engine.contracts.model_configs import (
     HistGradientBoostingConfig,
 )
 from engine.components.interfaces import ModelBuilder
+from engine.types.sklearn import SkClassifier
 
 from .common import _filtered_kwargs, _maybe_set_random_state
 
@@ -31,7 +32,7 @@ class LogRegBuilder(ModelBuilder):
     cfg: LogRegConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         # Start from filtered kwargs
         kw = _filtered_kwargs(LogisticRegression, self.cfg)
         _maybe_set_random_state(LogisticRegression, kw, self.seed)
@@ -68,7 +69,7 @@ class LogRegBuilder(ModelBuilder):
 
         return LogisticRegression(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -77,12 +78,12 @@ class SVMBuilder(ModelBuilder):
     cfg: SVMConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(SVC, self.cfg)
         _maybe_set_random_state(SVC, kw, self.seed)
         return SVC(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -91,12 +92,12 @@ class DecisionTreeBuilder(ModelBuilder):
     cfg: TreeConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(DecisionTreeClassifier, self.cfg)
         _maybe_set_random_state(DecisionTreeClassifier, kw, self.seed)
         return DecisionTreeClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -105,12 +106,12 @@ class RandomForestBuilder(ModelBuilder):
     cfg: ForestConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(RandomForestClassifier, self.cfg)
         _maybe_set_random_state(RandomForestClassifier, kw, self.seed)
         return RandomForestClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -118,11 +119,11 @@ class RandomForestBuilder(ModelBuilder):
 class KNNBuilder(ModelBuilder):
     cfg: KNNConfig
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(KNeighborsClassifier, self.cfg)
         return KNeighborsClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -130,11 +131,11 @@ class KNNBuilder(ModelBuilder):
 class GaussianNBBuilder(ModelBuilder):
     cfg: GaussianNBConfig
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(GaussianNB, self.cfg)
         return GaussianNB(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -143,12 +144,12 @@ class RidgeClassifierBuilder(ModelBuilder):
     cfg: RidgeClassifierConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(RidgeClassifier, self.cfg)
         _maybe_set_random_state(RidgeClassifier, kw, self.seed)
         return RidgeClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -157,12 +158,12 @@ class SGDClassifierBuilder(ModelBuilder):
     cfg: SGDClassifierConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(SGDClassifier, self.cfg)
         _maybe_set_random_state(SGDClassifier, kw, self.seed)
         return SGDClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -171,12 +172,12 @@ class ExtraTreesBuilder(ModelBuilder):
     cfg: ExtraTreesConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(ExtraTreesClassifier, self.cfg)
         _maybe_set_random_state(ExtraTreesClassifier, kw, self.seed)
         return ExtraTreesClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()
 
 
@@ -185,10 +186,10 @@ class HistGradientBoostingBuilder(ModelBuilder):
     cfg: HistGradientBoostingConfig
     seed: Optional[int] = None
 
-    def make_estimator(self) -> Any:
+    def make_estimator(self) -> SkClassifier:
         kw = _filtered_kwargs(HistGradientBoostingClassifier, self.cfg)
         _maybe_set_random_state(HistGradientBoostingClassifier, kw, self.seed)
         return HistGradientBoostingClassifier(**kw)
 
-    def build(self) -> Any:
+    def build(self) -> SkClassifier:
         return self.make_estimator()

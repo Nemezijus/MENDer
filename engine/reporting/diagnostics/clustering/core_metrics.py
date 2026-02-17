@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from engine.types.sklearn import SkModel
+
 from engine.reporting.common.json_safety import ReportError, add_report_error
 from engine.core.sklearn_utils import transform_through_pipeline as _transform_through_pipeline_core
 from engine.core.sklearn_utils import unwrap_final_estimator
@@ -25,7 +27,7 @@ def _as_2d(X: Any) -> Any:
 _final_estimator = unwrap_final_estimator
 
 
-def _transform_through_pipeline(model: Any, X: Any) -> Any:
+def _transform_through_pipeline(model: SkModel, X: Any) -> Any:
     if np is None:
         return X
     return _transform_through_pipeline_core(model, X)
@@ -72,7 +74,7 @@ def cluster_summary(labels: Any) -> Mapping[str, Any]:
         }
 
 
-def model_diagnostics(model: Any, X: Any, labels: Any) -> Tuple[Mapping[str, Any], List[str]]:
+def model_diagnostics(model: SkModel, X: Any, labels: Any) -> Tuple[Mapping[str, Any], List[str]]:
     warnings: List[str] = []
     out: Dict[str, Any] = {}
 

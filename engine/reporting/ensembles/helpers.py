@@ -1,17 +1,19 @@
 import numpy as np
-from typing import Optional
+from typing import Optional, Any
+
+from engine.types.sklearn import SkEstimator, SkModel
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.core.sklearn_utils import transform_through_pipeline as _transform_through_pipeline_core
 from engine.core.sklearn_utils import unwrap_final_estimator as _unwrap_final_estimator_core
 
 
-def _unwrap_final_estimator(model):
+def _unwrap_final_estimator(model: SkModel) -> SkEstimator:
     """Back-compat alias for :func:`engine.core.sklearn_utils.unwrap_final_estimator`."""
     return _unwrap_final_estimator_core(model)
 
 
-def _transform_through_pipeline(model, X):
+def _transform_through_pipeline(model: SkModel, X: Any) -> Any:
     """Back-compat alias for :func:`engine.core.sklearn_utils.transform_through_pipeline`."""
     return _transform_through_pipeline_core(model, X)
 

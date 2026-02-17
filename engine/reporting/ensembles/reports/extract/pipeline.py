@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Tuple
 
+from engine.types.sklearn import SkModel, SkEstimator
+
 from engine.reporting.ensembles.helpers import _transform_through_pipeline, _unwrap_final_estimator
 
 
-def resolve_estimator_and_X(model: Any, X: Any) -> Tuple[Any, Any]:
+def resolve_estimator_and_X(model: SkModel, X: Any) -> Tuple[SkEstimator | Any, Any]:
     """Resolve the reporting estimator and the feature matrix it should see.
 
     Ensembles in MENDer are sometimes returned as:

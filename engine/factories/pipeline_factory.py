@@ -1,6 +1,8 @@
 from __future__ import annotations
 from sklearn.pipeline import Pipeline
 
+from engine.types.sklearn import SkEstimator
+
 from engine.contracts.run_config import RunConfig
 from engine.contracts.scale_configs import ScaleModel
 from engine.contracts.feature_configs import FeaturesModel
@@ -20,11 +22,12 @@ def make_pipeline(cfg: RunConfig, rngm: RngManager, *, stream: str = "real") -> 
     feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=cfg.eval)
     model_seed = rngm.child_seed(f"{stream}/model")
     model_builder = make_model(cfg.model, seed=model_seed)
+    est: SkEstimator = model_builder.make_estimator()
 
     return Pipeline(steps=[
         ("scale", scaler_strategy.make_transformer()),
         ("feat",  feature_strategy.make_transformer()),
-        ("clf",   model_builder.make_estimator()),
+        ("clf",   est),
     ])
 
 
@@ -42,11 +45,12 @@ def make_unsupervised_pipeline(cfg: UnsupervisedRunConfig, rngm: RngManager, *, 
     feature_strategy = make_features(cfg.features, seed=features_seed, model_cfg=cfg.model, eval_cfg=None)
     model_seed = rngm.child_seed(f"{stream}/model")
     model_builder = make_model(cfg.model, seed=model_seed)
+    est: SkEstimator = model_builder.make_estimator()
 
     return Pipeline(steps=[
         ("scale", scaler_strategy.make_transformer()),
         ("feat", feature_strategy.make_transformer()),
-        ("clf", model_builder.make_estimator()),
+        ("clf", est),
     ])
 
 def make_preproc_pipeline(cfg: RunConfig, rngm: RngManager, *, stream: str = "real") -> Pipeline:
@@ -98,11 +102,12 @@ def make_pipeline_for_model_cfg(
     feature_strategy = make_features(features, seed=features_seed, model_cfg=model_cfg, eval_cfg=eval_cfg)
     model_seed = rngm.child_seed(f"{stream}/model")
     model_builder = make_model(model_cfg, seed=model_seed)
+    est: SkEstimator = model_builder.make_estimator()
 
     return Pipeline(steps=[
         ("scale", scaler_strategy.make_transformer()),
         ("feat",  feature_strategy.make_transformer()),
-        ("clf",   model_builder.make_estimator()),
+        ("clf",   est),
     ])
 
 def make_preproc_pipeline_for_model_cfg(
