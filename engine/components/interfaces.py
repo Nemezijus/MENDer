@@ -5,6 +5,7 @@ import numpy as np
 
 from engine.components.splitters.types import Split
 from engine.contracts.results.decoder import DecoderOutputs
+from engine.core.progress import ProgressCallback
 
 class DataLoader(Protocol):
     def load(self) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -150,6 +151,9 @@ class BaselineRunner(Protocol):
         self,
         X: np.ndarray,
         y: np.ndarray,
+        *,
+        n_shuffles: Optional[int] = None,
+        progress: Optional[ProgressCallback] = None,
     ) -> np.ndarray:
         """Return an array of baseline (e.g., shuffle) scores."""
         ...

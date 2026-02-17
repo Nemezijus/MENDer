@@ -32,6 +32,7 @@ from engine.factories.pipeline_factory import make_pipeline
 from engine.factories.sanity_factory import make_sanity_checker
 from engine.factories.split_factory import make_splitter
 from engine.runtime.random.rng import RngManager
+from engine.core.progress import ProgressCallback
 from engine.use_cases._deps import resolve_seed
 
 from .aggregate import pool_eval_outputs, compute_eval_payloads
@@ -45,6 +46,7 @@ def train_supervised(
     *,
     store: Any = None,
     rng: Optional[int] = None,
+    progress: Optional[ProgressCallback] = None,
 ) -> TrainResult:
     cfg = run_config
 
@@ -185,20 +187,21 @@ def train_supervised(
 
     if decoder_payload is not None:
         result["decoder_outputs"] = decoder_payload
-
     # --- Shuffle baseline --------------------------------------------------
-    # The backend owns progress reporting for shuffles (and may run them when
-    # `progress_id` is present). To avoid double-running (and double notes), we
-    # only run shuffles here when no progress_id is provided.
+    # Some callers may choose to compute the shuffle baseline in a separate step
+    # (e.g., to stream progress updates). When ``progress_id`` is present, we treat
+    # that as a signal that baseline execution/progress may be handled externally
+    # and therefore skip running it here to avoid duplicate work/notes.
     n_shuffles = int(getattr(cfg.eval, "n_shuffles", 0) or 0)
     progress_id = getattr(cfg.eval, "progress_id", None)
+
     if n_shuffles > 0 and not progress_id:
         baseline = make_baseline(cfg, rngm=rngm)
         try:
-            # Ensure standalone BL runs do not require backend injection.
-            setattr(baseline, "_progress_total", n_shuffles)
-
-            scores = np.asarray(baseline.run(X, y), dtype=float).ravel()
+            scores = np.asarray(
+                baseline.run(X, y, n_shuffles=n_shuffles, progress=progress),
+                dtype=float,
+            ).ravel()
 
             # Compare baseline against the trained model's mean score.
             ref_score_f = float(mean_score)
@@ -212,9 +215,7 @@ def train_supervised(
             )
         except Exception as e:
             # Baseline errors must not break training.
-            result["notes"].append(
-                f"Shuffle baseline failed: {type(e).__name__}: {e}"
-            )
+            result["notes"].append(f"Shuffle baseline failed: {type(e).__name__}: {e}")
 
     # --- Artifact meta + persistence/caching -------------------------------
     attach_artifact_and_persist(

@@ -8,6 +8,7 @@ from engine.contracts.model_configs import get_model_task
 from engine.components.interfaces import BaselineRunner
 from engine.runtime.random.rng import RngManager
 from engine.runtime.random.shuffle import shuffle_simple_vector
+from engine.core.progress import ProgressCallback
 
 from engine.factories.split_factory import make_splitter
 from engine.factories.scale_factory import make_scaler
@@ -89,30 +90,30 @@ class LabelShuffleBaseline(BaselineRunner):
         # Mean score across folds for this shuffle
         return float(np.mean(fold_scores)) if len(fold_scores) else float("nan")
 
-    def run(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """
-        Runs n_shuffles label permutations and returns an array of length n_shuffles.
+    def run(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        *,
+        n_shuffles: Optional[int] = None,
+        progress: Optional[ProgressCallback] = None,
+    ) -> np.ndarray:
+        """Run label-shuffle baselines.
+
+        Returns an array of length ``n_shuffles``.
         - Hold-out: each element is the hold-out score for that shuffle.
         - K-fold:   each element is the mean CV score across folds for that shuffle.
-        Progress registry is injected via self._progress and self.progress_id.
+
+        Progress reporting is optional via ``progress``.
         """
-        # Prefer explicit config, but allow backend/service injection to override.
-        # Historically, the backend injected `_progress_total` to drive a progress bar.
-        n_shuffles = int(
-            getattr(self, "_progress_total", 0)
-            or getattr(getattr(self.cfg, "eval", None), "n_shuffles", 0)
-            or 0
-        )
-        progress_id: Optional[str] = getattr(self, "progress_id", None)
-        PROGRESS = getattr(self, "_progress", None)  # injected by service
+        n_shuffles = int(n_shuffles if n_shuffles is not None else (getattr(getattr(self.cfg, "eval", None), "n_shuffles", 0) or 0))
 
         if n_shuffles < 1:
             raise ValueError("n_shuffles must be >= 1")
 
         use_kfold = getattr(self.cfg.split, "mode", "").lower() == "kfold"
-
-        if PROGRESS and progress_id:
-            PROGRESS.init(progress_id, total=n_shuffles, label=f"Shuffling 0/{n_shuffles}…")
+        if progress:
+            progress.init(total=n_shuffles, label=f"Shuffling 0/{n_shuffles}…")
 
         scores = np.empty(n_shuffles, dtype=float)
         try:
@@ -131,11 +132,10 @@ class LabelShuffleBaseline(BaselineRunner):
                     score_i = self._score_once_holdout(X, y_shuf, seed=pipe_seed)
 
                 scores[i] = score_i
-
-                if PROGRESS and progress_id:
-                    PROGRESS.update(progress_id, current=i + 1, label=f"Shuffling {i+1}/{n_shuffles}…")
+                if progress:
+                    progress.update(current=i + 1, label=f"Shuffling {i+1}/{n_shuffles}…")
 
             return scores
         finally:
-            if PROGRESS and progress_id:
-                PROGRESS.finalize(progress_id, label="Finalizing…")
+            if progress:
+                progress.finalize(label="Finalizing…")
