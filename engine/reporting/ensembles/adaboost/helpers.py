@@ -4,36 +4,29 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 
 import numpy as np
 
+from engine.reporting.common.hist import (
+    hist_add_inplace as _hist_add_inplace,
+    hist_init as _hist_init,
+    histogram_minmax_payload as _histogram_minmax_payload,
+)
+
 
 # -----------------------
 # hist utilities
 # -----------------------
 def hist_init(edges: np.ndarray) -> np.ndarray:
-    return np.zeros(len(edges) - 1, dtype=float)
+    # Keep signature stable for accumulators, delegate implementation.
+    return _hist_init(edges, np_mod=np)
 
 
 def hist_add(counts: np.ndarray, edges: np.ndarray, values: Sequence[float]) -> None:
-    if counts is None or edges is None:
-        return
-    h, _ = np.histogram(np.asarray(values, dtype=float), bins=np.asarray(edges, dtype=float))
-    counts += h
+    _hist_add_inplace(counts=counts, edges=edges, values=values, np_mod=np)
 
 
 def base_score_hist(scores: Sequence[float], *, bins: int = 20) -> Dict[str, Any]:
-    vals = np.asarray([float(x) for x in scores if x is not None], dtype=float)
-    if vals.size == 0:
-        return {"edges": [], "counts": []}
-
-    vmin = float(np.min(vals))
-    vmax = float(np.max(vals))
-    if np.isclose(vmin, vmax):
-        eps = 1e-6 if vmax == 0.0 else abs(vmax) * 1e-6
-        vmin -= eps
-        vmax += eps
-
-    edges = np.linspace(vmin, vmax, num=int(bins) + 1, dtype=float)
-    counts, edges = np.histogram(vals, bins=edges)
-    return {"edges": [float(x) for x in edges.tolist()], "counts": [float(x) for x in counts.tolist()]}
+    # Keep stable output shape used by the UI.
+    vals = [float(x) for x in scores if x is not None]
+    return dict(_histogram_minmax_payload(vals, bins=bins, np_mod=np))
 
 
 # -----------------------

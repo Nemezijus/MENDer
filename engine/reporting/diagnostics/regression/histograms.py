@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, List, Mapping, Optional, Tuple
 
-from engine.reporting.common.json_safety import ReportError, add_report_error
+from engine.reporting.common.hist import histogram_edges_counts_payload
 
 from .common import numpy
 
@@ -18,35 +18,4 @@ def histogram_1d(
     Returns None if it cannot be computed.
     """
     np = numpy()
-    if np is None:
-        return None
-    try:
-        v = np.asarray(values, dtype=float).reshape(-1)
-        v = v[np.isfinite(v)]
-        if v.size == 0:
-            return None
-        if n_bins <= 0:
-            n_bins = 30
-
-        if value_range is None:
-            lo = float(np.min(v))
-            hi = float(np.max(v))
-        else:
-            lo, hi = float(value_range[0]), float(value_range[1])
-
-        if not np.isfinite(lo) or not np.isfinite(hi):
-            return None
-
-        if hi <= lo:
-            # degenerate: widen slightly
-            eps = 1e-9 if lo == 0 else abs(lo) * 1e-9
-            lo -= eps
-            hi += eps
-
-        counts, edges = np.histogram(v, bins=int(n_bins), range=(lo, hi))
-        return {
-            "edges": [float(x) for x in edges.tolist()],
-            "counts": [float(x) for x in counts.tolist()],
-        }
-    except Exception:
-        return None
+    return histogram_edges_counts_payload(values, n_bins=n_bins, value_range=value_range, np_mod=np)

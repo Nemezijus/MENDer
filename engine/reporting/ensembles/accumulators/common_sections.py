@@ -4,6 +4,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
+from engine.reporting.common.hist import hist_add_inplace
+
 from engine.reporting.ensembles.common import vote_margin_and_strength
 
 
@@ -118,17 +120,6 @@ def margins_strengths_and_ties(
         if tie:
             ties += 1
     return margins, strengths, ties
-
-
-def hist_add_inplace(*, counts: np.ndarray, edges: np.ndarray, values: np.ndarray) -> None:
-    """Update histogram counts in-place."""
-    if counts is None or edges is None:
-        return
-    vals = np.asarray(values, dtype=float)
-    if vals.size == 0:
-        return
-    h, _ = np.histogram(vals, bins=edges)
-    counts += h
 
 
 def finalize_pairwise_agreement(

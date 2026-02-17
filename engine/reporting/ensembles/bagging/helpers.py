@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 
+from engine.reporting.common.hist import histogram_minmax_payload as _histogram_minmax_payload
+
 from engine.reporting.ensembles.common import vote_margin_and_strength
 
 
@@ -112,20 +114,8 @@ def r2_score_safe(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 def base_score_hist(scores: Sequence[float], *, bins: int = 20) -> Dict[str, Any]:
     """Histogram for pooled base-estimator scores (data-driven min..max)."""
-    vals = np.asarray([float(x) for x in scores if x is not None], dtype=float)
-    if vals.size == 0:
-        return {"edges": [], "counts": []}
-
-    vmin = float(np.min(vals))
-    vmax = float(np.max(vals))
-    if np.isclose(vmin, vmax):
-        eps = 1e-6 if vmax == 0.0 else abs(vmax) * 1e-6
-        vmin -= eps
-        vmax += eps
-
-    edges = np.linspace(vmin, vmax, num=int(bins) + 1, dtype=float)
-    counts, edges = np.histogram(vals, bins=edges)
-    return {"edges": [float(x) for x in edges.tolist()], "counts": [float(x) for x in counts.tolist()]}
+    vals = [float(x) for x in scores if x is not None]
+    return dict(_histogram_minmax_payload(vals, bins=bins, np_mod=np))
 
 
 __all__ = [
