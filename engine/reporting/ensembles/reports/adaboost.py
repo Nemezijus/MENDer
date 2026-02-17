@@ -18,6 +18,63 @@ from .extract import (
 
 from ..common import attach_report_error
 
+
+def _coerce_base_preds_2d(
+    base_preds: Any,
+    *,
+    n_samples: int,
+    n_classes: int | None = None,
+) -> np.ndarray | None:
+    """Coerce base-estimator predictions into a 2D (n_samples, n_estimators) array.
+
+    The AdaBoost accumulator expects per-estimator *label* predictions for each sample.
+    During refactors, helper functions may return probabilities with shape like:
+
+        (n_samples, n_estimators, n_classes)
+        (n_estimators, n_samples, n_classes)
+
+    This helper normalizes those to a 2D array of predicted labels.
+    """
+    if base_preds is None:
+        return None
+
+    P = np.asarray(base_preds)
+    if P.size == 0:
+        return None
+
+    # If probabilities were provided, reduce to labels.
+    if P.ndim == 3:
+        class_axis = None
+        if n_classes is not None and n_classes in P.shape:
+            for ax in (2, 1, 0):
+                if P.shape[ax] == n_classes:
+                    class_axis = ax
+                    break
+        if class_axis is None:
+            # Fall back to smallest-dimension heuristic (classes are usually small).
+            class_axis = int(np.argmin(P.shape))
+        P = np.argmax(P, axis=class_axis)
+
+    # Handle degenerate cases.
+    if P.ndim == 1:
+        if int(P.shape[0]) == int(n_samples):
+            P = P.reshape(n_samples, 1)
+        else:
+            P = P.reshape(1, -1)
+
+    if P.ndim != 2:
+        return None
+
+    # Align to (n_samples, n_estimators)
+    if int(P.shape[0]) == int(n_samples):
+        return P
+    if int(P.shape[1]) == int(n_samples):
+        return P.T
+
+    # Unknown orientation; best-effort return.
+    return P
+
+
 def update_adaboost_report(
     *,
     cfg: EnsembleRunConfig,
@@ -71,13 +128,19 @@ def update_adaboost_report(
                     classes_arr=classes_arr,
                 )
 
-                if base_res.base_preds is not None and adaboost_cls_acc is not None:
+                base_preds_2d = _coerce_base_preds_2d(
+                    base_res.base_preds,
+                    n_samples=int(np.asarray(yte).shape[0]),
+                    n_classes=int(len(classes_arr)) if classes_arr is not None else None,
+                )
+
+                if base_preds_2d is not None and adaboost_cls_acc is not None:
 
                     # ---- stage/weight diagnostics (configured vs fitted vs effective) ----
                     w_arr = np.asarray(w, dtype=float)
                     weight_eps = 1e-6
 
-                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_res.base_preds.shape[1])
+                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_2d.shape[1])
                     n_nonzero_weights = int(np.sum(w_arr > 0))
                     n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
 
@@ -93,9 +156,9 @@ def update_adaboost_report(
                         weight_mass_topk = None
 
                     adaboost_cls_acc.add_fold(
-                        base_preds=base_res.base_preds,
-                        estimator_weights=np.asarray(w, dtype=float)[: base_res.base_preds.shape[1]],
-                        estimator_errors=np.asarray(errs, dtype=float)[: base_res.base_preds.shape[1]] if errs is not None else None,
+                        base_preds=base_preds_2d,
+                        estimator_weights=np.asarray(w, dtype=float)[: base_preds_2d.shape[1]],
+                        estimator_errors=np.asarray(errs, dtype=float)[: base_preds_2d.shape[1]] if errs is not None else None,
                         base_estimator_scores=base_res.base_scores,
 
                         # diagnostics
@@ -127,12 +190,18 @@ def update_adaboost_report(
                     evaluator=evaluator,
                 )
 
-                if base_res.base_preds is not None and adaboost_reg_acc is not None:
+                base_preds_2d = _coerce_base_preds_2d(
+                    base_res.base_preds,
+                    n_samples=int(yte_arr.shape[0]),
+                    n_classes=None,
+                )
+
+                if base_preds_2d is not None and adaboost_reg_acc is not None:
 
                     w_arr = np.asarray(w, dtype=float)
                     weight_eps = 1e-6
 
-                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_res.base_preds.shape[1])
+                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_2d.shape[1])
                     n_nonzero_weights = int(np.sum(w_arr > 0))
                     n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
 
@@ -150,9 +219,9 @@ def update_adaboost_report(
                     adaboost_reg_acc.add_fold(
                         y_true=yte_arr,
                         ensemble_pred=yens,
-                        base_preds=base_res.base_preds,
-                        estimator_weights=np.asarray(w, dtype=float)[: base_res.base_preds.shape[1]],
-                        estimator_errors=np.asarray(errs, dtype=float)[: base_res.base_preds.shape[1]] if errs is not None else None,
+                        base_preds=base_preds_2d,
+                        estimator_weights=np.asarray(w, dtype=float)[: base_preds_2d.shape[1]],
+                        estimator_errors=np.asarray(errs, dtype=float)[: base_preds_2d.shape[1]] if errs is not None else None,
                         base_estimator_scores=base_res.base_scores,
                         n_estimators_fitted=n_estimators_fitted,
                         n_nonzero_weights=n_nonzero_weights,
