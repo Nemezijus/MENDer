@@ -3,18 +3,16 @@ from typing import Any, Tuple
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from engine.components.evaluation.scoring import PROBA_METRICS
 from engine.reporting.ensembles.bagging import (
     BaggingEnsembleReportAccumulator,
     BaggingEnsembleRegressorReportAccumulator,
 )
 
-from ..helpers import (
-    _slice_X_by_features,
-    _get_classes_arr,
-    _should_decode_from_index_space,
-    _encode_y_true_to_index,
-    _extract_base_estimator_algo_from_cfg,
+from ..helpers import _extract_base_estimator_algo_from_cfg, _get_classes_arr, _slice_X_by_features
+
+from .extract import (
+    collect_base_predictions_classification,
+    collect_base_predictions_regression,
 )
 
 from ..common import attach_report_error
@@ -58,94 +56,28 @@ def update_bagging_report(
                         replacement=getattr(cfg.ensemble, "replacement", None),
                     )
 
-                base_pred_cols = []
-                base_scores_list: list[float] = []
-
                 classes_arr = _get_classes_arr(model)
-                yte_arr = np.asarray(yte)
-                yte_enc = _encode_y_true_to_index(yte_arr, classes_arr)
+                base_res = collect_base_predictions_classification(
+                    estimators=ests,
+                    X=Xte,
+                    y_true=yte,
+                    evaluator=evaluator,
+                    metric_name=metric_name,
+                    classes_arr=classes_arr,
+                    feature_indices_list=feats_list,
+                    slice_X=_slice_X_by_features,
+                )
 
-                for i, est in enumerate(ests):
-                    if est is None:
-                        continue
-
-                    feat_idx = None
-                    try:
-                        if feats_list is not None and i < len(feats_list):
-                            feat_idx = feats_list[i]
-                    except Exception:
-                        feat_idx = None
-
-                    Xte_i = _slice_X_by_features(Xte, feat_idx)
-
-                    # IMPORTANT: if max_features < 1.0, each base estimator was trained on a subset.
-                    # We must apply the SAME subset at predict/score time.
-                    yp_raw = np.asarray(est.predict(Xte_i))
-
-                    if _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                        yp_dec = classes_arr[yp_raw.astype(int, copy=False)]
-                    else:
-                        yp_dec = yp_raw
-
-                    base_pred_cols.append(np.asarray(yp_dec))
-
-                    # score distribution (handle PROBA metrics deterministically in encoded space)
-                    try:
-                        y_proba_i = None
-                        y_score_i = None
-
-                        if metric_name in PROBA_METRICS:
-                            if hasattr(est, "predict_proba"):
-                                try:
-                                    y_proba_i = est.predict_proba(Xte_i)
-                                except Exception:
-                                    y_proba_i = None
-                            if y_proba_i is None and hasattr(est, "decision_function"):
-                                try:
-                                    y_score_i = est.decision_function(Xte_i)
-                                except Exception:
-                                    y_score_i = None
-
-                            if y_proba_i is None and y_score_i is None:
-                                s = None
-                            elif yte_enc is not None and _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                                s = evaluator.score(
-                                    yte_enc,
-                                    y_pred=yp_raw,
-                                    y_proba=y_proba_i,
-                                    y_score=y_score_i,
-                                )
-                            else:
-                                s = evaluator.score(
-                                    yte_arr,
-                                    y_pred=yp_dec,
-                                    y_proba=y_proba_i,
-                                    y_score=y_score_i,
-                                )
-                        else:
-                            s = evaluator.score(
-                                yte_arr,
-                                y_pred=yp_dec,
-                                y_proba=None,
-                                y_score=None,
-                            )
-
-                        if s is not None:
-                            base_scores_list.append(float(s))
-                    except Exception:
-                        pass
-
-                if base_pred_cols and bagging_cls_acc is not None:
-                    base_preds_mat = np.column_stack(base_pred_cols)
+                if base_res.base_preds is not None and bagging_cls_acc is not None:
 
                     oob_score = getattr(model, "oob_score_", None)
                     oob_decision = getattr(model, "oob_decision_function_", None)
 
                     bagging_cls_acc.add_fold(
-                        base_preds=base_preds_mat,
+                        base_preds=base_res.base_preds,
                         oob_score=oob_score if oob_score is not None else None,
                         oob_decision_function=oob_decision,
-                        base_estimator_scores=base_scores_list if base_scores_list else None,
+                        base_estimator_scores=base_res.base_scores,
                     )
 
             # --- regression bagging report ---
@@ -162,41 +94,19 @@ def update_bagging_report(
                         oob_score_enabled=bool(getattr(cfg.ensemble, "oob_score", False)),
                     )
 
-                base_pred_cols = []
-                base_scores_list: list[float] = []
-
                 yte_arr = np.asarray(yte, dtype=float)
                 yens = np.asarray(y_pred, dtype=float)
 
-                for i, est in enumerate(ests):
-                    if est is None:
-                        continue
+                base_res = collect_base_predictions_regression(
+                    estimators=ests,
+                    X=Xte,
+                    y_true=yte_arr,
+                    evaluator=evaluator,
+                    feature_indices_list=feats_list,
+                    slice_X=_slice_X_by_features,
+                )
 
-                    feat_idx = None
-                    try:
-                        if feats_list is not None and i < len(feats_list):
-                            feat_idx = feats_list[i]
-                    except Exception:
-                        feat_idx = None
-
-                    Xte_i = _slice_X_by_features(Xte, feat_idx)
-
-                    yp = np.asarray(est.predict(Xte_i), dtype=float)
-                    base_pred_cols.append(yp)
-
-                    try:
-                        s = evaluator.score(
-                            yte_arr,
-                            y_pred=yp,
-                            y_proba=None,
-                            y_score=None,
-                        )
-                        base_scores_list.append(float(s))
-                    except Exception:
-                        pass
-
-                if base_pred_cols and bagging_reg_acc is not None:
-                    base_preds_mat = np.column_stack(base_pred_cols)
+                if base_res.base_preds is not None and bagging_reg_acc is not None:
 
                     oob_score = getattr(model, "oob_score_", None)
                     oob_pred = getattr(model, "oob_prediction_", None)
@@ -204,10 +114,10 @@ def update_bagging_report(
                     bagging_reg_acc.add_fold(
                         y_true=yte_arr,
                         ensemble_pred=yens,
-                        base_preds=base_preds_mat,
+                        base_preds=base_res.base_preds,
                         oob_score=oob_score if oob_score is not None else None,
                         oob_prediction=oob_pred,
-                        base_estimator_scores=base_scores_list if base_scores_list else None,
+                        base_estimator_scores=base_res.base_scores,
                     )
     except Exception as e:
         if bagging_cls_acc is not None:

@@ -9,7 +9,7 @@ from engine.reporting.ensembles.voting import (
     VotingEnsembleRegressorReportAccumulator,
 )
 
-from ..helpers import _unwrap_final_estimator
+from .extract import collect_voting_base_preds_and_scores, resolve_estimator_and_X
 from ..common import attach_report_error
 
 
@@ -30,7 +30,7 @@ def update_voting_report(
 ) -> Tuple[VotingEnsembleReportAccumulator | None, VotingEnsembleRegressorReportAccumulator | None]:
     """Update Voting ensemble report accumulators for the current fold (best-effort, never raises)."""
     try:
-        final_est = _unwrap_final_estimator(model)
+        final_est, Xte_use = resolve_estimator_and_X(model, Xte)
 
         # --- classification voting report ---
         if eval_kind == "classification" and isinstance(final_est, VotingClassifier):
@@ -48,53 +48,13 @@ def update_voting_report(
                     voting=str(getattr(cfg.ensemble, "voting", "hard")),
                 )
 
-            base_preds: Dict[str, Any] = {}
-            base_scores: Dict[str, float] = {}
-
-            # VotingClassifier internally label-encodes y during fit().
-            yte_arr = np.asarray(yte)
-            yte_enc = yte_arr
-            le = getattr(final_est, "le_", None)
-            if le is not None:
-                try:
-                    yte_enc = le.transform(yte_arr)
-                except Exception:
-                    yte_enc = yte_arr
-
-            est_pairs = list(zip(getattr(final_est, "estimators", []), getattr(final_est, "estimators_", [])))
-            for (name, _unfitted), fitted in est_pairs:
-                yp_enc = fitted.predict(Xte)
-
-                yp_report = yp_enc
-                if le is not None:
-                    try:
-                        yp_report = le.inverse_transform(np.asarray(yp_enc))
-                    except Exception:
-                        yp_report = yp_enc
-
-                base_preds[name] = yp_report
-
-                y_proba_i = None
-                y_score_i = None
-                if hasattr(fitted, "predict_proba"):
-                    try:
-                        y_proba_i = fitted.predict_proba(Xte)
-                    except Exception:
-                        y_proba_i = None
-                if y_proba_i is None and hasattr(fitted, "decision_function"):
-                    try:
-                        y_score_i = fitted.decision_function(Xte)
-                    except Exception:
-                        y_score_i = None
-
-                base_scores[name] = float(
-                    evaluator.score(
-                        yte_enc,
-                        y_pred=yp_enc,
-                        y_proba=y_proba_i,
-                        y_score=y_score_i,
-                    )
-                )
+            base_preds, base_scores = collect_voting_base_preds_and_scores(
+                voting_estimator=final_est,
+                X=Xte_use,
+                y_true=yte,
+                evaluator=evaluator,
+                is_classification=True,
+            )
 
             if voting_cls_acc is not None:
                 voting_cls_acc.add_fold(
@@ -119,21 +79,13 @@ def update_voting_report(
                     weights=getattr(final_est, "weights", None),
                 )
 
-            base_preds: Dict[str, Any] = {}
-            base_scores: Dict[str, float] = {}
-
-            est_pairs = list(zip(getattr(final_est, "estimators", []), getattr(final_est, "estimators_", [])))
-            for (name, _unfitted), fitted in est_pairs:
-                yp = fitted.predict(Xte)
-                base_preds[name] = np.asarray(yp)
-                base_scores[name] = float(
-                    evaluator.score(
-                        np.asarray(yte),
-                        y_pred=np.asarray(yp),
-                        y_proba=None,
-                        y_score=None,
-                    )
-                )
+            base_preds, base_scores = collect_voting_base_preds_and_scores(
+                voting_estimator=final_est,
+                X=Xte_use,
+                y_true=yte,
+                evaluator=evaluator,
+                is_classification=False,
+            )
 
             if voting_reg_acc is not None:
                 voting_reg_acc.add_fold(

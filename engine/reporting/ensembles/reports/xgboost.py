@@ -4,7 +4,7 @@ from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from engine.reporting.ensembles.xgboost import XGBoostEnsembleReportAccumulator
 
-from ..helpers import _unwrap_final_estimator
+from .extract import extract_xgboost_fold_info, resolve_estimator_and_X
 from ..common import attach_report_error
 
 def update_xgboost_report(
@@ -21,72 +21,23 @@ def update_xgboost_report(
 ) -> XGBoostEnsembleReportAccumulator | None:
     """Update XGBoost report accumulator for the current fold (best-effort, never raises)."""
     try:
-        inner = _unwrap_final_estimator(model)
+        inner, _ = resolve_estimator_and_X(model, Xte)
 
-
-        # If pipeline-wrapped, prefer named_steps['clf'] (consistent with how you build pipelines)
-        if hasattr(model, "named_steps") and isinstance(getattr(model, "named_steps"), dict):
-            clf_step = model.named_steps.get("clf", None)
-            if clf_step is not None:
-                inner = clf_step
-
-        # Unwrap XGB label adapter: XGBClassifierLabelAdapter(model=..., ...)
-        inner = getattr(inner, "model", inner)
-
+        info = extract_xgboost_fold_info(xgb_model=inner)
         if xgb_acc is None:
-            params = {}
-            try:
-                params = dict(getattr(inner, "get_params", lambda: {})() or {})
-            except Exception:
-                params = {}
-
-            # XGBoost training eval metric used for eval_set curves (often "mlogloss"/"logloss"/"rmse")
-            train_eval_metric = None
-            try:
-                tem = params.get("eval_metric", None)
-                if isinstance(tem, (list, tuple)) and len(tem) > 0:
-                    train_eval_metric = str(tem[0])
-                elif tem is not None:
-                    train_eval_metric = str(tem)
-            except Exception:
-                train_eval_metric = None
-
             xgb_acc = XGBoostEnsembleReportAccumulator.create(
-                metric_name=str(cfg.eval.metric),          # final metric (MENDer)
+                metric_name=str(cfg.eval.metric),
                 task=str(getattr(cfg.ensemble, "problem_kind", None) or "classification"),
-                train_eval_metric=train_eval_metric,       # training metric (XGB)
-                params=params,
+                train_eval_metric=info.get("train_eval_metric", None),
+                params=info.get("params", {}) or {},
             )
 
-        best_iteration = (
-            getattr(inner, "best_iteration", None)
-            or getattr(inner, "best_iteration_", None)
-        )
-        best_score = (
-            getattr(inner, "best_score", None)
-            or getattr(inner, "best_score_", None)
-        )
-
-        evals_result = getattr(inner, "evals_result_", None)
-        if callable(evals_result):
-            evals_result = None
-        if not evals_result:
-            best_iteration = None
-            best_score = None
-        feat_imps = getattr(inner, "feature_importances_", None)
-
-        feature_names = None
-        try:
-            feature_names = None
-        except Exception:
-            feature_names = None
-
         xgb_acc.add_fold(
-            best_iteration=best_iteration,
-            best_score=best_score,
-            evals_result=evals_result,
-            feature_importances=feat_imps,
-            feature_names=feature_names,
+            best_iteration=info.get("best_iteration", None),
+            best_score=info.get("best_score", None),
+            evals_result=info.get("evals_result", None),
+            feature_importances=info.get("feature_importances", None),
+            feature_names=info.get("feature_names", None),
         )
 
     except Exception as e:

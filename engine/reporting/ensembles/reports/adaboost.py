@@ -3,19 +3,17 @@ from typing import Any, Tuple
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from engine.components.evaluation.scoring import PROBA_METRICS
 from engine.reporting.ensembles.adaboost import (
     AdaBoostEnsembleReportAccumulator,
     AdaBoostEnsembleRegressorReportAccumulator,
 )
 
-from ..helpers import (
-    _unwrap_final_estimator,
-    _transform_through_pipeline,
-    _get_classes_arr,
-    _should_decode_from_index_space,
-    _encode_y_true_to_index,
-    _extract_base_estimator_algo_from_cfg,
+from ..helpers import _extract_base_estimator_algo_from_cfg, _get_classes_arr
+
+from .extract import (
+    collect_base_predictions_classification,
+    collect_base_predictions_regression,
+    resolve_estimator_and_X,
 )
 
 from ..common import attach_report_error
@@ -35,37 +33,7 @@ def update_adaboost_report(
 ) -> Tuple[AdaBoostEnsembleReportAccumulator | None, AdaBoostEnsembleRegressorReportAccumulator | None]:
     """Update AdaBoost ensemble report accumulators for the current fold (best-effort, never raises)."""
     try:
-        # AdaBoost often comes wrapped as a Pipeline(pre -> clf). In this repo, step names
-        # may be ('pre','clf') or ('scale','feat','clf'). We handle both.
-        boost = None
-        Xte_boost = Xte
-
-        # Prefer named_steps if present (most robust for your setup)
-        if hasattr(model, "named_steps") and isinstance(getattr(model, "named_steps"), dict):
-            # try "clf" for the boosting estimator
-            clf_step = model.named_steps.get("clf", None)
-            if clf_step is not None:
-                boost = clf_step
-
-            # try "pre" as the preprocessor (if you used that naming)
-            pre_step = model.named_steps.get("pre", None)
-            if pre_step is not None and hasattr(pre_step, "transform"):
-                try:
-                    Xte_boost = pre_step.transform(Xte)
-                except Exception:
-                    Xte_boost = Xte
-            else:
-                # otherwise transform through all non-final steps
-                Xte_boost = _transform_through_pipeline(model, Xte)
-
-        if boost is None:
-            # Fall back: last estimator of pipeline OR model itself
-            boost = _unwrap_final_estimator(model)
-            if boost is not model:
-                Xte_boost = _transform_through_pipeline(model, Xte)
-
-        # If you ever wrap AdaBoost (similar to XGB label adapter), unwrap it
-        boost = getattr(boost, "model", boost)
+        boost, Xte_boost = resolve_estimator_and_X(model, Xte)
 
         ests = getattr(boost, "estimators_", None)
         w = getattr(boost, "estimator_weights_", None)
@@ -92,83 +60,24 @@ def update_adaboost_report(
                         algorithm=str(getattr(cfg.ensemble, "algorithm", None) or None),
                     )
 
-                classes_arr = _get_classes_arr(boost)
-                if classes_arr is None:
-                    classes_arr = _get_classes_arr(model)
-                yte_arr = np.asarray(yte)
-                yte_enc = _encode_y_true_to_index(yte_arr, classes_arr) if classes_arr is not None else None
+                classes_arr = _get_classes_arr(boost) or _get_classes_arr(model)
 
-                base_pred_cols = []
-                base_scores_list: list[float] = []
+                base_res = collect_base_predictions_classification(
+                    estimators=ests,
+                    X=Xte_boost,
+                    y_true=yte,
+                    evaluator=evaluator,
+                    metric_name=metric_name,
+                    classes_arr=classes_arr,
+                )
 
-                for est in ests:
-                    if est is None:
-                        continue
-
-                    yp_raw = np.asarray(est.predict(Xte_boost))
-
-                    # Deterministic decode protection (same as bagging)
-                    if _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                        yp_dec = classes_arr[yp_raw.astype(int, copy=False)]
-                    else:
-                        yp_dec = yp_raw
-
-                    base_pred_cols.append(np.asarray(yp_dec))
-
-                    # Optional per-stage score distribution (best-effort)
-                    try:
-                        y_proba_i = None
-                        y_score_i = None
-
-                        if metric_name in PROBA_METRICS:
-                            if hasattr(est, "predict_proba"):
-                                try:
-                                    y_proba_i = est.predict_proba(Xte_boost)
-                                except Exception:
-                                    y_proba_i = None
-                            if y_proba_i is None and hasattr(est, "decision_function"):
-                                try:
-                                    y_score_i = est.decision_function(Xte_boost)
-                                except Exception:
-                                    y_score_i = None
-
-                            if y_proba_i is None and y_score_i is None:
-                                s = None
-                            elif yte_enc is not None and _should_decode_from_index_space(yte_arr, yp_raw, classes_arr):
-                                s = evaluator.score(
-                                    yte_enc,
-                                    y_pred=yp_raw,
-                                    y_proba=y_proba_i,
-                                    y_score=y_score_i,
-                                )
-                            else:
-                                s = evaluator.score(
-                                    yte_arr,
-                                    y_pred=yp_dec,
-                                    y_proba=y_proba_i,
-                                    y_score=y_score_i,
-                                )
-                        else:
-                            s = evaluator.score(
-                                yte_arr,
-                                y_pred=yp_dec,
-                                y_proba=None,
-                                y_score=None,
-                            )
-
-                        if s is not None:
-                            base_scores_list.append(float(s))
-                    except Exception:
-                        pass
-
-                if base_pred_cols and adaboost_cls_acc is not None:
-                    base_preds_mat = np.column_stack(base_pred_cols)
+                if base_res.base_preds is not None and adaboost_cls_acc is not None:
 
                     # ---- stage/weight diagnostics (configured vs fitted vs effective) ----
                     w_arr = np.asarray(w, dtype=float)
                     weight_eps = 1e-6
 
-                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_mat.shape[1])
+                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_res.base_preds.shape[1])
                     n_nonzero_weights = int(np.sum(w_arr > 0))
                     n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
 
@@ -184,10 +93,10 @@ def update_adaboost_report(
                         weight_mass_topk = None
 
                     adaboost_cls_acc.add_fold(
-                        base_preds=base_preds_mat,
-                        estimator_weights=np.asarray(w, dtype=float)[: base_preds_mat.shape[1]],
-                        estimator_errors=np.asarray(errs, dtype=float)[: base_preds_mat.shape[1]] if errs is not None else None,
-                        base_estimator_scores=base_scores_list if base_scores_list else None,
+                        base_preds=base_res.base_preds,
+                        estimator_weights=np.asarray(w, dtype=float)[: base_res.base_preds.shape[1]],
+                        estimator_errors=np.asarray(errs, dtype=float)[: base_res.base_preds.shape[1]] if errs is not None else None,
+                        base_estimator_scores=base_res.base_scores,
 
                         # diagnostics
                         n_estimators_fitted=n_estimators_fitted,
@@ -211,34 +120,19 @@ def update_adaboost_report(
                 yte_arr = np.asarray(yte, dtype=float)
                 yens = np.asarray(y_pred, dtype=float)
 
-                base_pred_cols = []
-                base_scores_list: list[float] = []
+                base_res = collect_base_predictions_regression(
+                    estimators=ests,
+                    X=Xte_boost,
+                    y_true=yte_arr,
+                    evaluator=evaluator,
+                )
 
-                for est in ests:
-                    if est is None:
-                        continue
-
-                    yp = np.asarray(est.predict(Xte_boost), dtype=float)
-                    base_pred_cols.append(yp)
-
-                    try:
-                        s = evaluator.score(
-                            yte_arr,
-                            y_pred=yp,
-                            y_proba=None,
-                            y_score=None,
-                        )
-                        base_scores_list.append(float(s))
-                    except Exception:
-                        pass
-
-                if base_pred_cols and adaboost_reg_acc is not None:
-                    base_preds_mat = np.column_stack(base_pred_cols)
+                if base_res.base_preds is not None and adaboost_reg_acc is not None:
 
                     w_arr = np.asarray(w, dtype=float)
                     weight_eps = 1e-6
 
-                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_preds_mat.shape[1])
+                    n_estimators_fitted = int(len(ests)) if ests is not None else int(base_res.base_preds.shape[1])
                     n_nonzero_weights = int(np.sum(w_arr > 0))
                     n_nontrivial_weights = int(np.sum(w_arr > weight_eps))
 
@@ -256,10 +150,10 @@ def update_adaboost_report(
                     adaboost_reg_acc.add_fold(
                         y_true=yte_arr,
                         ensemble_pred=yens,
-                        base_preds=base_preds_mat,
-                        estimator_weights=np.asarray(w, dtype=float)[: base_preds_mat.shape[1]],
-                        estimator_errors=np.asarray(errs, dtype=float)[: base_preds_mat.shape[1]] if errs is not None else None,
-                        base_estimator_scores=base_scores_list if base_scores_list else None,
+                        base_preds=base_res.base_preds,
+                        estimator_weights=np.asarray(w, dtype=float)[: base_res.base_preds.shape[1]],
+                        estimator_errors=np.asarray(errs, dtype=float)[: base_res.base_preds.shape[1]] if errs is not None else None,
+                        base_estimator_scores=base_res.base_scores,
                         n_estimators_fitted=n_estimators_fitted,
                         n_nonzero_weights=n_nonzero_weights,
                         n_nontrivial_weights=n_nontrivial_weights,
