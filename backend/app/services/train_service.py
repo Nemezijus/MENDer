@@ -8,9 +8,8 @@ Segment 12B: the backend becomes a thin adapter layer.
 
 Notes
 -----
-The backend still owns HTTP-specific concerns (like progress tracking).
-For now, the label-shuffle baseline remains here because it depends on the
-backend progress registry.
+The backend owns HTTP-specific concerns (like progress tracking). All ML
+orchestration is delegated to the Engine public API (engine.api).
 """
 
 from __future__ import annotations
@@ -21,13 +20,10 @@ import numpy as np
 
 from engine.api import train_supervised as bl_train_supervised
 from engine.api import train_unsupervised as bl_train_unsupervised
+from engine.api import run_label_shuffle_baseline_from_cfg as bl_run_label_shuffle
 
 from engine.contracts.run_config import RunConfig
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
-
-from engine.factories.data_loading_factory import make_data_loader
-from engine.factories.baseline_factory import make_baseline
-from engine.runtime.random.rng import RngManager
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
@@ -103,19 +99,11 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             # The Engine baseline runner will also call progress.init(), which is fine.
             PROGRESS.init(progress_id, total=n_shuffles, label=f"Shuffling 0/{n_shuffles}…")
 
-            # Load data again (baseline runner needs X,y). This keeps the backend
-            # thin while maintaining parity until baseline moves fully into BL.
-            loader = make_data_loader(cfg.data)
-            X, y = loader.load()
-
-            rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
-            baseline = make_baseline(cfg, rngm)
-
-            # New BL-native progress callback (no attribute injection)
+            # BL-native progress callback (no attribute injection)
             progress_cb = RegistryProgressCallback(progress_id)
 
             scores = np.asarray(
-                baseline.run(X, y, n_shuffles=n_shuffles, progress=progress_cb),
+                bl_run_label_shuffle(cfg, n_shuffles=n_shuffles, progress=progress_cb),
                 dtype=float,
             ).ravel()
 

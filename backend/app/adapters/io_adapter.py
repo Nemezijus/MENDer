@@ -4,8 +4,8 @@ import numpy as np
 
 from engine.contracts.run_config import DataModel
 
-# Prefer Engine readers directly (backend-independent parsing adapters).
-from engine.io.readers import load_from_data_model
+# Use the stable Engine public surface.
+from engine.api import load_from_data_model
 
 # Read-only datasets inside the container image (and/or optionally overridden by env)
 DATA_ROOT = os.path.abspath(os.getenv("DATA_ROOT", "/app/data"))
@@ -183,7 +183,8 @@ def load_X_optional_y(
 
     Notes
     -----
-    - Parsing is delegated to Engine readers (:func:`engine.io.readers.load_from_data_model`).
+    - Parsing is delegated to Engine readers via the stable API
+      (:func:`engine.api.load_from_data_model`).
     - If expected_n_features is provided, we apply a best-effort transpose fix for
       X-only inputs when the data appears to be (n_features, n_samples).
     """

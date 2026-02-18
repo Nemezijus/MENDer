@@ -21,6 +21,7 @@ from engine.use_cases.facade import (
     predict,
     preview_pipeline,
     random_search,
+    run_label_shuffle_baseline_from_cfg,
     save_model_bytes_from_cache,
     train_ensemble,
     train_supervised,
@@ -28,6 +29,9 @@ from engine.use_cases.facade import (
     tune_learning_curve,
     tune_validation_curve,
 )
+
+# Non-use-case helpers that are still part of the stable public surface.
+from engine.io.readers import load_from_data_model
 
 __all__ = [
     "train_supervised",
@@ -43,4 +47,6 @@ __all__ = [
     "export_decoder_outputs_to_csv",
     "save_model_bytes_from_cache",
     "load_model_bytes_to_cache",
+    "run_label_shuffle_baseline_from_cfg",
+    "load_from_data_model",
 ]

@@ -31,6 +31,7 @@ from engine.contracts.results.tuning import (
     ValidationCurveResult,
 )
 from engine.contracts.results.unsupervised import UnsupervisedResult
+from engine.core.progress import ProgressCallback
 from engine.io.artifacts.store import ArtifactStore
 from engine.io.artifacts.meta_models import ModelArtifactMetaDict
 
@@ -232,3 +233,45 @@ def load_model_bytes_to_cache(*, file_bytes: bytes) -> dict[str, Any]:
     from engine.use_cases.artifacts_cache import load_model_bytes_to_cache as _load
 
     return _load(file_bytes)
+
+
+def run_label_shuffle_baseline_from_cfg(
+    run_config: RunConfig,
+    *,
+    n_shuffles: Optional[int] = None,
+    progress: Optional[ProgressCallback] = None,
+) -> list[float]:
+    """Run the label-shuffle baseline using a full :class:`RunConfig`.
+
+    Convenience façade for backends/UIs:
+    - loads data via the Engine data-loading factory
+    - runs the label-shuffle baseline use-case
+
+    The backend may provide a progress adapter implementing
+    :class:`engine.core.progress.ProgressCallback`.
+    """
+
+    from engine.factories.data_loading_factory import make_data_loader
+    from engine.runtime.random.rng import RngManager
+    from engine.use_cases.baselines.label_shuffle import run_label_shuffle_baseline
+
+    loader = make_data_loader(run_config.data)
+    X, y = loader.load()
+    if y is None:
+        raise ValueError(
+            "Label-shuffle baseline requires y, but y was not found in the provided inputs."
+        )
+
+    seed = getattr(run_config.eval, "seed", None)
+    rngm = RngManager(None if seed is None else int(seed))
+
+    scores = run_label_shuffle_baseline(
+        cfg=run_config,
+        X=X,
+        y=y,
+        rngm=rngm,
+        n_shuffles=n_shuffles,
+        progress=progress,
+    )
+
+    return [float(v) for v in scores.ravel().tolist()]
