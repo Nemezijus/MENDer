@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from engine.reporting.common.report_errors import record_error
+
 from .context import PlotContext
 from .deps import dendrogram, np
 
@@ -91,5 +93,6 @@ def add_dendrogram(out: Dict[str, Any], ctx: PlotContext) -> None:
             ctx.warnings.extend(w)
         if payload is not None:
             out["dendrogram"] = dict(payload)
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.dendrogram", exc=e)
         return

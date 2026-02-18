@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from engine.reporting.common.report_errors import record_error
+
 from .context import PlotContext
 from .deps import np
 
@@ -44,5 +46,6 @@ def add_spectral_eigenvalues(out: Dict[str, Any], ctx: PlotContext) -> None:
         m_keep = int(min(25, w.size))
         out["spectral_eigenvalues"] = {"values": [float(v) for v in w[:m_keep].tolist()]}
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.spectral_eigenvalues", exc=e)
         return

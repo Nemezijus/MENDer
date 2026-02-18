@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from engine.reporting.common.report_errors import record_error
+
 from .context import PlotContext
 from .deps import KMeans, np
 
@@ -45,5 +47,6 @@ def add_elbow_curve(out: Dict[str, Any], ctx: PlotContext) -> None:
                 "y": [float(v) if np.isfinite(v) else None for v in ys],
             }
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.elbow", exc=e)
         return

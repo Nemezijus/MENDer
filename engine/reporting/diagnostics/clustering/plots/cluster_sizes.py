@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from engine.reporting.common.report_errors import record_error
+
 from ..core_metrics import cluster_summary
 from .context import PlotContext
 from .deps import np
@@ -41,5 +43,6 @@ def add_cluster_sizes(out: Dict[str, Any], ctx: PlotContext) -> None:
             "y": [float(v) for v in lor_y.tolist()],
             "gini": gini,
         }
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.cluster_sizes", exc=e)
         return

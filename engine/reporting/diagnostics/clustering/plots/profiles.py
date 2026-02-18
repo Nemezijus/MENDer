@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
+from engine.reporting.common.report_errors import record_error
 
 from .context import PlotContext
 from .deps import np
@@ -60,7 +62,10 @@ def compute_centroid_stats(ctx: PlotContext) -> Optional[CentroidStats]:
         ctx.cache["centroid_stats"] = stats
         return stats
 
-    except Exception:
+    except Exception as e:
+        # We don't have access to a payload dict here; leave breadcrumbs for the orchestrator.
+        ctx.warnings.append(f"Failed to compute centroid stats: {type(e).__name__}: {e}")
+        ctx.cache["centroid_stats"] = None
         return None
 
 
@@ -89,5 +94,6 @@ def add_centroid_profiles(out: Dict[str, Any], ctx: PlotContext, *, top_k: int =
             "values": [[float(v) for v in row.tolist()] for row in C_small],
         }
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.centroid_profiles", exc=e)
         return

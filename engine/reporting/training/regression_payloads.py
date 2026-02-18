@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from engine.reporting.common.json_safety import ReportError, add_report_error
-
 import numpy as np
 
 from engine.contracts.results.decoder import DecoderOutputs
+from engine.reporting.common.json_safety import ReportError
+from engine.reporting.common.report_errors import record_error
 from engine.reporting.diagnostics.regression_diagnostics import (
     regression_diagnostics,
     regression_summary,
@@ -27,14 +27,20 @@ def build_regression_diagnostics_payload(
 ) -> Dict[str, Any]:
     """Compute regression diagnostics and return JSON-friendly payload."""
 
-    diag = regression_diagnostics(
-        y_true=y_true,
-        y_pred=y_pred,
-        scatter_max_points=int(max_points),
-        residual_hist_bins=int(n_hist_bins),
-        seed=int(seed),
-    )
-    payload = dict(diag or {})
+    payload: Dict[str, Any] = {}
+
+    try:
+        diag = regression_diagnostics(
+            y_true=y_true,
+            y_pred=y_pred,
+            scatter_max_points=int(max_points),
+            residual_hist_bins=int(n_hist_bins),
+            seed=int(seed),
+        )
+        payload = dict(diag or {})
+    except Exception as e:
+        record_error(payload, where="reporting.training.regression_diagnostics", exc=e)
+        return payload
 
     # Normalize summary keys to the API schema
     try:
@@ -43,7 +49,8 @@ def build_regression_diagnostics_payload(
             if "median_abs_error" in summ and "median_ae" not in summ:
                 summ["median_ae"] = summ.get("median_abs_error")
     except Exception as e:
-        add_report_error(errors, where="reporting.training.regression_payloads", exc=e)
+        record_error(payload, where="reporting.training.regression_payloads.summary_normalization", exc=e)
+
     return payload
 
 
@@ -61,9 +68,14 @@ def build_regression_decoder_outputs_payload(
 
     For regression we do not have decision scores / probabilities.
     We still provide a per-sample preview table and a compact summary.
+
+    Note: DecoderOutputs is a strict contract (extra fields forbidden). We surface
+    any reporting issues as additional note strings.
     """
 
-    max_rows = int(getattr(decoder_cfg, "max_preview_rows", 200) or 200) if decoder_cfg is not None else 200
+    max_rows = (
+        int(getattr(decoder_cfg, "max_preview_rows", 200) or 200) if decoder_cfg is not None else 200
+    )
 
     indices_out = [int(v) for v in (row_indices.tolist() if row_indices is not None else [])]
     y_true_use = y_true_all if y_true_all is not None and np.asarray(y_true_all).size else None
@@ -81,8 +93,8 @@ def build_regression_decoder_outputs_payload(
         for i, r in enumerate(rows):
             try:
                 r["fold_id"] = int(np.asarray(fold_ids_all).ravel()[i])
-            except Exception:
-                pass
+            except Exception as e:
+                notes.append(f"Decoder preview: failed to attach fold_id for row {i}: {type(e).__name__}: {e}")
     elif mode == "holdout" and len(rows) > 0:
         for r in rows:
             r["fold_id"] = 1
@@ -94,8 +106,9 @@ def build_regression_decoder_outputs_payload(
             # normalize key
             if isinstance(summary, dict) and "median_abs_error" in summary and "median_ae" not in summary:
                 summary["median_ae"] = summary.get("median_abs_error")
-    except Exception:
+    except Exception as e:
         summary = None
+        notes.append(f"Decoder summary failed: {type(e).__name__}: {e}")
 
     payload = {
         "classes": None,

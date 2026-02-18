@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
+
+from engine.reporting.common.report_errors import record_error
 
 from .context import PlotContext
 from .deps import np
@@ -56,5 +58,6 @@ def add_separation(out: Dict[str, Any], ctx: PlotContext) -> None:
                 "separation": [v for _, _, v in filt],
             }
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.separation", exc=e)
         return

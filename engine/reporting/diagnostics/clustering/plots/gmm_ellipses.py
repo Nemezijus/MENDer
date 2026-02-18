@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from engine.reporting.common.report_errors import record_error
+
 from .context import PlotContext
 from .deps import np
 
@@ -66,5 +68,6 @@ def add_gmm_ellipses(out: Dict[str, Any], ctx: PlotContext) -> None:
         if comps and hasattr(ctx.est, "predict_proba"):
             out["gmm_ellipses"] = {"components": comps}
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.gmm_ellipses", exc=e)
         return

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from engine.reporting.common.report_errors import record_error
+
 from .context import PlotContext
 from .deps import NearestNeighbors, np
 
@@ -47,8 +49,10 @@ def add_k_distance_and_dbscan_counts(out: Dict[str, Any], ctx: PlotContext) -> N
                 "border": int(np.sum(border)),
                 "noise": int(np.sum(noise)),
             }
-        except Exception:
+        except Exception as e:
+            record_error(out, where="reporting.clustering.plots.k_distance.core_border_noise", exc=e)
             return
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.k_distance", exc=e)
         return

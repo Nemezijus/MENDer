@@ -85,10 +85,12 @@ def model_diagnostics(model: SkModel, X: Any, labels: Any) -> Tuple[Mapping[str,
     Xa = _transform_through_pipeline(model, X)
     try:
         Xa = _as_2d(Xa)
-    except Exception:
+    except Exception as e:
+        warnings.append(f"Failed to coerce transformed X to 2D: {type(e).__name__}: {e}")
         try:
             Xa = _as_2d(X)
-        except Exception:
+        except Exception as e2:
+            warnings.append(f"Failed to coerce raw X to 2D: {type(e2).__name__}: {e2}")
             Xa = None
 
     try:
@@ -98,8 +100,8 @@ def model_diagnostics(model: SkModel, X: Any, labels: Any) -> Tuple[Mapping[str,
         n_iter = getattr(est, "n_iter_", None)
         if n_iter is not None:
             out["n_iter"] = int(n_iter)
-    except Exception:
-        pass
+    except Exception as e:
+        warnings.append(f"Failed to extract inertia_/n_iter_: {type(e).__name__}: {e}")
 
     if Xa is not None:
         try:
@@ -116,8 +118,8 @@ def model_diagnostics(model: SkModel, X: Any, labels: Any) -> Tuple[Mapping[str,
                 if ll.size:
                     out["mean_log_likelihood"] = float(np.mean(ll))
                     out["std_log_likelihood"] = float(np.std(ll))
-        except Exception:
-            pass
+        except Exception as e:
+            warnings.append(f"Failed to compute log-likelihood stats: {type(e).__name__}: {e}")
 
     try:
         conv = getattr(est, "converged_", None)
@@ -129,13 +131,13 @@ def model_diagnostics(model: SkModel, X: Any, labels: Any) -> Tuple[Mapping[str,
         lb = getattr(est, "lower_bound_", None)
         if lb is not None:
             out["lower_bound"] = float(lb)
-    except Exception:
-        pass
+    except Exception as e:
+        warnings.append(f"Failed to extract estimator diagnostics: {type(e).__name__}: {e}")
 
     try:
         out["label_summary"] = dict(cluster_summary(labels))
-    except Exception:
-        pass
+    except Exception as e:
+        warnings.append(f"Failed to compute label_summary: {type(e).__name__}: {e}")
 
     return out, warnings
 
@@ -161,7 +163,8 @@ def per_sample_outputs(
     Xa = _transform_through_pipeline(model, X)
     try:
         Xa = _as_2d(Xa)
-    except Exception:
+    except Exception as e:
+        warnings.append(f"Failed to coerce transformed X for per_sample_outputs: {type(e).__name__}: {e}")
         try:
             Xa = _as_2d(X)
         except Exception as e:
@@ -210,8 +213,8 @@ def per_sample_outputs(
             core = np.zeros((Xa.shape[0],), dtype=bool)
             core[np.asarray(core_idx, dtype=int)] = True
             out["is_core"] = [bool(v) for v in core.tolist()]
-    except Exception:
-        pass
+    except Exception as e:
+        warnings.append(f"Failed to compute is_core flags: {type(e).__name__}: {e}")
 
     return out, warnings
 

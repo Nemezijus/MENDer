@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from engine.reporting.common.report_errors import record_error
+
 from .context import PlotContext
 from .deps import np
 from .utils import histogram_payload
@@ -47,7 +49,8 @@ def add_decoder_payload(out: Dict[str, Any], ctx: PlotContext) -> None:
                     "y": [float(z) for z in frac[ctx.idx].tolist()],
                 }
 
-    except Exception:
+    except Exception as e:
+        record_error(out, where="reporting.clustering.plots.decoder_payload", exc=e)
         return
 
     if dec:
