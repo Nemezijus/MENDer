@@ -1,41 +1,45 @@
+# backend/app/services/model_persistence_service.py
 from __future__ import annotations
 
-from typing import Tuple, Dict, Any
-from fastapi import HTTPException, status
+import hashlib
+from typing import Any, Dict, Tuple
 
-from engine.runtime.caches.artifact_cache import artifact_cache
-from engine.use_cases.artifacts import save_model_bytes, load_model_bytes
+from fastapi import HTTPException
+
+from engine.api import (
+    load_model_bytes_to_cache as bl_load_model_bytes_to_cache,
+    save_model_bytes_from_cache as bl_save_model_bytes_from_cache,
+)
 
 
 def save_model_service(artifact_uid: str, artifact_meta: Dict[str, Any]) -> Tuple[bytes, Dict[str, Any]]:
-    """
-    Fetch the fitted pipeline from the short-lived cache by artifact UID,
-    serialize it together with the provided meta, and return the raw bytes
-    and the (possibly augmented) meta dict.
-    """
-    pipeline = artifact_cache.get(artifact_uid)
-    if pipeline is None:
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE,
-            detail="Model is no longer available for saving (cache expired). Re-run training or load a saved model.",
-        )
+    """Serialize the last trained model (from runtime cache) into bytes."""
 
-    result = save_model_bytes(pipeline, artifact_meta)  # returns SaveResult
-    return result.content_bytes, {"size": result.size, "sha256": result.sha256}
+    try:
+        res = bl_save_model_bytes_from_cache(artifact_uid=artifact_uid, artifact_meta=artifact_meta)
+        payload_bytes = res.content_bytes
+    except ValueError as e:
+        # Cache miss / expired is a user-facing state
+        raise HTTPException(status_code=410, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Save failed: {e}") from e
+
+    sha256 = hashlib.sha256(payload_bytes).hexdigest()
+    info = {
+        "size": len(payload_bytes),
+        "sha256": sha256,
+    }
+    return payload_bytes, info
 
 
 def load_model_service(file_bytes: bytes) -> Dict[str, Any]:
-    """
-    Load a model artifact from bytes, validate it, place the pipeline into cache,
-    and return the artifact meta for UI display.
-    """
-    pipeline, meta = load_model_bytes(file_bytes)
+    """Load a model artifact from bytes and place the pipeline into the runtime cache."""
 
-    uid = meta.get("uid")
-    if not uid:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Artifact meta missing 'uid'")
-
-    # Put loaded pipeline into cache so it can be used for 'apply' (future) or re-save.
-    artifact_cache.put(uid, pipeline)
+    try:
+        meta = bl_load_model_bytes_to_cache(file_bytes=file_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Load failed: {e}") from e
 
     return meta

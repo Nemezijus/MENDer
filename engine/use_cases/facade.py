@@ -171,3 +171,64 @@ def random_search(
     from engine.use_cases.tuning import random_search as _run
 
     return _run(run_config, rs_cfg, store=store, rng=rng)
+
+# ---------------------------------------------------------------------------
+# Boundary-owned helpers (backend should still call these via engine.api)
+# ---------------------------------------------------------------------------
+
+
+def preview_pipeline(*, run_config: RunConfig) -> dict[str, Any]:
+    """Dry-build a pipeline and return a UI-friendly preview payload."""
+
+    from engine.use_cases.pipeline.preview import preview_pipeline as _preview
+
+    return _preview(run_config)
+
+
+def export_predictions_to_csv(
+    *,
+    artifact_uid: str,
+    artifact_meta: Any,
+    X: Any,
+    y: Optional[Any] = None,
+    filename: Optional[str] = None,
+    eval_override: Optional[EvalModel] = None,
+    store: Optional[ArtifactStore] = None,
+):
+    """Export per-sample predictions as a CSV payload."""
+
+    from engine.use_cases.prediction.export import export_predictions_to_csv as _export
+
+    return _export(
+        artifact_uid=artifact_uid,
+        artifact_meta=artifact_meta,
+        X=X,
+        y=y,
+        filename=filename,
+        eval_override=eval_override,
+        store=store,
+    )
+
+
+def export_decoder_outputs_to_csv(*, artifact_uid: str, filename: Optional[str] = None):
+    """Export cached evaluation outputs as a CSV payload."""
+
+    from engine.use_cases.prediction.export_cached import export_decoder_outputs_to_csv as _export
+
+    return _export(artifact_uid=artifact_uid, filename=filename)
+
+
+def save_model_bytes_from_cache(*, artifact_uid: str, artifact_meta: dict[str, Any]):
+    """Serialize a cached pipeline into bytes suitable for download."""
+
+    from engine.use_cases.artifacts_cache import save_model_bytes_from_cache as _save
+
+    return _save(artifact_uid, artifact_meta)
+
+
+def load_model_bytes_to_cache(*, file_bytes: bytes) -> dict[str, Any]:
+    """Load a model artifact from bytes and place the pipeline into the cache."""
+
+    from engine.use_cases.artifacts_cache import load_model_bytes_to_cache as _load
+
+    return _load(file_bytes)
