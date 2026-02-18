@@ -3,7 +3,7 @@
 Segment 12B: the backend becomes a thin adapter layer.
 
 - Validate/construct API request configs in routers.
-- Delegate orchestration to the Engine façade.
+- Delegate orchestration to the Engine API (engine.api).
 - Return JSON-friendly payloads (dict) to be validated by API response models.
 
 Notes
@@ -19,8 +19,8 @@ from typing import Any, Dict
 
 import numpy as np
 
-from engine.use_cases.facade import train_supervised as bl_train_supervised
-from engine.use_cases.facade import train_unsupervised as bl_train_unsupervised
+from engine.api import train_supervised as bl_train_supervised
+from engine.api import train_unsupervised as bl_train_unsupervised
 
 from engine.contracts.run_config import RunConfig
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
@@ -76,7 +76,7 @@ def _is_probable_load_error(exc: Exception) -> bool:
 def train(cfg: RunConfig) -> Dict[str, Any]:
     """Train a supervised model.
 
-    Delegates to :func:`engine.use_cases.facade.train_supervised`.
+    Delegates to :func:`engine.api.train_supervised`.
 
     Returns a JSON-friendly mapping compatible with backend TrainResponse.
     """
@@ -156,7 +156,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
     """Train an unsupervised model.
 
-    Delegates to :func:`engine.use_cases.facade.train_unsupervised`.
+    Delegates to :func:`engine.api.train_unsupervised`.
     """
 
     try:

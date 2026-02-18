@@ -1,6 +1,6 @@
 """Backend ensemble training service.
 
-Segment 12B: delegate orchestration to the Engine façade.
+Segment 12B: delegate orchestration to the Engine API (engine.api).
 
 The backend remains responsible for HTTP concerns (error mapping) and API
 request/response validation. All compute/orchestration lives in
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from engine.use_cases.facade import train_ensemble as bl_train_ensemble
+from engine.api import train_ensemble as bl_train_ensemble
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
@@ -52,7 +52,7 @@ def _is_probable_load_error(exc: Exception) -> bool:
 def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     """Train an ensemble model.
 
-    Delegates to :func:`engine.use_cases.facade.train_ensemble`.
+    Delegates to :func:`engine.api.train_ensemble`.
     """
 
     try:

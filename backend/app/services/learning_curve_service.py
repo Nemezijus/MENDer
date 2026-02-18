@@ -1,11 +1,11 @@
 """Backend tuning service: learning curve.
 
-Segment 12B: delegate orchestration to the Engine façade.
+Segment 12B: delegate orchestration to the Engine API (engine.api).
 """
 
 from __future__ import annotations
 
-from engine.use_cases.facade import tune_learning_curve as bl_tune_learning_curve
+from engine.api import tune_learning_curve as bl_tune_learning_curve
 
 from engine.contracts.run_config import RunConfig
 from engine.contracts.tuning_configs import LearningCurveConfig

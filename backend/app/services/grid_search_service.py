@@ -1,11 +1,11 @@
 """Backend tuning service: grid search.
 
-Segment 12B: delegate orchestration to the Engine façade.
+Segment 12B: delegate orchestration to the Engine API (engine.api).
 """
 
 from __future__ import annotations
 
-from engine.use_cases.facade import grid_search as bl_grid_search
+from engine.api import grid_search as bl_grid_search
 
 from engine.contracts.run_config import RunConfig
 from engine.contracts.tuning_configs import GridSearchConfig
