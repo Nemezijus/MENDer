@@ -31,6 +31,7 @@ from engine.runtime.random.rng import RngManager
 
 from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
+from ..progress.callback import RegistryProgressCallback
 
 from .common.result_coercion import to_payload
 
@@ -98,7 +99,8 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 
         # Preserve previous behavior: only run when progress_id is provided.
         if n_shuffles > 0 and progress_id:
-            # PRE-INIT progress so the first poll doesn't 404
+            # PRE-INIT progress so the first poll doesn't 404.
+            # The Engine baseline runner will also call progress.init(), which is fine.
             PROGRESS.init(progress_id, total=n_shuffles, label=f"Shuffling 0/{n_shuffles}…")
 
             # Load data again (baseline runner needs X,y). This keeps the backend
@@ -109,12 +111,13 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             rngm = RngManager(None if cfg.eval.seed is None else int(cfg.eval.seed))
             baseline = make_baseline(cfg, rngm)
 
-            # Inject progress registry + parameters for the runner (legacy runner API)
-            setattr(baseline, "progress_id", progress_id)
-            setattr(baseline, "_progress_total", n_shuffles)
-            setattr(baseline, "_progress", PROGRESS)
+            # New BL-native progress callback (no attribute injection)
+            progress_cb = RegistryProgressCallback(progress_id)
 
-            scores = np.asarray(baseline.run(X, y), dtype=float).ravel()
+            scores = np.asarray(
+                baseline.run(X, y, n_shuffles=n_shuffles, progress=progress_cb),
+                dtype=float,
+            ).ravel()
 
             # Compare against main model score
             ref_score = payload.get("mean_score")
@@ -136,6 +139,13 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
 
     except Exception as e:
         # Baseline errors must not break training.
+        try:
+            progress_id = getattr(cfg.eval, "progress_id", None)
+            if progress_id:
+                PROGRESS.fail(progress_id, message=f"{type(e).__name__}: {e}")
+        except Exception:
+            pass
+
         payload.setdefault("notes", []).append(
             f"Shuffle baseline failed ({type(e).__name__}: {e})."
         )
