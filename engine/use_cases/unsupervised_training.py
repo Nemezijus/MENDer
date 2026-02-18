@@ -23,7 +23,7 @@ from engine.use_cases.artifacts import save_model_to_store
 from engine.factories.data_loading_factory import make_data_loader
 from engine.factories.eval_factory import make_unsupervised_evaluator
 from engine.factories.pipeline_factory import make_unsupervised_pipeline
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 
 def train_unsupervised(

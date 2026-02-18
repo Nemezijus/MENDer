@@ -12,7 +12,7 @@ from engine.contracts.ensemble_configs import AdaBoostEnsembleConfig
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.contracts.model_configs import get_model_task
 
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.factories.pipeline_factory import make_preproc_pipeline_for_model_cfg
 from engine.factories.model_factory import make_model
 from engine.core.task_kind import EvalKind, infer_kind_from_y

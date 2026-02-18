@@ -8,7 +8,7 @@ import numpy as np
 from engine.contracts.ensemble_configs import XGBoostEnsembleConfig
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.core.task_kind import infer_kind_from_y
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 from .build import build_xgboost_ensemble
 from .labels import encode_labels, XGBClassifierLabelAdapter

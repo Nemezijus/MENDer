@@ -15,7 +15,7 @@ from engine.contracts.results import GridSearchResult
 from engine.factories.data_loading_factory import make_data_loader
 from engine.factories.pipeline_factory import make_pipeline, make_unsupervised_pipeline
 from engine.factories.sanity_factory import make_sanity_checker
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.components.evaluation.scoring import make_estimator_scorer
 from engine.components.tuning.unsupervised import UnsupervisedGridSearchCV
 

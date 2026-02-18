@@ -5,7 +5,7 @@ from typing import Any, Optional, Tuple, Literal, cast
 from engine.contracts.ensemble_configs import XGBoostEnsembleConfig
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.core.task_kind import EvalKind
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 from .vendor import import_xgboost
 

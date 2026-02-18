@@ -1,6 +1,6 @@
 from __future__ import annotations
 from engine.contracts.run_config import RunConfig
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.components.interfaces import BaselineRunner
 from engine.use_cases.baselines.label_shuffle import make_label_shuffle_baseline
 

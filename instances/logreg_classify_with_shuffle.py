@@ -7,7 +7,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.feature_selection import SequentialFeatureSelector
 
 from visualizations.general.plot_decision_regions import plot_decision_regions
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 from engine.contracts.run_config import RunConfig, DataModel
 from engine.contracts.split_configs import SplitHoldoutModel

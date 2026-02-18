@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from engine.contracts.run_config import RunConfig
 from engine.factories.pipeline_factory import make_pipeline
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 
 def _class_path(obj: Any) -> str:

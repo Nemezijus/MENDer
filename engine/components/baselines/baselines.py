@@ -7,8 +7,8 @@ import numpy as np
 
 from engine.components.interfaces import BaselineRunner
 from engine.core.progress import ProgressCallback
-from engine.runtime.random.rng import RngManager
-from engine.runtime.random.shuffle import shuffle_simple_vector
+from engine.core.random.rng import RngManager
+from engine.core.random.shuffle import shuffle_simple_vector
 
 
 ScoreOnceFn = Callable[[np.ndarray, np.ndarray, int], float]

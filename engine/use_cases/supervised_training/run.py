@@ -31,7 +31,7 @@ from engine.factories.metrics_factory import make_metrics_computer
 from engine.factories.pipeline_factory import make_pipeline
 from engine.factories.sanity_factory import make_sanity_checker
 from engine.factories.split_factory import make_splitter
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.core.progress import ProgressCallback
 from engine.use_cases._deps import resolve_seed
 

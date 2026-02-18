@@ -6,7 +6,7 @@ from typing import List
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from engine.contracts.run_config import RunConfig
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 
 UNSUPERVISED_METRICS = {"silhouette", "davies_bouldin", "calinski_harabasz"}

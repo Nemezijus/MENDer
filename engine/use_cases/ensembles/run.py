@@ -25,7 +25,7 @@ from engine.factories.split_factory import make_splitter
 from engine.factories.eval_factory import make_evaluator
 from engine.factories.metrics_factory import make_metrics_computer
 from engine.factories.ensemble_factory import make_ensemble_strategy
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.use_cases._deps import resolve_seed
 
 from .aggregate import pool_eval_outputs, compute_eval_payloads

@@ -8,7 +8,7 @@ from engine.contracts.model_configs import ModelConfig
 from engine.contracts.run_config import RunConfig
 from engine.contracts.scale_configs import ScaleModel
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.types.sklearn import SkEstimator, SkPipeline
 
 from engine.factories.feature_factory import make_features

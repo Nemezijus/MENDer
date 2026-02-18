@@ -252,7 +252,7 @@ def run_label_shuffle_baseline_from_cfg(
     """
 
     from engine.factories.data_loading_factory import make_data_loader
-    from engine.runtime.random.rng import RngManager
+    from engine.core.random.rng import RngManager
     from engine.use_cases.baselines.label_shuffle import run_label_shuffle_baseline
 
     loader = make_data_loader(run_config.data)

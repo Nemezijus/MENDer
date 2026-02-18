@@ -9,7 +9,7 @@ from engine.io.readers import load_mat_variable
 
 import matplotlib.pyplot as plt
 
-from engine.runtime.random.shuffle import shuffle_simple_vector
+from engine.core.random.shuffle import shuffle_simple_vector
 from engine.components.features.filtering.correlation_filter import filter_out_uncorrelating_features
 
 """

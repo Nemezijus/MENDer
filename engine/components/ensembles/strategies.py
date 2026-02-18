@@ -14,7 +14,7 @@ from engine.contracts.ensemble_configs import (
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from engine.components.interfaces import EnsembleBuilder
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.core.task_kind import EvalKind, ensure_uniform_model_task
 
 from engine.components.ensembles.builders.voting import build_voting_ensemble, fit_voting_ensemble

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import StratifiedKFold, KFold
 
 from engine.contracts.run_config import RunConfig
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 from engine.factories.data_loading_factory import make_data_loader
 from engine.factories.sanity_factory import make_sanity_checker

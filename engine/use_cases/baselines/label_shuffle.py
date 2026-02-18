@@ -23,7 +23,7 @@ from engine.core.progress import ProgressCallback
 from engine.factories.eval_factory import make_evaluator
 from engine.factories.pipeline_factory import make_pipeline
 from engine.factories.split_factory import make_splitter
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 
 
 def _eval_kind(cfg: RunConfig) -> str:

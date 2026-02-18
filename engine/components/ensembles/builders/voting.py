@@ -9,7 +9,7 @@ from sklearn.ensemble import VotingClassifier, VotingRegressor
 from engine.contracts.ensemble_configs import VotingEnsembleConfig
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from engine.runtime.random.rng import RngManager
+from engine.core.random.rng import RngManager
 from engine.factories.pipeline_factory import make_pipeline_for_model_cfg
 from engine.core.task_kind import (
     EvalKind,
