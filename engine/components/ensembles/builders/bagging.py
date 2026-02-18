@@ -13,9 +13,10 @@ from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.contracts.model_configs import get_model_task
 
 from engine.runtime.random.rng import RngManager
-from engine.factories.pipeline_factory import make_pipeline_for_model_cfg
-from engine.factories.scale_factory import make_scaler
-from engine.factories.feature_factory import make_features
+from engine.factories.pipeline_factory import (
+    make_pipeline_for_model_cfg,
+    make_preproc_pipeline_for_model_cfg,
+)
 from engine.core.task_kind import EvalKind, infer_kind_from_y
 
 
@@ -41,14 +42,15 @@ def _make_default_tree_pipeline(
     Build a (scale -> features -> DecisionTree) pipeline when cfg.base_estimator is None.
     This keeps preprocessing consistent with other MENDer runs.
     """
-    features_seed = rngm.child_seed(f"{stream}/features")
-
-    scaler_strategy = make_scaler(run_cfg.scale)
-    feature_strategy = make_features(
-        run_cfg.features,
-        seed=features_seed,
-        model_cfg=None,  # type: ignore[arg-type]
+    # Build preprocessing via the shared pipeline factory to keep behavior aligned
+    # with the rest of the Engine (scale -> features).
+    preproc = make_preproc_pipeline_for_model_cfg(
+        scale=run_cfg.scale,
+        features=run_cfg.features,
+        model_cfg=None,
         eval_cfg=run_cfg.eval,
+        rngm=rngm,
+        stream=stream,
     )
 
     rs = rngm.child_seed(f"{stream}/default_tree")
@@ -57,13 +59,7 @@ def _make_default_tree_pipeline(
     else:
         estimator = DecisionTreeRegressor(random_state=rs)
 
-    return Pipeline(
-        steps=[
-            ("scale", scaler_strategy.make_transformer()),
-            ("feat", feature_strategy.make_transformer()),
-            ("clf", estimator),
-        ]
-    )
+    return Pipeline(steps=list(preproc.steps) + [("clf", estimator)])
 
 
 def _build_base_estimator(

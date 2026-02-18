@@ -1,94 +1,38 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
+
 import numpy as np
 
-from engine.contracts.run_config import RunConfig
-from engine.contracts.model_configs import get_model_task
 from engine.components.interfaces import BaselineRunner
+from engine.core.progress import ProgressCallback
 from engine.runtime.random.rng import RngManager
 from engine.runtime.random.shuffle import shuffle_simple_vector
-from engine.core.progress import ProgressCallback
 
-from engine.factories.split_factory import make_splitter
-from engine.factories.scale_factory import make_scaler
-from engine.factories.feature_factory import make_features
-from engine.factories.model_factory import make_model
-from engine.factories.training_factory import make_trainer
-from engine.factories.predict_factory import make_predictor
-from engine.factories.eval_factory import make_evaluator
-from engine.components.splitters.types import Split
+
+ScoreOnceFn = Callable[[np.ndarray, np.ndarray, int], float]
 
 
 @dataclass
 class LabelShuffleBaseline(BaselineRunner):
-    cfg: RunConfig
+    """Label-shuffle baseline runner (component).
+
+    This component is intentionally narrow in scope:
+    - It implements the *baseline-specific computation* (shuffle labels N times).
+    - It calls an injected ``score_once`` function for each shuffle.
+
+    The injected scorer is responsible for orchestration such as:
+    - building splitters / pipelines
+    - fitting / predicting
+    - computing the scalar evaluation metric
+
+    That orchestration lives in :mod:`engine.use_cases.baselines.label_shuffle`.
+    """
+
     rngm: RngManager
-
-    def _get_eval_kind(self) -> str:
-        """
-        Decide whether to use classification or regression scoring
-        based on the model config's task metadata.
-        """
-        task = get_model_task(self.cfg.model)
-        return "regression" if task == "regression" else "classification"
-
-    def _score_once_holdout(self, X: np.ndarray, y: np.ndarray, seed: int) -> float:
-        splitter   = make_splitter(self.cfg.split, seed=seed)
-        scaler     = make_scaler(self.cfg.scale)
-        features   = make_features(self.cfg.features, seed=seed, model_cfg=self.cfg.model, eval_cfg=self.cfg.eval)
-        model_bld  = make_model(self.cfg.model)
-        trainer    = make_trainer()
-        predictor  = make_predictor()
-
-        eval_kind  = self._get_eval_kind()
-        evaluator  = make_evaluator(self.cfg.eval, kind=eval_kind)
-
-        split: Split = next(splitter.split(X, y))
-        Xtr, Xte, ytr, yte = split.Xtr, split.Xte, split.ytr, split.yte
-        Xtr, Xte = scaler.fit_transform(Xtr, Xte)
-        _, Xtr_fx, Xte_fx = features.fit_transform_train_test(Xtr, Xte, ytr)
-
-        model = model_bld.make_estimator()
-        model = trainer.fit(model, Xtr_fx, ytr)
-        y_pred = predictor.predict(model, Xte_fx)
-
-        return float(evaluator.score(yte, y_pred))
-
-    def _score_once_kfold(self, X: np.ndarray, y: np.ndarray, seed_base: int) -> float:
-        """
-        For CV, compute a single scalar per shuffle: the mean of fold scores.
-        Each fold uses a deterministic child seed derived from the shuffle index.
-        """
-        eval_kind = self._get_eval_kind()
-        evaluator = make_evaluator(self.cfg.eval, kind=eval_kind)
-        fold_scores: list[float] = []
-
-        # Recreate a fresh splitter for this shuffle (generators are one-shot)
-        splitter_master = make_splitter(self.cfg.split, seed=seed_base)
-
-        # Iterate folds
-        for fold_id, split in enumerate(splitter_master.split(X, y), start=1):
-            Xtr, Xte, ytr, yte = split.Xtr, split.Xte, split.ytr, split.yte
-            # Derive a fold-specific seed so feature/model randomness is stable
-            fold_seed = self.rngm.child_seed(f"cv/fold{fold_id}@{seed_base}")
-
-            scaler     = make_scaler(self.cfg.scale)
-            features   = make_features(self.cfg.features, seed=fold_seed, model_cfg=self.cfg.model, eval_cfg=self.cfg.eval)
-            model_bld  = make_model(self.cfg.model)
-            trainer    = make_trainer()
-            predictor  = make_predictor()
-
-            Xtr_s, Xte_s = scaler.fit_transform(Xtr, Xte)
-            _, Xtr_fx, Xte_fx = features.fit_transform_train_test(Xtr_s, Xte_s, ytr)
-
-            model = model_bld.make_estimator()
-            model = trainer.fit(model, Xtr_fx, ytr)
-            y_pred = predictor.predict(model, Xte_fx)
-            fold_scores.append(float(evaluator.score(yte, y_pred)))
-
-        # Mean score across folds for this shuffle
-        return float(np.mean(fold_scores)) if len(fold_scores) else float("nan")
+    score_once: ScoreOnceFn
+    n_shuffles_default: int = 0
 
     def run(
         self,
@@ -98,42 +42,33 @@ class LabelShuffleBaseline(BaselineRunner):
         n_shuffles: Optional[int] = None,
         progress: Optional[ProgressCallback] = None,
     ) -> np.ndarray:
-        """Run label-shuffle baselines.
+        """Run the label-shuffle baseline.
 
-        Returns an array of length ``n_shuffles``.
-        - Hold-out: each element is the hold-out score for that shuffle.
-        - K-fold:   each element is the mean CV score across folds for that shuffle.
-
-        Progress reporting is optional via ``progress``.
+        Returns
+        -------
+        np.ndarray
+            Array of length ``n_shuffles`` (one score per shuffle).
         """
-        n_shuffles = int(n_shuffles if n_shuffles is not None else (getattr(getattr(self.cfg, "eval", None), "n_shuffles", 0) or 0))
 
-        if n_shuffles < 1:
+        n_shuffles_i = int(n_shuffles if n_shuffles is not None else int(self.n_shuffles_default or 0))
+        if n_shuffles_i < 1:
             raise ValueError("n_shuffles must be >= 1")
 
-        use_kfold = getattr(self.cfg.split, "mode", "").lower() == "kfold"
         if progress:
-            progress.init(total=n_shuffles, label=f"Shuffling 0/{n_shuffles}…")
+            progress.init(total=n_shuffles_i, label=f"Shuffling 0/{n_shuffles_i}…")
 
-        scores = np.empty(n_shuffles, dtype=float)
+        scores = np.empty(n_shuffles_i, dtype=float)
         try:
-            for i in range(n_shuffles):
-                # Per-shuffle RNG derivations
-                lbl_gen   = self.rngm.child_generator(f"shuffle_{i}/labels")
-                pipe_seed = self.rngm.child_seed(f"shuffle_{i}/pipeline")
+            for i in range(n_shuffles_i):
+                # Deterministic substreams per shuffle
+                lbl_gen = self.rngm.child_generator(f"shuffle_{i}/labels")
+                pipe_seed = int(self.rngm.child_seed(f"shuffle_{i}/pipeline"))
 
-                # Shuffle labels
                 y_shuf = shuffle_simple_vector(y, rng=lbl_gen)
+                scores[i] = float(self.score_once(X, y_shuf, pipe_seed))
 
-                # Compute score depending on split mode
-                if use_kfold:
-                    score_i = self._score_once_kfold(X, y_shuf, seed_base=pipe_seed)
-                else:
-                    score_i = self._score_once_holdout(X, y_shuf, seed=pipe_seed)
-
-                scores[i] = score_i
                 if progress:
-                    progress.update(current=i + 1, label=f"Shuffling {i+1}/{n_shuffles}…")
+                    progress.update(current=i + 1, label=f"Shuffling {i+1}/{n_shuffles_i}…")
 
             return scores
         finally:
