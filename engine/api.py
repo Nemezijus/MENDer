@@ -32,6 +32,9 @@ from engine.use_cases.facade import (
 
 # Non-use-case helpers that are still part of the stable public surface.
 from engine.io.readers import load_from_data_model
+from engine.core.progress import ProgressCallback
+from engine.io.artifacts.meta_models import ModelArtifactMetaDict
+from engine.io.export.csv_export import ExportResult
 
 __all__ = [
     "train_supervised",
@@ -49,4 +52,7 @@ __all__ = [
     "load_model_bytes_to_cache",
     "run_label_shuffle_baseline_from_cfg",
     "load_from_data_model",
+    "ProgressCallback",
+    "ModelArtifactMetaDict",
+    "ExportResult",
 ]

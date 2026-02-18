@@ -10,6 +10,7 @@ This is intended to fail fast during refactors if imports drift/break.
 from __future__ import annotations
 
 import importlib
+import subprocess
 import sys
 from pathlib import Path
 
@@ -29,7 +30,15 @@ def _ensure_repo_root_on_syspath() -> Path:
 
 
 def main() -> int:
-    _ensure_repo_root_on_syspath()
+    repo_root = _ensure_repo_root_on_syspath()
+
+    # Boundary guard: backend must only import Engine via engine.api + engine.contracts.
+    chk = subprocess.run(
+        [sys.executable, str(repo_root / "scripts" / "check_engine_boundary.py")],
+        cwd=str(repo_root),
+    )
+    if chk.returncode != 0:
+        return chk.returncode
 
     modules = [
         "engine",

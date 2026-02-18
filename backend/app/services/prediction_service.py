@@ -17,14 +17,14 @@ Engine responsibilities:
 from typing import Any, Optional
 
 from engine.api import (
+    ExportResult,
+    ModelArtifactMetaDict,
     export_decoder_outputs_to_csv as bl_export_decoder_outputs_to_csv,
     export_predictions_to_csv as bl_export_predictions_to_csv,
     predict as bl_predict,
 )
 
 from engine.contracts.eval_configs import EvalModel
-from engine.io.artifacts.meta_models import ModelArtifactMetaDict
-from engine.io.export.csv_export import ExportResult
 
 from .common.result_coercion import to_payload
 

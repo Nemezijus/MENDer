@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Backend progress adapter for Engine progress callbacks.
 
-The Engine (BL) defines a small :class:`engine.core.progress.ProgressCallback`
+The Engine (BL) defines a small :class:`engine.api.ProgressCallback`
 protocol to allow optional progress reporting during long-running tasks.
 
 The backend tracks progress records in :mod:`backend.app.progress.registry` and
@@ -14,7 +14,7 @@ This adapter bridges the two without introducing backend dependencies into the B
 from dataclasses import dataclass
 from typing import Optional
 
-from engine.core.progress import ProgressCallback
+from engine.api import ProgressCallback
 
 from .registry import PROGRESS
 
