@@ -38,7 +38,7 @@ from .routers.predict import router as predict_router
 from .routers.tuning import router as tuning_router
 from .routers.ensembles import router as ensembles_router
 
-from .adapters.io_adapter import LoadError
+from .adapters.io.errors import LoadError
 from .exceptions import (
     ModelArtifactCacheGoneError,
     ModelArtifactOperationError,

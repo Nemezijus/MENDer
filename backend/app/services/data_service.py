@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 from engine.api import inspect_dataset
 
-from ..adapters.io_adapter import load_X_optional_y
+from ..adapters.io.loader import load_X_optional_y
 
 
 def _load_arrays(payload) -> tuple[Any, Any]:

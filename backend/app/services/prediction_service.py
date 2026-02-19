@@ -4,7 +4,7 @@ from __future__ import annotations
 """Prediction service (backend boundary).
 
 Backend responsibilities:
-- load X/y from disk (via io_adapter)
+- load X/y from disk (via backend io adapters)
 - call Engine API use-cases
 - shape response models
 

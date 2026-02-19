@@ -26,7 +26,7 @@ from engine.api import format_label_shuffle_baseline_failure_note as bl_format_l
 from engine.contracts.run_config import RunConfig
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
 
-from ..adapters.io_adapter import LoadError
+from ..adapters.io.errors import LoadError
 from ..progress.registry import PROGRESS
 from ..progress.callback import RegistryProgressCallback
 

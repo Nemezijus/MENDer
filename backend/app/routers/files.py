@@ -11,8 +11,10 @@ from backend.utils.upload_index import (
     get_index_filename,
 )
 
+from ..adapters.io.environment import get_upload_dir
+
 # In Docker we set UPLOAD_DIR=/data/uploads; in dev we default to ./uploads
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
+UPLOAD_DIR = get_upload_dir()
 ALLOWED_EXTS = {".mat", ".npz", ".npy", ".csv", ".tsv", ".txt", ".h5", ".hdf5", ".xlsx"}
 
 # NOTE: Versioning (/api/v1) is applied in backend/app/main.py.

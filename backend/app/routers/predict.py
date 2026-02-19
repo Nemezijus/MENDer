@@ -19,7 +19,7 @@ from ..services.prediction_service import (
     export_predictions_to_csv,
     export_decoder_outputs_to_csv,
 )
-from ..adapters.io_adapter import load_X_optional_y
+from ..adapters.io.loader import load_X_optional_y
 
 router = APIRouter()
 

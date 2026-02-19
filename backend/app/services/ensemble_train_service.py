@@ -15,7 +15,7 @@ from engine.api import train_ensemble as bl_train_ensemble
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
-from ..adapters.io_adapter import LoadError
+from ..adapters.io.errors import LoadError
 
 from .common.error_classification import is_probable_load_error
 from .common.result_coercion import to_payload

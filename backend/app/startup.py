@@ -10,10 +10,7 @@ import os
 
 from fastapi import FastAPI
 
-
-def _get_upload_dir() -> str:
-    # In Docker we typically set UPLOAD_DIR=/data/uploads; in dev default to ./uploads
-    return os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
+from .adapters.io.environment import get_upload_dir
 
 
 def register_startup(app: FastAPI) -> None:
@@ -21,4 +18,5 @@ def register_startup(app: FastAPI) -> None:
 
     @app.on_event("startup")
     async def _ensure_runtime_directories() -> None:
-        os.makedirs(_get_upload_dir(), exist_ok=True)
+        # In Docker we typically set UPLOAD_DIR=/data/uploads; in dev default to ./uploads
+        os.makedirs(get_upload_dir(), exist_ok=True)
