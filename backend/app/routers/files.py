@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Any, List
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
@@ -28,7 +28,7 @@ class UploadedFileInfo(BaseModel):
 
 
 @router.get("/ping")
-def files_ping():
+def files_ping() -> dict[str, Any]:
     return {"ok": True, "dir": UPLOAD_DIR}
 
 
@@ -95,7 +95,7 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @router.get("/list", response_model=List[UploadedFileInfo])
-def list_files():
+def list_files() -> List[UploadedFileInfo]:
     if not os.path.isdir(UPLOAD_DIR):
         return []
 

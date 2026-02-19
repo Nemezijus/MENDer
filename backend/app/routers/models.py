@@ -10,7 +10,7 @@ Versioning (/api/v1) is applied in backend/app/main.py.
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..models.v1.models import SaveModelRequest, LoadModelResponse
+from ..models.v1.artifact_api_models import SaveModelRequest, LoadModelResponse
 from ..services.model_persistence_service import save_model_service, load_model_service
 
 

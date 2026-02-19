@@ -16,7 +16,7 @@ router = APIRouter(prefix="/data")
 
 
 @router.post("/inspect", response_model=DataInspectResponse)
-def inspect_endpoint(req: DataInspectRequest):
+def inspect_endpoint(req: DataInspectRequest) -> DataInspectResponse:
     """TRAINING inspect (smart): X required, y optional.
 
     If y is missing, the response will set ``task_inferred="unsupervised"`` so the
@@ -24,13 +24,13 @@ def inspect_endpoint(req: DataInspectRequest):
     upload flow.
     """
 
-    return inspect_data(req)
+    return DataInspectResponse(**inspect_data(req))
 
 
 @router.post("/inspect_production", response_model=DataInspectResponse)
-def inspect_production_endpoint(req: DataInspectRequest):
+def inspect_production_endpoint(req: DataInspectRequest) -> DataInspectResponse:
     """PRODUCTION inspect (y optional): allows X-only so users can prepare unseen data
     without labels.
     """
 
-    return inspect_data_optional_y(req)
+    return DataInspectResponse(**inspect_data_optional_y(req))

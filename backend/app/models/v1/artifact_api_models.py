@@ -1,3 +1,16 @@
+"""API models for model-artifact operations.
+
+This module groups request/response schemas for endpoints that operate on
+persisted model artifacts:
+
+- save / load
+- apply to new data
+- export predictions / decoder outputs
+
+Kept separate from ``model_artifact.py`` (which describes the artifact itself)
+to make the API surface easier to navigate.
+"""
+
 from typing import Optional, List
 
 from pydantic import BaseModel, Field
@@ -18,13 +31,14 @@ class SaveModelRequest(BaseModel):
 class LoadModelResponse(BaseModel):
     artifact: ModelArtifactMeta
 
+
 # ---------------------------------------------------------------------------
 # Apply model to production data
 # ---------------------------------------------------------------------------
 
+
 class ApplyModelRequest(BaseModel):
-    """
-    Request to apply an existing model artifact to a new dataset.
+    """Request to apply an existing model artifact to a new dataset.
 
     - artifact_uid: identifies the cached pipeline (from train/load).
     - artifact_meta: the same meta dict used for save/load; needed so the
@@ -32,6 +46,7 @@ class ApplyModelRequest(BaseModel):
     - data: describes where to load X (and optional y) from, reusing the same
       structure as data inspection.
     """
+
     artifact_uid: str
     artifact_meta: ModelArtifactMeta
     data: DataInspectRequest
@@ -61,16 +76,8 @@ class ApplyUnsupervisedModelRequest(BaseModel):
 
 
 class PredictionRow(BaseModel):
-    """
-    One row of the prediction preview table.
+    """One row of the prediction preview table."""
 
-    - index:      row index (0-based)
-    - y_pred:     predicted label / value
-    - y_true:     optional ground truth (if labels were provided)
-    - residual:   for regression, y_true - y_pred (if numeric)
-    - abs_error:  for regression, |residual|
-    - correct:    for classification, whether prediction matches y_true
-    """
     index: int
     y_pred: Label
     y_true: Optional[Label] = None
@@ -80,18 +87,8 @@ class PredictionRow(BaseModel):
 
 
 class ApplyModelResponse(BaseModel):
-    """
-    Response from applying a model to a new dataset.
+    """Response from applying a model to a new dataset."""
 
-    - n_samples:    number of samples in X
-    - n_features:   number of features in X
-    - task:         inferred task from the model ("classification", "regression", ...)
-    - has_labels:   whether labels were supplied for this dataset
-    - metric_name:  evaluation metric used, if any
-    - metric_value: metric value on this dataset, if labels were provided
-    - preview:      compact preview table for the first N rows
-    - notes:        human-readable notes / warnings
-    """
     n_samples: int
     n_features: int
     task: str
@@ -121,12 +118,10 @@ class ApplyUnsupervisedModelResponse(BaseModel):
     preview: List[UnsupervisedPredictionRow]
     notes: List[str] = Field(default_factory=list)
 
-class ApplyModelExportRequest(ApplyModelRequest):
-    """
-    Request body for exporting predictions as CSV.
 
-    Same as ApplyModelRequest, plus an optional filename hint for the server.
-    """
+class ApplyModelExportRequest(ApplyModelRequest):
+    """Request body for exporting predictions as CSV."""
+
     filename: Optional[str] = None
 
 

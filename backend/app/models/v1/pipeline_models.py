@@ -23,13 +23,13 @@ class PipelinePreviewRequest(BaseModel):
 
 # ---- Response models ----
 
-class PipelineStep(BaseModel):
+class PipelinePreviewStep(BaseModel):
     name: Literal["scale", "feat", "clf"]
     class_path: str                       # e.g., "sklearn.preprocessing._data.StandardScaler"
     params: Dict[str, Any] = Field(default_factory=dict)
 
 class PipelinePreviewResponse(BaseModel):
     ok: bool
-    steps: List[PipelineStep] = Field(default_factory=list)
+    steps: List[PipelinePreviewStep] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)

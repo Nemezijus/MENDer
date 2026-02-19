@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.post("/train", response_model=Union[TrainResponse, UnsupervisedTrainResponse])
-def train_endpoint(req: Union[TrainRequest, UnsupervisedTrainRequest]):
+def train_endpoint(req: Union[TrainRequest, UnsupervisedTrainRequest]) -> Union[TrainResponse, UnsupervisedTrainResponse]:
     """Train a model.
 
     Backward compatible:

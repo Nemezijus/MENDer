@@ -10,7 +10,7 @@ router = APIRouter(prefix="/ensembles")
 
 
 @router.post("/train", response_model=EnsembleTrainResponse)
-def train_ensemble_endpoint(req: EnsembleTrainRequest):
+def train_ensemble_endpoint(req: EnsembleTrainRequest) -> EnsembleTrainResponse:
     cfg = EnsembleRunConfig(
         data=req.data,
         split=req.split,

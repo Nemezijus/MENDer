@@ -186,5 +186,5 @@ else:
     pass
 
 @app.get("/healthz")
-def healthz():
+def healthz() -> dict[str, bool]:
     return {"ok": True}

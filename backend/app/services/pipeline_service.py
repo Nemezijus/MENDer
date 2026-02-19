@@ -10,6 +10,8 @@ The backend is responsible only for:
 All orchestration (RNG + pipeline factory + introspection) lives in the Engine.
 """
 
+from typing import Any, Dict
+
 from engine.api import preview_pipeline as bl_preview_pipeline
 
 from engine.contracts.run_config import RunConfig, DataModel
@@ -17,7 +19,7 @@ from engine.contracts.scale_configs import ScaleModel
 from engine.contracts.split_configs import SplitHoldoutModel
 
 
-def preview_pipeline(payload):
+def preview_pipeline(payload: Any) -> Dict[str, Any]:
     cfg = RunConfig(
         data=DataModel(),
         split=SplitHoldoutModel(mode="holdout"),

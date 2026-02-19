@@ -1,10 +1,17 @@
-# backend/app/routers/predict.py
+"""Prediction / apply endpoints.
+
+These routes are kept thin: they load arrays via the backend IO layer and
+delegate execution to backend services (which call into ``engine.api``).
+"""
+
+from __future__ import annotations
+
+from typing import Any, Union
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from typing import Union
-
-from ..models.v1.models import (
+from ..models.v1.artifact_api_models import (
     ApplyModelRequest,
     ApplyModelResponse,
     ApplyModelExportRequest,
@@ -24,7 +31,7 @@ from ..adapters.io.loader import load_X_optional_y
 router = APIRouter()
 
 
-def _load_prediction_data(data):
+def _load_prediction_data(data: Any) -> tuple[Any, Any]:
     """
     Load X and (optional) y for prediction/export endpoints.
     Uses the prediction-friendly IO helper where y is optional.
@@ -39,7 +46,11 @@ def _load_prediction_data(data):
     return X, y
 
 
-def _run_apply(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest], *, export: bool = False):
+def _run_apply(
+    req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest],
+    *,
+    export: bool = False,
+) -> dict[str, Any]:
     """
     Shared execution for apply/export to keep router endpoints thin and consistent.
     """
@@ -71,7 +82,9 @@ def _run_apply(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest], *, 
 
 
 @router.post("/models/apply", response_model=Union[ApplyModelResponse, ApplyUnsupervisedModelResponse])
-def apply_model_endpoint(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest]):
+def apply_model_endpoint(
+    req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest],
+) -> Union[ApplyModelResponse, ApplyUnsupervisedModelResponse]:
     """
     Apply an existing model artifact to a new dataset.
     """
@@ -82,7 +95,9 @@ def apply_model_endpoint(req: Union[ApplyModelRequest, ApplyUnsupervisedModelReq
 
 
 @router.post("/models/apply/export")
-def export_predictions_endpoint(req: Union[ApplyModelExportRequest, ApplyUnsupervisedModelExportRequest]):
+def export_predictions_endpoint(
+    req: Union[ApplyModelExportRequest, ApplyUnsupervisedModelExportRequest],
+) -> StreamingResponse:
     """
     Export predictions as CSV for a given artifact + dataset.
     """
@@ -101,7 +116,7 @@ def export_predictions_endpoint(req: Union[ApplyModelExportRequest, ApplyUnsuper
 
 
 @router.post("/decoder/export")
-def export_decoder_outputs_endpoint(req: ExportDecoderOutputsRequest):
+def export_decoder_outputs_endpoint(req: ExportDecoderOutputsRequest) -> StreamingResponse:
     """Export cached evaluation (decoder) outputs as CSV.
 
     The `artifact_uid` must be obtained from a training endpoint response.
