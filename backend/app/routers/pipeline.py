@@ -4,9 +4,9 @@ from ..models.v1.pipeline_models import (
 )
 from ..services.pipeline_service import preview_pipeline
 
-router = APIRouter()
+router = APIRouter(prefix="/pipeline")
 
-@router.post("/pipeline/preview", response_model=PipelinePreviewResponse)
+@router.post("/preview", response_model=PipelinePreviewResponse)
 def pipeline_preview(req: PipelinePreviewRequest):
     result = preview_pipeline(req)
     return PipelinePreviewResponse(**result)

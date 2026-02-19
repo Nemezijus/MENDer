@@ -6,10 +6,11 @@ from ..models.v1.ensemble_models import EnsembleTrainRequest, EnsembleTrainRespo
 from ..services.ensemble_train_service import train_ensemble
 from ..adapters.io_adapter import LoadError
 
-router = APIRouter()
+# NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
+router = APIRouter(prefix="/ensembles")
 
 
-@router.post("/ensembles/train", response_model=EnsembleTrainResponse)
+@router.post("/train", response_model=EnsembleTrainResponse)
 def train_ensemble_endpoint(req: EnsembleTrainRequest):
     cfg = EnsembleRunConfig(
         data=req.data,

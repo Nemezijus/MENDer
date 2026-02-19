@@ -19,7 +19,8 @@ from ..services.grid_search_service import compute_grid_search
 from ..services.random_search_service import compute_random_search
 
 
-router = APIRouter()
+# NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
+router = APIRouter(prefix="/tuning")
 
 
 @router.post("/learning-curve", response_model=LearningCurveResponse)

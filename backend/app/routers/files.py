@@ -15,7 +15,8 @@ from backend.utils.upload_index import (
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
 ALLOWED_EXTS = {".mat", ".npz", ".npy", ".csv", ".tsv", ".txt", ".h5", ".hdf5", ".xlsx"}
 
-router = APIRouter()
+# NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
+router = APIRouter(prefix="/files")
 
 
 class UploadedFileInfo(BaseModel):
@@ -24,12 +25,12 @@ class UploadedFileInfo(BaseModel):
     saved_name: str
 
 
-@router.get("/files/ping")
+@router.get("/ping")
 def files_ping():
     return {"ok": True, "dir": UPLOAD_DIR}
 
 
-@router.post("/files/upload", response_model=UploadedFileInfo)
+@router.post("/upload", response_model=UploadedFileInfo)
 async def upload_file(file: UploadFile = File(...)):
     """Upload a single file into UPLOAD_DIR using content-addressed storage.
 
@@ -91,7 +92,7 @@ async def upload_file(file: UploadFile = File(...)):
     return UploadedFileInfo(path=dest, original_name=orig, saved_name=saved_name)
 
 
-@router.get("/files/list", response_model=List[UploadedFileInfo])
+@router.get("/list", response_model=List[UploadedFileInfo])
 def list_files():
     if not os.path.isdir(UPLOAD_DIR):
         return []

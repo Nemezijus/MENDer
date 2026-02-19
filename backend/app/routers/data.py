@@ -3,7 +3,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 import os
 
-router = APIRouter()
+# NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
+router = APIRouter(prefix="/data")
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -19,7 +20,7 @@ class InspectRequest(BaseModel):
     expected_n_features: int | None = None
 
 
-@router.post("/data/inspect")
+@router.post("/inspect")
 def inspect_endpoint(req: InspectRequest):
     """
     TRAINING inspect (smart):
@@ -35,7 +36,7 @@ def inspect_endpoint(req: InspectRequest):
     return inspect_data(req)
 
 
-@router.post("/data/inspect_production")
+@router.post("/inspect_production")
 def inspect_production_endpoint(req: InspectRequest):
     """
     PRODUCTION inspect (y optional): allows X-only so users can prepare unseen data

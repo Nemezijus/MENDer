@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi import status
 import time, os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -27,17 +29,42 @@ from .routers.train import router as train_router
 from .routers.health import router as health_router
 from .routers.files import router as files_router
 from .routers.progress import router as progress_router
-from .routers.models import router as models_router
+from .routers.models import router as models_router, legacy_router as legacy_models_router
 from .routers.schema import router as schema_router
 from .routers.predict import router as predict_router
 from .routers.tuning import router as tuning_router
 from .routers.ensembles import router as ensembles_router
+
+from .adapters.io_adapter import LoadError
 
 app = FastAPI(
     title="MENDer Local API",
     version="1.0.0",
     description="Local-first API exposing MENDer pipeline logic",
 )
+
+
+# -------------------------
+# Global error handling
+# -------------------------
+
+
+@app.exception_handler(LoadError)
+async def handle_load_error(request: Request, exc: LoadError):
+    # Consistent 400s for IO/shape/key issues.
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": f"Data load failed: {exc}"},
+    )
+
+
+@app.exception_handler(ValueError)
+async def handle_value_error(request: Request, exc: ValueError):
+    # Treat ValueError as client input/config errors by default.
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
 
 # CORS for dev (Vite @ 5173) + optional env override
 app.add_middleware(
@@ -85,9 +112,10 @@ app.include_router(pipeline_router,      prefix="/api/v1",        tags=["pipelin
 app.include_router(train_router,         prefix="/api/v1",        tags=["train"])
 app.include_router(progress_router,      prefix="/api/v1",        tags=["progress"])
 app.include_router(models_router,        prefix="/api/v1",        tags=["models"])
+app.include_router(legacy_models_router, prefix="/api/v1",        tags=["models"])
 app.include_router(predict_router,       prefix="/api/v1",        tags=["predict"])
-app.include_router(schema_router,        prefix="/api/v1/schema", tags=["schema"])
-app.include_router(tuning_router,        prefix="/api/v1/tuning", tags=["tuning"])
+app.include_router(schema_router,        prefix="/api/v1",        tags=["schema"])
+app.include_router(tuning_router,        prefix="/api/v1",        tags=["tuning"])
 app.include_router(ensembles_router,     prefix="/api/v1",        tags=["ensembles"])
 
 if os.path.isdir("frontend_dist"):

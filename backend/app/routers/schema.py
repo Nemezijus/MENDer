@@ -12,7 +12,8 @@ from fastapi import APIRouter
 import engine.api as api
 
 
-router = APIRouter()
+# NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
+router = APIRouter(prefix="/schema")
 
 
 def _bundle() -> dict:
