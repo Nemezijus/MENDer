@@ -30,44 +30,8 @@ from ..adapters.io_adapter import LoadError
 from ..progress.registry import PROGRESS
 from ..progress.callback import RegistryProgressCallback
 
+from .common.error_classification import is_probable_load_error
 from .common.result_coercion import to_payload
-
-
-def _is_probable_load_error(exc: Exception) -> bool:
-    """Best-effort classification of 'data load' failures.
-
-    The Engine BL does not depend on backend exception types, so data-loading
-    errors (FileNotFoundError, missing keys, etc.) would otherwise surface as
-    generic 500s.
-
-    This heuristic keeps backward-compatible 400 responses for common load
-    failures while not masking genuine training errors.
-    """
-
-    if isinstance(exc, (FileNotFoundError, OSError, IOError)):
-        return True
-
-    msg = str(exc).lower()
-    needles = (
-        "npz",
-        "npy",
-        "mat",
-        "h5",
-        "hdf5",
-        "csv",
-        "file",
-        "path",
-        "no such file",
-        "not found",
-        "missing",
-        "x_key",
-        "y_key",
-        "load",
-        "dataset",
-        "could not read",
-        "cannot read",
-    )
-    return any(n in msg for n in needles)
 
 
 def train(cfg: RunConfig) -> Dict[str, Any]:
@@ -81,7 +45,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
     try:
         result = bl_train_supervised(cfg)
     except Exception as e:
-        if _is_probable_load_error(e):
+        if is_probable_load_error(e):
             raise LoadError(str(e)) from e
         raise
 
@@ -134,7 +98,7 @@ def train_unsupervised(cfg: UnsupervisedRunConfig) -> Dict[str, Any]:
     try:
         result = bl_train_unsupervised(cfg)
     except Exception as e:
-        if _is_probable_load_error(e):
+        if is_probable_load_error(e):
             raise LoadError(str(e)) from e
         raise
 

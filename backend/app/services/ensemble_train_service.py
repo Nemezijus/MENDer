@@ -17,36 +17,8 @@ from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from ..adapters.io_adapter import LoadError
 
+from .common.error_classification import is_probable_load_error
 from .common.result_coercion import to_payload
-
-
-def _is_probable_load_error(exc: Exception) -> bool:
-    """Best-effort classification of 'data load' failures."""
-
-    if isinstance(exc, (FileNotFoundError, OSError, IOError)):
-        return True
-
-    msg = str(exc).lower()
-    needles = (
-        "npz",
-        "npy",
-        "mat",
-        "h5",
-        "hdf5",
-        "csv",
-        "file",
-        "path",
-        "no such file",
-        "not found",
-        "missing",
-        "x_key",
-        "y_key",
-        "load",
-        "dataset",
-        "could not read",
-        "cannot read",
-    )
-    return any(n in msg for n in needles)
 
 
 def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
@@ -58,7 +30,7 @@ def train_ensemble(cfg: EnsembleRunConfig) -> Dict[str, Any]:
     try:
         result = bl_train_ensemble(cfg)
     except Exception as e:
-        if _is_probable_load_error(e):
+        if is_probable_load_error(e):
             raise LoadError(str(e)) from e
         raise
 

@@ -1,5 +1,6 @@
 from typing import Optional, List
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
 
 from .model_artifact import ModelArtifactMeta
 from .data_models import DataInspectRequest, Label
@@ -98,7 +99,7 @@ class ApplyModelResponse(BaseModel):
     metric_name: Optional[str] = None
     metric_value: Optional[float] = None
     preview: List[PredictionRow]
-    notes: List[str] = []
+    notes: List[str] = Field(default_factory=list)
 
     # Optional: per-sample decoder outputs preview (classification only)
     decoder_outputs: Optional[DecoderOutputs] = None
@@ -118,7 +119,7 @@ class ApplyUnsupervisedModelResponse(BaseModel):
     n_features: int
     task: str
     preview: List[UnsupervisedPredictionRow]
-    notes: List[str] = []
+    notes: List[str] = Field(default_factory=list)
 
 class ApplyModelExportRequest(ApplyModelRequest):
     """
