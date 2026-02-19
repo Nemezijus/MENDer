@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi import status
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import time, os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -54,6 +57,18 @@ app = FastAPI(
 # -------------------------
 
 
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_exception(request: Request, exc: StarletteHTTPException):
+    # Preserve FastAPI/Starlette default behavior for explicit HTTP errors (404, etc.).
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(request: Request, exc: RequestValidationError):
+    # Preserve default 422 payload shape.
+    return await request_validation_exception_handler(request, exc)
+
+
 @app.exception_handler(LoadError)
 async def handle_load_error(request: Request, exc: LoadError):
     # Consistent 400s for IO/shape/key issues.
@@ -92,10 +107,20 @@ async def handle_model_artifact_validation(request: Request, exc: ModelArtifactV
 
 @app.exception_handler(ModelArtifactOperationError)
 async def handle_model_artifact_operation(request: Request, exc: ModelArtifactOperationError):
-    # Preserve the previous behavior: surface the operation failure message.
+    # Opaque 500: do not leak internal operation details.
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": str(exc)},
+        content={"detail": "Internal server error"},
+    )
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(request: Request, exc: Exception):
+    # Catch-all for unexpected failures.
+    # Keep the response opaque and rely on server logs for details.
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
     )
 
 # CORS for dev (Vite @ 5173) + optional env override

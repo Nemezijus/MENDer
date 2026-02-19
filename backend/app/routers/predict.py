@@ -1,5 +1,5 @@
 # backend/app/routers/predict.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from typing import Union
@@ -19,7 +19,7 @@ from ..services.prediction_service import (
     export_predictions_to_csv,
     export_decoder_outputs_to_csv,
 )
-from ..adapters.io_adapter import load_X_optional_y, LoadError
+from ..adapters.io_adapter import load_X_optional_y
 
 router = APIRouter()
 
@@ -29,21 +29,14 @@ def _load_prediction_data(data):
     Load X and (optional) y for prediction/export endpoints.
     Uses the prediction-friendly IO helper where y is optional.
     """
-    try:
-        X, y = load_X_optional_y(
-            data.npz_path,
-            data.x_key,
-            data.y_key,
-            data.x_path,
-            data.y_path,
-        )
-        return X, y
-    except LoadError as e:
-        raise HTTPException(status_code=400, detail=f"Data load failed: {e}") from e
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    X, y = load_X_optional_y(
+        data.npz_path,
+        data.x_key,
+        data.y_key,
+        data.x_path,
+        data.y_path,
+    )
+    return X, y
 
 
 def _run_apply(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest], *, export: bool = False):
@@ -61,25 +54,20 @@ def _run_apply(req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest], *, 
         meta_dict["eval"] = req.eval.model_dump()
         artifact_meta = ModelArtifactMeta(**meta_dict)
 
-    try:
-        if export:
-            return export_predictions_to_csv(
-                artifact_uid=req.artifact_uid,
-                artifact_meta=artifact_meta,
-                X=X,
-                y=y,
-                filename=getattr(req, "filename", None),
-            )
-        return apply_model_to_arrays(
+    if export:
+        return export_predictions_to_csv(
             artifact_uid=req.artifact_uid,
             artifact_meta=artifact_meta,
             X=X,
             y=y,
+            filename=getattr(req, "filename", None),
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return apply_model_to_arrays(
+        artifact_uid=req.artifact_uid,
+        artifact_meta=artifact_meta,
+        X=X,
+        y=y,
+    )
 
 
 @router.post("/models/apply", response_model=Union[ApplyModelResponse, ApplyUnsupervisedModelResponse])
@@ -118,15 +106,10 @@ def export_decoder_outputs_endpoint(req: ExportDecoderOutputsRequest):
 
     The `artifact_uid` must be obtained from a training endpoint response.
     """
-    try:
-        export_result = export_decoder_outputs_to_csv(
-            artifact_uid=req.artifact_uid,
-            filename=req.filename,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    export_result = export_decoder_outputs_to_csv(
+        artifact_uid=req.artifact_uid,
+        filename=req.filename,
+    )
 
     headers = {
         "Content-Disposition": f'attachment; filename="{export_result["filename"]}"',

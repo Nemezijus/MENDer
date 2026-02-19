@@ -1,10 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 
 from ..models.v1.ensemble_models import EnsembleTrainRequest, EnsembleTrainResponse
 from ..services.ensemble_train_service import train_ensemble
-from ..adapters.io_adapter import LoadError
 
 # NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
 router = APIRouter(prefix="/ensembles")
@@ -21,12 +20,5 @@ def train_ensemble_endpoint(req: EnsembleTrainRequest):
         eval=req.eval,
     )
 
-    try:
-        result = train_ensemble(cfg)
-        return EnsembleTrainResponse(**result)
-    except LoadError as e:
-        raise HTTPException(status_code=400, detail=f"Data load failed: {e}")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    result = train_ensemble(cfg)
+    return EnsembleTrainResponse(**result)
