@@ -2,9 +2,7 @@ from __future__ import annotations
 
 """Model artifact persistence endpoints.
 
-Point 6 refactor notes:
-  - Canonical endpoints are exposed under /models/*.
-  - Legacy endpoints (/save, /load) are retained for backward compatibility.
+Canonical endpoints are exposed under /models/*.
 
 Versioning (/api/v1) is applied in backend/app/main.py.
 """
@@ -16,11 +14,7 @@ from ..models.v1.models import SaveModelRequest, LoadModelResponse
 from ..services.model_persistence_service import save_model_service, load_model_service
 
 
-# Canonical router
 router = APIRouter(prefix="/models")
-
-# Legacy router (do not add a prefix here; main.py will mount under /api/v1)
-legacy_router = APIRouter()
 
 
 def _build_save_response(req: SaveModelRequest) -> StreamingResponse:
@@ -53,12 +47,11 @@ async def _load_model_file(file: UploadFile) -> LoadModelResponse:
     return {"artifact": meta}
 
 
-# ------------------------
-# Canonical endpoints
-# ------------------------
-
-
-@router.post("/save", response_class=StreamingResponse, summary="Save the last trained model artifact")
+@router.post(
+    "/save",
+    response_class=StreamingResponse,
+    summary="Save the last trained model artifact",
+)
 async def save_model(req: SaveModelRequest):
     """Download a binary artifact payload (Content-Disposition: attachment).
 
@@ -68,36 +61,15 @@ async def save_model(req: SaveModelRequest):
     return _build_save_response(req)
 
 
-@router.post("/load", response_model=LoadModelResponse, summary="Load a model artifact from an uploaded file")
+@router.post(
+    "/load",
+    response_model=LoadModelResponse,
+    summary="Load a model artifact from an uploaded file",
+)
 async def load_model(file: UploadFile = File(...)):
     """Accepts a single uploaded artifact file and returns validated artifact meta.
 
     Also stores the fitted pipeline into a short-lived cache.
     """
 
-    return await _load_model_file(file)
-
-
-# ------------------------
-# Legacy endpoints
-# ------------------------
-
-
-@legacy_router.post(
-    "/save",
-    response_class=StreamingResponse,
-    summary="(Legacy) Save the last trained model artifact",
-    deprecated=True,
-)
-async def legacy_save_model(req: SaveModelRequest):
-    return _build_save_response(req)
-
-
-@legacy_router.post(
-    "/load",
-    response_model=LoadModelResponse,
-    summary="(Legacy) Load a model artifact from an uploaded file",
-    deprecated=True,
-)
-async def legacy_load_model(file: UploadFile = File(...)):
     return await _load_model_file(file)

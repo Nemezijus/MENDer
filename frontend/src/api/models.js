@@ -1,6 +1,6 @@
 // API helpers for saving and loading model artifacts using the exact backend routes:
-//   POST /api/v1/save  -> binary .mend
-//   POST /api/v1/load  -> JSON { artifact: ... }
+//   POST /api/v1/models/save  -> binary .mend
+//   POST /api/v1/models/load  -> JSON { artifact: ... }
 
 function parseContentDispositionFilename(header) {
   if (!header) return null;
@@ -15,7 +15,7 @@ function parseContentDispositionFilename(header) {
  * @returns {Promise<{ blob: Blob, filename: string, sha256?: string, size?: number }>}
  */
 export async function saveModel({ artifactUid, artifactMeta, filename }) {
-  const resp = await fetch('/api/v1/save', {
+  const resp = await fetch('/api/v1/models/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -53,7 +53,7 @@ export async function loadModel(file) {
   const fd = new FormData();
   fd.append('file', file);
 
-  const resp = await fetch('/api/v1/load', {
+  const resp = await fetch('/api/v1/models/load', {
     method: 'POST',
     body: fd,
   });

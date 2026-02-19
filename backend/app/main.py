@@ -29,7 +29,7 @@ from .routers.train import router as train_router
 from .routers.health import router as health_router
 from .routers.files import router as files_router
 from .routers.progress import router as progress_router
-from .routers.models import router as models_router, legacy_router as legacy_models_router
+from .routers.models import router as models_router
 from .routers.schema import router as schema_router
 from .routers.predict import router as predict_router
 from .routers.tuning import router as tuning_router
@@ -112,7 +112,6 @@ app.include_router(pipeline_router,      prefix="/api/v1",        tags=["pipelin
 app.include_router(train_router,         prefix="/api/v1",        tags=["train"])
 app.include_router(progress_router,      prefix="/api/v1",        tags=["progress"])
 app.include_router(models_router,        prefix="/api/v1",        tags=["models"])
-app.include_router(legacy_models_router, prefix="/api/v1",        tags=["models"])
 app.include_router(predict_router,       prefix="/api/v1",        tags=["predict"])
 app.include_router(schema_router,        prefix="/api/v1",        tags=["schema"])
 app.include_router(tuning_router,        prefix="/api/v1",        tags=["tuning"])
