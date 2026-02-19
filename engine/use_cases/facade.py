@@ -292,3 +292,27 @@ def run_label_shuffle_baseline_from_cfg(
     )
 
     return [float(v) for v in scores.ravel().tolist()]
+
+
+def summarize_label_shuffle_baseline(*, scores: list[float], ref_score: float) -> dict[str, Any]:
+    """Summarize a label-shuffle score distribution into training-contract fields.
+
+    This is primarily used when baseline execution is handled externally
+    (e.g., by the backend to stream progress updates).
+    """
+
+    from engine.reporting.training.shuffle_baseline_payloads import (
+        build_label_shuffle_baseline_section,
+    )
+
+    return build_label_shuffle_baseline_section(scores=scores, ref_score=ref_score)
+
+
+def format_label_shuffle_baseline_failure_note(*, exc_type: str, exc_message: str, parens: bool = False) -> str:
+    """Format a user-facing note for a baseline execution failure."""
+
+    from engine.reporting.training.shuffle_baseline_payloads import (
+        format_label_shuffle_baseline_failure_note as _fmt,
+    )
+
+    return _fmt(exc_type=exc_type, exc_message=exc_message, parens=parens)

@@ -16,11 +16,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import numpy as np
 
 from engine.api import train_supervised as bl_train_supervised
 from engine.api import train_unsupervised as bl_train_unsupervised
 from engine.api import run_label_shuffle_baseline_from_cfg as bl_run_label_shuffle
+from engine.api import summarize_label_shuffle_baseline as bl_summarize_label_shuffle_baseline
+from engine.api import format_label_shuffle_baseline_failure_note as bl_format_label_shuffle_baseline_failure_note
 
 from engine.contracts.run_config import RunConfig
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig
@@ -102,29 +103,14 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
             # BL-native progress callback (no attribute injection)
             progress_cb = RegistryProgressCallback(progress_id)
 
-            scores = np.asarray(
-                bl_run_label_shuffle(cfg, n_shuffles=n_shuffles, progress=progress_cb),
-                dtype=float,
-            ).ravel()
+            scores = bl_run_label_shuffle(cfg, n_shuffles=n_shuffles, progress=progress_cb)
 
-            # Compare against main model score
-            ref_score = payload.get("mean_score")
-            if ref_score is None:
-                ref_score = payload.get("metric_value")
-            try:
-                ref_score_f = float(ref_score)
-            except Exception:
-                ref_score_f = float("nan")
+            ref_score = result.mean_score if getattr(result, "mean_score", None) is not None else result.metric_value
+            section = bl_summarize_label_shuffle_baseline(scores=list(scores), ref_score=float(ref_score))
 
-            ge = int(np.sum(scores >= ref_score_f))
-            p_val = (ge + 1.0) / (scores.size + 1.0) if scores.size else float("nan")
-
-            payload["shuffled_scores"] = [float(v) for v in scores.tolist()]
-            payload["p_value"] = float(p_val)
-            payload.setdefault("notes", []).append(
-                f"Shuffle baseline: mean={float(np.mean(scores)):.4f} ± {float(np.std(scores)):.4f}, p≈{float(p_val):.4f}"
-            )
-
+            payload["shuffled_scores"] = section.get("shuffled_scores")
+            payload["p_value"] = section.get("p_value")
+            payload.setdefault("notes", []).extend(section.get("notes", []))
     except Exception as e:
         # Baseline errors must not break training.
         try:
@@ -134,9 +120,7 @@ def train(cfg: RunConfig) -> Dict[str, Any]:
         except Exception:
             pass
 
-        payload.setdefault("notes", []).append(
-            f"Shuffle baseline failed ({type(e).__name__}: {e})."
-        )
+        payload.setdefault("notes", []).append(bl_format_label_shuffle_baseline_failure_note(exc_type=type(e).__name__, exc_message=str(e), parens=True))
 
     return payload
 

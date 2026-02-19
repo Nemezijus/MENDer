@@ -24,6 +24,11 @@ import numpy as np
 from engine.contracts.results.training import TrainResult
 from engine.contracts.run_config import RunConfig
 
+from engine.reporting.training.shuffle_baseline_payloads import (
+    build_label_shuffle_baseline_section,
+    format_label_shuffle_baseline_failure_note,
+)
+
 from engine.factories.baseline_factory import make_baseline
 from engine.factories.data_loading_factory import make_data_loader
 from engine.factories.eval_factory import make_evaluator
@@ -203,19 +208,13 @@ def train_supervised(
                 dtype=float,
             ).ravel()
 
-            # Compare baseline against the trained model's mean score.
-            ref_score_f = float(mean_score)
-            ge = int(np.sum(scores >= ref_score_f))
-            p_val = (ge + 1.0) / (scores.size + 1.0) if scores.size else float("nan")
-
-            result["shuffled_scores"] = [float(v) for v in scores.tolist()]
-            result["p_value"] = float(p_val)
-            result["notes"].append(
-                f"Shuffle baseline: mean={float(np.mean(scores)):.4f} ± {float(np.std(scores)):.4f}, p≈{float(p_val):.4f}"
-            )
+            section = build_label_shuffle_baseline_section(scores=scores, ref_score=mean_score)
+            result["shuffled_scores"] = section.get("shuffled_scores")
+            result["p_value"] = section.get("p_value")
+            result["notes"].extend(section.get("notes", []))
         except Exception as e:
             # Baseline errors must not break training.
-            result["notes"].append(f"Shuffle baseline failed: {type(e).__name__}: {e}")
+            result["notes"].append(format_label_shuffle_baseline_failure_note(exc_type=type(e).__name__, exc_message=str(e), parens=False))
 
     # --- Artifact meta + persistence/caching -------------------------------
     attach_artifact_and_persist(
