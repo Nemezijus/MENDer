@@ -186,6 +186,23 @@ def preview_pipeline(*, run_config: RunConfig) -> dict[str, Any]:
     return _preview(run_config)
 
 
+def inspect_dataset(
+    *,
+    X: Any,
+    y: Optional[Any] = None,
+    treat_missing_y_as_unsupervised: bool = False,
+) -> dict[str, Any]:
+    """Inspect loaded arrays and return a UI-friendly dataset summary."""
+
+    from engine.use_cases.dataset_inspection import inspect_dataset as _inspect
+
+    return _inspect(
+        X=X,
+        y=y,
+        treat_missing_y_as_unsupervised=treat_missing_y_as_unsupervised,
+    )
+
+
 def export_predictions_to_csv(
     *,
     artifact_uid: str,
