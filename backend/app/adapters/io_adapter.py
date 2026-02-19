@@ -20,7 +20,36 @@ class LoadError(Exception):
 
 
 def _repo_root() -> str:
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+    """Best-effort repo root discovery.
+
+    In dev mode we accept convenience paths like ``data/<...>`` and map them to
+    ``<repo>/data/<...>``. The backend package itself lives under
+    ``<repo>/backend/...``, so a fixed relative hop is brittle (and was
+    previously off-by-one).
+
+    Strategy:
+      - Walk up parents until we find an ``engine/`` directory (and preferably
+        a ``requirements.txt``) which reliably indicates the repo root.
+      - Fall back to a conservative relative hop.
+    """
+
+    cur = os.path.abspath(os.path.dirname(__file__))
+    for _ in range(10):
+        has_engine = os.path.isdir(os.path.join(cur, "engine"))
+        has_reqs = os.path.isfile(os.path.join(cur, "requirements.txt"))
+        if has_engine and has_reqs:
+            return cur
+        if has_engine:
+            # Good enough for local dev if requirements.txt isn't present.
+            return cur
+
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+
+    # Fallback: backend/app/adapters -> backend/app -> backend -> repo
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
 
 
 def _is_running_in_docker() -> bool:
