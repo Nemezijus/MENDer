@@ -117,7 +117,6 @@ def main() -> int:
         "engine.reporting.ensembles.reports.bagging",
         "engine.reporting.ensembles.reports.adaboost",
         "engine.reporting.ensembles.reports.xgboost",
-        "engine.compat",
 
         # Segment 7: split mega-modules
         "engine.components.evaluation.metrics",
