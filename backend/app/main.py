@@ -45,11 +45,16 @@ from .exceptions import (
     ModelArtifactValidationError,
 )
 
+from .startup import register_startup
+
 app = FastAPI(
     title="MENDer Local API",
     version="1.0.0",
     description="Local-first API exposing MENDer pipeline logic",
 )
+
+# Register startup hooks (keep routers/imports free of side effects).
+register_startup(app)
 
 
 # -------------------------

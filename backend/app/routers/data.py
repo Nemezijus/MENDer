@@ -1,47 +1,36 @@
-# backend/app/routers/data.py
+"""Data-related endpoints.
+
+These endpoints are intentionally thin: they validate the request payload, load
+arrays using backend IO adapters, and delegate dataset inspection logic to the
+Engine (BL) via ``engine.api``.
+"""
+
 from fastapi import APIRouter
-from pydantic import BaseModel
-import os
+
+from ..models.v1.data_models import DataInspectRequest, DataInspectResponse
+from ..services.data_service import inspect_data, inspect_data_optional_y
+
 
 # NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
 router = APIRouter(prefix="/data")
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.abspath("./uploads"))
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+@router.post("/inspect", response_model=DataInspectResponse)
+def inspect_endpoint(req: DataInspectRequest):
+    """TRAINING inspect (smart): X required, y optional.
 
-# ----- INSPECT -----
-class InspectRequest(BaseModel):
-    x_path: str | None = None
-    y_path: str | None = None
-    npz_path: str | None = None
-    x_key: str = "X"
-    y_key: str = "y"
-    expected_n_features: int | None = None
-
-
-@router.post("/inspect")
-def inspect_endpoint(req: InspectRequest):
-    """
-    TRAINING inspect (smart):
-      - X required
-      - y optional
-
-    If y is missing, the response will set task_inferred="unsupervised" so the
+    If y is missing, the response will set ``task_inferred="unsupervised"`` so the
     frontend can route the user into unsupervised learning without a separate
     upload flow.
     """
-    from ..services.data_service import inspect_data
 
     return inspect_data(req)
 
 
-@router.post("/inspect_production")
-def inspect_production_endpoint(req: InspectRequest):
-    """
-    PRODUCTION inspect (y optional): allows X-only so users can prepare unseen data
+@router.post("/inspect_production", response_model=DataInspectResponse)
+def inspect_production_endpoint(req: DataInspectRequest):
+    """PRODUCTION inspect (y optional): allows X-only so users can prepare unseen data
     without labels.
     """
-    from ..services.data_service import inspect_data_optional_y
 
     return inspect_data_optional_y(req)
