@@ -36,6 +36,11 @@ from .routers.tuning import router as tuning_router
 from .routers.ensembles import router as ensembles_router
 
 from .adapters.io_adapter import LoadError
+from .exceptions import (
+    ModelArtifactCacheGoneError,
+    ModelArtifactOperationError,
+    ModelArtifactValidationError,
+)
 
 app = FastAPI(
     title="MENDer Local API",
@@ -63,6 +68,33 @@ async def handle_value_error(request: Request, exc: ValueError):
     # Treat ValueError as client input/config errors by default.
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ModelArtifactCacheGoneError)
+async def handle_model_artifact_cache_gone(request: Request, exc: ModelArtifactCacheGoneError):
+    # Cache miss / expired model in runtime cache is a user-facing state.
+    return JSONResponse(
+        status_code=status.HTTP_410_GONE,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ModelArtifactValidationError)
+async def handle_model_artifact_validation(request: Request, exc: ModelArtifactValidationError):
+    # Unprocessable entity: file exists but isn't a valid/compatible artifact.
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ModelArtifactOperationError)
+async def handle_model_artifact_operation(request: Request, exc: ModelArtifactOperationError):
+    # Preserve the previous behavior: surface the operation failure message.
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": str(exc)},
     )
 
