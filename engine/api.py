@@ -14,6 +14,7 @@ The underlying implementations live under :mod:`engine.use_cases`.
 from __future__ import annotations
 
 from engine.use_cases.facade import (
+    get_ui_schema_bundle,
     inspect_dataset,
     export_decoder_outputs_to_csv,
     export_predictions_to_csv,
@@ -40,6 +41,7 @@ from engine.io.artifacts.meta_models import ModelArtifactMetaDict
 from engine.io.export.csv_export import ExportResult
 
 __all__ = [
+    "get_ui_schema_bundle",
     "inspect_dataset",
     "train_supervised",
     "train_unsupervised",

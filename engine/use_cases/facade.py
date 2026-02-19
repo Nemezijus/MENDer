@@ -1,10 +1,4 @@
 """Public BL façade entry points.
-
-This module is the *only sanctioned invocation surface* for Engine business
-logic (BL) once Segment 12 is complete.
-
-Patch 12A1 establishes stable imports and function signatures. Concrete
-implementations are added in later patches (12A3+).
 """
 
 from __future__ import annotations
@@ -184,6 +178,14 @@ def preview_pipeline(*, run_config: RunConfig) -> dict[str, Any]:
     from engine.use_cases.pipeline.preview import preview_pipeline as _preview
 
     return _preview(run_config)
+
+
+def get_ui_schema_bundle(*, schema_version: int = 1) -> dict[str, Any]:
+    """Return the consolidated UI schema/defaults/enums bundle."""
+
+    from engine.use_cases.ui_schema import get_ui_schema_bundle as _get
+
+    return _get(schema_version=schema_version)
 
 
 def inspect_dataset(
