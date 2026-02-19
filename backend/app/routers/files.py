@@ -2,7 +2,6 @@ import os
 from typing import Any, List
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from pydantic import BaseModel
 
 from backend.utils.upload_hashing import hash_and_stream_to_temp, safe_unlink
 from backend.utils.upload_index import (
@@ -12,6 +11,7 @@ from backend.utils.upload_index import (
 )
 
 from ..adapters.io.environment import get_upload_dir
+from ..models.v1.files_models import UploadedFileInfo
 
 # In Docker we set UPLOAD_DIR=/data/uploads; in dev we default to ./uploads
 UPLOAD_DIR = get_upload_dir()
@@ -21,19 +21,13 @@ ALLOWED_EXTS = {".mat", ".npz", ".npy", ".csv", ".tsv", ".txt", ".h5", ".hdf5", 
 router = APIRouter(prefix="/files")
 
 
-class UploadedFileInfo(BaseModel):
-    path: str  # filesystem path you can pass back into your loaders
-    original_name: str
-    saved_name: str
-
-
 @router.get("/ping")
 def files_ping() -> dict[str, Any]:
     return {"ok": True, "dir": UPLOAD_DIR}
 
 
 @router.post("/upload", response_model=UploadedFileInfo)
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...)) -> UploadedFileInfo:
     """Upload a single file into UPLOAD_DIR using content-addressed storage.
 
     Disk storage rule:

@@ -1,9 +1,14 @@
+from __future__ import annotations
+
+from typing import Awaitable, Callable
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi import status
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
 import time, os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -63,19 +68,19 @@ register_startup(app)
 
 
 @app.exception_handler(StarletteHTTPException)
-async def handle_http_exception(request: Request, exc: StarletteHTTPException):
+async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> Response:
     # Preserve FastAPI/Starlette default behavior for explicit HTTP errors (404, etc.).
     return await http_exception_handler(request, exc)
 
 
 @app.exception_handler(RequestValidationError)
-async def handle_request_validation_error(request: Request, exc: RequestValidationError):
+async def handle_request_validation_error(request: Request, exc: RequestValidationError) -> Response:
     # Preserve default 422 payload shape.
     return await request_validation_exception_handler(request, exc)
 
 
 @app.exception_handler(LoadError)
-async def handle_load_error(request: Request, exc: LoadError):
+async def handle_load_error(request: Request, exc: LoadError) -> JSONResponse:
     # Consistent 400s for IO/shape/key issues.
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -84,7 +89,7 @@ async def handle_load_error(request: Request, exc: LoadError):
 
 
 @app.exception_handler(ValueError)
-async def handle_value_error(request: Request, exc: ValueError):
+async def handle_value_error(request: Request, exc: ValueError) -> JSONResponse:
     # Treat ValueError as client input/config errors by default.
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -93,7 +98,9 @@ async def handle_value_error(request: Request, exc: ValueError):
 
 
 @app.exception_handler(ModelArtifactCacheGoneError)
-async def handle_model_artifact_cache_gone(request: Request, exc: ModelArtifactCacheGoneError):
+async def handle_model_artifact_cache_gone(
+    request: Request, exc: ModelArtifactCacheGoneError
+) -> JSONResponse:
     # Cache miss / expired model in runtime cache is a user-facing state.
     return JSONResponse(
         status_code=status.HTTP_410_GONE,
@@ -102,7 +109,9 @@ async def handle_model_artifact_cache_gone(request: Request, exc: ModelArtifactC
 
 
 @app.exception_handler(ModelArtifactValidationError)
-async def handle_model_artifact_validation(request: Request, exc: ModelArtifactValidationError):
+async def handle_model_artifact_validation(
+    request: Request, exc: ModelArtifactValidationError
+) -> JSONResponse:
     # Unprocessable entity: file exists but isn't a valid/compatible artifact.
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -111,7 +120,9 @@ async def handle_model_artifact_validation(request: Request, exc: ModelArtifactV
 
 
 @app.exception_handler(ModelArtifactOperationError)
-async def handle_model_artifact_operation(request: Request, exc: ModelArtifactOperationError):
+async def handle_model_artifact_operation(
+    request: Request, exc: ModelArtifactOperationError
+) -> JSONResponse:
     # Opaque 500: do not leak internal operation details.
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -120,7 +131,7 @@ async def handle_model_artifact_operation(request: Request, exc: ModelArtifactOp
 
 
 @app.exception_handler(Exception)
-async def handle_unexpected_error(request: Request, exc: Exception):
+async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
     # Catch-all for unexpected failures.
     # Keep the response opaque and rely on server logs for details.
     return JSONResponse(
@@ -128,43 +139,42 @@ async def handle_unexpected_error(request: Request, exc: Exception):
         content={"detail": "Internal server error"},
     )
 
+_default_cors_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+
+_extra_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+_allow_origins = _default_cors_origins + [o for o in _extra_cors_origins if o not in _default_cors_origins]
+
 # CORS for dev (Vite @ 5173) + optional env override
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],
+    allow_origins=_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-extra = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
-if extra:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=extra,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
 # Robust request logging (won't crash on exceptions)
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
-  t0 = time.time()
-  try:
-      response = await call_next(request)
-      return response
-  except Exception as e:
-      dt = (time.time() - t0) * 1000
-      print(f"{request.method} {request.url.path} -> ERR in {dt:.1f}ms: {type(e).__name__}: {e}")
-      raise
-  finally:
-      # Successful responses are logged by uvicorn.access; we filtered progress calls above.
-      pass
+async def log_requests(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    t0 = time.time()
+    try:
+        response = await call_next(request)
+        return response
+    except Exception:
+        dt = (time.time() - t0) * 1000
+        logging.exception("%s %s -> ERR in %.1fms", request.method, request.url.path, dt)
+        raise
+    finally:
+        # Successful responses are logged by uvicorn.access; we filtered progress calls above.
+        pass
 
 # Routers
 app.include_router(health_router,        prefix="/api/v1",        tags=["health"])

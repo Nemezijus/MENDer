@@ -44,7 +44,7 @@ async def _load_model_file(file: UploadFile) -> LoadModelResponse:
     data = await file.read()
     meta = load_model_service(data)
 
-    return {"artifact": meta}
+    return LoadModelResponse.model_validate({"artifact": meta})
 
 
 @router.post(
@@ -52,7 +52,7 @@ async def _load_model_file(file: UploadFile) -> LoadModelResponse:
     response_class=StreamingResponse,
     summary="Save the last trained model artifact",
 )
-async def save_model(req: SaveModelRequest):
+async def save_model(req: SaveModelRequest) -> StreamingResponse:
     """Download a binary artifact payload (Content-Disposition: attachment).
 
     The client is expected to download it (e.g., *.mend).
@@ -66,7 +66,7 @@ async def save_model(req: SaveModelRequest):
     response_model=LoadModelResponse,
     summary="Load a model artifact from an uploaded file",
 )
-async def load_model(file: UploadFile = File(...)):
+async def load_model(file: UploadFile = File(...)) -> LoadModelResponse:
     """Accepts a single uploaded artifact file and returns validated artifact meta.
 
     Also stores the fitted pipeline into a short-lived cache.

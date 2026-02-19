@@ -30,6 +30,14 @@ from ..adapters.io.loader import load_X_optional_y
 
 router = APIRouter()
 
+# Sub-routers for clearer route ownership.
+models_router = APIRouter(prefix="/models")
+decoder_router = APIRouter(prefix="/decoder")
+
+# Keep backward-compatible paths while improving internal structure.
+router.include_router(models_router)
+router.include_router(decoder_router)
+
 
 def _load_prediction_data(data: Any) -> tuple[Any, Any]:
     """
@@ -81,7 +89,7 @@ def _run_apply(
     )
 
 
-@router.post("/models/apply", response_model=Union[ApplyModelResponse, ApplyUnsupervisedModelResponse])
+@models_router.post("/apply", response_model=Union[ApplyModelResponse, ApplyUnsupervisedModelResponse])
 def apply_model_endpoint(
     req: Union[ApplyModelRequest, ApplyUnsupervisedModelRequest],
 ) -> Union[ApplyModelResponse, ApplyUnsupervisedModelResponse]:
@@ -94,7 +102,7 @@ def apply_model_endpoint(
     return ApplyModelResponse(**result)
 
 
-@router.post("/models/apply/export")
+@models_router.post("/apply/export")
 def export_predictions_endpoint(
     req: Union[ApplyModelExportRequest, ApplyUnsupervisedModelExportRequest],
 ) -> StreamingResponse:
@@ -115,7 +123,7 @@ def export_predictions_endpoint(
     )
 
 
-@router.post("/decoder/export")
+@decoder_router.post("/export")
 def export_decoder_outputs_endpoint(req: ExportDecoderOutputsRequest) -> StreamingResponse:
     """Export cached evaluation (decoder) outputs as CSV.
 
