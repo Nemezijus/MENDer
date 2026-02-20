@@ -21,3 +21,14 @@ export async function listUploads() {
   // Note: original_name is a display name derived from the JSON index when available.
   return data;
 }
+
+export async function getFilesConstraints() {
+  const { data } = await api.get('/files/constraints');
+  // Returns:
+  // {
+  //   upload_dir: string,
+  //   allowed_exts: string[],
+  //   data_default_keys: { x_key: string, y_key: string }
+  // }
+  return data;
+}

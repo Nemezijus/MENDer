@@ -4,8 +4,9 @@ const initialState = {
   xPath: 'data/classical/wine/wine_features.mat',
   yPath: 'data/classical/wine/wine_labels.mat',
   npzPath: null,
-  xKey: 'X',
-  yKey: 'y',
+  // Override-only: empty string means "unset" (backend will default to X/y).
+  xKey: '',
+  yKey: '',
   inspectReport: null,
   taskSelected: null,
   xDisplay: '',

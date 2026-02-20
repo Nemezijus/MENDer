@@ -1,17 +1,17 @@
 import { create } from 'zustand';
 
 export const useSettingsStore = create((set) => ({
-  // Global / project-wide defaults
-  scaleMethod: 'standard',
-  metric: null,
+  /**
+   * Global settings overrides only.
+   *
+   * IMPORTANT:
+   *   Do not hardcode Engine defaults here.
+   *   Leave fields `undefined` to fall back to `/api/v1/schema/defaults`.
+   */
+  scaleMethod: undefined,
+  metric: undefined,
 
-  setScaleMethod: (scaleMethod) =>
-    set({
-      scaleMethod: scaleMethod || 'none',
-    }),
+  setScaleMethod: (scaleMethod) => set({ scaleMethod }),
 
-  setMetric: (metric) =>
-    set({
-      metric: metric || null,
-    }),
+  setMetric: (metric) => set({ metric }),
 }));

@@ -15,3 +15,9 @@ export async function getAllDefaults() {
   if (!res.ok) throw new Error(`Defaults fetch failed: ${res.status}`);
   return res.json();
 }
+
+export async function getTuningDefaults() {
+  const res = await fetch('/api/v1/schema/tuning-defaults');
+  if (!res.ok) throw new Error(`Tuning defaults fetch failed: ${res.status}`);
+  return res.json();
+}

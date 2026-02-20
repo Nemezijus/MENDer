@@ -8,32 +8,33 @@ const makeEmptyParam = () => ({
 export const useTuningStore = create((set) => ({
   // Learning curve-specific UI state
   learningCurve: {
-    stratified: true,
-    shuffle: true,
-    seed: 42,
+    // NOTE: overrides only; leave unset so backend/engine defaults apply.
+    stratified: undefined,
+    shuffle: undefined,
+    seed: undefined,
     trainSizesCSV: '',
-    nSteps: 5,
-    nJobs: 1,
+    nSteps: undefined,
+    nJobs: undefined,
   },
 
   // Validation curve-specific UI state + last result
   validationCurve: {
-    nSplits: 5,
-    stratified: true,
-    shuffle: true,
-    seed: 42,
-    nJobs: 1,
+    nSplits: undefined,
+    stratified: undefined,
+    shuffle: undefined,
+    seed: undefined,
+    nJobs: undefined,
     hyperParam: makeEmptyParam(),
     result: null,
   },
 
   // Grid search-specific UI state + last result
   gridSearch: {
-    nSplits: 5,
-    stratified: true,
-    shuffle: true,
-    seed: 42,
-    nJobs: 1,
+    nSplits: undefined,
+    stratified: undefined,
+    shuffle: undefined,
+    seed: undefined,
+    nJobs: undefined,
     hyperParam1: makeEmptyParam(),
     hyperParam2: makeEmptyParam(),
     result: null,
@@ -41,12 +42,12 @@ export const useTuningStore = create((set) => ({
 
   // Randomized search-specific UI state + last result
   randomSearch: {
-    nSplits: 5,
-    stratified: true,
-    shuffle: true,
-    seed: 42,
-    nJobs: 1,
-    nIter: 20,
+    nSplits: undefined,
+    stratified: undefined,
+    shuffle: undefined,
+    seed: undefined,
+    nJobs: undefined,
+    nIter: undefined,
     hyperParam1: makeEmptyParam(),
     hyperParam2: makeEmptyParam(),
     result: null,

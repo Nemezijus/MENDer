@@ -13,6 +13,13 @@ from fastapi import APIRouter
 
 import engine.api as api
 
+from ..models.v1.tuning_models import (
+    LearningCurveRequest,
+    ValidationCurveRequest,
+    GridSearchRequest,
+    RandomSearchRequest,
+)
+
 
 # NOTE: Versioning (/api/v1) is applied in backend/app/main.py.
 router = APIRouter(prefix="/schema")
@@ -23,11 +30,71 @@ def _bundle() -> dict[str, Any]:
     return api.get_ui_schema_bundle()
 
 
+def _field_default(field_info: Any) -> Any:
+    """Return a JSON-serializable default for a Pydantic field."""
+    # Pydantic v2 FieldInfo exposes `default_factory` and `default`.
+    df = getattr(field_info, "default_factory", None)
+    if df is not None:
+        return df()
+    return getattr(field_info, "default", None)
+
+
 @router.get("/defaults")
 def get_all_defaults() -> dict[str, Any]:
     """Consolidated defaults + enums for the UI."""
 
     return _bundle()
+
+
+@router.get("/tuning-defaults")
+def get_tuning_defaults() -> dict[str, Any]:
+    """Backend-owned tuning request defaults.
+
+    These defaults live in backend request models (e.g. cv=5 for GridSearch).
+    They are **not** Engine contract defaults, so they are exposed here to keep
+    the frontend from hardcoding request-level defaults.
+    """
+
+    lc = {
+        "train_sizes": _field_default(LearningCurveRequest.model_fields["train_sizes"]),
+        "n_steps": _field_default(LearningCurveRequest.model_fields["n_steps"]),
+        "n_jobs": _field_default(LearningCurveRequest.model_fields["n_jobs"]),
+    }
+
+    vc = {
+        "n_jobs": _field_default(ValidationCurveRequest.model_fields["n_jobs"]),
+    }
+
+    gs = {
+        "param_grid": _field_default(GridSearchRequest.model_fields["param_grid"]),
+        "cv": _field_default(GridSearchRequest.model_fields["cv"]),
+        "n_jobs": _field_default(GridSearchRequest.model_fields["n_jobs"]),
+        "refit": _field_default(GridSearchRequest.model_fields["refit"]),
+        "return_train_score": _field_default(
+            GridSearchRequest.model_fields["return_train_score"]
+        ),
+    }
+
+    rs = {
+        "param_distributions": _field_default(
+            RandomSearchRequest.model_fields["param_distributions"]
+        ),
+        "n_iter": _field_default(RandomSearchRequest.model_fields["n_iter"]),
+        "cv": _field_default(RandomSearchRequest.model_fields["cv"]),
+        "n_jobs": _field_default(RandomSearchRequest.model_fields["n_jobs"]),
+        "refit": _field_default(RandomSearchRequest.model_fields["refit"]),
+        "random_state": _field_default(RandomSearchRequest.model_fields["random_state"]),
+        "return_train_score": _field_default(
+            RandomSearchRequest.model_fields["return_train_score"]
+        ),
+    }
+
+    return {
+        "learning_curve": lc,
+        "validation_curve": vc,
+        "grid_search": gs,
+        "random_search": rs,
+    }
 
 
 @router.get("/enums")

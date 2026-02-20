@@ -4,15 +4,14 @@ const initialState = {
   // modelling
   algo: null,
   model: null,
-  fitScope: 'train_only',
+  fitScope: undefined,
 
   // evaluation
-  // empty list => backend computes the default pack
-  metrics: [],
-  includeClusterProbabilities: false,
+  metrics: undefined,
+  includeClusterProbabilities: undefined,
 
   // visualization/diagnostics
-  embeddingMethod: 'pca',
+  embeddingMethod: undefined,
   embeddingMaxPoints: 5000,
 };
 

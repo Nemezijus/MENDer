@@ -11,7 +11,7 @@ from backend.utils.upload_index import (
 )
 
 from ..adapters.io.environment import get_upload_dir
-from ..models.v1.files_models import UploadedFileInfo
+from ..models.v1.files_models import UploadedFileInfo, FilesConstraints
 
 # In Docker we set UPLOAD_DIR=/data/uploads; in dev we default to ./uploads
 UPLOAD_DIR = get_upload_dir()
@@ -24,6 +24,23 @@ router = APIRouter(prefix="/files")
 @router.get("/ping")
 def files_ping() -> dict[str, Any]:
     return {"ok": True, "dir": UPLOAD_DIR}
+
+
+@router.get("/constraints", response_model=FilesConstraints)
+def get_files_constraints() -> FilesConstraints:
+    """Expose backend-owned IO constraints.
+
+    Rationale:
+      - Upload allowlist is a backend boundary concern.
+      - Default X/y keys are applied in backend IO adapters.
+
+    This helps keep the frontend from hardcoding boundary rules.
+    """
+    return FilesConstraints(
+        upload_dir=UPLOAD_DIR,
+        allowed_exts=sorted(ALLOWED_EXTS),
+        data_default_keys={"x_key": "X", "y_key": "y"},
+    )
 
 
 @router.post("/upload", response_model=UploadedFileInfo)

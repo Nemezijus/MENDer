@@ -4,8 +4,9 @@ const initialState = {
   xPath: '',
   yPath: '',
   npzPath: '',
-  xKey: 'X',
-  yKey: 'y',
+  // Override-only: empty string means "unset" (backend will default to X/y).
+  xKey: '',
+  yKey: '',
   inspectReport: null,
 
   xDisplay: '',

@@ -1,77 +1,85 @@
 import { create } from 'zustand';
 
+/**
+ * Ensemble config overrides only.
+ *
+ * IMPORTANT:
+ *   This store must not hardcode Engine contract defaults or task rules.
+ *   Any field left as `undefined` means "unset" and should fall back to
+ *   `/api/v1/schema/defaults` in the UI, or be omitted from payloads so the
+ *   Engine/Backend defaults apply.
+ */
+
 const baseSplit = () => ({
-  splitMode: 'holdout',
-  trainFrac: 0.75,
-  nSplits: 5,
-  stratified: true,
-  shuffle: true,
-  seed: '',
+  splitMode: undefined,
+  trainFrac: undefined,
+  nSplits: undefined,
+  stratified: undefined,
+  shuffle: undefined,
+  seed: undefined,
 });
 
 const makeVotingInitial = () => ({
   mode: 'simple',
-  votingType: 'hard',
-  estimators: null,
+  votingType: undefined,
+  estimators: undefined,
   ...baseSplit(),
 });
 
 const makeBaggingInitial = () => ({
   mode: 'simple',
-  problem_kind: 'classification',
-  base_estimator: null,
+  problem_kind: undefined,
+  base_estimator: undefined,
 
-  n_estimators: 10,
-  max_samples: 1.0,
-  max_features: 1.0,
-  bootstrap: true,
-  bootstrap_features: false,
-  oob_score: false,
-  warm_start: false,
-  n_jobs: '',
-  random_state: '',
+  n_estimators: undefined,
+  max_samples: undefined,
+  max_features: undefined,
+  bootstrap: undefined,
+  bootstrap_features: undefined,
+  oob_score: undefined,
+  warm_start: undefined,
+  n_jobs: undefined,
+  random_state: undefined,
 
-  // Balanced bagging (new)
-  balanced: false,
-  sampling_strategy: 'auto',
-  replacement: false,
+  // Balanced bagging
+  balanced: undefined,
+  sampling_strategy: undefined,
+  replacement: undefined,
 
   ...baseSplit(),
 });
 
 const makeAdaBoostInitial = () => ({
   mode: 'simple',
-  problem_kind: 'classification',
-  base_estimator: null,
+  problem_kind: undefined,
+  base_estimator: undefined,
 
-  n_estimators: 50,
-  learning_rate: 1.0,
-  algorithm: '__default__', // '__default__' | 'SAMME' | 'SAMME.R'
-  random_state: '',
+  n_estimators: undefined,
+  learning_rate: undefined,
+  algorithm: undefined, // e.g. 'SAMME' | 'SAMME.R' or undefined
+  random_state: undefined,
 
   ...baseSplit(),
 });
 
 const makeXGBoostInitial = () => ({
   mode: 'simple',
-  problem_kind: 'classification',
+  problem_kind: undefined,
 
-  n_estimators: 300,
-  learning_rate: 0.1,
-  max_depth: 6,
-  subsample: 1.0,
-  colsample_bytree: 1.0,
+  n_estimators: undefined,
+  learning_rate: undefined,
+  max_depth: undefined,
+  subsample: undefined,
+  colsample_bytree: undefined,
 
-  reg_lambda: 1.0,
-  reg_alpha: 0.0,
+  reg_lambda: undefined,
+  reg_alpha: undefined,
 
-  min_child_weight: 1.0,
-  gamma: 0.0,
+  min_child_weight: undefined,
+  gamma: undefined,
 
-  n_jobs: '',
-  random_state: '',
-
-  __hydrated: false,
+  n_jobs: undefined,
+  random_state: undefined,
 
   ...baseSplit(),
 });
@@ -113,13 +121,7 @@ export const useEnsembleStore = create((set) => ({
   setBaggingBaseEstimator: (base_estimator) =>
     set((state) => ({ bagging: { ...state.bagging, base_estimator } })),
 
-  resetBagging: (effectiveTask) =>
-    set(() => {
-      const next = makeBaggingInitial();
-      next.problem_kind = effectiveTask === 'regression' ? 'regression' : 'classification';
-      if (effectiveTask === 'regression') next.stratified = false;
-      return { bagging: next };
-    }),
+  resetBagging: (_effectiveTask) => set(() => ({ bagging: makeBaggingInitial() })),
 
   // ---- adaboost ----
   setAdaBoost: (partial) =>
@@ -128,23 +130,11 @@ export const useEnsembleStore = create((set) => ({
   setAdaBoostBaseEstimator: (base_estimator) =>
     set((state) => ({ adaboost: { ...state.adaboost, base_estimator } })),
 
-  resetAdaBoost: (effectiveTask) =>
-    set(() => {
-      const next = makeAdaBoostInitial();
-      next.problem_kind = effectiveTask === 'regression' ? 'regression' : 'classification';
-      if (effectiveTask === 'regression') next.stratified = false;
-      return { adaboost: next };
-    }),
+  resetAdaBoost: (_effectiveTask) => set(() => ({ adaboost: makeAdaBoostInitial() })),
 
   // ---- xgboost ----
   setXGBoost: (partial) =>
     set((state) => ({ xgboost: { ...state.xgboost, ...partial } })),
 
-  resetXGBoost: (effectiveTask) =>
-    set(() => {
-      const next = makeXGBoostInitial();
-      next.problem_kind = effectiveTask === 'regression' ? 'regression' : 'classification';
-      if (effectiveTask === 'regression') next.stratified = false;
-      return { xgboost: next };
-    }),
+  resetXGBoost: (_effectiveTask) => set(() => ({ xgboost: makeXGBoostInitial() })),
 }));

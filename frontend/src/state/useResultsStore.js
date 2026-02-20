@@ -11,14 +11,19 @@ export const useResultsStore = create((set) => ({
 
   // --- Learning curve ------------
   learningCurveResult: null,
-  learningCurveNSplits: 5,
+  // Override-only: leave unset so backend defaults apply when omitted.
+  learningCurveNSplits: undefined,
+  // UI-only setting used for visualization cutoff.
   learningCurveWithinPct: 0.99,
 
   setLearningCurveResult: (result) => set({ learningCurveResult: result }),
   clearLearningCurveResult: () => set({ learningCurveResult: null }),
 
   setLearningCurveNSplits: (nSplits) =>
-    set({ learningCurveNSplits: Number(nSplits) || 1 }),
+    set({
+      learningCurveNSplits:
+        nSplits === '' || nSplits == null ? undefined : Number(nSplits),
+    }),
 
   setLearningCurveWithinPct: (pct) =>
     set({ learningCurveWithinPct: Number(pct) || 0.99 }),

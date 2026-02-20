@@ -1,26 +1,43 @@
 import { create } from 'zustand';
 
-export const useFeatureStore = create((set) => ({
-  // --- feature method -------------------------------------------------------
+/**
+ * Feature config overrides only.
+ *
+ * IMPORTANT:
+ *   This store must not hardcode Engine contract defaults. Any field left as
+ *   `undefined` means "unset" and should fall back to `/api/v1/schema/defaults`
+ *   in the UI, or be omitted from the payload so the Engine/Backend defaults
+ *   apply.
+ */
+
+const emptyState = {
+  // --- feature method -----------------------------------------------------
   // 'none' | 'pca' | 'lda' | 'sfs'
-  method: 'none',
+  method: undefined,
 
   // PCA
-  pca_n: null,          // null or number
-  pca_var: 0.95,        // number in (0,1]
-  pca_whiten: false,
+  pca_n: undefined,
+  pca_var: undefined,
+  pca_whiten: undefined,
 
   // LDA
-  lda_n: null,
-  lda_solver: 'svd',    // 'svd' | 'lsqr' | 'eigen'
-  lda_shrinkage: null,  // null or float (only for lsqr/eigen)
-  lda_tol: 1e-4,
+  lda_n: undefined,
+  lda_solver: undefined,
+  lda_shrinkage: undefined,
+  lda_tol: undefined,
 
   // SFS
-  sfs_k: 'auto',        // 'auto' or integer-like string
-  sfs_direction: 'backward', // 'forward' | 'backward'
-  sfs_cv: 5,
-  sfs_n_jobs: null,
+  sfs_k: undefined,
+  sfs_direction: undefined,
+  sfs_cv: undefined,
+  sfs_n_jobs: undefined,
+};
+
+const hasOwn = (obj, key) => obj != null && Object.prototype.hasOwnProperty.call(obj, key);
+const pick = (obj, key) => (hasOwn(obj, key) ? obj[key] : undefined);
+
+export const useFeatureStore = create((set) => ({
+  ...emptyState,
 
   // --- setters --------------------------------------------------------------
   setMethod: (method) => set({ method }),
@@ -39,40 +56,27 @@ export const useFeatureStore = create((set) => ({
   setSfsCv:       (sfs_cv)       => set({ sfs_cv }),
   setSfsNJobs:    (sfs_n_jobs)   => set({ sfs_n_jobs }),
 
+  reset: () => set({ ...emptyState }),
+
   // --- one-shot hydration from artifact.features ---------------------------
+  // NOTE: do not apply fallbacks here; preserve artifact values only.
   setFromArtifact: (feat) =>
-    set((prev) => {
-      const m = feat?.method ?? 'none';
+    set(() => ({
+      ...emptyState,
+      method: pick(feat, 'method'),
 
-      // start from previous state and overwrite only what we need
-      const next = { ...prev, method: m };
+      pca_n: pick(feat, 'pca_n'),
+      pca_var: pick(feat, 'pca_var'),
+      pca_whiten: pick(feat, 'pca_whiten'),
 
-      if (m === 'pca') {
-        next.pca_n = feat?.pca_n ?? null;
-        next.pca_var = feat?.pca_var ?? 0.95;
-        next.pca_whiten = !!feat?.pca_whiten;
-        return next;
-      }
+      lda_n: pick(feat, 'lda_n'),
+      lda_solver: pick(feat, 'lda_solver'),
+      lda_shrinkage: pick(feat, 'lda_shrinkage'),
+      lda_tol: pick(feat, 'lda_tol'),
 
-      if (m === 'lda') {
-        next.lda_n = feat?.lda_n ?? null;
-        next.lda_solver = feat?.lda_solver ?? 'svd';
-        next.lda_shrinkage = feat?.lda_shrinkage ?? null;
-        next.lda_tol = feat?.lda_tol ?? 1e-4;
-        return next;
-      }
-
-      if (m === 'sfs') {
-        let k = feat?.sfs_k;
-        if (k == null || k === '') k = 'auto';
-        next.sfs_k = k;
-        next.sfs_direction = feat?.sfs_direction ?? 'backward';
-        next.sfs_cv = Number(feat?.sfs_cv ?? 5);
-        next.sfs_n_jobs = feat?.sfs_n_jobs ?? null;
-        return next;
-      }
-
-      // 'none' -> leave other fields as-is
-      return next;
-    }),
+      sfs_k: pick(feat, 'sfs_k'),
+      sfs_direction: pick(feat, 'sfs_direction'),
+      sfs_cv: pick(feat, 'sfs_cv'),
+      sfs_n_jobs: pick(feat, 'sfs_n_jobs'),
+    })),
 }));
