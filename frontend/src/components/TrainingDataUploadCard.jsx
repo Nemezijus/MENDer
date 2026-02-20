@@ -17,6 +17,8 @@ import {
 import { useDataStore } from '../state/useDataStore.js';
 import { useInspectDataMutation } from '../state/useInspectDataMutation.js';
 import { uploadFile } from '../api/files';
+import { useFilesConstraintsQuery } from '../state/useFilesConstraintsQuery.js';
+import { compactPayload } from '../utils/compactPayload.js';
 
 import DataSummaryCard from './helpers/DataSummaryCard.jsx';
 import {
@@ -65,6 +67,7 @@ function StoredAsLine({ uploadInfo }) {
 // Tab 1: Individual files
 // ============================================================
 function IndividualFilesTab({
+  acceptExts,
   setInspectReportGlobal,
   setXPathGlobal,
   setYPathGlobal,
@@ -158,13 +161,13 @@ function IndividualFilesTab({
         setYDisplayGlobal(yPathDisplay?.trim() || '');
       }
 
-      const payload = {
+      const payload = compactPayload({
         x_path: resolvedXPath,
         y_path: resolvedYPath,
         npz_path: null,
-        x_key: xKeyGlobal || 'X',
-        y_key: yKeyGlobal || 'y',
-      };
+        x_key: xKeyGlobal?.trim() || undefined,
+        y_key: yKeyGlobal?.trim() || undefined,
+      });
 
       const report = await inspectMutation.mutateAsync(payload);
 
@@ -212,7 +215,7 @@ function IndividualFilesTab({
                 setXBackendPath(null);
                 if (file) setXPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".mat,.npz,.npy,.csv,.tsv,.txt,.h5,.hdf5,.xlsx"
+              accept={acceptExts}
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -246,7 +249,7 @@ function IndividualFilesTab({
                 setYBackendPath(null);
                 if (file) setYPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".mat,.npz,.npy,.csv,.tsv,.txt,.h5,.hdf5,.xlsx"
+              accept={acceptExts}
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -280,6 +283,9 @@ function IndividualFilesTab({
 // Tab 2: Compound file
 // ============================================================
 function CompoundFileTab({
+  acceptExts,
+  defaultXKey,
+  defaultYKey,
   setInspectReportGlobal,
   setXPathGlobal,
   setYPathGlobal,
@@ -319,13 +325,13 @@ function CompoundFileTab({
         setNpzDisplayGlobal(npzPathDisplay?.trim() || '');
       }
 
-      const payload = {
+      const payload = compactPayload({
         x_path: null,
         y_path: null,
         npz_path: resolvedNpzPath,
-        x_key: xKey || 'X',
-        y_key: yKey || 'y',
-      };
+        x_key: xKey?.trim() || undefined,
+        y_key: yKey?.trim() || undefined,
+      });
 
       const report = await inspectMutation.mutateAsync(payload);
 
@@ -367,7 +373,7 @@ function CompoundFileTab({
                 setNpzBackendPath(null);
                 if (file) setNpzPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".npz,.mat,.h5,.hdf5,.xlsx"
+              accept={acceptExts}
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -385,13 +391,13 @@ function CompoundFileTab({
           label="X key (features)"
           value={xKey || ''}
           onChange={(e) => setXKey(e.currentTarget.value)}
-          placeholder="X"
+          placeholder={defaultXKey}
         />
         <TextInput
           label="y key (labels)"
           value={yKey || ''}
           onChange={(e) => setYKey(e.currentTarget.value)}
-          placeholder="y"
+          placeholder={defaultYKey}
         />
       </Group>
 
@@ -416,6 +422,13 @@ function CompoundFileTab({
 // Main card
 // ============================================================
 export default function TrainingDataUploadCard() {
+  const { data: filesConstraints } = useFilesConstraintsQuery();
+  const acceptExts = Array.isArray(filesConstraints?.allowed_exts)
+    ? filesConstraints.allowed_exts.join(',')
+    : undefined;
+  const defaultXKey = filesConstraints?.data_default_keys?.x_key ?? 'X';
+  const defaultYKey = filesConstraints?.data_default_keys?.y_key ?? 'y';
+
   const inspectReport = useDataStore((s) => s.inspectReport);
   const setInspectReport = useDataStore((s) => s.setInspectReport);
 
@@ -475,6 +488,7 @@ export default function TrainingDataUploadCard() {
 
             <Tabs.Panel value="individual" pt="md">
               <IndividualFilesTab
+                acceptExts={acceptExts}
                 setInspectReportGlobal={setInspectReport}
                 setXPathGlobal={setXPath}
                 setYPathGlobal={setYPath}
@@ -492,6 +506,9 @@ export default function TrainingDataUploadCard() {
 
             <Tabs.Panel value="compound" pt="md">
               <CompoundFileTab
+                acceptExts={acceptExts}
+                defaultXKey={defaultXKey}
+                defaultYKey={defaultYKey}
                 setInspectReportGlobal={setInspectReport}
                 setXPathGlobal={setXPath}
                 setYPathGlobal={setYPath}

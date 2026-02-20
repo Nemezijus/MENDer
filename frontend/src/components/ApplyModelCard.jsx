@@ -20,6 +20,8 @@ import {
   saveBlobInteractive,
   downloadBlob,
 } from '../api/models';
+import { useFilesConstraintsQuery } from '../state/useFilesConstraintsQuery.js';
+import { compactPayload } from '../utils/compactPayload.js';
 
 function ModelSummary({ artifact }) {
   if (!artifact) {
@@ -275,6 +277,12 @@ export default function ApplyModelCard() {
   const xKey = useProductionDataStore((s) => s.xKey);
   const yKey = useProductionDataStore((s) => s.yKey);
 
+  const { data: filesConstraints } = useFilesConstraintsQuery();
+  const defaultXKey = filesConstraints?.data_default_keys?.x_key ?? 'X';
+  const defaultYKey = filesConstraints?.data_default_keys?.y_key ?? 'y';
+  const displayXKey = xKey?.trim() || defaultXKey;
+  const displayYKey = yKey?.trim() || defaultYKey;
+
   const dataReady = useProductionDataStore(
     (s) => Boolean(s.xPath || s.npzPath)
   );
@@ -292,14 +300,15 @@ export default function ApplyModelCard() {
   const hasModel = Boolean(artifact);
   const canRun = hasModel && dataReady && !isRunning;
 
-  const buildDataPayload = () => ({
-    // Mirrors DataInspectRequest fields
-    x_path: xPath || null,
-    y_path: yPath || null,
-    npz_path: npzPath || null,
-    x_key: xKey || 'X',
-    y_key: yKey || 'y',
-  });
+  const buildDataPayload = () =>
+    compactPayload({
+      // Mirrors DataInspectRequest fields
+      x_path: xPath || null,
+      y_path: yPath || null,
+      npz_path: npzPath || null,
+      x_key: xKey?.trim() || undefined,
+      y_key: yKey?.trim() || undefined,
+    });
 
   const handleRun = async () => {
     if (!artifact) return;
@@ -368,7 +377,7 @@ export default function ApplyModelCard() {
             Labels (y, optional): {yPath || 'not set'}
           </Text>
           <Text size="xs" c="dimmed">
-            Keys: X = {xKey || 'X'}, y = {yKey || 'y'}
+            Keys: X = {displayXKey}, y = {displayYKey}
           </Text>
         </Stack>
 

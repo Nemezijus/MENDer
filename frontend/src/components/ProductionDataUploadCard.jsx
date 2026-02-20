@@ -14,6 +14,8 @@ import {
 } from '@mantine/core';
 
 import { uploadFile } from '../api/files';
+import { useFilesConstraintsQuery } from '../state/useFilesConstraintsQuery.js';
+import { compactPayload } from '../utils/compactPayload.js';
 import { useInspectProductionDataMutation } from '../state/useInspectDataMutation.js';
 import { useProductionDataStore } from '../state/useProductionDataStore.js';
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
@@ -58,7 +60,7 @@ function StoredAsLine({ uploadInfo }) {
   );
 }
 
-function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifact }) {
+function IndividualFilesTab({ acceptExts, setXDisplayGlobal, setYDisplayGlobal, modelArtifact }) {
   const inspectMutation = useInspectProductionDataMutation();
 
   const setInspectReport = useProductionDataStore((s) => s.setInspectReport);
@@ -116,14 +118,14 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifac
         setYDisplayGlobal(yPathDisplay?.trim() || '');
       }
 
-      const payload = {
+      const payload = compactPayload({
         x_path: resolvedXPath,
         y_path: resolvedYPath,
         npz_path: null,
-        x_key: xKey || 'X',
-        y_key: yKey || 'y',
+        x_key: xKey?.trim() || undefined,
+        y_key: yKey?.trim() || undefined,
         expected_n_features: modelArtifact?.n_features_in ?? null,
-      };
+      });
 
       const report = await inspectMutation.mutateAsync(payload);
 
@@ -165,7 +167,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifac
                 setXBackendPath(null);
                 if (file) setXPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".mat,.npz,.npy,.csv,.tsv,.txt,.h5,.hdf5,.xlsx"
+              accept={acceptExts}
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -199,7 +201,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifac
                 setYBackendPath(null);
                 if (file) setYPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".mat,.npz,.npy,.csv,.tsv,.txt,.h5,.hdf5,.xlsx"
+              accept={acceptExts}
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -230,7 +232,7 @@ function IndividualFilesTab({ setXDisplayGlobal, setYDisplayGlobal, modelArtifac
   );
 }
 
-function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
+function CompoundFileTab({ acceptExts, defaultXKey, defaultYKey, setNpzDisplayGlobal, modelArtifact }) {
   const inspectMutation = useInspectProductionDataMutation();
 
   const setInspectReport = useProductionDataStore((s) => s.setInspectReport);
@@ -270,14 +272,14 @@ function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
         setNpzDisplayGlobal(npzPathDisplay?.trim() || '');
       }
 
-      const payload = {
+      const payload = compactPayload({
         x_path: null,
         y_path: null,
         npz_path: resolvedNpzPath,
-        x_key: xKey || 'X',
-        y_key: yKey || 'y',
+        x_key: xKey?.trim() || undefined,
+        y_key: yKey?.trim() || undefined,
         expected_n_features: modelArtifact?.n_features_in ?? null,
-      };
+      });
 
       const report = await inspectMutation.mutateAsync(payload);
 
@@ -319,7 +321,7 @@ function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
                 setNpzBackendPath(null);
                 if (file) setNpzPathDisplay(displayLocalFilePath(file));
               }}
-              accept=".npz,.mat,.h5,.hdf5,.xlsx"
+              accept={acceptExts}
             >
               {(props) => (
                 <Button {...props} size="xs" variant="light">
@@ -337,13 +339,13 @@ function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
           label="X key (features)"
           value={xKey || ''}
           onChange={(e) => setXKey(e.currentTarget.value)}
-          placeholder="X"
+          placeholder={defaultXKey}
         />
         <TextInput
           label="y key (labels) (optional)"
           value={yKey || ''}
           onChange={(e) => setYKey(e.currentTarget.value)}
-          placeholder="y"
+          placeholder={defaultYKey}
         />
       </Group>
 
@@ -365,6 +367,13 @@ function CompoundFileTab({ setNpzDisplayGlobal, modelArtifact }) {
 }
 
 export default function ProductionDataUploadCard() {
+  const { data: filesConstraints } = useFilesConstraintsQuery();
+  const acceptExts = Array.isArray(filesConstraints?.allowed_exts)
+    ? filesConstraints.allowed_exts.join(',')
+    : undefined;
+  const defaultXKey = filesConstraints?.data_default_keys?.x_key ?? 'X';
+  const defaultYKey = filesConstraints?.data_default_keys?.y_key ?? 'y';
+
   const inspectReport = useProductionDataStore((s) => s.inspectReport);
 
   const xPath = useProductionDataStore((s) => s.xPath);
@@ -407,11 +416,11 @@ export default function ProductionDataUploadCard() {
             </Tabs.List>
 
             <Tabs.Panel value="individual" pt="md">
-              <IndividualFilesTab setXDisplayGlobal={setXDisplay} setYDisplayGlobal={setYDisplay} modelArtifact={modelArtifact}/>
+              <IndividualFilesTab acceptExts={acceptExts} setXDisplayGlobal={setXDisplay} setYDisplayGlobal={setYDisplay} modelArtifact={modelArtifact} />
             </Tabs.Panel>
 
             <Tabs.Panel value="compound" pt="md">
-              <CompoundFileTab setNpzDisplayGlobal={setNpzDisplay} modelArtifact={modelArtifact} />
+              <CompoundFileTab acceptExts={acceptExts} defaultXKey={defaultXKey} defaultYKey={defaultYKey} setNpzDisplayGlobal={setNpzDisplay} modelArtifact={modelArtifact} />
             </Tabs.Panel>
           </Tabs>
         </Stack>
