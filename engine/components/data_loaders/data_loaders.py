@@ -58,10 +58,12 @@ class NPZLoader:
         path = self.cfg.npz_path or self.cfg.x_path
         if not path:
             raise ValueError("NPZLoader needs npz_path (or x_path pointing to .npz).")
-        if not self.cfg.x_key:
-            raise ValueError("NPZLoader requires x_key.")
 
-        X_loaded = load_npz_array(path, key=self.cfg.x_key)
+        # Allow omitting x_key. The backend boundary adapter defaults to "X".
+        # Keeping the same behavior here avoids forcing the frontend to supply
+        # contract defaults.
+        x_key = self.cfg.x_key or "X"
+        X_loaded = load_npz_array(path, key=x_key)
         X = np.asarray(X_loaded.array)
 
         y: Optional[np.ndarray] = None

@@ -52,10 +52,12 @@ def load_from_data_model(cfg: DataModel) -> Tuple[np.ndarray, Optional[np.ndarra
 
 def _load_from_single_npz(cfg: DataModel) -> Tuple[np.ndarray, Optional[np.ndarray], Optional[list[str]]]:
     npz_path = cfg.npz_path
-    if not cfg.x_key:
-        raise ValueError("NPZ loading requires x_key")
 
-    X_loaded = read_array_auto(npz_path, npz_key=cfg.x_key)
+    # Allow omitting x_key. The backend boundary adapter defaults to "X", and
+    # we mirror that here so the engine can be used directly without forcing
+    # the frontend to supply a second source of truth.
+    x_key = cfg.x_key or "X"
+    X_loaded = read_array_auto(npz_path, npz_key=x_key)
 
     if cfg.y_key:
         try:
@@ -77,9 +79,8 @@ def _load_X(cfg: DataModel) -> LoadedArray:
     x_lower = x_path.lower()
 
     if x_lower.endswith(".npz"):
-        if not cfg.x_key:
-            raise ValueError("NPZ loading requires x_key")
-        return read_array_auto(x_path, npz_key=cfg.x_key)
+        x_key = cfg.x_key or "X"
+        return read_array_auto(x_path, npz_key=x_key)
 
     if x_lower.endswith((".h5", ".hdf5")):
         return read_array_auto(x_path, dataset_key=cfg.x_key)

@@ -18,7 +18,11 @@ class DecoderOutputsConfig(BaseModel):
     second dataset, not only aggregate accuracy.
     """
 
-    enabled: bool = False
+    # NOTE:
+    # The frontend should *not* force decoder settings. Keeping this default
+    # enabled here makes the engine (and thus /schema/defaults) the single
+    # source of truth for whether decoder outputs are produced.
+    enabled: bool = True
 
     # What to compute / expose
     include_decision_scores: bool = True
