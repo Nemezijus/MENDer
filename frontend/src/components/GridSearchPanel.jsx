@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Card,
   Button,
@@ -18,6 +18,9 @@ import { useSettingsStore } from '../state/useSettingsStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useTuningStore } from '../state/useTuningStore.js';
 import { useModelConfigStore } from '../state/useModelConfigStore.js';
+import { useTuningDefaultsQuery } from '../state/useTuningDefaultsQuery.js';
+
+import { compactPayload } from '../utils/compactPayload.js';
 
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
@@ -53,6 +56,11 @@ export default function GridSearchPanel() {
 
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
 
+  const {
+    data: tuningDefaults,
+    isLoading: tuningLoading,
+  } = useTuningDefaultsQuery();
+
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
   const setMetric = useSettingsStore((s) => s.setMetric);
@@ -86,19 +94,35 @@ export default function GridSearchPanel() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
   const taskInferred = inspectReport?.task_inferred || null;
-  const defaultMetric = taskInferred === 'regression' ? 'r2' : 'accuracy';
-  const effectiveMetric = metric || defaultMetric;
 
-  useEffect(() => {
-    if (!metric && taskInferred) {
-      setMetric(defaultMetric);
+  const allowedMetrics = useMemo(() => {
+    const mt = enums?.MetricByTask || null;
+    if (taskInferred && mt && Array.isArray(mt[taskInferred])) {
+      return mt[taskInferred].map(String);
     }
-}, [metric, taskInferred, defaultMetric, setMetric]);
+    if (Array.isArray(enums?.MetricName)) return enums.MetricName.map(String);
+    return [];
+  }, [enums, taskInferred]);
+
+  // Use backend-provided task-specific metric ordering as the default.
+  // Do not write this into state (stores are overrides-only).
+  const defaultMetricFromSchema = allowedMetrics?.[0] ?? null;
+  const effectiveMetric = metric ?? defaultMetricFromSchema;
+
+  // If the user has an explicit metric override that doesn't belong to the
+  // current task's allowed list, clear it.
+  useEffect(() => {
+    if (!metric) return;
+    if (allowedMetrics.length > 0 && !allowedMetrics.includes(String(metric))) {
+      setMetric(undefined);
+    }
+  }, [allowedMetrics, metric, setMetric]);
 
   // Initialize GS model once
   useEffect(() => {
     if (!defsLoading && !gsModel) {
-      const init = getModelDefaults('logreg') || { algo: 'logreg' };
+      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
+      const init = getModelDefaults(defaultAlgo) || { algo: defaultAlgo };
       setGsModel(init);
     }
   }, [defsLoading, getModelDefaults, gsModel, setGsModel]);
@@ -139,10 +163,18 @@ export default function GridSearchPanel() {
         [p2]: v2,
       };
 
-      const payload = {
+      const parsedSeed =
+        shuffle === false
+          ? undefined
+          : seed === '' || seed == null
+          ? undefined
+          : parseInt(seed, 10);
+
+      const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;
+      const payload = compactPayload({
         data: {
-          x_path: npzPath ? null : xPath,
-          y_path: npzPath ? null : yPath,
+          x_path: npzPath ? undefined : xPath,
+          y_path: npzPath ? undefined : yPath,
           npz_path: npzPath,
           x_key: xKey,
           y_key: yKey,
@@ -163,7 +195,7 @@ export default function GridSearchPanel() {
           lda_solver,
           lda_shrinkage,
           lda_tol,
-          sfs_k: sfs_k === '' || sfs_k == null ? 'auto' : sfs_k,
+          sfs_k,
           sfs_direction,
           sfs_cv,
           sfs_n_jobs,
@@ -171,11 +203,12 @@ export default function GridSearchPanel() {
         model: gsModel,
         eval: {
           metric: effectiveMetric,
-          seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
+          seed: parsedSeed,
         },
         param_grid: paramGrid,
-        n_jobs: Number(nJobs),
-      };
+        // Send override only; omit if equal to backend default.
+        n_jobs: defaultNJobs != null && nJobs === defaultNJobs ? undefined : nJobs,
+      });
 
       const data = await requestGridSearch(payload);
       // expect backend to include metric_used & 2D grid info; we store metric here as well
@@ -189,7 +222,7 @@ export default function GridSearchPanel() {
     }
   }
 
-  if (defsLoading || !models || !gsModel) {
+  if (defsLoading || tuningLoading || !models || !gsModel) {
     return null;
   }
 
@@ -294,8 +327,16 @@ export default function GridSearchPanel() {
                   label="n_jobs"
                   min={1}
                   step={1}
-                  value={nJobs}
-                  onChange={(value) => setGsState({ nJobs: value })}
+                  value={nJobs ?? tuningDefaults?.grid_search?.n_jobs}
+                  onChange={(value) => {
+                    const v = value === '' || value == null ? undefined : value;
+                    const d = tuningDefaults?.grid_search?.n_jobs;
+                    if (d != null && v === d) {
+                      setGsState({ nJobs: undefined });
+                      return;
+                    }
+                    setGsState({ nJobs: v });
+                  }}
                 />
               </Box>
             </Stack>

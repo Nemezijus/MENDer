@@ -18,6 +18,9 @@ import { useSettingsStore } from '../state/useSettingsStore.js';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useTuningStore } from '../state/useTuningStore.js';
 import { useModelConfigStore } from '../state/useModelConfigStore.js';
+import { useTuningDefaultsQuery } from '../state/useTuningDefaultsQuery.js';
+
+import { compactPayload } from '../utils/compactPayload.js';
 
 import SplitOptionsCard from './SplitOptionsCard.jsx';
 import ModelSelectionCard from './ModelSelectionCard.jsx';
@@ -34,6 +37,11 @@ export default function ValidationCurvePanel() {
   const inspectReport = useDataStore((s) => s.inspectReport);
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
   const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+
+  const {
+    data: tuningDefaults,
+    isLoading: tuningLoading,
+  } = useTuningDefaultsQuery();
 
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
@@ -55,8 +63,19 @@ export default function ValidationCurvePanel() {
 
   const taskInferred = inspectReport?.task_inferred || null;
 
-  const defaultMetric = taskInferred === 'regression' ? 'r2' : 'accuracy';
-  const effectiveMetric = metric || defaultMetric;
+  const allowedMetrics = useMemo(() => {
+    const mt = enums?.MetricByTask || null;
+    if (taskInferred && mt && Array.isArray(mt[taskInferred])) {
+      return mt[taskInferred].map(String);
+    }
+    if (Array.isArray(enums?.MetricName)) return enums.MetricName.map(String);
+    return [];
+  }, [enums, taskInferred]);
+
+  // Use backend-provided task-specific metric ordering as the default.
+  // Do not write this into state (stores are overrides-only).
+  const defaultMetricFromSchema = allowedMetrics?.[0] ?? null;
+  const effectiveMetric = metric ?? defaultMetricFromSchema;
 
   const {
     method,
@@ -82,12 +101,18 @@ export default function ValidationCurvePanel() {
     result: validationResult,
   } = vcState;
 
+  const defaultNJobs = tuningDefaults?.validation_curve?.n_jobs;
+  const effectiveNJobs = nJobs ?? defaultNJobs;
 
+
+  // If the user has an explicit metric override that doesn't belong to the
+  // current task's allowed list, clear it.
   useEffect(() => {
-    if (!metric && taskInferred) {
-      setMetric(defaultMetric);
+    if (!metric) return;
+    if (allowedMetrics.length > 0 && !allowedMetrics.includes(String(metric))) {
+      setMetric(undefined);
     }
-  }, [metric, taskInferred, defaultMetric, setMetric]);
+  }, [allowedMetrics, metric, setMetric]);
 
   // Initialize VC model once
   useEffect(() => {
@@ -123,10 +148,17 @@ export default function ValidationCurvePanel() {
     setLoading(true);
 
     try {
-      const payload = {
+      const parsedSeed =
+        shuffle === false
+          ? undefined
+          : seed === '' || seed == null
+          ? undefined
+          : parseInt(seed, 10);
+
+      const payload = compactPayload({
         data: {
-          x_path: npzPath ? null : xPath,
-          y_path: npzPath ? null : yPath,
+          x_path: npzPath ? undefined : xPath,
+          y_path: npzPath ? undefined : yPath,
           npz_path: npzPath,
           x_key: xKey,
           y_key: yKey,
@@ -137,7 +169,9 @@ export default function ValidationCurvePanel() {
           stratified,
           shuffle,
         },
-        scale: { method: scaleMethod },
+        scale: {
+          method: scaleMethod,
+        },
         features: {
           method,
           pca_n,
@@ -147,7 +181,7 @@ export default function ValidationCurvePanel() {
           lda_solver,
           lda_shrinkage,
           lda_tol,
-          sfs_k: sfs_k === '' || sfs_k == null ? 'auto' : sfs_k,
+          sfs_k,
           sfs_direction,
           sfs_cv,
           sfs_n_jobs,
@@ -155,12 +189,12 @@ export default function ValidationCurvePanel() {
         model: vcModel,
         eval: {
           metric: effectiveMetric,
-          seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
+          seed: parsedSeed,
         },
         param_name: name,
         param_range: paramRange,
-        n_jobs: Number(nJobs),
-      };
+        n_jobs: nJobs,
+      });
 
       const data = await requestValidationCurve(payload);
       setVcState({ result: { ...data, metric_used: effectiveMetric } });
@@ -173,7 +207,7 @@ export default function ValidationCurvePanel() {
     }
   }
 
-  if (defsLoading || !models || !vcModel) {
+  if (defsLoading || tuningLoading || !models || !vcModel) {
     return null;
   }
 
@@ -256,8 +290,15 @@ export default function ValidationCurvePanel() {
                   label="n_jobs"
                   min={1}
                   step={1}
-                  value={nJobs}
-                  onChange={(value) => setVcState({ nJobs: value })}
+                  value={effectiveNJobs}
+                  onChange={(value) => {
+                    const v = value === '' || value == null ? undefined : value;
+                    if (defaultNJobs != null && v === defaultNJobs) {
+                      setVcState({ nJobs: undefined });
+                      return;
+                    }
+                    setVcState({ nJobs: v });
+                  }}
                 />
               </Box>
             </Stack>

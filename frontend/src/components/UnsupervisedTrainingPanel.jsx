@@ -12,6 +12,7 @@ import { useUnsupervisedStore } from '../state/useUnsupervisedStore.js';
 
 import ModelSelectionCard from './ModelSelectionCard.jsx';
 import { runUnsupervisedTrainRequest } from '../api/unsupervised.js';
+import { compactPayload } from '../utils/compactPayload.js';
 
 function cloneDefaults(obj) {
   if (!obj) return obj;
@@ -48,7 +49,37 @@ export default function UnsupervisedTrainingPanel() {
 
   // Global Settings
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
-  const features = useFeatureStore((s) => s);
+  const {
+    method: featureMethod,
+    pca_n,
+    pca_var,
+    pca_whiten,
+    lda_n,
+    lda_solver,
+    lda_shrinkage,
+    lda_tol,
+    sfs_k,
+    sfs_direction,
+    sfs_cv,
+    sfs_n_jobs,
+    setMethod,
+  } = useFeatureStore(
+    useShallow((s) => ({
+      method: s.method,
+      pca_n: s.pca_n,
+      pca_var: s.pca_var,
+      pca_whiten: s.pca_whiten,
+      lda_n: s.lda_n,
+      lda_solver: s.lda_solver,
+      lda_shrinkage: s.lda_shrinkage,
+      lda_tol: s.lda_tol,
+      sfs_k: s.sfs_k,
+      sfs_direction: s.sfs_direction,
+      sfs_cv: s.sfs_cv,
+      sfs_n_jobs: s.sfs_n_jobs,
+      setMethod: s.setMethod,
+    })),
+  );
 
   // Results + artifact persistence
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
@@ -78,6 +109,7 @@ export default function UnsupervisedTrainingPanel() {
   );
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState(null);
+  const [clearedFeature, setClearedFeature] = useState(null);
 
   // Available unsupervised algorithms from backend meta
   const unsupAlgos = useMemo(() => {
@@ -120,55 +152,61 @@ export default function UnsupervisedTrainingPanel() {
   const hasX = !!(xPath || npzPath);
   const canRun = hasX && !!model?.algo && !schema.loading && !isRunning;
 
-  // LDA and SFS require y (supervised). For X-only unsupervised, override to 'none'.
-  const needsY = features?.method === 'lda' || features?.method === 'sfs';
-  const willOverrideFeatures = needsY && !yPath;
+  // IMPORTANT: the Engine unsupervised pipeline fits on X only (y is ignored), so
+  // supervised feature methods (LDA/SFS) are not supported here.
+  // Cleaner behavior: if a user has an override set to an incompatible method, clear it.
+  useEffect(() => {
+    const isSupervisedOnly = featureMethod === 'lda' || featureMethod === 'sfs';
+    if (!isSupervisedOnly) return;
+    setMethod(undefined);
+    setClearedFeature(featureMethod);
+  }, [featureMethod, setMethod]);
 
   const handleRun = async () => {
     setIsRunning(true);
     setError(null);
 
     try {
-      const safeFeatures = {
-        method: willOverrideFeatures ? 'none' : features.method,
-        pca_n: features.pca_n,
-        pca_var: features.pca_var,
-        pca_whiten: features.pca_whiten,
-        lda_n: features.lda_n,
-        lda_solver: features.lda_solver,
-        lda_shrinkage: features.lda_shrinkage,
-        lda_tol: features.lda_tol,
-        lda_priors: features.lda_priors,
-        sfs_k: features.sfs_k,
-        sfs_direction: features.sfs_direction,
-        sfs_cv: features.sfs_cv,
-        sfs_n_jobs: features.sfs_n_jobs,
-      };
+      const dataPayload = compactPayload({
+        x_path: xPath || null,
+        y_path: yPath || null,
+        npz_path: npzPath || null,
+        x_key: xKey?.trim() || undefined,
+        y_key: yKey?.trim() || undefined,
+      });
 
+      const scalePayload = compactPayload({ method: scaleMethod });
+
+      const featuresPayload = compactPayload({
+        method: featureMethod,
+        pca_n,
+        pca_var,
+        pca_whiten,
+        lda_n,
+        lda_solver,
+        lda_shrinkage,
+        lda_tol,
+        sfs_k,
+        sfs_direction,
+        sfs_cv,
+        sfs_n_jobs,
+      });
+
+      const evalPayload = compactPayload({
+        metrics: Array.isArray(metrics) ? metrics : metrics,
+        include_cluster_probabilities: includeClusterProbabilities,
+        embedding_method: embeddingMethod,
+      });
+
+      // Overrides-only: omit unset fields; keep required objects (scale/features/eval)
       const payload = {
         task: 'unsupervised',
-        data: {
-          x_path: xPath || null,
-          y_path: yPath || null, // ignored by backend for unsupervised
-          npz_path: npzPath || null,
-          x_key: xKey || null,
-          y_key: yKey || null,
-        },
-        // Applying to production is done via the Predictions tab
-        fit_scope: fitScope || 'train_only',
-        scale: { method: scaleMethod },
-        features: safeFeatures,
+        data: dataPayload,
+        ...(fitScope !== undefined ? { fit_scope: fitScope } : {}),
+        scale: scalePayload,
+        features: featuresPayload,
         model,
-        eval: {
-          // Empty list => backend computes default pack (and model-specific diagnostics)
-          metrics: Array.isArray(metrics) ? metrics : [],
-          compute_embedding_2d: true,
-          embedding_method: embeddingMethod || 'pca',
-          per_sample_outputs: true,
-          include_cluster_probabilities: !!includeClusterProbabilities,
-        },
-        use_y_for_external_metrics: false,
-        external_metrics: [],
+        eval: evalPayload,
       };
 
       const resp = await runUnsupervisedTrainRequest(payload);
@@ -201,10 +239,11 @@ export default function UnsupervisedTrainingPanel() {
             </Alert>
           ) : null}
 
-          {willOverrideFeatures ? (
-            <Alert color="yellow" title="Features overridden for X-only unsupervised">
-              Your current Features method (<b>{features.method}</b>) requires <b>y</b>. Since this run is X-only,
-              Features will be treated as <b>None</b>. You can change this in the <b>Settings</b> tab (e.g., use PCA).
+          {clearedFeature ? (
+            <Alert color="yellow" title="Incompatible Features method cleared">
+              The Features method <b>{clearedFeature}</b> is supervised-only and is not supported for unsupervised
+              training (the Engine fits on <b>X only</b>). The override was cleared. Use <b>PCA</b> or <b>None</b> in the
+              <b> Settings</b> tab.
             </Alert>
           ) : null}
 
@@ -229,7 +268,7 @@ export default function UnsupervisedTrainingPanel() {
       </Card>
 
       <Text size="sm" c="dimmed">
-        This uses your current global Scaling / Metric / Features settings from the Settings section.
+        This uses your current global Scaling / Features settings from the Settings section.
       </Text>
     </Stack>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card, Button, Text,
   Stack, Group, Divider, Alert, Title, Box, Progress
@@ -18,6 +18,7 @@ import SplitOptionsCard from './SplitOptionsCard.jsx';
 
 import { runTrainRequest } from '../api/train';
 import { fetchProgress } from '../api/progress';
+import { compactPayload } from '../utils/compactPayload.js';
 
 /** ---------- helpers ---------- **/
 
@@ -65,17 +66,16 @@ export default function RunModelPanel() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
   const fctx = useFeatureStore();
 
-  const { loading: defsLoading, models, enums, getModelDefaults, getCompatibleAlgos } = useSchemaDefaults();
+  const { loading: defsLoading, models, enums, split, getModelDefaults, getCompatibleAlgos } = useSchemaDefaults();
 
-  // SPLIT / SCALE / METRIC
-  const [splitMode, setSplitMode] = useState('holdout');
-  const [trainFrac, setTrainFrac] = useState(0.75);
-  const [nSplits, setNSplits] = useState(5);
-  const [stratified, setStratified] = useState(true);
-  const [shuffle, setShuffle] = useState(true);
+  // SPLIT / SCALE / METRIC (override-only; schema owns defaults)
+  const [splitMode, setSplitMode] = useState(undefined);
+  const [trainFrac, setTrainFrac] = useState(undefined);
+  const [nSplits, setNSplits] = useState(undefined);
+  const [stratified, setStratified] = useState(undefined);
+  const [shuffle, setShuffle] = useState(undefined);
   const [seed, setSeed] = useState('');
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
-  const setScaleMethod = useSettingsStore((s) => s.setScaleMethod);
   const metric = useSettingsStore((s) => s.metric);
   const setMetric = useSettingsStore((s) => s.setMetric);
 
@@ -106,8 +106,8 @@ export default function RunModelPanel() {
   const lastHydratedUid = useRef(null);
 
   const effectiveTask = useDataStore(
-  (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
-);
+    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
+  );
 
 
   useEffect(() => () => { pollStopRef.current = true; }, []);
@@ -198,32 +198,35 @@ export default function RunModelPanel() {
     setTrainModel(merged);
   }, [getModelDefaults, trainModel?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!enums) return;
-
+  // Sanitize overrides: if user has an override that is no longer valid for this task, clear it.
+  // IMPORTANT: we never auto-assign defaults here; schema/engine owns defaults.
+  const allowedMetrics = useMemo(() => {
+    if (!enums) return null;
     const metricByTask = enums.MetricByTask || null;
-
-    let rawList;
     if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
-      // Task-specific recommended metrics
-      rawList = metricByTask[effectiveTask];
-    } else if (Array.isArray(enums.MetricName)) {
-      // Fallback: all known metrics
-      rawList = enums.MetricName;
-    } else {
-      // Ultra-fallback: a few safe defaults
-      rawList = ['accuracy', 'balanced_accuracy', 'f1_macro'];
+      return metricByTask[effectiveTask].map(String);
     }
+    if (Array.isArray(enums.MetricName)) return enums.MetricName.map(String);
+    return null;
+  }, [effectiveTask, enums]);
 
-    if (!rawList || rawList.length === 0) return;
-
-    if (!rawList.includes(metric)) {
-      const first = rawList[0];
-      if (first != null) {
-        setMetric(String(first));
-      }
+  useEffect(() => {
+    if (!metric) return;
+    if (!allowedMetrics || allowedMetrics.length === 0) return;
+    if (!allowedMetrics.includes(String(metric))) {
+      setMetric(undefined);
     }
-  }, [effectiveTask, enums, metric, setMetric]);
+  }, [allowedMetrics, metric, setMetric]);
+
+  // Split defaults (for clearing overrides when user selects defaults)
+  const holdoutDefaults = split?.holdout?.defaults ?? null;
+  const kfoldDefaults = split?.kfold?.defaults ?? null;
+  const effectiveMode = splitMode ?? 'holdout';
+  const defaultStratified =
+    effectiveMode === 'kfold' ? kfoldDefaults?.stratified : holdoutDefaults?.stratified;
+  const defaultShuffle =
+    effectiveMode === 'kfold' ? kfoldDefaults?.shuffle : holdoutDefaults?.shuffle;
+  const effectiveShuffle = shuffle ?? defaultShuffle;
 
   function startProgressPolling(progressId) {
     pollStopRef.current = false;
@@ -272,68 +275,92 @@ export default function RunModelPanel() {
     }
 
     try {
-      const evalDefaults = models?.eval?.defaults || {};
-      const payload = {
-        data: {
-          x_path: npzPath ? null : xPath,
-          y_path: npzPath ? null : yPath,
-          npz_path: npzPath,
-          x_key: xKey,
-          y_key: yKey,
-        },
-        scale: { method: scaleMethod },
-        features: (() => {
-          const method = fctx?.method || 'none';
-          if (method === 'pca') {
-            return {
-              method,
-              pca_n: fctx.pca_n ?? null,
-              pca_var: fctx.pca_var ?? 0.95,
-              pca_whiten: !!fctx.pca_whiten,
-            };
-          }
-          if (method === 'lda') {
-            return {
-              method,
-              lda_n: fctx.lda_n ?? null,
-              lda_solver: fctx.lda_solver ?? 'svd',
-              lda_shrinkage: fctx.lda_shrinkage ?? null,
-              lda_tol: fctx.lda_tol ?? 1e-4,
-            };
-          }
-          if (method === 'sfs') {
-            let k = fctx.sfs_k;
-            if (k === '' || k == null) k = 'auto';
-            return {
-              method,
-              sfs_k: k,
-              sfs_direction: fctx.sfs_direction ?? 'forward',
-              sfs_cv: fctx.sfs_cv ?? 5,
-              sfs_n_jobs: fctx.sfs_n_jobs ?? null,
-            };
-          }
-          return { method: 'none' };
-        })(),
-        model: trainModel, // ← union payload as-is
-        eval: {
-          ...evalDefaults,
-          metric,
-          seed: shuffle ? (seed === '' ? null : parseInt(seed, 10)) : null,
-          n_shuffles: wantProgress ? Number(nShuffles) : 0,
-          ...(wantProgress ? { progress_id: progressId } : {}),
+      // IMPORTANT: Overrides-only payload.
+      // - Engine owns defaults via /schema/defaults.
+      // - Backend owns IO defaults (e.g. x_key/y_key, upload constraints).
+      // - We omit unset fields, so defaults apply naturally.
 
-          // Ensure decoder config is present even if older defaults are missing it.
-          decoder: {
-            ...(evalDefaults.decoder || {}),
-            // For now, enable by default so the new Results panel renders.
-            // Later we can wire this to a SettingsPanel toggle.
-            enabled: true,
-          },
-        },
-        split:
-          splitMode === 'holdout'
-            ? { mode: 'holdout', train_frac: trainFrac, stratified, shuffle }
-            : { mode: 'kfold', n_splits: nSplits, stratified, shuffle },
+      // DATA
+      const dataPayload = compactPayload({
+        x_path: npzPath ? undefined : xPath,
+        y_path: npzPath ? undefined : yPath,
+        npz_path: npzPath,
+        x_key: xKey,
+        y_key: yKey,
+      });
+
+      // SCALE (store is override-only)
+      const scalePayload = compactPayload({
+        method: scaleMethod,
+      });
+
+      // FEATURES (override-only store)
+      let featuresPayload = {};
+      const m = fctx?.method;
+      if (m === 'pca') {
+        featuresPayload = compactPayload({
+          method: m,
+          pca_n: fctx.pca_n,
+          pca_var: fctx.pca_var,
+          pca_whiten: fctx.pca_whiten,
+        });
+      } else if (m === 'lda') {
+        featuresPayload = compactPayload({
+          method: m,
+          lda_n: fctx.lda_n,
+          lda_solver: fctx.lda_solver,
+          lda_shrinkage: fctx.lda_shrinkage,
+          lda_tol: fctx.lda_tol,
+        });
+      } else if (m === 'sfs') {
+        featuresPayload = compactPayload({
+          method: m,
+          sfs_k: fctx.sfs_k,
+          sfs_direction: fctx.sfs_direction,
+          sfs_cv: fctx.sfs_cv,
+          sfs_n_jobs: fctx.sfs_n_jobs,
+        });
+      } else {
+        // method is unset => omit entirely and let engine default to 'none'
+        featuresPayload = compactPayload({
+          method: m,
+        });
+      }
+
+      // EVAL (override-only; decoder is left to engine default)
+      const seedInt = seed === '' ? undefined : Number.parseInt(String(seed), 10);
+      const evalPayload = compactPayload({
+        metric,
+        seed: Boolean(effectiveShuffle) && Number.isFinite(seedInt) ? seedInt : undefined,
+        n_shuffles: wantProgress ? Number(nShuffles) : undefined,
+        progress_id: wantProgress ? progressId : undefined,
+      });
+
+      // SPLIT (override-only; always include mode discriminator)
+      const splitPayload = compactPayload(
+        effectiveMode === 'holdout'
+          ? {
+              mode: 'holdout',
+              train_frac: trainFrac,
+              stratified,
+              shuffle,
+            }
+          : {
+              mode: 'kfold',
+              n_splits: nSplits,
+              stratified,
+              shuffle,
+            },
+      );
+
+      const payload = {
+        data: dataPayload,
+        // These top-level sections are required by the request model; empty objects are OK.
+        scale: scalePayload,
+        features: featuresPayload,
+        model: trainModel,
+        eval: evalPayload,
+        split: splitPayload,
       };
 
       const data = await runTrainRequest(payload);
@@ -396,15 +423,48 @@ export default function RunModelPanel() {
               <SplitOptionsCard
                 allowedModes={['holdout', 'kfold']}
                 mode={splitMode}
-                onModeChange={setSplitMode}
+                onModeChange={(v) => {
+                  // Default mode is holdout; keep override-only by clearing when selecting default.
+                  setSplitMode(v === 'holdout' ? undefined : v);
+                  // Also clear per-mode overrides when switching modes.
+                  setTrainFrac(undefined);
+                  setNSplits(undefined);
+                  setStratified(undefined);
+                  setShuffle(undefined);
+                  setSeed('');
+                }}
                 trainFrac={trainFrac}
-                onTrainFracChange={setTrainFrac}
+                onTrainFracChange={(v) => {
+                  const vv = v === '' || v == null ? undefined : Number(v);
+                  const d = holdoutDefaults?.train_frac;
+                  if (d != null && vv != null && Math.abs(vv - Number(d)) < 1e-12) {
+                    setTrainFrac(undefined);
+                  } else {
+                    setTrainFrac(vv);
+                  }
+                }}
                 nSplits={nSplits}
-                onNSplitsChange={setNSplits}
+                onNSplitsChange={(v) => {
+                  const vv = v === '' || v == null ? undefined : Number(v);
+                  const d = kfoldDefaults?.n_splits;
+                  if (d != null && vv != null && vv === Number(d)) {
+                    setNSplits(undefined);
+                  } else {
+                    setNSplits(vv);
+                  }
+                }}
                 stratified={stratified}
-                onStratifiedChange={setStratified}
+                onStratifiedChange={(v) => {
+                  const d = defaultStratified;
+                  if (d != null && v === Boolean(d)) setStratified(undefined);
+                  else setStratified(Boolean(v));
+                }}
                 shuffle={shuffle}
-                onShuffleChange={setShuffle}
+                onShuffleChange={(v) => {
+                  const d = defaultShuffle;
+                  if (d != null && v === Boolean(d)) setShuffle(undefined);
+                  else setShuffle(Boolean(v));
+                }}
                 seed={seed}
                 onSeedChange={setSeed}
               />
