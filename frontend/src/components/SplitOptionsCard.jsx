@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Card,
   Stack,
@@ -11,6 +11,7 @@ import {
   Button,
 } from '@mantine/core';
 import { useDataStore } from '../state/useDataStore.js';
+import { useSchemaDefaults } from '../state/SchemaDefaultsContext.jsx';
 import SplitHelpText, {
   SplitIntroText,
 } from './helpers/helpTexts/SplitHelpText.jsx';
@@ -43,9 +44,15 @@ export default function SplitOptionsCard({
   seed,
   onSeedChange,
 }) {
+  const { split } = useSchemaDefaults();
+
   const effectiveTask = useDataStore(
     (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
   );
+
+  // Schema defaults (used for display only; parents should still send override-only payloads)
+  const holdoutDefaults = split?.holdout?.defaults ?? null;
+  const kfoldDefaults = split?.kfold?.defaults ?? null;
 
   const hasHoldout = allowedModes.includes('holdout');
   const hasKFold = allowedModes.includes('kfold');
@@ -53,23 +60,35 @@ export default function SplitOptionsCard({
 
   // If consumer passes only one mode, we respect their state; mode select is hidden.
   const effectiveMode = showModeSelect
-    ? mode || 'holdout'
+    ? mode || (hasHoldout ? 'holdout' : 'kfold')
     : hasKFold
     ? 'kfold'
     : 'holdout';
 
-  // Classification can use stratified splits; regression should not.
+  // NOTE: we do not enforce task rules here; backend/engine owns the contract.
+  // We only use this for help text.
   const allowStratified = effectiveTask !== 'regression';
 
   // Toggle for showing/hiding the detailed help block (C)
   const [showDetails, setShowDetails] = useState(false);
 
-  // Auto-correct stale "stratified = true" when switching to regression
-  useEffect(() => {
-    if (!allowStratified && stratified && onStratifiedChange) {
-      onStratifiedChange(false);
-    }
-  }, [allowStratified, stratified, onStratifiedChange]);
+  const effectiveTrainFrac =
+    trainFrac ?? holdoutDefaults?.train_frac ?? undefined;
+  const effectiveNSplits =
+    nSplits ?? kfoldDefaults?.n_splits ?? undefined;
+
+  const defaultStratified =
+    effectiveMode === 'kfold'
+      ? kfoldDefaults?.stratified
+      : holdoutDefaults?.stratified;
+
+  const defaultShuffle =
+    effectiveMode === 'kfold'
+      ? kfoldDefaults?.shuffle
+      : holdoutDefaults?.shuffle;
+
+  const effectiveStratified = stratified ?? defaultStratified;
+  const effectiveShuffle = shuffle ?? defaultShuffle;
 
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -91,8 +110,8 @@ export default function SplitOptionsCard({
                     { value: 'holdout', label: 'Hold-out' },
                     { value: 'kfold', label: 'K-fold cross-validation' },
                   ]}
-                  value={mode}
-                  onChange={(v) => onModeChange?.(v || 'holdout')}
+                  value={showModeSelect ? (mode ?? effectiveMode) : effectiveMode}
+                  onChange={(v) => onModeChange?.(v || undefined)}
                 />
               )}
 
@@ -102,7 +121,7 @@ export default function SplitOptionsCard({
                   min={minTrainFrac}
                   max={maxTrainFrac}
                   step={0.05}
-                  value={trainFrac}
+                  value={effectiveTrainFrac}
                   onChange={onTrainFracChange}
                 />
               )}
@@ -113,7 +132,7 @@ export default function SplitOptionsCard({
                   min={minNSplits}
                   max={maxNSplits}
                   step={1}
-                  value={nSplits}
+                  value={effectiveNSplits}
                   onChange={onNSplitsChange}
                 />
               )}
@@ -121,15 +140,14 @@ export default function SplitOptionsCard({
               <Group grow>
                 <Checkbox
                   label="Stratified"
-                  checked={!!stratified}
-                  disabled={!allowStratified}
+                  checked={Boolean(effectiveStratified)}
                   onChange={(e) =>
                     onStratifiedChange?.(e.currentTarget.checked)
                   }
                 />
                 <Checkbox
                   label="Shuffle split"
-                  checked={!!shuffle}
+                  checked={Boolean(effectiveShuffle)}
                   onChange={(e) => onShuffleChange?.(e.currentTarget.checked)}
                 />
               </Group>
@@ -139,7 +157,7 @@ export default function SplitOptionsCard({
                 value={seed}
                 onChange={onSeedChange}
                 allowDecimal={false}
-                disabled={!shuffle}
+                disabled={!Boolean(effectiveShuffle)}
               />
             </Stack>
           </Box>

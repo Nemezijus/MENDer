@@ -5,12 +5,29 @@ import ScalingCard from './ScalingCard.jsx';
 import FeatureCard from './FeatureCard.jsx';
 import MetricCard from './MetricCard.jsx';
 import { useSettingsStore } from '../state/useSettingsStore.js';
+import { useSchemaDefaults } from '../state/SchemaDefaultsContext.jsx';
 
 export default function SettingsPanel() {
+  const { scale } = useSchemaDefaults();
+
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const setScaleMethod = useSettingsStore((s) => s.setScaleMethod);
   const metric = useSettingsStore((s) => s.metric);
   const setMetric = useSettingsStore((s) => s.setMetric);
+
+  // Store is overrides-only. Display schema defaults when unset.
+  const scaleDefault = scale?.defaults?.method;
+  const effectiveScaleMethod = scaleMethod ?? scaleDefault ?? null;
+
+  const handleScaleChange = (v) => {
+    const next = v || undefined;
+    // Keep store as an override: clear if user selects the schema default.
+    if (scaleDefault != null && next === scaleDefault) {
+      setScaleMethod(undefined);
+      return;
+    }
+    setScaleMethod(next);
+  };
 
   return (
     <Stack gap="md">
@@ -26,7 +43,7 @@ export default function SettingsPanel() {
         </Tabs.List>
 
         <Tabs.Panel value="scaling" pt="md">
-          <ScalingCard value={scaleMethod} onChange={setScaleMethod} />
+          <ScalingCard value={effectiveScaleMethod} onChange={handleScaleChange} />
         </Tabs.Panel>
 
         <Tabs.Panel value="metric" pt="md">

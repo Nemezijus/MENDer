@@ -113,8 +113,42 @@ export default function FeatureCard({ title = 'Features' }) {
 
   const { features, enums } = useSchemaDefaults();
 
+  // Store is overrides-only. Display schema defaults when unset.
+  const baseDefaults = features?.defaults ?? {};
+  const defaultMethod = baseDefaults?.method;
+  const effectiveMethod = method ?? defaultMethod ?? null;
+
+  const sub = getMethodSchema(features?.schema, effectiveMethod);
+
+  const propDefault = (key) => {
+    const d = sub?.properties?.[key]?.default;
+    if (d !== undefined) return d;
+    return baseDefaults?.[key];
+  };
+
+  const numOrUndef = (v) => (v === null || v === '' || v === undefined ? undefined : v);
+  const toIntOrUndef = (v) => {
+    if (v === null || v === '' || v === undefined) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return undefined;
+    return Math.trunc(n);
+  };
+  const toFloatOrUndef = (v) => {
+    if (v === null || v === '' || v === undefined) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return undefined;
+    return n;
+  };
+
+  const clearIfDefault = (next, def) => {
+    // When schema default is unknown, we cannot safely decide what is "default".
+    // In that case, only clear on empty.
+    if (next === undefined) return true;
+    if (def === undefined) return false;
+    return String(next) === String(def);
+  };
+
   const methods = toSelectData(enums?.FeatureName ?? ['none', 'pca', 'lda', 'sfs']);
-  const sub = getMethodSchema(features?.schema, method);
 
   const ldaSolverData = toSelectData(
     enumFromSubSchema(sub, 'lda_solver', ['svd', 'lsqr', 'eigen']),
@@ -122,6 +156,39 @@ export default function FeatureCard({ title = 'Features' }) {
   const sfsDirectionData = toSelectData(
     enumFromSubSchema(sub, 'sfs_direction', ['forward', 'backward']),
   );
+
+  // Effective (displayed) values
+  const effectivePcaN = numOrUndef(pca_n ?? propDefault('pca_n'));
+  const effectivePcaVar = numOrUndef(pca_var ?? propDefault('pca_var'));
+  const effectivePcaWhiten = Boolean(
+    pca_whiten ?? propDefault('pca_whiten') ?? false,
+  );
+
+  const effectiveLdaN = numOrUndef(lda_n ?? propDefault('lda_n'));
+  const effectiveLdaSolver = String(
+    lda_solver ?? propDefault('lda_solver') ?? '',
+  );
+  const effectiveLdaShrinkage = numOrUndef(
+    lda_shrinkage ?? propDefault('lda_shrinkage'),
+  );
+  const effectiveLdaTol = numOrUndef(lda_tol ?? propDefault('lda_tol'));
+
+  const effectiveSfsK =
+    sfs_k ?? propDefault('sfs_k') ?? '';
+  const effectiveSfsDirection = String(
+    sfs_direction ?? propDefault('sfs_direction') ?? '',
+  );
+  const effectiveSfsCv = numOrUndef(sfs_cv ?? propDefault('sfs_cv'));
+  const effectiveSfsNJobs = numOrUndef(
+    sfs_n_jobs ?? propDefault('sfs_n_jobs'),
+  );
+
+  // Handlers: keep the store as overrides-only (clear if set to schema default).
+  const handleMethodChange = (v) => {
+    const next = v || undefined;
+    if (clearIfDefault(next, defaultMethod)) setMethod(undefined);
+    else setMethod(next);
+  };
 
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -138,8 +205,8 @@ export default function FeatureCard({ title = 'Features' }) {
               <Select
                 label="Feature method"
                 data={methods}
-                value={method}
-                onChange={setMethod}
+                value={effectiveMethod}
+                onChange={handleMethodChange}
                 styles={{
                   input: {
                     borderWidth: 2,
@@ -163,19 +230,23 @@ export default function FeatureCard({ title = 'Features' }) {
         {/* Block C: full-width detailed help text, with selected method highlighted
             and parameter descriptions only for the active method */}
         <Box mt="md">
-          <FeatureHelpText selectedMethod={method} />
+          <FeatureHelpText selectedMethod={effectiveMethod} />
         </Box>
 
         {/* Method-specific controls (grow downward, help text stays relatively stable) */}
         <Box mt="md">
           {/* PCA controls */}
-          {method === 'pca' && (
+          {effectiveMethod === 'pca' && (
             <Stack gap="sm">
               <Tooltip label="Number of components (optional). Leave empty for variance-based.">
                 <NumberInput
                   label="pca_n"
-                  value={pca_n}
-                  onChange={setPcaN}
+                  value={effectivePcaN}
+                  onChange={(v) => {
+                    const next = toIntOrUndef(v);
+                    if (clearIfDefault(next, propDefault('pca_n'))) setPcaN(undefined);
+                    else setPcaN(next);
+                  }}
                   placeholder="empty = auto by variance"
                   allowDecimal={false}
                   min={1}
@@ -184,8 +255,12 @@ export default function FeatureCard({ title = 'Features' }) {
               <Tooltip label="Retained variance if pca_n is empty (e.g., 0.95)">
                 <NumberInput
                   label="pca_var"
-                  value={pca_var}
-                  onChange={setPcaVar}
+                  value={effectivePcaVar}
+                  onChange={(v) => {
+                    const next = toFloatOrUndef(v);
+                    if (clearIfDefault(next, propDefault('pca_var'))) setPcaVar(undefined);
+                    else setPcaVar(next);
+                  }}
                   min={0.0}
                   max={1.0}
                   step={0.01}
@@ -193,20 +268,28 @@ export default function FeatureCard({ title = 'Features' }) {
               </Tooltip>
               <Checkbox
                 label="pca_whiten"
-                checked={pca_whiten}
-                onChange={(e) => setPcaWhiten(e.currentTarget.checked)}
+                checked={effectivePcaWhiten}
+                onChange={(e) => {
+                  const next = Boolean(e.currentTarget.checked);
+                  if (clearIfDefault(next, propDefault('pca_whiten'))) setPcaWhiten(undefined);
+                  else setPcaWhiten(next);
+                }}
               />
             </Stack>
           )}
 
           {/* LDA controls */}
-          {method === 'lda' && (
+          {effectiveMethod === 'lda' && (
             <Stack gap="sm">
               <Tooltip label="Target number of components (<= n_classes - 1). Leave empty to infer.">
                 <NumberInput
                   label="lda_n"
-                  value={lda_n}
-                  onChange={setLdaN}
+                  value={effectiveLdaN}
+                  onChange={(v) => {
+                    const next = toIntOrUndef(v);
+                    if (clearIfDefault(next, propDefault('lda_n'))) setLdaN(undefined);
+                    else setLdaN(next);
+                  }}
                   allowDecimal={false}
                   min={1}
                 />
@@ -214,22 +297,34 @@ export default function FeatureCard({ title = 'Features' }) {
               <Select
                 label="lda_solver"
                 data={ldaSolverData}
-                value={lda_solver}
-                onChange={setLdaSolver}
+                value={effectiveLdaSolver || null}
+                onChange={(v) => {
+                  const next = v || undefined;
+                  if (clearIfDefault(next, propDefault('lda_solver'))) setLdaSolver(undefined);
+                  else setLdaSolver(next);
+                }}
               />
               <Tooltip label="Only used with 'lsqr' or 'eigen'. Leave empty for None.">
                 <NumberInput
                   label="lda_shrinkage"
-                  value={lda_shrinkage}
-                  onChange={setLdaShrinkage}
+                  value={effectiveLdaShrinkage}
+                  onChange={(v) => {
+                    const next = toFloatOrUndef(v);
+                    if (clearIfDefault(next, propDefault('lda_shrinkage'))) setLdaShrinkage(undefined);
+                    else setLdaShrinkage(next);
+                  }}
                   step={0.1}
                   min={0}
                 />
               </Tooltip>
               <NumberInput
                 label="lda_tol"
-                value={lda_tol}
-                onChange={setLdaTol}
+                value={effectiveLdaTol}
+                onChange={(v) => {
+                  const next = toFloatOrUndef(v);
+                  if (clearIfDefault(next, propDefault('lda_tol'))) setLdaTol(undefined);
+                  else setLdaTol(next);
+                }}
                 step={1e-4}
                 precision={6}
                 min={0}
@@ -238,16 +333,31 @@ export default function FeatureCard({ title = 'Features' }) {
           )}
 
           {/* SFS controls */}
-          {method === 'sfs' && (
+          {effectiveMethod === 'sfs' && (
             <Stack gap="sm">
               <Tooltip label="Number of selected features; 'auto' or integer">
                 <TextInput
                   label="sfs_k"
-                  value={String(sfs_k)}
+                  value={effectiveSfsK == null ? '' : String(effectiveSfsK)}
                   onChange={(e) => {
                     const v = e.currentTarget.value.trim();
-                    if (v === '' || v.toLowerCase() === 'auto') setSfsK('auto');
-                    else setSfsK(v.replace(/\D/g, ''));
+                    const def = propDefault('sfs_k');
+                    if (v === '') {
+                      setSfsK(undefined);
+                      return;
+                    }
+                    if (v.toLowerCase() === 'auto') {
+                      if (clearIfDefault('auto', def)) setSfsK(undefined);
+                      else setSfsK('auto');
+                      return;
+                    }
+                    const digits = v.replace(/\D/g, '');
+                    if (digits === '') {
+                      setSfsK(undefined);
+                      return;
+                    }
+                    if (clearIfDefault(digits, def)) setSfsK(undefined);
+                    else setSfsK(digits);
                   }}
                   placeholder="auto or integer"
                 />
@@ -255,13 +365,21 @@ export default function FeatureCard({ title = 'Features' }) {
               <Select
                 label="sfs_direction"
                 data={sfsDirectionData}
-                value={sfs_direction}
-                onChange={setSfsDirection}
+                value={effectiveSfsDirection || null}
+                onChange={(v) => {
+                  const next = v || undefined;
+                  if (clearIfDefault(next, propDefault('sfs_direction'))) setSfsDirection(undefined);
+                  else setSfsDirection(next);
+                }}
               />
               <NumberInput
                 label="sfs_cv"
-                value={sfs_cv}
-                onChange={setSfsCv}
+                value={effectiveSfsCv}
+                onChange={(v) => {
+                  const next = toIntOrUndef(v);
+                  if (clearIfDefault(next, propDefault('sfs_cv'))) setSfsCv(undefined);
+                  else setSfsCv(next);
+                }}
                 allowDecimal={false}
                 min={2}
                 max={20}
@@ -269,8 +387,12 @@ export default function FeatureCard({ title = 'Features' }) {
               <Tooltip label="Number of parallel jobs for SFS; empty = use default">
                 <NumberInput
                   label="sfs_n_jobs"
-                  value={sfs_n_jobs}
-                  onChange={setSfsNJobs}
+                  value={effectiveSfsNJobs}
+                  onChange={(v) => {
+                    const next = toIntOrUndef(v);
+                    if (clearIfDefault(next, propDefault('sfs_n_jobs'))) setSfsNJobs(undefined);
+                    else setSfsNJobs(next);
+                  }}
                   allowDecimal={false}
                   min={-1}
                 />

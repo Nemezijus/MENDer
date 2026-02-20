@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, Stack, Text, Select, Group, Box, MultiSelect } from '@mantine/core';
 import { useSchemaDefaults } from '../state/SchemaDefaultsContext';
 import { useDataStore } from '../state/useDataStore.js';
@@ -14,7 +14,7 @@ export default function MetricCard({
   value,
   onChange,
 }) {
-  const { enums } = useSchemaDefaults();
+  const { enums, eval: evalCfg, unsupervised } = useSchemaDefaults();
 
   const effectiveTask = useDataStore((s) => {
     const raw = s.taskSelected || s.inspectReport?.task_inferred || null;
@@ -23,6 +23,11 @@ export default function MetricCard({
 
   const metricByTask = enums?.MetricByTask || null;
   const isUnsupervised = effectiveTask === 'unsupervised';
+
+  // Schema defaults
+  const defaultSupervisedMetric = evalCfg?.defaults?.metric ?? null;
+  const defaultUnsupervisedMetrics =
+    (unsupervised?.eval?.defaults?.metrics ?? []).map(String);
 
   const rawList = useMemo(() => {
     if (isUnsupervised) {
@@ -42,28 +47,51 @@ export default function MetricCard({
     return ['accuracy', 'balanced_accuracy', 'f1_macro'];
   }, [enums, metricByTask, effectiveTask, isUnsupervised]);
 
-  // Ensure the selected metric(s) are always in the current option list.
-  // - supervised: keep a valid single metric selected
-  // - unsupervised: allow empty selection; just drop invalid entries
-  useEffect(() => {
-    if (!rawList || rawList.length === 0) return;
-    if (typeof onChange !== 'function') return;
+  // Store is overrides-only:
+  // - Never auto-write defaults into state.
+  // - Display schema defaults when unset.
+  const arraysEqual = (a, b) => {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (String(a[i]) !== String(b[i])) return false;
+    }
+    return true;
+  };
 
-    if (isUnsupervised) {
-      const arr = Array.isArray(value) ? value : value ? [String(value)] : [];
-      const filtered = arr.filter((m) => rawList.includes(m));
-      if (filtered.length !== arr.length) {
-        onChange(filtered);
-      }
+  const effectiveSupervised = value ?? defaultSupervisedMetric ?? null;
+  const supervisedDisplay =
+    effectiveSupervised && rawList.includes(String(effectiveSupervised))
+      ? String(effectiveSupervised)
+      : null;
+
+  const effectiveUnsupervised = Array.isArray(value)
+    ? value.map(String)
+    : defaultUnsupervisedMetrics;
+  const unsupervisedDisplay = (effectiveUnsupervised ?? []).filter((m) =>
+    rawList.includes(String(m)),
+  );
+
+  const handleSupervisedChange = (v) => {
+    if (typeof onChange !== 'function') return;
+    const next = v ? String(v) : undefined;
+    if (defaultSupervisedMetric != null && next === String(defaultSupervisedMetric)) {
+      onChange(undefined);
       return;
     }
+    onChange(next);
+  };
 
-    const isValid = rawList.includes(value);
-    if (!isValid) {
-      const first = rawList[0];
-      if (first != null) onChange(String(first));
+  const handleUnsupervisedChange = (arr) => {
+    if (typeof onChange !== 'function') return;
+    const next = (arr ?? []).map(String);
+    if (arraysEqual(next, defaultUnsupervisedMetrics)) {
+      onChange(undefined);
+      return;
     }
-  }, [rawList, value, onChange, isUnsupervised]);
+    onChange(next);
+  };
 
   const metricOptions = rawList.map((v) => ({
     value: String(v),
@@ -171,8 +199,8 @@ export default function MetricCard({
   };
 
   const selectedSingle = isUnsupervised
-    ? (Array.isArray(value) ? value[0] : value) || null
-    : value || null;
+    ? (unsupervisedDisplay?.[0] ?? null)
+    : supervisedDisplay;
 
   const selectedMeta = selectedSingle ? metricMeta[selectedSingle] : null;
 
@@ -193,8 +221,8 @@ export default function MetricCard({
                   label="Metrics"
                   description="Optional. If empty, the backend will compute a default set."
                   data={metricOptions}
-                  value={Array.isArray(value) ? value : value ? [String(value)] : []}
-                  onChange={onChange}
+                  value={unsupervisedDisplay}
+                  onChange={handleUnsupervisedChange}
                   searchable
                   clearable
                   styles={{
@@ -208,8 +236,8 @@ export default function MetricCard({
                 <Select
                   label="Metric method"
                   data={metricOptions}
-                  value={value}
-                  onChange={onChange}
+                  value={supervisedDisplay}
+                  onChange={handleSupervisedChange}
                   styles={{
                     input: {
                       borderWidth: 2,
