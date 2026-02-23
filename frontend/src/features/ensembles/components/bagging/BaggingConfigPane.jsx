@@ -1,15 +1,11 @@
-import {
-  Stack,
-  Select,
-  Divider,
-  Group,
-  NumberInput,
-  Switch,
-  Alert,
-} from '@mantine/core';
+import { Stack, Divider, Group, Alert } from '@mantine/core';
 
 import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
+
+import ParamNumber from '../common/ParamNumber.jsx';
+import ParamSelect from '../common/ParamSelect.jsx';
+import ParamSwitch from '../common/ParamSwitch.jsx';
 
 /**
  * Presentational config pane for Bagging.
@@ -49,7 +45,7 @@ export default function BaggingConfigPane({
 
   return (
     <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
-      <Select
+      <ParamSelect
         label="Base estimator"
         placeholder={algoOptions.length ? 'Select model' : 'Loading…'}
         data={algoOptions}
@@ -75,101 +71,93 @@ export default function BaggingConfigPane({
       <Divider my="xs" label="Bagging" labelPosition="center" />
 
       <Group grow align="flex-end" wrap="wrap">
-        <NumberInput
+        <ParamNumber
           label="Estimators"
           min={1}
           step={10}
           value={dispNEstimators}
-          onChange={(v) =>
-            setBagging({ n_estimators: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setBagging({ n_estimators: v })}
         />
 
-        <NumberInput
+        <ParamNumber
           label="Max samples"
           min={0.05}
           max={1}
           step={0.05}
           value={dispMaxSamples}
-          onChange={(v) =>
-            setBagging({ max_samples: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setBagging({ max_samples: v })}
         />
 
-        <NumberInput
+        <ParamNumber
           label="Max features"
           min={0.05}
           max={1}
           step={0.05}
           value={dispMaxFeatures}
-          onChange={(v) =>
-            setBagging({ max_features: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setBagging({ max_features: v })}
         />
       </Group>
 
       <Group grow align="flex-end" wrap="wrap">
-        <NumberInput
+        <ParamNumber
           label="n_jobs"
           min={-1}
           step={1}
           value={dispNJobs}
-          onChange={(v) => setBagging({ n_jobs: v === '' || v == null ? undefined : v })}
+          onChange={(v) => setBagging({ n_jobs: v })}
         />
 
-        <NumberInput
+        <ParamNumber
           label="Random state"
           min={0}
           step={1}
           value={dispRandomState}
-          onChange={(v) =>
-            setBagging({ random_state: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setBagging({ random_state: v })}
         />
       </Group>
 
       <Group grow>
-        <Switch
+        <ParamSwitch
           label="Bootstrap"
           checked={Boolean(dispBootstrap)}
-          onChange={(e) => setBagging({ bootstrap: e.currentTarget.checked })}
+          onChange={(checked) => setBagging({ bootstrap: checked })}
         />
 
-        <Switch
+        <ParamSwitch
           label="Bootstrap features"
           checked={Boolean(dispBootstrapFeatures)}
-          onChange={(e) => setBagging({ bootstrap_features: e.currentTarget.checked })}
+          onChange={(checked) => setBagging({ bootstrap_features: checked })}
         />
 
-        <Switch
+        <ParamSwitch
           label="OOB score"
           checked={Boolean(dispOobScore)}
-          onChange={(e) => setBagging({ oob_score: e.currentTarget.checked })}
+          onChange={(checked) => setBagging({ oob_score: checked })}
         />
       </Group>
 
       <Divider my="xs" label="Balanced bagging" labelPosition="center" />
 
       <Group grow>
-        <Switch
+        <ParamSwitch
           label="Balanced"
           checked={Boolean(dispBalanced)}
-          onChange={(e) => setBagging({ balanced: e.currentTarget.checked })}
+          onChange={(checked) => setBagging({ balanced: checked })}
         />
 
-        <Switch
+        <ParamSwitch
           label="Replacement"
           checked={Boolean(dispReplacement)}
-          onChange={(e) => setBagging({ replacement: e.currentTarget.checked })}
+          onChange={(checked) => setBagging({ replacement: checked })}
           disabled={!Boolean(dispBalanced)}
         />
       </Group>
 
-      <Select
+      <ParamSelect
         label="Sampling strategy"
         data={samplingStrategyOptions}
         value={dispSamplingStrategy ?? null}
-        onChange={(v) => setBagging({ sampling_strategy: v || undefined })}
+        onChange={(v) => setBagging({ sampling_strategy: v })}
         disabled={!Boolean(dispBalanced)}
       />
 

@@ -1,7 +1,10 @@
-import { Stack, Group, Select, NumberInput, Button, Box } from '@mantine/core';
+import { Stack, Group, Button, Box } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 
 import { VotingIntroText } from '../../../../shared/content/help/EnsembleHelpText.jsx';
+
+import ParamNumber from '../common/ParamNumber.jsx';
+import ParamSelect from '../common/ParamSelect.jsx';
 
 export default function VotingConfigHelpRow({
   effectiveTask,
@@ -20,7 +23,7 @@ export default function VotingConfigHelpRow({
     <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
       {/* Left: A and B stacked */}
       <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
-        <Select
+        <ParamSelect
           label="Voting type"
           value={effectiveVotingType}
           onChange={onVotingTypeChange}
@@ -37,7 +40,7 @@ export default function VotingConfigHelpRow({
         />
 
         {mode === 'simple' ? (
-          <NumberInput
+          <ParamNumber
             label="Number of models"
             min={2}
             step={1}

@@ -1,14 +1,10 @@
-import {
-  Stack,
-  Select,
-  Divider,
-  Group,
-  NumberInput,
-  Alert,
-} from '@mantine/core';
+import { Stack, Divider, Group, Alert } from '@mantine/core';
 
 import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
+
+import ParamNumber from '../common/ParamNumber.jsx';
+import ParamSelect from '../common/ParamSelect.jsx';
 
 export default function AdaBoostConfigPane({
   mode,
@@ -38,7 +34,7 @@ export default function AdaBoostConfigPane({
 
   return (
     <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
-      <Select
+      <ParamSelect
         label="Base estimator"
         placeholder={algoOptions.length ? 'Select model' : 'Loading…'}
         data={algoOptions}
@@ -71,43 +67,37 @@ export default function AdaBoostConfigPane({
       <Divider my="xs" label="AdaBoost" labelPosition="center" />
 
       <Group grow align="flex-end" wrap="wrap">
-        <NumberInput
+        <ParamNumber
           label="Estimators"
           min={1}
           step={10}
           value={dispNEstimators}
-          onChange={(v) =>
-            setAdaBoost({ n_estimators: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setAdaBoost({ n_estimators: v })}
         />
 
-        <NumberInput
+        <ParamNumber
           label="Learning rate"
           min={0.001}
           step={0.05}
           value={dispLearningRate}
-          onChange={(v) =>
-            setAdaBoost({ learning_rate: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setAdaBoost({ learning_rate: v })}
         />
 
-        <NumberInput
+        <ParamNumber
           label="Random state"
           min={0}
           step={1}
           value={dispRandomState}
-          onChange={(v) =>
-            setAdaBoost({ random_state: v === '' || v == null ? undefined : v })
-          }
+          onChange={(v) => setAdaBoost({ random_state: v })}
         />
       </Group>
 
       {effectiveTask !== 'regression' && (
-        <Select
+        <ParamSelect
           label="Algorithm"
           data={algorithmOptions}
           value={dispAlgorithm ?? '__default__'}
-          onChange={(v) => setAdaBoost({ algorithm: v || undefined })}
+          onChange={(v) => setAdaBoost({ algorithm: v })}
         />
       )}
 

@@ -1,5 +1,7 @@
-import { Group, Select, ActionIcon } from '@mantine/core';
+import { Group, ActionIcon } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
+
+import ParamSelect from '../common/ParamSelect.jsx';
 
 export default function VotingSimpleEstimatorRow({
   idx,
@@ -11,7 +13,7 @@ export default function VotingSimpleEstimatorRow({
 }) {
   return (
     <Group align="flex-end" wrap="nowrap">
-      <Select
+      <ParamSelect
         style={{ flex: 1, minWidth: 180, maxWidth: 360 }}
         label={`Estimator ${idx + 1}`}
         value={algo || null}

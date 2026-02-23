@@ -1,7 +1,9 @@
-import { Card, Stack, Group, Text, ActionIcon, TextInput, NumberInput, Box } from '@mantine/core';
+import { Card, Stack, Group, Text, ActionIcon, TextInput, Box } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
+
+import ParamNumber from '../common/ParamNumber.jsx';
 
 export default function VotingAdvancedEstimatorCard({
   idx,
@@ -37,12 +39,13 @@ export default function VotingAdvancedEstimatorCard({
             onChange={(e) => onUpdate({ name: e.currentTarget.value })}
           />
 
-          <NumberInput
+          <ParamNumber
             label="Weight (optional)"
             value={estimator?.weight ?? ''}
             onChange={(v) => onUpdate({ weight: v })}
             step={0.5}
             min={0}
+            emptyToUndefined
           />
         </Group>
 

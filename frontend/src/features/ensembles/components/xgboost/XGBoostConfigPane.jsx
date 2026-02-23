@@ -1,6 +1,9 @@
-import { Stack, Group, NumberInput, Divider, Switch } from '@mantine/core';
+import { Stack, Group, Divider } from '@mantine/core';
 
 import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
+
+import ParamNumber from '../common/ParamNumber.jsx';
+import ParamSwitch from '../common/ParamSwitch.jsx';
 
 export default function XGBoostConfigPane({
   mode,
@@ -14,45 +17,45 @@ export default function XGBoostConfigPane({
     <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
       {/* Core */}
       <Group grow align="flex-end" wrap="wrap">
-        <NumberInput
+        <ParamNumber
           label="Estimators"
           min={1}
           step={10}
           value={xgb.n_estimators ?? xgbDefaults?.n_estimators ?? undefined}
-          onChange={(v) => setXGBoost({ n_estimators: v === '' ? undefined : v })}
+          onChange={(v) => setXGBoost({ n_estimators: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Learning rate"
           min={0.0001}
           step={0.05}
           value={xgb.learning_rate ?? xgbDefaults?.learning_rate ?? undefined}
-          onChange={(v) => setXGBoost({ learning_rate: v === '' ? undefined : v })}
+          onChange={(v) => setXGBoost({ learning_rate: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Max depth"
           min={1}
           step={1}
           value={xgb.max_depth ?? xgbDefaults?.max_depth ?? undefined}
-          onChange={(v) => setXGBoost({ max_depth: v === '' ? undefined : v })}
+          onChange={(v) => setXGBoost({ max_depth: v })}
         />
       </Group>
 
       <Group grow align="flex-end" wrap="wrap">
-        <NumberInput
+        <ParamNumber
           label="Subsample"
           min={0.05}
           max={1}
           step={0.05}
           value={xgb.subsample ?? xgbDefaults?.subsample ?? undefined}
-          onChange={(v) => setXGBoost({ subsample: v === '' ? undefined : v })}
+          onChange={(v) => setXGBoost({ subsample: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Colsample (bytree)"
           min={0.05}
           max={1}
           step={0.05}
           value={xgb.colsample_bytree ?? xgbDefaults?.colsample_bytree ?? undefined}
-          onChange={(v) => setXGBoost({ colsample_bytree: v === '' ? undefined : v })}
+          onChange={(v) => setXGBoost({ colsample_bytree: v })}
         />
       </Group>
 
@@ -61,66 +64,64 @@ export default function XGBoostConfigPane({
           <Divider my="xs" label="Regularization" labelPosition="center" />
 
           <Group grow align="flex-end" wrap="wrap">
-            <NumberInput
+            <ParamNumber
               label="Lambda (L2)"
               min={0}
               step={0.1}
               value={xgb.reg_lambda ?? xgbDefaults?.reg_lambda ?? undefined}
-              onChange={(v) => setXGBoost({ reg_lambda: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ reg_lambda: v })}
             />
-            <NumberInput
+            <ParamNumber
               label="Alpha (L1)"
               min={0}
               step={0.1}
               value={xgb.reg_alpha ?? xgbDefaults?.reg_alpha ?? undefined}
-              onChange={(v) => setXGBoost({ reg_alpha: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ reg_alpha: v })}
             />
           </Group>
 
           <Group grow align="flex-end" wrap="wrap">
-            <NumberInput
+            <ParamNumber
               label="Min child weight"
               min={0}
               step={0.5}
               value={xgb.min_child_weight ?? xgbDefaults?.min_child_weight ?? undefined}
-              onChange={(v) => setXGBoost({ min_child_weight: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ min_child_weight: v })}
             />
-            <NumberInput
+            <ParamNumber
               label="Gamma"
               min={0}
               step={0.1}
               value={xgb.gamma ?? xgbDefaults?.gamma ?? undefined}
-              onChange={(v) => setXGBoost({ gamma: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ gamma: v })}
             />
           </Group>
 
           <Divider my="xs" label="Early stopping" labelPosition="center" />
 
-          <Switch
+          <ParamSwitch
             label="Use early stopping"
             checked={useEarlyStopping}
-            onChange={(e) => setXGBoost({ use_early_stopping: e.currentTarget.checked })}
+            onChange={(checked) => setXGBoost({ use_early_stopping: checked })}
           />
 
           <Group grow align="flex-end" wrap="wrap">
-            <NumberInput
+            <ParamNumber
               label="Early stopping rounds"
               min={1}
               step={1}
               value={xgb.early_stopping_rounds ?? xgbDefaults?.early_stopping_rounds ?? undefined}
-              onChange={(v) =>
-                setXGBoost({ early_stopping_rounds: v === '' ? undefined : v })
-              }
+              onChange={(v) => setXGBoost({ early_stopping_rounds: v })}
               disabled={!Boolean(xgb.use_early_stopping)}
             />
 
-            <NumberInput
+            <ParamNumber
               label="Eval set fraction"
               min={0.05}
               max={0.5}
               step={0.05}
               value={xgb.eval_set_fraction ?? xgbDefaults?.eval_set_fraction ?? undefined}
-              onChange={(v) => setXGBoost({ eval_set_fraction: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ eval_set_fraction: v })}
               disabled={!Boolean(xgb.use_early_stopping)}
             />
           </Group>
@@ -128,19 +129,19 @@ export default function XGBoostConfigPane({
           <Divider my="xs" label="Other" labelPosition="center" />
 
           <Group grow align="flex-end" wrap="wrap">
-            <NumberInput
+            <ParamNumber
               label="n_jobs"
               min={-1}
               step={1}
               value={xgb.n_jobs ?? xgbDefaults?.n_jobs ?? undefined}
-              onChange={(v) => setXGBoost({ n_jobs: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ n_jobs: v })}
             />
-            <NumberInput
+            <ParamNumber
               label="Random state"
               min={0}
               step={1}
               value={xgb.random_state ?? xgbDefaults?.random_state ?? undefined}
-              onChange={(v) => setXGBoost({ random_state: v === '' ? undefined : v })}
+              onChange={(v) => setXGBoost({ random_state: v })}
             />
           </Group>
         </>
