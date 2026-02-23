@@ -572,12 +572,16 @@ export default function AdaBoostEnsemblePanel() {
         onSeedChange={(v) => setAdaBoost({ seed: v })}
       />
 
-      {trainResult?.ensemble_report?.kind === 'adaboost' &&
-        (trainResult.ensemble_report.task || 'classification') === 'regression' ? (
-          <AdaBoostEnsembleRegressionResults report={trainResult.ensemble_report} />
+      {(() => {
+        const report = trainResult?.ensemble_report;
+        if (!report || report.kind !== 'adaboost') return null;
+        const task = report.task || 'classification';
+        return task === 'regression' ? (
+          <AdaBoostEnsembleRegressionResults report={report} />
         ) : (
-          <AdaBoostEnsembleClassificationResults report={trainResult.ensemble_report} />
-        )}
+          <AdaBoostEnsembleClassificationResults report={report} />
+        );
+      })()}
 
       {err && (
         <Alert color="red" variant="light">

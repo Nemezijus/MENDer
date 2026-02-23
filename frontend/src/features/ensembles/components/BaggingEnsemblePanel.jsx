@@ -620,12 +620,16 @@ export default function BaggingEnsemblePanel() {
         onSeedChange={(v) => setBagging({ seed: v })}
       />
 
-      {trainResult?.ensemble_report?.kind === 'bagging' &&
-        (trainResult.ensemble_report.task || 'classification') === 'regression' ? (
-          <BaggingEnsembleRegressionResults report={trainResult.ensemble_report} />
+      {(() => {
+        const report = trainResult?.ensemble_report;
+        if (!report || report.kind !== 'bagging') return null;
+        const task = report.task || 'classification';
+        return task === 'regression' ? (
+          <BaggingEnsembleRegressionResults report={report} />
         ) : (
-          <BaggingEnsembleClassificationResults report={trainResult.ensemble_report} />
-        )}
+          <BaggingEnsembleClassificationResults report={report} />
+        );
+      })()}
 
       {err && (
         <Alert color="red" variant="light">
