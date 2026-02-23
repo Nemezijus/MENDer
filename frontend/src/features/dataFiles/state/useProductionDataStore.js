@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { makeReset } from '../../../shared/state/storeFactories.js';
+
 const initialState = {
   xPath: '',
   yPath: '',
@@ -30,11 +32,11 @@ export const useProductionDataStore = create((set) => ({
 
   setInspectReport: (inspectReport) => set({ inspectReport }),
 
-  // NEW setters for UX display
+  // setters for UX display
   setXDisplay: (xDisplay) => set({ xDisplay }),
   setYDisplay: (yDisplay) => set({ yDisplay }),
   setNpzDisplay: (npzDisplay) => set({ npzDisplay }),
 
   // utility
-  reset: () => set({ ...initialState }),
+  reset: makeReset(initialState, set),
 }));

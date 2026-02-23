@@ -1,34 +1,10 @@
 import { Card, Stack, Text, Alert, Group, Box, Divider } from '@mantine/core';
 
-const SHORT_HASH_LEN = 7;
+import { formatFallbackUploadLabelFromPath } from '../../utils/fileDisplay.js';
 
 function formatMaybePath(p) {
   if (!p) return '—';
   return String(p);
-}
-
-function basename(path) {
-  if (!path) return '';
-  const p = String(path).replaceAll('\\', '/');
-  const i = p.lastIndexOf('/');
-  return i >= 0 ? p.slice(i + 1) : p;
-}
-
-function shortHashFromCanonicalFilename(fileName, n = SHORT_HASH_LEN) {
-  // canonical stored uploads look like "<hex>.<ext>" where hex is sha256 (64),
-  // but we allow 40+ to be tolerant.
-  const m = String(fileName).match(/^([0-9a-f]{40,64})\.[A-Za-z0-9]+$/i);
-  if (!m) return null;
-  return m[1].slice(0, n);
-}
-
-function formatFallbackUploadLabelFromPath(path) {
-  // If we only have a backend path, try to show a short hash + the canonical filename.
-  // Example: "E:\...\uploads\<sha>.mat" -> "[04012af] <sha>.mat"
-  if (!path) return '—';
-  const file = basename(path);
-  const sh = shortHashFromCanonicalFilename(file);
-  return sh ? `[${sh}] ${file}` : String(path);
 }
 
 function formatClasses(classes, limit = 10) {
@@ -86,10 +62,7 @@ function ClassificationDetails({ inspectReport }) {
   const nClasses = Array.isArray(classes) ? classes.length : 0;
 
   // class_counts may be legacy top-level OR inside y_summary depending on backend versions
-  const classCounts =
-    inspectReport?.class_counts ||
-    inspectReport?.y_summary?.class_counts ||
-    null;
+  const classCounts = inspectReport?.class_counts || inspectReport?.y_summary?.class_counts || null;
 
   const imb = computeImbalance(classCounts);
 
@@ -129,18 +102,9 @@ function RegressionDetails({ inspectReport }) {
         </Text>
       ) : (
         <>
-          <KeyValue
-            k="Target summary"
-            v={`n=${ySum.n ?? '—'}, unique=${ySum.n_unique ?? '—'}`}
-          />
-          <KeyValue
-            k="Min / Max"
-            v={`${ySum.min ?? '—'} / ${ySum.max ?? '—'}`}
-          />
-          <KeyValue
-            k="Mean ± Std"
-            v={`${ySum.mean ?? '—'} ± ${ySum.std ?? '—'}`}
-          />
+          <KeyValue k="Target summary" v={`n=${ySum.n ?? '—'}, unique=${ySum.n_unique ?? '—'}`} />
+          <KeyValue k="Min / Max" v={`${ySum.min ?? '—'} / ${ySum.max ?? '—'}`} />
+          <KeyValue k="Mean ± Std" v={`${ySum.mean ?? '—'} ± ${ySum.std ?? '—'}`} />
         </>
       )}
     </Stack>
@@ -155,21 +119,13 @@ function buildCompatibilityWarnings({ modelArtifact, inspectReport, effectiveTas
   const dataKind = effectiveTask ?? inspectReport?.task_inferred ?? null;
 
   if (modelKind && dataKind && modelKind !== dataKind) {
-    warnings.push(
-      `Task mismatch: model is "${modelKind}", but the data looks like "${dataKind}".`
-    );
+    warnings.push(`Task mismatch: model is "${modelKind}", but the data looks like "${dataKind}".`);
   }
 
   const modelNFeat = modelArtifact.n_features_in ?? null;
   const dataNFeat = inspectReport.n_features ?? null;
-  if (
-    Number.isFinite(modelNFeat) &&
-    Number.isFinite(dataNFeat) &&
-    modelNFeat !== dataNFeat
-  ) {
-    warnings.push(
-      `Feature mismatch: model expects ${modelNFeat} features, but this data has ${dataNFeat}.`
-    );
+  if (Number.isFinite(modelNFeat) && Number.isFinite(dataNFeat) && modelNFeat !== dataNFeat) {
+    warnings.push(`Feature mismatch: model expects ${modelNFeat} features, but this data has ${dataNFeat}.`);
   }
 
   // Only check classes if data labels exist (production labels are optional)
@@ -183,7 +139,7 @@ function buildCompatibilityWarnings({ modelArtifact, inspectReport, effectiveTas
     modelClasses.length !== dataClasses.length
   ) {
     warnings.push(
-      `Label mismatch: model was trained with ${modelClasses.length} classes, but these labels contain ${dataClasses.length}.`
+      `Label mismatch: model was trained with ${modelClasses.length} classes, but these labels contain ${dataClasses.length}.`,
     );
   }
 
@@ -198,7 +154,7 @@ export default function DataSummaryCard({
   yPath = null,
   npzPath = null,
 
-  // NEW (persisted display names from stores)
+  // Persisted display names from stores
   xDisplay = '',
   yDisplay = '',
   npzDisplay = '',
@@ -229,23 +185,11 @@ export default function DataSummaryCard({
   });
 
   // Prefer friendly display strings (persisted), otherwise fall back to a readable label from the backend path.
-  const xShown = xDisplay?.trim()
-    ? xDisplay.trim()
-    : xPath
-      ? formatFallbackUploadLabelFromPath(xPath)
-      : '—';
+  const xShown = xDisplay?.trim() ? xDisplay.trim() : xPath ? formatFallbackUploadLabelFromPath(xPath) : '—';
 
-  const yShown = yDisplay?.trim()
-    ? yDisplay.trim()
-    : yPath
-      ? formatFallbackUploadLabelFromPath(yPath)
-      : '—';
+  const yShown = yDisplay?.trim() ? yDisplay.trim() : yPath ? formatFallbackUploadLabelFromPath(yPath) : '—';
 
-  const npzShown = npzDisplay?.trim()
-    ? npzDisplay.trim()
-    : npzPath
-      ? formatFallbackUploadLabelFromPath(npzPath)
-      : '—';
+  const npzShown = npzDisplay?.trim() ? npzDisplay.trim() : npzPath ? formatFallbackUploadLabelFromPath(npzPath) : '—';
 
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -308,17 +252,9 @@ export default function DataSummaryCard({
                 General
               </Text>
 
-              <KeyValue
-                k="Number of samples"
-                v={Number.isFinite(nSamples) ? String(nSamples) : '—'}
-              />
-              <KeyValue
-                k="Number of features"
-                v={Number.isFinite(nFeatures) ? String(nFeatures) : '—'}
-              />
-              {missingTotal > 0 && (
-                <KeyValue k="Missing values (total)" v={String(missingTotal)} />
-              )}
+              <KeyValue k="Number of samples" v={Number.isFinite(nSamples) ? String(nSamples) : '—'} />
+              <KeyValue k="Number of features" v={Number.isFinite(nFeatures) ? String(nFeatures) : '—'} />
+              {missingTotal > 0 && <KeyValue k="Missing values (total)" v={String(missingTotal)} />}
 
               <KeyValue k="Recommended model type" v={taskShown} />
             </Stack>

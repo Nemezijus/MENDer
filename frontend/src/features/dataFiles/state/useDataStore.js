@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { makeReset } from '../../../shared/state/storeFactories.js';
+
 const initialState = {
   xPath: 'data/classical/wine/wine_features.mat',
   yPath: 'data/classical/wine/wine_labels.mat',
@@ -32,5 +34,5 @@ export const useDataStore = create((set) => ({
   setNpzDisplay: (npzDisplay) => set({ npzDisplay }),
 
   // utility
-  reset: () => set({ ...initialState }),
+  reset: makeReset(initialState, set),
 }));

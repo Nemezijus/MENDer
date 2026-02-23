@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { inspectData } from '../api/dataApi';
-import { inspectProductionData } from '../api/dataApi';
+
+import { inspectData, inspectProductionData } from '../api/dataApi.js';
 
 export function useInspectDataMutation() {
   return useMutation({
