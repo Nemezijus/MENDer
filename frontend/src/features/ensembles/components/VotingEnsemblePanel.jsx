@@ -1,19 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Card,
-  Stack,
-  Group,
-  Text,
-  Button,
-  Select,
-  NumberInput,
-  Divider,
-  Alert,
-  Box,
-  ActionIcon,
-  TextInput,
-} from '@mantine/core';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { Card, Stack, Group, Text, Button, Divider, Alert } from '@mantine/core';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
@@ -23,17 +9,18 @@ import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.
 import { useEnsembleStore } from '../state/useEnsembleStore.js';
 
 import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
-import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
-
-import EnsembleHelpText, {
-  VotingIntroText,
-} from '../../../shared/content/help/EnsembleHelpText.jsx';
 
 import VotingEnsembleClassificationResults from './VotingEnsembleClassificationResults.jsx';
 import VotingEnsembleRegressionResults from './VotingEnsembleRegressionResults.jsx';
 
 import EnsemblePanelHeader from './common/EnsemblePanelHeader.jsx';
 import EnsembleErrorAlert from './common/EnsembleErrorAlert.jsx';
+
+import VotingConfigHelpRow from './voting/VotingConfigHelpRow.jsx';
+import VotingHelpBlock from './voting/VotingHelpBlock.jsx';
+import VotingWarnings from './voting/VotingWarnings.jsx';
+import VotingSimpleEstimatorList from './voting/VotingSimpleEstimatorList.jsx';
+import VotingAdvancedEstimatorList from './voting/VotingAdvancedEstimatorList.jsx';
 
 import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
 
@@ -118,6 +105,11 @@ export default function VotingEnsemblePanel() {
     [voting.estimators],
   );
 
+  const duplicateAlgosLabel =
+    duplicateAlgos && duplicateAlgos.length > 0
+      ? duplicateAlgos.map(algoLabelWithFallback).join(', ')
+      : '';
+
   // ----------------- schema-driven defaults (display + payload) -----------------
 
   const allowedMetrics = useMemo(
@@ -154,9 +146,7 @@ export default function VotingEnsemblePanel() {
     const defaultsFromSchema = ensembleDefaults?.estimators || null;
 
     const firstAlgo = Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null;
-    const fallbackModel = firstAlgo
-      ? getModelDefaults?.(firstAlgo) || { algo: firstAlgo }
-      : null;
+    const fallbackModel = firstAlgo ? getModelDefaults?.(firstAlgo) || { algo: firstAlgo } : null;
 
     if (Array.isArray(defaultsFromSchema) && defaultsFromSchema.length >= 2) {
       setVotingEstimators(
@@ -334,31 +324,18 @@ export default function VotingEnsemblePanel() {
     await runTrain({ buildPayload });
   };
 
-  const renderSimpleEstimatorRow = (s, idx) => (
-    <Group key={idx} align="flex-end" wrap="nowrap">
-      <Select
-        style={{ flex: 1, minWidth: 180, maxWidth: 360 }}
-        label={`Estimator ${idx + 1}`}
-        value={s?.model?.algo || null}
-        onChange={(v) => updateEstimatorAlgoSimple(idx, v || s?.model?.algo)}
-        data={algoOptions}
-      />
-
-      <ActionIcon
-        variant="subtle"
-        color="red"
-        onClick={() => removeVotingEstimatorAt(idx)}
-        disabled={estimators.length <= 2}
-        title="Remove estimator"
-      >
-        <IconTrash size={18} />
-      </ActionIcon>
-    </Group>
-  );
-
   const ensembleDefaults = getEnsembleDefaults?.('voting') || null;
   const defaultVotingType = ensembleDefaults?.voting;
   const effectiveVotingType = voting.votingType ?? defaultVotingType ?? null;
+
+  const handleVotingTypeChange = (v) => {
+    const next = v ? String(v) : undefined;
+    if (defaultVotingType != null && next === String(defaultVotingType)) {
+      setVoting({ votingType: undefined });
+    } else {
+      setVoting({ votingType: next });
+    }
+  };
 
   return (
     <Stack gap="md">
@@ -383,223 +360,57 @@ export default function VotingEnsemblePanel() {
 
           <EnsembleErrorAlert error={err} />
 
-          {/* First row: left A+B stacked, right C help preview */}
-          <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
-            {/* Left: A and B stacked */}
-            <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
-              <Select
-                label="Voting type"
-                value={effectiveVotingType}
-                onChange={(v) => {
-                  const next = v ? String(v) : undefined;
-                  if (defaultVotingType != null && next === String(defaultVotingType)) {
-                    setVoting({ votingType: undefined });
-                  } else {
-                    setVoting({ votingType: next });
-                  }
-                }}
-                data={[
-                  { value: 'hard', label: 'Hard (labels)' },
-                  { value: 'soft', label: 'Soft (probabilities)' },
-                ]}
-                disabled={effectiveTask === 'regression'}
-                description={
-                  effectiveTask === 'regression'
-                    ? 'VotingRegressor is used for regression; voting type is ignored.'
-                    : 'Soft voting requires all estimators to support predict_proba.'
-                }
-              />
+          <VotingConfigHelpRow
+            effectiveTask={effectiveTask}
+            effectiveVotingType={effectiveVotingType}
+            onVotingTypeChange={handleVotingTypeChange}
+            mode={voting.mode}
+            estimatorsCount={estimators.length}
+            onClampEstimatorCount={clampEstimatorCount}
+            onAddEstimator={addEstimator}
+            algoOptionsLength={algoOptions.length}
+            showHelp={showHelp}
+            onToggleHelp={() => setShowHelp((p) => !p)}
+            votingType={voting.votingType}
+          />
 
-              {voting.mode === 'simple' ? (
-                <NumberInput
-                  label="Number of models"
-                  min={2}
-                  step={1}
-                  value={estimators.length}
-                  onChange={clampEstimatorCount}
-                  disabled={algoOptions.length === 0}
-                />
-              ) : (
-                <Button
-                  leftSection={<IconPlus size={16} />}
-                  variant="light"
-                  onClick={addEstimator}
-                  disabled={algoOptions.length === 0}
-                >
-                  Add estimator
-                </Button>
-              )}
-            </Stack>
-
-            {/* Right: C help preview (same height as left stack) */}
-            <Box style={{ flex: 1, minWidth: 260 }}>
-              <Stack justify="space-between" style={{ height: '100%' }} gap="xs">
-                <Box>
-                  <VotingIntroText
-                    effectiveTask={effectiveTask}
-                    votingType={voting.votingType}
-                  />
-                </Box>
-
-                <Group justify="flex-end">
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => setShowHelp((p) => !p)}
-                  >
-                    {showHelp ? 'Show less' : 'Show more'}
-                  </Button>
-                </Group>
-              </Stack>
-            </Box>
-          </Group>
-
-          {/* Expanded help block between first row and estimator list */}
           {showHelp && (
-            <Box>
-              <EnsembleHelpText
-                kind="voting"
-                effectiveTask={effectiveTask}
-                votingType={voting.votingType}
-                mode={voting.mode}
-              />
-            </Box>
-          )}
-
-          {duplicateAlgos && duplicateAlgos.length > 0 && (
-            <Alert color="yellow" variant="light">
-              <Text size="sm" fw={600}>
-                Duplicate estimator types detected
-              </Text>
-              <Text size="sm">
-                You selected: <strong>{duplicateAlgos.map(algoLabelWithFallback).join(', ')}</strong> more than once. If these are
-                identical, this acts like implicit weighting. Prefer using explicit weights in Advanced mode.
-              </Text>
-            </Alert>
+            <VotingHelpBlock
+              effectiveTask={effectiveTask}
+              votingType={voting.votingType}
+              mode={voting.mode}
+            />
           )}
 
           <Divider />
 
-          {!metricIsAllowed && metricOverride && (
-            <Alert color="yellow" variant="light">
-              <Text size="sm" fw={600}>
-                Metric not available for this task
-              </Text>
-              <Text size="sm">
-                The selected metric (<strong>{metricOverride}</strong>) is not listed for the current task.
-                {effectiveTask === 'regression' && defaultMetricFromSchema
-                  ? ` Using '${defaultMetricFromSchema}' for this run.`
-                  : ' Please update Settings → Metric.'}
-              </Text>
-            </Alert>
-          )}
+          <VotingWarnings
+            duplicateAlgosLabel={duplicateAlgosLabel}
+            metricIsAllowed={metricIsAllowed}
+            metricOverride={metricOverride}
+            effectiveTask={effectiveTask}
+            defaultMetricFromSchema={defaultMetricFromSchema}
+            algoOptionsLength={algoOptions.length}
+            effectiveSplitMode={effectiveSplitMode}
+          />
 
-          {algoOptions.length === 0 && (
-            <Alert color="yellow" variant="light">
-              <Text size="sm" fw={600}>
-                Schema defaults not loaded
-              </Text>
-              <Text size="sm">
-                Voting ensemble needs backend schema defaults to list compatible algorithms. Please wait for
-                <strong> /api/v1/schema/defaults</strong> to load.
-              </Text>
-            </Alert>
-          )}
-
-          {!effectiveSplitMode && (
-            <Alert color="yellow" variant="light">
-              <Text size="sm" fw={600}>
-                Split defaults not available
-              </Text>
-              <Text size="sm">
-                This panel relies on backend split defaults to choose a split strategy. Please wait for
-                <strong> /api/v1/schema/defaults</strong> to load.
-              </Text>
-            </Alert>
-          )}
-
-          {/* D row: estimator list */}
           {voting.mode === 'simple' && (
-            <Stack gap="sm">
-              <Text size="sm" c="dimmed">
-                Simple mode uses each model’s default hyperparameters. Switch to Advanced to edit parameters
-                and set weights.
-              </Text>
-
-              <Group align="flex-start" wrap="nowrap" gap="md">
-                <Stack style={{ flex: 1 }} gap="sm">
-                  {estimators
-                    .map((s, idx) => ({ s, idx }))
-                    .filter((x) => x.idx % 2 === 0)
-                    .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
-                </Stack>
-
-                <Stack style={{ flex: 1 }} gap="sm">
-                  {estimators
-                    .map((s, idx) => ({ s, idx }))
-                    .filter((x) => x.idx % 2 === 1)
-                    .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
-                </Stack>
-              </Group>
-            </Stack>
+            <VotingSimpleEstimatorList
+              estimators={estimators}
+              algoOptions={algoOptions}
+              onAlgoChangeAt={updateEstimatorAlgoSimple}
+              onRemoveAt={removeVotingEstimatorAt}
+            />
           )}
 
           {voting.mode === 'advanced' && (
-            <Stack gap="md">
-              <Text size="sm" c="dimmed">
-                Advanced mode lets you tune each estimator and optionally assign weights.
-              </Text>
-
-              {estimators.map((s, idx) => (
-                <Card key={idx} withBorder radius="md" p="md">
-                  <Stack gap="sm">
-                    <Group justify="space-between" align="center">
-                      <Text fw={600}>Estimator {idx + 1}</Text>
-
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        onClick={() => removeVotingEstimatorAt(idx)}
-                        disabled={estimators.length <= 2}
-                        title="Remove estimator"
-                      >
-                        <IconTrash size={18} />
-                      </ActionIcon>
-                    </Group>
-
-                    <Group grow align="flex-end" wrap="wrap">
-                      <TextInput
-                        label="Name (optional)"
-                        placeholder="auto"
-                        value={s?.name ?? ''}
-                        onChange={(e) =>
-                          updateVotingEstimatorAt(idx, { name: e.currentTarget.value })
-                        }
-                      />
-
-                      <NumberInput
-                        label="Weight (optional)"
-                        value={s?.weight ?? ''}
-                        onChange={(v) => updateVotingEstimatorAt(idx, { weight: v })}
-                        step={0.5}
-                        min={0}
-                      />
-                    </Group>
-
-                    <Box>
-                      <ModelSelectionCard
-                        model={s?.model}
-                        onChange={(next) => updateVotingEstimatorAt(idx, { model: next })}
-                        schema={models?.schema}
-                        enums={enums}
-                        models={models}
-                        showHelp={false}
-                      />
-                    </Box>
-                  </Stack>
-                </Card>
-              ))}
-            </Stack>
+            <VotingAdvancedEstimatorList
+              estimators={estimators}
+              onUpdateAt={updateVotingEstimatorAt}
+              onRemoveAt={removeVotingEstimatorAt}
+              models={models}
+              enums={enums}
+            />
           )}
         </Stack>
       </Card>

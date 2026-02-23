@@ -1,16 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  Card,
-  Stack,
-  Group,
-  Text,
-  Button,
-  Select,
-  NumberInput,
-  Divider,
-  Alert,
-  Box,
-} from '@mantine/core';
+import { Card, Stack, Group, Text, Button } from '@mantine/core';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
@@ -19,17 +8,14 @@ import { useResultsStore } from '../../results/state/useResultsStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
 import { useEnsembleStore } from '../state/useEnsembleStore.js';
 
-import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
-import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
-
-import EnsembleHelpText, {
-  AdaBoostIntroText,
-} from '../../../shared/content/help/EnsembleHelpText.jsx';
 import AdaBoostEnsembleClassificationResults from './AdaBoostEnsembleClassificationResults.jsx';
 import AdaBoostEnsembleRegressionResults from './AdaBoostEnsembleRegressionResults.jsx';
 
 import EnsemblePanelHeader from './common/EnsemblePanelHeader.jsx';
 import EnsembleErrorAlert from './common/EnsembleErrorAlert.jsx';
+
+import AdaBoostConfigPane from './adaboost/AdaBoostConfigPane.jsx';
+import AdaBoostHelpPane from './adaboost/AdaBoostHelpPane.jsx';
 
 import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
 
@@ -149,16 +135,6 @@ export default function AdaBoostEnsemblePanel() {
       : undefined;
 
   const showSampleWeightWarning = baseSupportsSampleWeight === false;
-
-  // Display values (defaults + overrides). Payload remains overrides-only.
-  const dispNEstimators = adaboost.n_estimators ?? adaboostDefaults?.n_estimators;
-  const dispLearningRate = adaboost.learning_rate ?? adaboostDefaults?.learning_rate;
-  const dispRandomState = adaboost.random_state ?? adaboostDefaults?.random_state;
-
-  const dispAlgorithm =
-    effectiveTask === 'regression'
-      ? undefined
-      : adaboost.algorithm ?? adaboostDefaults?.algorithm ?? undefined;
 
   const handleReset = () => {
     resetAdaBoost(effectiveTask);
@@ -282,113 +258,28 @@ export default function AdaBoostEnsemblePanel() {
           <EnsembleErrorAlert error={err} />
 
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
-            <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
-              <Select
-                label="Base estimator"
-                placeholder={algoOptions.length ? 'Select model' : 'Loading…'}
-                data={algoOptions}
-                value={effectiveBaseEstimator?.algo ?? null}
-                onChange={(v) => {
-                  if (!v) return;
-                  const base = getModelDefaults?.(v) || { algo: v };
-                  setAdaBoostBaseEstimator(base);
-                }}
-                disabled={algoOptions.length === 0}
-              />
+            <AdaBoostConfigPane
+              mode={adaboost.mode}
+              algoOptions={algoOptions}
+              compatibleAlgos={compatibleAlgos}
+              models={models}
+              effectiveTask={effectiveTask}
+              effectiveBaseEstimator={effectiveBaseEstimator}
+              getModelDefaults={getModelDefaults}
+              onBaseEstimatorChange={setAdaBoostBaseEstimator}
+              onBaseEstimatorConfigChange={(next) => setAdaBoostBaseEstimator(next)}
+              showSampleWeightWarning={showSampleWeightWarning}
+              algorithmOptions={algorithmOptions}
+              adaboost={adaboost}
+              adaboostDefaults={adaboostDefaults}
+              metricForPayload={metricForPayload}
+              setAdaBoost={setAdaBoost}
+            />
 
-              {adaboost.mode === 'advanced' && (
-                <ModelSelectionCard
-                  title="Base estimator configuration"
-                  model={effectiveBaseEstimator}
-                  models={models}
-                  compatibleAlgos={compatibleAlgos}
-                  onChange={(next) => setAdaBoostBaseEstimator(next)}
-                />
-              )}
-
-              {showSampleWeightWarning && (
-                <Alert color="yellow" title="Base estimator">
-                  The selected base estimator may not support sample weights. AdaBoost can still run,
-                  but performance may differ.
-                </Alert>
-              )}
-
-              <Divider my="xs" label="AdaBoost" labelPosition="center" />
-
-              <Group grow align="flex-end" wrap="wrap">
-                <NumberInput
-                  label="Estimators"
-                  min={1}
-                  step={10}
-                  value={dispNEstimators}
-                  onChange={(v) =>
-                    setAdaBoost({ n_estimators: v === '' || v == null ? undefined : v })
-                  }
-                />
-
-                <NumberInput
-                  label="Learning rate"
-                  min={0.001}
-                  step={0.05}
-                  value={dispLearningRate}
-                  onChange={(v) =>
-                    setAdaBoost({ learning_rate: v === '' || v == null ? undefined : v })
-                  }
-                />
-
-                <NumberInput
-                  label="Random state"
-                  min={0}
-                  step={1}
-                  value={dispRandomState}
-                  onChange={(v) =>
-                    setAdaBoost({ random_state: v === '' || v == null ? undefined : v })
-                  }
-                />
-              </Group>
-
-              {effectiveTask !== 'regression' && (
-                <Select
-                  label="Algorithm"
-                  data={algorithmOptions}
-                  value={dispAlgorithm ?? '__default__'}
-                  onChange={(v) => setAdaBoost({ algorithm: v || undefined })}
-                />
-              )}
-
-              <SplitOptionsCard
-                title="Data split"
-                allowedModes={['holdout', 'kfold']}
-                mode={adaboost.splitMode}
-                onModeChange={(v) => setAdaBoost({ splitMode: v })}
-                trainFrac={adaboost.trainFrac}
-                onTrainFracChange={(v) => setAdaBoost({ trainFrac: v })}
-                nSplits={adaboost.nSplits}
-                onNSplitsChange={(v) => setAdaBoost({ nSplits: v })}
-                stratified={adaboost.stratified}
-                onStratifiedChange={(v) => setAdaBoost({ stratified: v })}
-                shuffle={adaboost.shuffle}
-                onShuffleChange={(v) => setAdaBoost({ shuffle: v })}
-                seed={adaboost.seed}
-                onSeedChange={(v) => setAdaBoost({ seed: v })}
-              />
-
-              {effectiveTask === 'regression' && !metricForPayload && (
-                <Alert color="yellow" title="Metric">
-                  No regression metric is selected. Choose a metric in Settings → Metric.
-                </Alert>
-              )}
-            </Stack>
-
-            <Box style={{ flex: 1, minWidth: 260 }}>
-              <Stack gap="xs">
-                <AdaBoostIntroText />
-                <Button size="xs" variant="subtle" onClick={() => setShowHelp((p) => !p)}>
-                  {showHelp ? 'Show less' : 'Show more'}
-                </Button>
-                {showHelp && <EnsembleHelpText kind="adaboost" />}
-              </Stack>
-            </Box>
+            <AdaBoostHelpPane
+              showHelp={showHelp}
+              onToggleHelp={() => setShowHelp((p) => !p)}
+            />
           </Group>
         </Stack>
       </Card>

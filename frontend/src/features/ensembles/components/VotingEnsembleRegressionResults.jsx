@@ -10,7 +10,7 @@ import {
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-import { getAlgoLabel } from '../../shared/constants/algoLabels.js';
+import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
 
 import {
   cmBlue,

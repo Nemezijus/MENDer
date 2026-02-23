@@ -1,0 +1,200 @@
+import {
+  Stack,
+  Select,
+  Divider,
+  Group,
+  NumberInput,
+  Switch,
+  Alert,
+} from '@mantine/core';
+
+import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
+import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
+
+/**
+ * Presentational config pane for Bagging.
+ * Keeps value->override conversion close to inputs, while the parent owns state.
+ */
+export default function BaggingConfigPane({
+  mode,
+  algoOptions,
+  compatibleAlgos,
+  models,
+  effectiveTask,
+  effectiveBaseEstimator,
+  getModelDefaults,
+  onBaseEstimatorChange,
+  onBaseEstimatorConfigChange,
+  bagging,
+  baggingDefaults,
+  samplingStrategyOptions,
+  metricForPayload,
+  setBagging,
+}) {
+  const dispNEstimators = bagging.n_estimators ?? baggingDefaults?.n_estimators;
+  const dispMaxSamples = bagging.max_samples ?? baggingDefaults?.max_samples;
+  const dispMaxFeatures = bagging.max_features ?? baggingDefaults?.max_features;
+  const dispNJobs = bagging.n_jobs ?? baggingDefaults?.n_jobs;
+  const dispRandomState = bagging.random_state ?? baggingDefaults?.random_state;
+
+  const dispBootstrap = bagging.bootstrap ?? baggingDefaults?.bootstrap ?? false;
+  const dispBootstrapFeatures =
+    bagging.bootstrap_features ?? baggingDefaults?.bootstrap_features ?? false;
+  const dispOobScore = bagging.oob_score ?? baggingDefaults?.oob_score ?? false;
+
+  const dispBalanced = bagging.balanced ?? baggingDefaults?.balanced ?? false;
+  const dispSamplingStrategy =
+    bagging.sampling_strategy ?? baggingDefaults?.sampling_strategy;
+  const dispReplacement = bagging.replacement ?? baggingDefaults?.replacement ?? false;
+
+  return (
+    <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
+      <Select
+        label="Base estimator"
+        placeholder={algoOptions.length ? 'Select model' : 'Loading…'}
+        data={algoOptions}
+        value={effectiveBaseEstimator?.algo ?? null}
+        onChange={(v) => {
+          if (!v) return;
+          const base = getModelDefaults?.(v) || { algo: v };
+          onBaseEstimatorChange(base);
+        }}
+        disabled={algoOptions.length === 0}
+      />
+
+      {mode === 'advanced' && (
+        <ModelSelectionCard
+          title="Base estimator configuration"
+          model={effectiveBaseEstimator}
+          models={models}
+          compatibleAlgos={compatibleAlgos}
+          onChange={onBaseEstimatorConfigChange}
+        />
+      )}
+
+      <Divider my="xs" label="Bagging" labelPosition="center" />
+
+      <Group grow align="flex-end" wrap="wrap">
+        <NumberInput
+          label="Estimators"
+          min={1}
+          step={10}
+          value={dispNEstimators}
+          onChange={(v) =>
+            setBagging({ n_estimators: v === '' || v == null ? undefined : v })
+          }
+        />
+
+        <NumberInput
+          label="Max samples"
+          min={0.05}
+          max={1}
+          step={0.05}
+          value={dispMaxSamples}
+          onChange={(v) =>
+            setBagging({ max_samples: v === '' || v == null ? undefined : v })
+          }
+        />
+
+        <NumberInput
+          label="Max features"
+          min={0.05}
+          max={1}
+          step={0.05}
+          value={dispMaxFeatures}
+          onChange={(v) =>
+            setBagging({ max_features: v === '' || v == null ? undefined : v })
+          }
+        />
+      </Group>
+
+      <Group grow align="flex-end" wrap="wrap">
+        <NumberInput
+          label="n_jobs"
+          min={-1}
+          step={1}
+          value={dispNJobs}
+          onChange={(v) => setBagging({ n_jobs: v === '' || v == null ? undefined : v })}
+        />
+
+        <NumberInput
+          label="Random state"
+          min={0}
+          step={1}
+          value={dispRandomState}
+          onChange={(v) =>
+            setBagging({ random_state: v === '' || v == null ? undefined : v })
+          }
+        />
+      </Group>
+
+      <Group grow>
+        <Switch
+          label="Bootstrap"
+          checked={Boolean(dispBootstrap)}
+          onChange={(e) => setBagging({ bootstrap: e.currentTarget.checked })}
+        />
+
+        <Switch
+          label="Bootstrap features"
+          checked={Boolean(dispBootstrapFeatures)}
+          onChange={(e) => setBagging({ bootstrap_features: e.currentTarget.checked })}
+        />
+
+        <Switch
+          label="OOB score"
+          checked={Boolean(dispOobScore)}
+          onChange={(e) => setBagging({ oob_score: e.currentTarget.checked })}
+        />
+      </Group>
+
+      <Divider my="xs" label="Balanced bagging" labelPosition="center" />
+
+      <Group grow>
+        <Switch
+          label="Balanced"
+          checked={Boolean(dispBalanced)}
+          onChange={(e) => setBagging({ balanced: e.currentTarget.checked })}
+        />
+
+        <Switch
+          label="Replacement"
+          checked={Boolean(dispReplacement)}
+          onChange={(e) => setBagging({ replacement: e.currentTarget.checked })}
+          disabled={!Boolean(dispBalanced)}
+        />
+      </Group>
+
+      <Select
+        label="Sampling strategy"
+        data={samplingStrategyOptions}
+        value={dispSamplingStrategy ?? null}
+        onChange={(v) => setBagging({ sampling_strategy: v || undefined })}
+        disabled={!Boolean(dispBalanced)}
+      />
+
+      <SplitOptionsCard
+        title="Data split"
+        allowedModes={['holdout', 'kfold']}
+        mode={bagging.splitMode}
+        onModeChange={(v) => setBagging({ splitMode: v })}
+        trainFrac={bagging.trainFrac}
+        onTrainFracChange={(v) => setBagging({ trainFrac: v })}
+        nSplits={bagging.nSplits}
+        onNSplitsChange={(v) => setBagging({ nSplits: v })}
+        stratified={bagging.stratified}
+        onStratifiedChange={(v) => setBagging({ stratified: v })}
+        shuffle={bagging.shuffle}
+        onShuffleChange={(v) => setBagging({ shuffle: v })}
+        seed={bagging.seed}
+        onSeedChange={(v) => setBagging({ seed: v })}
+      />
+
+      {effectiveTask === 'regression' && !metricForPayload && (
+        <Alert color="yellow" title="Metric">
+          No regression metric is selected. Choose a metric in Settings → Metric.
+        </Alert>
+      )}
+    </Stack>
+  );
+}
