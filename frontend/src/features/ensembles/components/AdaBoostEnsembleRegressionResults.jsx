@@ -1,74 +1,14 @@
 import { Box, Card, Divider, Group, Stack, Table, Text, Tooltip } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-// Confusion-matrix-inspired blue ramp
-function cmBlue(t) {
-  const tt = Math.max(0, Math.min(1, Number(t) || 0));
-  const lightness = 100 - 55 * tt; // 100% -> 45%
-  return `hsl(210, 80%, ${lightness}%)`;
-}
-
-function safeNum(x) {
-  if (x === null || x === undefined || x === '') return null;
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-function fmtPct(x, digits = 1) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return `${(n * 100).toFixed(digits)}%`;
-}
-
-function fmt(x, digits = 3) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
-}
-
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
-
-function histToBarTrace(edges, counts, opts = {}) {
-  const { color, xLabel, hoverLabel, xRange = null, hideTickLabels = false } = opts;
-
-  if (!Array.isArray(edges) || !Array.isArray(counts) || edges.length < 2) return null;
-  if (edges.length !== counts.length + 1) return null;
-
-  const e = edges.map((v) => safeNum(v));
-  const c = counts.map((v) => safeNum(v));
-  if (e.some((v) => v == null) || c.some((v) => v == null)) return null;
-
-  const mids = e.slice(0, -1).map((a, i) => (a + e[i + 1]) / 2);
-  const widths = e.slice(0, -1).map((a, i) => (e[i + 1] - a) * 0.9);
-
-  const layoutX = {
-    title: { text: xLabel },
-    automargin: true,
-    showgrid: false,
-    zeroline: false,
-    showticklabels: !hideTickLabels,
-  };
-  if (xRange) layoutX.range = xRange;
-
-  return {
-    trace: {
-      type: 'bar',
-      x: mids,
-      y: c,
-      width: widths,
-      marker: { color: color || cmBlue(0.75) },
-      hovertemplate: `${hoverLabel}: %{x}<br>count: %{y}<extra></extra>`,
-    },
-    layoutX,
-  };
-}
+import {
+  cmBlue,
+  fmt,
+  fmtPct,
+  histToBarTrace,
+  safeNum,
+  titleCase,
+} from '../utils/resultsFormat.js';
 
 function fmtIntish(x) {
   const n = safeNum(x);

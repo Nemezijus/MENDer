@@ -10,32 +10,11 @@ import {
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-// Confusion-matrix-inspired blue ramp
-function cmBlue(t) {
-  const tt = Math.max(0, Math.min(1, Number(t) || 0));
-  const lightness = 100 - 55 * tt; // 100% -> 45%
-  return `hsl(210, 80%, ${lightness}%)`;
-}
+import { cmBlue, fmt as fmtBase, safeNum, titleCase } from '../utils/resultsFormat.js';
 
-function safeNum(x) {
-  if (x === null || x === undefined || x === '') return null;
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
+// Preserve legacy placeholder for this card.
 function fmt(x, digits = 3) {
-  const n = safeNum(x);
-  if (n == null) return 'N/A';
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
-}
-
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
+  return fmtBase(x, digits, 'N/A');
 }
 
 function pickTopKeys(obj, maxKeys = 3) {

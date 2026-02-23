@@ -10,106 +10,15 @@ import {
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-// Confusion-matrix-inspired blue ramp (same idea as ConfusionMatrixResults.jsx)
-function cmBlue(t) {
-  const tt = Math.max(0, Math.min(1, Number(t) || 0));
-  const lightness = 100 - 55 * tt; // 100% -> 45%
-  return `hsl(210, 80%, ${lightness}%)`;
-}
-
-const HEATMAP_COLORSCALE = [
-  [0.0, cmBlue(0.0)],
-  [0.25, cmBlue(0.25)],
-  [0.5, cmBlue(0.5)],
-  [0.75, cmBlue(0.75)],
-  [1.0, cmBlue(1.0)],
-];
-
-function safeNum(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-function fmtPct(x, digits = 1) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return `${(n * 100).toFixed(digits)}%`;
-}
-
-function fmt(x, digits = 3) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
-}
-
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
-
-function histToBarTrace(edges, counts, opts = {}) {
-  const {
-    color,
-    xLabel,
-    hoverLabel,
-    isIntegerBins = false,
-    hideTickLabels = false,
-    xRange = null,
-    xTickmode = null,
-    xTick0 = null,
-    xDtick = null,
-  } = opts;
-
-  if (!Array.isArray(edges) || !Array.isArray(counts) || edges.length < 2 || counts.length < 1) {
-    return null;
-  }
-  if (edges.length !== counts.length + 1) return null;
-
-  const e = edges.map((v) => safeNum(v));
-  const c = counts.map((v) => safeNum(v));
-  if (e.some((v) => v == null) || c.some((v) => v == null)) return null;
-
-  const mids = e.slice(0, -1).map((a, i) => (a + e[i + 1]) / 2);
-  const widths = e.slice(0, -1).map((a, i) => (e[i + 1] - a) * 0.9);
-
-  const binW = e.length >= 2 ? e[1] - e[0] : null;
-
-  const layoutX = {
-    title: { text: xLabel },
-    automargin: true,
-    showgrid: false,
-    zeroline: false,
-    showticklabels: !hideTickLabels,
-  };
-
-  if (xRange) layoutX.range = xRange;
-  if (xTickmode) layoutX.tickmode = xTickmode;
-  if (xTick0 != null) layoutX.tick0 = xTick0;
-  if (xDtick != null) layoutX.dtick = xDtick;
-
-  // Show a tick for each integer-bin bar if requested (useful for margins)
-  if (isIntegerBins && !xTickmode && Number.isFinite(binW) && binW > 0) {
-    layoutX.tickmode = 'linear';
-    layoutX.tick0 = mids[0];
-    layoutX.dtick = binW;
-  }
-
-  return {
-    trace: {
-      type: 'bar',
-      x: mids,
-      y: c,
-      width: widths,
-      marker: { color: color || cmBlue(0.75) },
-      hovertemplate: `${hoverLabel}: %{x}<br>count: %{y}<extra></extra>`,
-    },
-    layoutX,
-  };
-}
+import {
+  cmBlue,
+  fmt,
+  fmtPct,
+  HEATMAP_COLORSCALE,
+  histToBarTrace,
+  safeNum,
+  titleCase,
+} from '../utils/resultsFormat.js';
 
 export default function BaggingEnsembleClassificationResults({ report }) {
   if (!report || report.kind !== 'bagging') return null;

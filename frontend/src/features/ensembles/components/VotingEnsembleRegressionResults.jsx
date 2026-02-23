@@ -10,140 +10,23 @@ import {
 } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-// Keep labels consistent with ModelSelectionCard / VotingEnsemblePanel.
-// Unknown keys fall back gracefully.
-const ALGO_LABELS = {
-  // regressors
-  linreg: 'Linear Regression',
-  ridgereg: 'Ridge Regression',
-  ridgecv: 'Ridge Regression (CV)',
-  enet: 'Elastic Net',
-  enetcv: 'Elastic Net (CV)',
-  lasso: 'Lasso',
-  lassocv: 'Lasso (CV)',
-  bayridge: 'Bayesian Ridge',
-  svr: 'SVR (RBF)',
-  linsvr: 'Linear SVR',
-  knnreg: 'kNN Regressor',
-  treereg: 'Decision Tree Regressor',
-  rfreg: 'Random Forest Regressor',
-};
+import { getAlgoLabel } from '../../shared/constants/algoLabels.js';
 
-const ALGO_ABBREV = {
-  linreg: 'LR',
-  ridgereg: 'RR',
-  ridgecv: 'RR(CV)',
-  enet: 'EN',
-  enetcv: 'EN(CV)',
-  lasso: 'Lasso',
-  lassocv: 'Lasso(CV)',
-  bayridge: 'BR',
-  svr: 'SVR',
-  linsvr: 'LinSVR',
-  knnreg: 'kNN',
-  treereg: 'DT',
-  rfreg: 'RF',
-};
-
-// Confusion-matrix-inspired blue ramp (same logic as ConfusionMatrixResults.jsx)
-// t in [0..1] => white -> deeper blue
-function cmBlue(t) {
-  const tt = Math.max(0, Math.min(1, Number(t) || 0));
-  const lightness = 100 - 55 * tt; // 100% -> 45%
-  return `hsl(210, 80%, ${lightness}%)`;
-}
-
-// Smooth heatmap colorscale (white -> blue), similar to confusion matrix ramp
-const HEATMAP_COLORSCALE = [
-  [0.0, cmBlue(0.0)],
-  [0.25, cmBlue(0.25)],
-  [0.5, cmBlue(0.5)],
-  [0.75, cmBlue(0.75)],
-  [1.0, cmBlue(1.0)],
-];
-
-function safeNum(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-function fmt(x, digits = 3) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
-}
-
-function normalize01(vals) {
-  const nums = (vals || [])
-    .map((v) => safeNum(v))
-    .filter((v) => typeof v === 'number' && Number.isFinite(v));
-  if (!nums.length) return (vals || []).map(() => 0.5);
-
-  const minV = Math.min(...nums);
-  const maxV = Math.max(...nums);
-  const denom = maxV - minV;
-
-  return (vals || []).map((v) => {
-    const n = safeNum(v);
-    if (n == null) return 0.5;
-    return denom > 0 ? (n - minV) / denom : 0.5;
-  });
-}
-
-function computeBarRange(means, stds) {
-  const vals = means
-    .map((m, i) => {
-      const mm = safeNum(m);
-      if (mm == null) return null;
-      const ss = safeNum(stds?.[i]) ?? 0;
-      return mm + ss;
-    })
-    .filter((v) => typeof v === 'number' && Number.isFinite(v));
-
-  if (!vals.length) return null;
-
-  const maxV = Math.max(...vals);
-  const pad = Math.max(0.02, maxV * 0.08);
-
-  // if score is in [0,1], keep it tidy
-  const upper = maxV <= 1.2 ? Math.min(1, maxV + pad) : maxV + pad;
-
-  return [0, upper];
-}
-
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
-
-function prettyEstimatorName(raw) {
-  const base = String(raw || '').replace(/_\d+$/, '');
-  return titleCase(base);
-}
-
-function niceEstimatorLabel({ name, algo }) {
-  const key = String(algo || '').toLowerCase();
-  return ALGO_LABELS[key] || prettyEstimatorName(name || key);
-}
-
-function makeUniqueLabels(labels) {
-  const counts = new Map();
-  return labels.map((l) => {
-    const k = String(l);
-    const c = (counts.get(k) || 0) + 1;
-    counts.set(k, c);
-    return c === 1 ? k : `${k} (${c})`;
-  });
-}
+import {
+  cmBlue,
+  computeBarRange,
+  fmt,
+  HEATMAP_COLORSCALE,
+  makeUniqueLabels,
+  niceEstimatorLabel,
+  normalize01,
+  prettyEstimatorName,
+  safeNum,
+} from '../utils/resultsFormat.js';
 
 function algoKeyToAbbrev(algoKey) {
   if (!algoKey) return 'UNK';
-  const key = String(algoKey).toLowerCase();
-  return ALGO_ABBREV[key] || ALGO_LABELS[key] || key;
+  return prettyEstimatorName(String(algoKey), { task: 'regression' });
 }
 
 function buildLegendLines(estimators) {
@@ -152,7 +35,7 @@ function buildLegendLines(estimators) {
     const key = String(e?.algo || '').toLowerCase();
     if (!key) return;
     const ab = algoKeyToAbbrev(key);
-    const full = ALGO_LABELS[key] || key;
+    const full = getAlgoLabel(key) || key;
     if (!seen.has(ab)) seen.set(ab, full);
   });
 

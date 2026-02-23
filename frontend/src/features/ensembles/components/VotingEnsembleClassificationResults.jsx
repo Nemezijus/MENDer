@@ -11,151 +11,18 @@ import {
 import { useMantineTheme } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
-// Confusion-matrix-inspired blue ramp (same logic as ConfusionMatrixResults.jsx)
-// t in [0..1] => white -> deeper blue
-function cmBlue(t) {
-  const tt = Math.max(0, Math.min(1, Number(t) || 0));
-  const lightness = 100 - 55 * tt; // 100% -> 45%
-  return `hsl(210, 80%, ${lightness}%)`;
-}
-
-// Smooth heatmap colorscale (white -> blue), similar to confusion matrix ramp
-const HEATMAP_COLORSCALE = [
-  [0.0, cmBlue(0.0)],
-  [0.25, cmBlue(0.25)],
-  [0.5, cmBlue(0.5)],
-  [0.75, cmBlue(0.75)],
-  [1.0, cmBlue(1.0)],
-];
-
-function safeNum(x) {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-function fmtPct(x, digits = 1) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return `${(n * 100).toFixed(digits)}%`;
-}
-
-function fmt(x, digits = 3) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
-}
-
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
-
-function prettyEstimatorName(raw) {
-  const base = String(raw || '').replace(/_\d+$/, '');
-  const key = base.toLowerCase();
-
-  const map = {
-    logreg: 'LogReg',
-    logisticregression: 'LogReg',
-    svm: 'SVM',
-    svc: 'SVM',
-    tree: 'Tree',
-    decisiontree: 'Tree',
-    forest: 'Forest',
-    randomforest: 'Forest',
-    rf: 'Forest',
-    knn: 'kNN',
-    naive_bayes: 'Naive Bayes',
-    nb: 'Naive Bayes',
-    xgboost: 'XGBoost',
-  };
-
-  return map[key] || titleCase(base);
-}
-
-function makeUniqueLabels(labels) {
-  const counts = new Map();
-  return labels.map((l) => {
-    const k = String(l);
-    const c = (counts.get(k) || 0) + 1;
-    counts.set(k, c);
-    return c === 1 ? k : `${k} (${c})`;
-  });
-}
-
-function computeBarRange(means, stds) {
-  const vals = means
-    .map((m, i) => {
-      const mm = safeNum(m);
-      if (mm == null) return null;
-      const ss = safeNum(stds?.[i]) ?? 0;
-      return mm + ss;
-    })
-    .filter((v) => typeof v === 'number' && Number.isFinite(v));
-
-  if (!vals.length) return null;
-
-  const maxV = Math.max(...vals);
-  const pad = Math.max(0.02, maxV * 0.08);
-
-  // most classification metrics are in [0,1]; keep it tidy if that's the case
-  const upper = maxV <= 1.2 ? Math.min(1, maxV + pad) : maxV + pad;
-
-  return [0, upper];
-}
-
-function normalize01(vals) {
-  const nums = (vals || [])
-    .map((v) => safeNum(v))
-    .filter((v) => typeof v === 'number' && Number.isFinite(v));
-  if (!nums.length) return (vals || []).map(() => 0.5);
-
-  const minV = Math.min(...nums);
-  const maxV = Math.max(...nums);
-  const denom = maxV - minV;
-
-  return (vals || []).map((v) => {
-    const n = safeNum(v);
-    if (n == null) return 0.5;
-    return denom > 0 ? (n - minV) / denom : 0.5;
-  });
-}
-
-/**
- * Rebin a histogram defined by (edges, counts) onto a new set of equally spaced bins.
- * Counts are distributed by overlap length (assumes uniform density within each old bin).
- */
-function rebinHistogram(edges, counts, newEdges) {
-  const oldEdges = edges.map(Number);
-  const oldCounts = counts.map(Number);
-  const outCounts = new Array(newEdges.length - 1).fill(0);
-
-  for (let i = 0; i < oldCounts.length; i++) {
-    const a0 = oldEdges[i];
-    const a1 = oldEdges[i + 1];
-    const c = oldCounts[i];
-    if (!Number.isFinite(a0) || !Number.isFinite(a1) || !Number.isFinite(c)) continue;
-
-    const aLen = a1 - a0;
-    if (aLen <= 0) continue;
-
-    for (let j = 0; j < outCounts.length; j++) {
-      const b0 = newEdges[j];
-      const b1 = newEdges[j + 1];
-      const overlap = Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
-      if (overlap > 0) {
-        outCounts[j] += c * (overlap / aLen);
-      }
-    }
-  }
-
-  // keep counts as "counts" (not densities); rounding can be applied if you prefer integers
-  return outCounts;
-}
+import {
+  cmBlue,
+  computeBarRange,
+  fmt,
+  fmtPct,
+  HEATMAP_COLORSCALE,
+  makeUniqueLabels,
+  normalize01,
+  prettyEstimatorName,
+  rebinHistogram,
+  safeNum,
+} from '../utils/resultsFormat.js';
 
 export default function VotingEnsembleClassificationResults({ report }) {
   if (!report || report.kind !== 'voting') return null;
