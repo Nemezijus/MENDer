@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+// frontend/src/components/ensembles/BaggingEnsemblePanel.jsx
+import { useMemo, useState } from 'react';
 import {
   Card,
   Stack,
@@ -24,6 +25,8 @@ import { useModelArtifactStore } from '../../state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../../state/SchemaDefaultsContext.jsx';
 import { useEnsembleStore } from '../../state/useEnsembleStore.js';
 
+import { compactPayload } from '../../utils/compactPayload.js';
+
 import SplitOptionsCard from '../SplitOptionsCard.jsx';
 import ModelSelectionCard from '../ModelSelectionCard.jsx';
 
@@ -33,6 +36,8 @@ import EnsembleHelpText, { BaggingIntroText } from '../helpers/helpTexts/Ensembl
 
 import BaggingEnsembleClassificationResults from './BaggingEnsembleClassificationResults.jsx';
 import BaggingEnsembleRegressionResults from './BaggingEnsembleRegressionResults.jsx';
+
+/** ---------- helpers ---------- **/
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -61,23 +66,8 @@ function toErrorText(e) {
   }
 }
 
-function buildFeaturesPayload(fctx) {
-  return {
-    method: fctx.method,
-    pca_n: fctx.pca_n,
-    pca_var: fctx.pca_var,
-    pca_whiten: fctx.pca_whiten,
-    lda_n: fctx.lda_n,
-    lda_solver: fctx.lda_solver,
-    lda_shrinkage: fctx.lda_shrinkage,
-    lda_tol: fctx.lda_tol,
-    sfs_k: fctx.sfs_k,
-    sfs_direction: fctx.sfs_direction,
-    sfs_cv: fctx.sfs_cv,
-    sfs_n_jobs: fctx.sfs_n_jobs,
-  };
-}
-
+// User-friendly names for the Algorithm dropdown.
+// Values must remain the internal algo keys used by the backend.
 const ALGO_LABELS = {
   // classifiers
   logreg: 'Logistic Regression',
@@ -90,6 +80,7 @@ const ALGO_LABELS = {
   extratrees: 'Extra Trees',
   histgb: 'HistGradientBoosting',
   nb: 'Naive Bayes',
+
   // regressors
   linreg: 'Linear Regression',
   ridgereg: 'Ridge Regression',
@@ -120,6 +111,13 @@ function algoKeyToLabel(key) {
   return ALGO_LABELS[k] || titleCase(k);
 }
 
+function normalizeNumberOrUndefined(v) {
+  if (v === '' || v == null) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** ---------- component ---------- **/
 
 export default function BaggingEnsemblePanel() {
   const inspectReport = useDataStore((s) => s.inspectReport);
@@ -142,6 +140,7 @@ export default function BaggingEnsemblePanel() {
     loading: defsLoading,
     models,
     enums,
+    split,
     getModelDefaults,
     getCompatibleAlgos,
     getEnsembleDefaults,
@@ -152,21 +151,28 @@ export default function BaggingEnsemblePanel() {
   const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
+  // ---- ensemble store slice ----
   const bagging = useEnsembleStore((s) => s.bagging);
   const setBagging = useEnsembleStore((s) => s.setBagging);
   const setBaggingBaseEstimator = useEnsembleStore((s) => s.setBaggingBaseEstimator);
   const resetBagging = useEnsembleStore((s) => s.resetBagging);
 
+  // ---- local run state + help toggle ----
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
 
-  const initializedRef = useRef(false);
+  const baggingDefaults = useMemo(
+    () => getEnsembleDefaults?.('bagging') || null,
+    [getEnsembleDefaults],
+  );
 
-  const compatibleAlgos = useMemo(() => {
-    const list = getCompatibleAlgos?.(effectiveTask) || [];
-    return list.length ? list : ['logreg', 'svm', 'tree', 'forest', 'knn', 'linreg'];
-  }, [getCompatibleAlgos, effectiveTask]);
+  // ----------------- derived -----------------
+
+  const compatibleAlgos = useMemo(
+    () => getCompatibleAlgos?.(effectiveTask) || [],
+    [getCompatibleAlgos, effectiveTask],
+  );
 
   const algoOptions = useMemo(
     () => compatibleAlgos.map((a) => ({ value: a, label: algoKeyToLabel(a) })),
@@ -184,129 +190,163 @@ export default function BaggingEnsemblePanel() {
     [],
   );
 
-  useEffect(() => {
-    if (initializedRef.current) return;
-    if (defsLoading) return;
+  // ----------------- schema-driven defaults (display + payload) -----------------
 
-    if (bagging.base_estimator && bagging.base_estimator.algo) {
-      initializedRef.current = true;
-      return;
+  const allowedMetrics = useMemo(() => {
+    if (!enums) return [];
+    const metricByTask = enums.MetricByTask || null;
+    if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
+      return metricByTask[effectiveTask].map(String);
     }
+    if (Array.isArray(enums.MetricName)) return enums.MetricName.map(String);
+    return [];
+  }, [effectiveTask, enums]);
 
-    const algo = compatibleAlgos[0] || 'tree';
-    setBaggingBaseEstimator(getModelDefaults?.(algo) || { algo });
+  // Use backend-provided task ordering as a suggestion without writing into state.
+  // For regression we must avoid falling back to EvalModel.metric='accuracy'.
+  const defaultMetricFromSchema = allowedMetrics?.[0] ?? undefined;
+  const metricOverride = metric ? String(metric) : undefined;
+  const metricIsAllowed =
+    !metricOverride || allowedMetrics.length === 0 || allowedMetrics.includes(metricOverride);
+  const metricForPayload = metricIsAllowed
+    ? (metricOverride ?? (effectiveTask === 'regression' ? defaultMetricFromSchema : undefined))
+    : (effectiveTask === 'regression' ? defaultMetricFromSchema : undefined);
 
-    const defaults = getEnsembleDefaults?.('bagging') || null;
-    if (defaults) {
-      setBagging({
-        n_estimators: defaults.n_estimators ?? bagging.n_estimators,
-        max_samples: defaults.max_samples ?? bagging.max_samples,
-        max_features: defaults.max_features ?? bagging.max_features,
-        bootstrap: defaults.bootstrap ?? bagging.bootstrap,
-        bootstrap_features: defaults.bootstrap_features ?? bagging.bootstrap_features,
-        oob_score: defaults.oob_score ?? bagging.oob_score,
-        n_jobs: defaults.n_jobs ?? bagging.n_jobs,
-        random_state: defaults.random_state ?? bagging.random_state,
+  // Split defaults (schema-owned)
+  const holdoutDefaults = split?.holdout?.defaults ?? null;
+  const kfoldDefaults = split?.kfold?.defaults ?? null;
+  const defaultSplitMode = holdoutDefaults?.mode ?? kfoldDefaults?.mode ?? undefined;
+  const effectiveSplitMode = bagging.splitMode ?? defaultSplitMode;
 
-        // Balanced bagging (new)
-        balanced: defaults.balanced ?? bagging.balanced ?? false,
-        sampling_strategy: defaults.sampling_strategy ?? bagging.sampling_strategy ?? 'auto',
-        replacement: defaults.replacement ?? bagging.replacement ?? false,
-      });
-    } else {
-      // Ensure stable defaults even when schema defaults not loaded
-      setBagging({
-        balanced: bagging.balanced ?? false,
-        sampling_strategy: bagging.sampling_strategy ?? 'auto',
-        replacement: bagging.replacement ?? false,
-      });
-    }
+  // Base estimator: schema default (or first compatible) without mutating store.
+  const defaultBaseAlgo =
+    baggingDefaults?.base_estimator?.algo || (Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null);
 
-    if (effectiveTask === 'regression') {
-      if (bagging.stratified) setBagging({ stratified: false });
-      if (bagging.balanced) setBagging({ balanced: false });
-    }
+  const defaultBaseEstimator = useMemo(() => {
+    if (!defaultBaseAlgo) return undefined;
+    return getModelDefaults?.(defaultBaseAlgo) || { algo: defaultBaseAlgo };
+  }, [defaultBaseAlgo, getModelDefaults]);
 
-    initializedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defsLoading, compatibleAlgos, getModelDefaults, getEnsembleDefaults]);
+  const effectiveBaseEstimator = bagging.base_estimator ?? defaultBaseEstimator;
+
+  // Display values (defaults + overrides). Payload remains overrides-only.
+  const dispNEstimators = bagging.n_estimators ?? baggingDefaults?.n_estimators;
+  const dispMaxSamples = bagging.max_samples ?? baggingDefaults?.max_samples;
+  const dispMaxFeatures = bagging.max_features ?? baggingDefaults?.max_features;
+  const dispNJobs = bagging.n_jobs ?? baggingDefaults?.n_jobs;
+  const dispRandomState = bagging.random_state ?? baggingDefaults?.random_state;
+
+  const dispBootstrap = bagging.bootstrap ?? baggingDefaults?.bootstrap ?? false;
+  const dispBootstrapFeatures = bagging.bootstrap_features ?? baggingDefaults?.bootstrap_features ?? false;
+  const dispOobScore = bagging.oob_score ?? baggingDefaults?.oob_score ?? false;
+
+  const dispBalanced = bagging.balanced ?? baggingDefaults?.balanced ?? false;
+  const dispSamplingStrategy = bagging.sampling_strategy ?? baggingDefaults?.sampling_strategy;
+  const dispReplacement = bagging.replacement ?? baggingDefaults?.replacement ?? false;
 
   const handleReset = () => {
-    // Reset store values, then re-apply a default base estimator so the dropdown isn't empty
-    initializedRef.current = false;
     resetBagging(effectiveTask);
     setErr(null);
-
-    const algo = (getCompatibleAlgos?.(effectiveTask) || compatibleAlgos || [])[0] || 'tree';
-    setBaggingBaseEstimator(getModelDefaults?.(algo) || { algo });
-    initializedRef.current = true;
   };
 
   const buildPayload = () => {
-    const data = {
-      x_path: xPath || null,
-      y_path: yPath || null,
-      npz_path: npzPath || null,
-      x_key: xKey || null,
-      y_key: yKey || null,
-    };
+    if (!effectiveSplitMode) {
+      throw new Error('Schema defaults not loaded: split mode is unavailable.');
+    }
 
-    const split =
-      bagging.splitMode === 'kfold'
+    if (!effectiveBaseEstimator || !effectiveBaseEstimator.algo) {
+      throw new Error('Base estimator is not selected.');
+    }
+
+    // DATA (override-only; empty-string keys are omitted)
+    const data = compactPayload({
+      x_path: npzPath ? undefined : xPath,
+      y_path: npzPath ? undefined : yPath,
+      npz_path: npzPath,
+      x_key: xKey,
+      y_key: yKey,
+    });
+
+    // SPLIT (override-only)
+    const splitCfg = compactPayload(
+      effectiveSplitMode === 'kfold'
         ? {
             mode: 'kfold',
-            n_splits: Number(bagging.nSplits) || 5,
-            stratified: effectiveTask === 'regression' ? false : !!bagging.stratified,
-            shuffle: !!bagging.shuffle,
+            n_splits: bagging.nSplits,
+            stratified: bagging.stratified,
+            shuffle: bagging.shuffle,
           }
         : {
             mode: 'holdout',
-            train_frac: Number(bagging.trainFrac) || 0.75,
-            stratified: effectiveTask === 'regression' ? false : !!bagging.stratified,
-            shuffle: !!bagging.shuffle,
-          };
+            train_frac: bagging.trainFrac,
+            stratified: bagging.stratified,
+            shuffle: bagging.shuffle,
+          },
+    );
 
-    const scale = { method: scaleMethod || 'standard' };
-    const features = buildFeaturesPayload(fctx);
+    // SCALE (override-only)
+    const scale = compactPayload({ method: scaleMethod });
 
-    const evalCfg = {
-      metric: metric || (effectiveTask === 'regression' ? 'r2' : 'accuracy'),
-      seed: bagging.seed === '' || bagging.seed == null ? null : Number(bagging.seed),
-      n_shuffles: 0,
-      progress_id: null,
-      decoder: {
-        enabled: true,
-        include_decision_scores: true,
-        include_probabilities: true,
-        include_margin: true,
-        positive_class_label: null,
-        calibrate_probabilities: false,
-        calibration_method: 'sigmoid',
-        calibration_cv: 5,
-        enable_export: true,
-  },
-    };
+    // FEATURES (override-only)
+    let features = {};
+    const m = fctx?.method;
+    if (m === 'pca') {
+      features = compactPayload({
+        method: m,
+        pca_n: fctx.pca_n,
+        pca_var: fctx.pca_var,
+        pca_whiten: fctx.pca_whiten,
+      });
+    } else if (m === 'lda') {
+      features = compactPayload({
+        method: m,
+        lda_n: fctx.lda_n,
+        lda_solver: fctx.lda_solver,
+        lda_shrinkage: fctx.lda_shrinkage,
+        lda_tol: fctx.lda_tol,
+      });
+    } else if (m === 'sfs') {
+      features = compactPayload({
+        method: m,
+        sfs_k: fctx.sfs_k,
+        sfs_direction: fctx.sfs_direction,
+        sfs_cv: fctx.sfs_cv,
+        sfs_n_jobs: fctx.sfs_n_jobs,
+      });
+    } else {
+      features = compactPayload({ method: m });
+    }
 
-    const ensemble = {
+    // EVAL (schema-driven metric; decoder defaults owned by engine)
+    const seedInt =
+      bagging.seed === '' || bagging.seed == null
+        ? undefined
+        : Number.parseInt(String(bagging.seed), 10);
+
+    const evalCfg = compactPayload({
+      metric: metricForPayload,
+      seed: Number.isFinite(seedInt) ? seedInt : undefined,
+    });
+
+    const ensemble = compactPayload({
       kind: 'bagging',
-      problem_kind: effectiveTask === 'regression' ? 'regression' : 'classification',
-      base_estimator: bagging.base_estimator,
-      n_estimators: Number(bagging.n_estimators) || 10,
-      max_samples: bagging.max_samples === '' ? null : bagging.max_samples,
-      max_features: bagging.max_features === '' ? null : bagging.max_features,
-      bootstrap: !!bagging.bootstrap,
-      bootstrap_features: !!bagging.bootstrap_features,
-      oob_score: !!bagging.oob_score,
-      n_jobs: bagging.n_jobs === '' ? null : Number(bagging.n_jobs),
-      random_state: bagging.random_state === '' ? null : Number(bagging.random_state),
+      base_estimator: effectiveBaseEstimator,
 
-      // Balanced bagging
-      balanced: !!bagging.balanced,
-      sampling_strategy: bagging.sampling_strategy || 'auto',
-      replacement: !!bagging.replacement,
-    };
+      n_estimators: bagging.n_estimators,
+      max_samples: bagging.max_samples,
+      max_features: bagging.max_features,
+      bootstrap: bagging.bootstrap,
+      bootstrap_features: bagging.bootstrap_features,
+      oob_score: bagging.oob_score,
+      n_jobs: bagging.n_jobs,
+      random_state: bagging.random_state,
 
-    return { data, split, scale, features, ensemble, eval: evalCfg };
+      balanced: bagging.balanced,
+      sampling_strategy: bagging.sampling_strategy,
+      replacement: bagging.replacement,
+    });
+
+    return { data, split: splitCfg, scale, features, ensemble, eval: evalCfg };
   };
 
   const handleRun = async () => {
@@ -317,7 +357,22 @@ export default function BaggingEnsemblePanel() {
       return;
     }
 
-    if (!bagging.base_estimator || !bagging.base_estimator.algo) {
+    if (defsLoading) {
+      setErr('Schema defaults are still loading. Please try again in a moment.');
+      return;
+    }
+
+    if (algoOptions.length === 0) {
+      setErr('Schema defaults not loaded: compatible algorithms are unavailable.');
+      return;
+    }
+
+    if (!effectiveSplitMode) {
+      setErr('Schema defaults not loaded: split defaults are unavailable.');
+      return;
+    }
+
+    if (!effectiveBaseEstimator || !effectiveBaseEstimator.algo) {
       setErr('Please select a base estimator.');
       return;
     }
@@ -362,27 +417,28 @@ export default function BaggingEnsemblePanel() {
               />
             </Group>
           </Group>
+
           <Group justify="flex-end">
             <Button onClick={handleRun} loading={loading}>
               Train bagging ensemble
             </Button>
           </Group>
-          {/* First row: left A+B stacked, right C help preview */}
+
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
             <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
               {bagging.mode === 'simple' ? (
                 <Select
                   label="Base estimator"
-                  value={bagging.base_estimator?.algo || null}
+                  value={effectiveBaseEstimator?.algo || null}
                   onChange={(v) =>
-                    setBaggingBaseEstimator(getModelDefaults?.(v) || { algo: v || 'tree' })
+                    setBaggingBaseEstimator(v ? getModelDefaults?.(v) || { algo: v } : undefined)
                   }
                   data={algoOptions}
                 />
               ) : (
                 <Box>
                   <ModelSelectionCard
-                    model={bagging.base_estimator}
+                    model={effectiveBaseEstimator}
                     onChange={(next) => setBaggingBaseEstimator(next)}
                     schema={models?.schema}
                     enums={enums}
@@ -396,8 +452,11 @@ export default function BaggingEnsemblePanel() {
                 label="Number of estimators"
                 min={1}
                 step={1}
-                value={bagging.n_estimators}
-                onChange={(v) => setBagging({ n_estimators: v })}
+                value={dispNEstimators}
+                onChange={(v) =>
+                  setBagging({ n_estimators: v === '' || v == null ? undefined : v })
+                }
+                placeholder="default"
               />
             </Stack>
 
@@ -424,14 +483,52 @@ export default function BaggingEnsemblePanel() {
 
           <Divider />
 
+          {!metricIsAllowed && metricOverride && (
+            <Alert color="yellow" variant="light">
+              <Text size="sm" fw={600}>
+                Metric not available for this task
+              </Text>
+              <Text size="sm">
+                The selected metric (<strong>{metricOverride}</strong>) is not listed for the current task.
+                {effectiveTask === 'regression' && defaultMetricFromSchema
+                  ? ` Using '${defaultMetricFromSchema}' for this run.`
+                  : ' Please update Settings → Metric.'}
+              </Text>
+            </Alert>
+          )}
+
+          {algoOptions.length === 0 && (
+            <Alert color="yellow" variant="light">
+              <Text size="sm" fw={600}>
+                Schema defaults not loaded
+              </Text>
+              <Text size="sm">
+                Bagging ensemble needs backend schema defaults to list compatible algorithms. Please wait for
+                <strong> /api/v1/schema/defaults</strong> to load.
+              </Text>
+            </Alert>
+          )}
+
+          {!effectiveSplitMode && (
+            <Alert color="yellow" variant="light">
+              <Text size="sm" fw={600}>
+                Split defaults not available
+              </Text>
+              <Text size="sm">
+                This panel relies on backend split defaults to choose a split strategy. Please wait for
+                <strong> /api/v1/schema/defaults</strong> to load.
+              </Text>
+            </Alert>
+          )}
+
           <Group grow align="flex-end" wrap="wrap">
             <NumberInput
               label="Max samples (fraction)"
               step={0.1}
               min={0}
               max={1}
-              value={bagging.max_samples}
-              onChange={(v) => setBagging({ max_samples: v })}
+              value={dispMaxSamples}
+              onChange={(v) => setBagging({ max_samples: v === '' || v == null ? undefined : v })}
               placeholder="default"
             />
 
@@ -440,24 +537,24 @@ export default function BaggingEnsemblePanel() {
               step={0.1}
               min={0}
               max={1}
-              value={bagging.max_features}
-              onChange={(v) => setBagging({ max_features: v })}
+              value={dispMaxFeatures}
+              onChange={(v) => setBagging({ max_features: v === '' || v == null ? undefined : v })}
               placeholder="default"
             />
 
             <NumberInput
               label="Number of jobs"
               step={1}
-              value={bagging.n_jobs}
-              onChange={(v) => setBagging({ n_jobs: v })}
+              value={dispNJobs}
+              onChange={(v) => setBagging({ n_jobs: v === '' || v == null ? undefined : v })}
               placeholder="default"
             />
 
             <NumberInput
               label="Random state"
               step={1}
-              value={bagging.random_state}
-              onChange={(v) => setBagging({ random_state: v })}
+              value={dispRandomState}
+              onChange={(v) => setBagging({ random_state: v === '' || v == null ? undefined : v })}
               placeholder="default"
             />
           </Group>
@@ -465,48 +562,39 @@ export default function BaggingEnsemblePanel() {
           <Group grow align="center" wrap="wrap">
             <Switch
               label="Bootstrap"
-              checked={!!bagging.bootstrap}
+              checked={Boolean(dispBootstrap)}
               onChange={(e) => setBagging({ bootstrap: e.currentTarget.checked })}
             />
             <Switch
               label="Bootstrap features"
-              checked={!!bagging.bootstrap_features}
+              checked={Boolean(dispBootstrapFeatures)}
               onChange={(e) => setBagging({ bootstrap_features: e.currentTarget.checked })}
             />
             <Switch
               label="Out-of-bag score"
-              checked={!!bagging.oob_score}
+              checked={Boolean(dispOobScore)}
               onChange={(e) => setBagging({ oob_score: e.currentTarget.checked })}
             />
             <Switch
               label="Balanced bagging"
-              checked={!!bagging.balanced}
-              disabled={effectiveTask === 'regression'}
-              onChange={(e) => {
-                const next = e.currentTarget.checked;
-                // When enabling, ensure sensible defaults are present.
-                setBagging({
-                  balanced: next,
-                  sampling_strategy: next ? bagging.sampling_strategy || 'auto' : bagging.sampling_strategy,
-                  replacement: next ? !!bagging.replacement : bagging.replacement,
-                });
-              }}
+              checked={Boolean(dispBalanced)}
+              onChange={(e) => setBagging({ balanced: e.currentTarget.checked })}
             />
           </Group>
 
-          {!!bagging.balanced && (
+          {Boolean(dispBalanced) && (
             <Box mt="xs">
               <Group grow align="flex-end" wrap="wrap">
                 <Select
                   label="Sampling strategy"
-                  value={bagging.sampling_strategy || 'auto'}
-                  onChange={(v) => setBagging({ sampling_strategy: v || 'auto' })}
+                  value={dispSamplingStrategy || null}
+                  onChange={(v) => setBagging({ sampling_strategy: v || undefined })}
                   data={samplingStrategyOptions}
-                  placeholder="auto"
+                  placeholder="default"
                 />
                 <Switch
                   label="Replacement"
-                  checked={!!bagging.replacement}
+                  checked={Boolean(dispReplacement)}
                   onChange={(e) => setBagging({ replacement: e.currentTarget.checked })}
                 />
               </Group>
@@ -531,13 +619,14 @@ export default function BaggingEnsemblePanel() {
         seed={bagging.seed}
         onSeedChange={(v) => setBagging({ seed: v })}
       />
-      {trainResult?.ensemble_report?.kind === 'bagging' && (
+
+      {trainResult?.ensemble_report?.kind === 'bagging' &&
         (trainResult.ensemble_report.task || 'classification') === 'regression' ? (
           <BaggingEnsembleRegressionResults report={trainResult.ensemble_report} />
         ) : (
           <BaggingEnsembleClassificationResults report={trainResult.ensemble_report} />
-        )
-      )}
+        )}
+
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>

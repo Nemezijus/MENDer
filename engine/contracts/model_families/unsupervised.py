@@ -55,7 +55,9 @@ class SpectralClusteringConfig(BaseModel):
     n_neighbors: int = 10
     eigen_tol: float = 0.0
     assign_labels: str = "kmeans"
-    degree: float = 3.0
+    # sklearn requires `degree` to be an int (polynomial kernel degree).
+    # Keep the historical default of 3, but ensure the correct type.
+    degree: int = 3
     coef0: float = 1.0
     kernel_params: Optional[dict] = None
     n_jobs: Optional[int] = None

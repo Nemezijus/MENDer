@@ -231,104 +231,12 @@ export default function ModelSelectionCard({
   );
   const effectiveTask = taskOverride ?? inferredTask;
 
-  // Prefer schema -> defaults -> known fallback
+  // IMPORTANT: This card must not be the authority for "what models exist".
+  // Available algorithms must come from the engine schema bundle.
   const schemaAlgos = algoListFromSchema(schema);
   const defaultsAlgos = models?.defaults ? Object.keys(models.defaults) : null;
-  const available = new Set(
-    schemaAlgos ||
-      defaultsAlgos ||
-      [
-        // classifiers
-        'logreg',
-        'ridge',
-        'sgd',
-        'svm',
-        'tree',
-        'forest',
-        'extratrees',
-        'hgb',
-        'knn',
-        'gnb',
-        // regressors
-        'linreg',
-        'ridgereg',
-        'ridgecv',
-        'enet',
-        'enetcv',
-        'lasso',
-        'lassocv',
-        'bayridge',
-        'svr',
-        'linsvr',
-        'knnreg',
-        'treereg',
-        'rfreg',
-
-        // unsupervised
-        'kmeans',
-        'dbscan',
-        'spectral',
-        'agglo',
-        'gmm',
-        'bgmm',
-        'meanshift',
-        'birch',
-      ],
-  );
-
-  // Preferred ordering (task-aware), append any extras after
-  const preferredByTask = {
-    classification: [
-      'logreg',
-      'ridge',
-      'sgd',
-      'svm',
-      'tree',
-      'forest',
-      'extratrees',
-      'hgb',
-      'knn',
-      'gnb',
-    ],
-    regression: [
-      'linreg',
-      'ridgereg',
-      'ridgecv',
-      'lasso',
-      'lassocv',
-      'enet',
-      'enetcv',
-      'bayridge',
-      'svr',
-      'linsvr',
-      'knnreg',
-      'treereg',
-      'rfreg',
-    ],
-    unsupervised: [
-      'kmeans',
-      'gmm',
-      'bgmm',
-      'agglo',
-      'spectral',
-      'birch',
-      'meanshift',
-      'dbscan',
-    ],
-  };
-
-  const preferred =
-    preferredByTask[effectiveTask] ||
-    [
-      ...preferredByTask.classification,
-      ...preferredByTask.regression,
-      ...preferredByTask.unsupervised,
-    ];
-
-  const orderedAll = [
-    ...preferred.filter((a) => available.has(a)),
-    ...Array.from(available).filter((a) => !preferred.includes(a)),
-  ];
+  const availableAlgos = (schemaAlgos || defaultsAlgos || []).map((a) => String(a));
+  const hasInventory = availableAlgos.length > 0;
 
   // Filter by task using backend-provided meta[algo].task
   const meta = models?.meta || {};
@@ -343,10 +251,45 @@ export default function ModelSelectionCard({
     if (Array.isArray(t)) return t.includes(effectiveTask);
     return t === effectiveTask;
   };
-  const ordered = orderedAll.filter(matchesTask);
 
-  // Final visible algo list for this card
-  const visibleAlgos = ordered.length ? ordered : orderedAll;
+  // Deterministic ordering that does not enumerate algorithm inventories in the UI.
+  // We sort by task group (when task is not locked) and then by display label.
+  const taskRank = (t) => {
+    if (t === 'classification') return 0;
+    if (t === 'regression') return 1;
+    if (t === 'unsupervised') return 2;
+    return 9;
+  };
+
+  const taskOfAlgo = (algo) => {
+    let t = meta[algo]?.task;
+    if (!t) return null;
+    if (t === 'clustering') t = 'unsupervised';
+    if (Array.isArray(t)) return t[0] ?? null;
+    return t;
+  };
+
+  const sortKey = (algo) => {
+    const label = algoKeyToLabel(algo).toLowerCase();
+    const t = taskOfAlgo(algo);
+    return {
+      rank: effectiveTask ? 0 : taskRank(t),
+      label,
+      algo,
+    };
+  };
+
+  const visibleAlgos = (hasInventory ? availableAlgos : [])
+    .filter((a) => (effectiveTask ? matchesTask(a) : true))
+    .slice()
+    .sort((a, b) => {
+      const ka = sortKey(a);
+      const kb = sortKey(b);
+      if (ka.rank !== kb.rank) return ka.rank - kb.rank;
+      if (ka.label < kb.label) return -1;
+      if (ka.label > kb.label) return 1;
+      return ka.algo < kb.algo ? -1 : ka.algo > kb.algo ? 1 : 0;
+    });
   const visibleKey = useMemo(
     () => (visibleAlgos && visibleAlgos.length ? visibleAlgos.join('|') : ''),
     [visibleAlgos],
@@ -356,23 +299,25 @@ export default function ModelSelectionCard({
     label: algoKeyToLabel(a),
   }));
 
+  const algoDataForSelect =
+    algoData.length > 0
+      ? algoData
+      : m.algo
+        ? [{ value: String(m.algo), label: algoKeyToLabel(m.algo) }]
+        : [];
+
   // Ensure selection is valid when task / availability changes
   useEffect(() => {
+    if (!hasInventory) return;
     if (!visibleAlgos.length) return;
     const current = m.algo;
 
-    // If nothing matches the task filter (e.g. older meta), fall back to "available" only.
-    const hasTaskFilteredList = ordered.length > 0;
-
-    const isValid =
-      current &&
-      visibleAlgos.includes(current) &&
-      (hasTaskFilteredList ? matchesTask(current) : true);
+    const isValid = current && visibleAlgos.includes(current);
     if (!isValid) {
       applyAlgo(visibleAlgos[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTask, visibleKey, meta, m.algo]);
+  }, [effectiveTask, visibleKey, meta, m.algo, hasInventory]);
 
   const sub = getAlgoSchema(schema, m.algo);
 
@@ -527,12 +472,20 @@ export default function ModelSelectionCard({
     <>
       <Select
         label="Algorithm"
-        data={algoData}
-        value={m.algo ?? (algoData[0]?.value ?? 'logreg')}
+        data={algoDataForSelect}
+        value={m.algo ?? null}
+        disabled={!hasInventory}
+        placeholder={hasInventory ? 'Select an algorithm' : 'Schema not loaded'}
         onChange={(algo) => {
           if (algo) applyAlgo(algo);
         }}
       />
+
+      {!hasInventory && (
+        <Text size="sm" c="dimmed">
+          Model inventory is unavailable. Load the schema bundle to select a model.
+        </Text>
+      )}
 
       {/* Logistic Regression */}
       {m.algo === 'logreg' && (

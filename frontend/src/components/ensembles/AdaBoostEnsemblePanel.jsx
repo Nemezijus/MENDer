@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+// frontend/src/components/ensembles/AdaBoostEnsemblePanel.jsx
+import { useMemo, useState } from 'react';
 import {
   Card,
   Stack,
@@ -23,6 +24,8 @@ import { useModelArtifactStore } from '../../state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../../state/SchemaDefaultsContext.jsx';
 import { useEnsembleStore } from '../../state/useEnsembleStore.js';
 
+import { compactPayload } from '../../utils/compactPayload.js';
+
 import SplitOptionsCard from '../SplitOptionsCard.jsx';
 import ModelSelectionCard from '../ModelSelectionCard.jsx';
 
@@ -33,6 +36,8 @@ import EnsembleHelpText, {
 } from '../helpers/helpTexts/EnsembleHelpText.jsx';
 import AdaBoostEnsembleClassificationResults from './AdaBoostEnsembleClassificationResults.jsx';
 import AdaBoostEnsembleRegressionResults from './AdaBoostEnsembleRegressionResults.jsx';
+
+/** ---------- helpers ---------- **/
 
 function toErrorText(e) {
   if (typeof e === 'string') return e;
@@ -61,29 +66,8 @@ function toErrorText(e) {
   }
 }
 
-function buildFeaturesPayload(fctx) {
-  return {
-    method: fctx.method,
-    pca_n: fctx.pca_n,
-    pca_var: fctx.pca_var,
-    pca_whiten: fctx.pca_whiten,
-    lda_n: fctx.lda_n,
-    lda_solver: fctx.lda_solver,
-    lda_shrinkage: fctx.lda_shrinkage,
-    lda_tol: fctx.lda_tol,
-    sfs_k: fctx.sfs_k,
-    sfs_direction: fctx.sfs_direction,
-    sfs_cv: fctx.sfs_cv,
-    sfs_n_jobs: fctx.sfs_n_jobs,
-  };
-}
-
-function numOrNull(v) {
-  if (v === '' || v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
+// User-friendly names for the Algorithm dropdown.
+// Values must remain the internal algo keys used by the backend.
 const ALGO_LABELS = {
   // classifiers
   logreg: 'Logistic Regression',
@@ -96,6 +80,7 @@ const ALGO_LABELS = {
   extratrees: 'Extra Trees',
   histgb: 'HistGradientBoosting',
   nb: 'Naive Bayes',
+
   // regressors
   linreg: 'Linear Regression',
   ridgereg: 'Ridge Regression',
@@ -126,6 +111,7 @@ function algoKeyToLabel(key) {
   return ALGO_LABELS[k] || titleCase(k);
 }
 
+/** ---------- component ---------- **/
 
 export default function AdaBoostEnsemblePanel() {
   const inspectReport = useDataStore((s) => s.inspectReport);
@@ -148,7 +134,9 @@ export default function AdaBoostEnsemblePanel() {
     loading: defsLoading,
     models,
     enums,
+    split,
     getModelDefaults,
+    getModelMeta,
     getCompatibleAlgos,
     getEnsembleDefaults,
   } = useSchemaDefaults();
@@ -167,12 +155,15 @@ export default function AdaBoostEnsemblePanel() {
   const [err, setErr] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
 
-  const initializedRef = useRef(false);
+  const adaboostDefaults = useMemo(
+    () => getEnsembleDefaults?.('adaboost') ?? null,
+    [getEnsembleDefaults],
+  );
 
-  const compatibleAlgos = useMemo(() => {
-    const list = getCompatibleAlgos?.(effectiveTask) || [];
-    return list.length ? list : ['tree', 'logreg', 'svm', 'forest', 'knn', 'linreg'];
-  }, [getCompatibleAlgos, effectiveTask]);
+  const compatibleAlgos = useMemo(
+    () => getCompatibleAlgos?.(effectiveTask) || [],
+    [getCompatibleAlgos, effectiveTask],
+  );
 
   const algoOptions = useMemo(
     () => compatibleAlgos.map((a) => ({ value: a, label: algoKeyToLabel(a) })),
@@ -188,110 +179,164 @@ export default function AdaBoostEnsemblePanel() {
     [],
   );
 
-  const baseAlgo = adaboost.base_estimator?.algo || null;
-  const isKnnBase = baseAlgo === 'knn';
+  // ----------------- schema-driven defaults (display + payload) -----------------
 
-  useEffect(() => {
-    if (initializedRef.current) return;
-    if (defsLoading) return;
-
-    // base estimator
-    if (!adaboost.base_estimator) {
-      const algo = compatibleAlgos[0] || 'tree';
-      setAdaBoostBaseEstimator(getModelDefaults?.(algo) || { algo });
+  const allowedMetrics = useMemo(() => {
+    if (!enums) return [];
+    const metricByTask = enums.MetricByTask || null;
+    if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
+      return metricByTask[effectiveTask].map(String);
     }
+    if (Array.isArray(enums.MetricName)) return enums.MetricName.map(String);
+    return [];
+  }, [effectiveTask, enums]);
 
-    // hydrate defaults from backend schema if available
-    const defs = getEnsembleDefaults?.('adaboost') || null;
-    if (defs) {
-      setAdaBoost({
-        n_estimators: defs.n_estimators ?? adaboost.n_estimators,
-        learning_rate: defs.learning_rate ?? adaboost.learning_rate,
-        algorithm: defs.algorithm ?? adaboost.algorithm,
-        random_state: defs.random_state ?? adaboost.random_state,
-      });
-    }
+  // For regression we must avoid defaulting to a classification metric.
+  const defaultMetricFromSchema = allowedMetrics?.[0] ?? undefined;
+  const metricOverride = metric ? String(metric) : undefined;
+  const metricIsAllowed =
+    !metricOverride || allowedMetrics.length === 0 || allowedMetrics.includes(metricOverride);
 
-    // regression guardrail
-    if (effectiveTask === 'regression' && adaboost.stratified) {
-      setAdaBoost({ stratified: false });
-    }
-    initializedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defsLoading, compatibleAlgos, getModelDefaults, getEnsembleDefaults, effectiveTask]);
+  const metricForPayload = metricIsAllowed
+    ? (metricOverride ?? (effectiveTask === 'regression' ? defaultMetricFromSchema : undefined))
+    : (effectiveTask === 'regression' ? defaultMetricFromSchema : undefined);
+
+  // Split defaults (schema-owned)
+  const holdoutDefaults = split?.holdout?.defaults ?? null;
+  const kfoldDefaults = split?.kfold?.defaults ?? null;
+  const defaultSplitMode = holdoutDefaults?.mode ?? kfoldDefaults?.mode ?? undefined;
+  const effectiveSplitMode = adaboost.splitMode ?? defaultSplitMode;
+
+  // Base estimator: schema default (or first compatible) without mutating store.
+  const defaultBaseAlgo =
+    adaboostDefaults?.base_estimator?.algo || (Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null);
+
+  const defaultBaseEstimator = useMemo(() => {
+    if (!defaultBaseAlgo) return undefined;
+    return getModelDefaults?.(defaultBaseAlgo) || { algo: defaultBaseAlgo };
+  }, [defaultBaseAlgo, getModelDefaults]);
+
+  const effectiveBaseEstimator = adaboost.base_estimator ?? defaultBaseEstimator;
+  const baseAlgo = effectiveBaseEstimator?.algo || null;
+
+  // If the backend provides capability metadata, reflect it; do not enforce.
+  const baseMeta = baseAlgo ? getModelMeta?.(baseAlgo) : null;
+  const baseSupportsSampleWeight =
+    baseMeta && typeof baseMeta.supports_sample_weight === 'boolean'
+      ? baseMeta.supports_sample_weight
+      : undefined;
+
+  const showSampleWeightWarning = baseSupportsSampleWeight === false;
+
+  // Display values (defaults + overrides). Payload remains overrides-only.
+  const dispNEstimators = adaboost.n_estimators ?? adaboostDefaults?.n_estimators;
+  const dispLearningRate = adaboost.learning_rate ?? adaboostDefaults?.learning_rate;
+  const dispRandomState = adaboost.random_state ?? adaboostDefaults?.random_state;
+
+  const dispAlgorithm =
+    effectiveTask === 'regression'
+      ? undefined
+      : (adaboost.algorithm ?? adaboostDefaults?.algorithm ?? undefined);
 
   const handleReset = () => {
-    // Reset store values, then re-apply a default base estimator so the dropdown isn't empty
-    initializedRef.current = false;
     resetAdaBoost(effectiveTask);
     setErr(null);
-
-    const algo = (getCompatibleAlgos?.(effectiveTask) || compatibleAlgos || [])[0] || 'tree';
-    setAdaBoostBaseEstimator(getModelDefaults?.(algo) || { algo });
-    initializedRef.current = true;
   };
 
   const buildPayload = () => {
-    const data = {
-      x_path: xPath || null,
-      y_path: yPath || null,
-      npz_path: npzPath || null,
-      x_key: xKey || null,
-      y_key: yKey || null,
-    };
+    if (!effectiveSplitMode) {
+      throw new Error('Schema defaults not loaded: split mode is unavailable.');
+    }
 
-    const split =
-      adaboost.splitMode === 'kfold'
+    if (!effectiveBaseEstimator || !effectiveBaseEstimator.algo) {
+      throw new Error('Base estimator is not selected.');
+    }
+
+    // DATA (override-only; empty-string keys are omitted)
+    const data = compactPayload({
+      x_path: npzPath ? undefined : xPath,
+      y_path: npzPath ? undefined : yPath,
+      npz_path: npzPath,
+      x_key: xKey,
+      y_key: yKey,
+    });
+
+    // SPLIT (override-only)
+    const splitCfg = compactPayload(
+      effectiveSplitMode === 'kfold'
         ? {
             mode: 'kfold',
-            n_splits: Number(adaboost.nSplits) || 5,
-            stratified: effectiveTask === 'regression' ? false : !!adaboost.stratified,
-            shuffle: !!adaboost.shuffle,
+            n_splits: adaboost.nSplits,
+            stratified: adaboost.stratified,
+            shuffle: adaboost.shuffle,
           }
         : {
             mode: 'holdout',
-            train_frac: Number(adaboost.trainFrac) || 0.75,
-            stratified: effectiveTask === 'regression' ? false : !!adaboost.stratified,
-            shuffle: !!adaboost.shuffle,
-          };
+            train_frac: adaboost.trainFrac,
+            stratified: adaboost.stratified,
+            shuffle: adaboost.shuffle,
+          },
+    );
 
-    const scale = { method: scaleMethod || 'standard' };
-    const features = buildFeaturesPayload(fctx);
+    // SCALE (override-only)
+    const scale = compactPayload({ method: scaleMethod });
 
-    const evalCfg = {
-      metric: metric || (effectiveTask === 'regression' ? 'r2' : 'accuracy'),
-      seed: adaboost.seed === '' || adaboost.seed == null ? null : Number(adaboost.seed),
-      n_shuffles: 0,
-      progress_id: null,
-      decoder: {
-        enabled: true,
-        include_decision_scores: true,
-        include_probabilities: true,
-        include_margin: true,
-        positive_class_label: null,
-        calibrate_probabilities: false,
-        calibration_method: 'sigmoid',
-        calibration_cv: 5,
-        enable_export: true,
-      },
-    };
+    // FEATURES (override-only)
+    let features = {};
+    const m = fctx?.method;
+    if (m === 'pca') {
+      features = compactPayload({
+        method: m,
+        pca_n: fctx.pca_n,
+        pca_var: fctx.pca_var,
+        pca_whiten: fctx.pca_whiten,
+      });
+    } else if (m === 'lda') {
+      features = compactPayload({
+        method: m,
+        lda_n: fctx.lda_n,
+        lda_solver: fctx.lda_solver,
+        lda_shrinkage: fctx.lda_shrinkage,
+        lda_tol: fctx.lda_tol,
+      });
+    } else if (m === 'sfs') {
+      features = compactPayload({
+        method: m,
+        sfs_k: fctx.sfs_k,
+        sfs_direction: fctx.sfs_direction,
+        sfs_cv: fctx.sfs_cv,
+        sfs_n_jobs: fctx.sfs_n_jobs,
+      });
+    } else {
+      features = compactPayload({ method: m });
+    }
 
-    const ensemble = {
+    // EVAL (schema-driven metric; decoder defaults owned by engine)
+    const seedInt =
+      adaboost.seed === '' || adaboost.seed == null
+        ? undefined
+        : Number.parseInt(String(adaboost.seed), 10);
+
+    const evalCfg = compactPayload({
+      metric: metricForPayload,
+      seed: Number.isFinite(seedInt) ? seedInt : undefined,
+    });
+
+    const algoForPayload =
+      effectiveTask === 'regression'
+        ? undefined
+        : (adaboost.algorithm && adaboost.algorithm !== '__default__' ? adaboost.algorithm : undefined);
+
+    const ensemble = compactPayload({
       kind: 'adaboost',
-      problem_kind: effectiveTask === 'regression' ? 'regression' : 'classification',
-      base_estimator: adaboost.base_estimator,
-      n_estimators: Number(adaboost.n_estimators) || 50,
-      learning_rate: Number(adaboost.learning_rate) || 1.0,
-      algorithm:
-        effectiveTask === 'regression'
-          ? null
-          : adaboost.algorithm === '__default__'
-          ? null
-          : adaboost.algorithm || null,
-      random_state: numOrNull(adaboost.random_state),
-    };
+      base_estimator: effectiveBaseEstimator,
+      n_estimators: adaboost.n_estimators,
+      learning_rate: adaboost.learning_rate,
+      algorithm: algoForPayload,
+      random_state: adaboost.random_state,
+    });
 
-    return { data, split, scale, features, ensemble, eval: evalCfg };
+    return { data, split: splitCfg, scale, features, ensemble, eval: evalCfg };
   };
 
   const handleRun = async () => {
@@ -307,16 +352,23 @@ export default function AdaBoostEnsemblePanel() {
       return;
     }
 
-    if (!adaboost.base_estimator?.algo) {
-      setErr('Please select a base estimator.');
+    if (defsLoading) {
+      setErr('Schema defaults are still loading. Please try again in a moment.');
       return;
     }
 
-    // Guardrail: KNN can't be used for AdaBoost (no sample_weight support)
-    if (adaboost.base_estimator?.algo === 'knn') {
-      setErr(
-        "KNN can't be used as an AdaBoost base estimator because it doesn't support sample_weight. Choose another base estimator (e.g., tree/logreg/svm) or use Bagging/Voting for KNN.",
-      );
+    if (algoOptions.length === 0) {
+      setErr('Schema defaults not loaded: compatible algorithms are unavailable.');
+      return;
+    }
+
+    if (!effectiveSplitMode) {
+      setErr('Schema defaults not loaded: split defaults are unavailable.');
+      return;
+    }
+
+    if (!effectiveBaseEstimator || !effectiveBaseEstimator.algo) {
+      setErr('Please select a base estimator.');
       return;
     }
 
@@ -367,22 +419,21 @@ export default function AdaBoostEnsemblePanel() {
             </Button>
           </Group>
 
-          {/* First row: left settings stack, right help preview */}
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
             <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
               {adaboost.mode === 'simple' ? (
                 <Select
                   label="Base estimator"
-                  value={adaboost.base_estimator?.algo || null}
+                  value={effectiveBaseEstimator?.algo || null}
                   onChange={(v) =>
-                    setAdaBoostBaseEstimator(getModelDefaults?.(v) || { algo: v || 'tree' })
+                    setAdaBoostBaseEstimator(v ? (getModelDefaults?.(v) || { algo: v }) : undefined)
                   }
                   data={algoOptions}
                 />
               ) : (
                 <Box>
                   <ModelSelectionCard
-                    model={adaboost.base_estimator}
+                    model={effectiveBaseEstimator}
                     onChange={(next) => setAdaBoostBaseEstimator(next)}
                     schema={models?.schema}
                     enums={enums}
@@ -392,12 +443,50 @@ export default function AdaBoostEnsemblePanel() {
                 </Box>
               )}
 
-              {isKnnBase && (
+              {showSampleWeightWarning && (
                 <Alert color="yellow" variant="light">
-                  <Text fw={600}>KNN is not supported for AdaBoost</Text>
+                  <Text fw={600}>Base estimator may be incompatible</Text>
                   <Text size="sm">
-                    AdaBoost requires base estimators to support <b>sample_weight</b>. KNN does not,
-                    so training will fail. Use Bagging/Voting if you want KNN in an ensemble.
+                    This base estimator is marked as not supporting <b>sample_weight</b>, which AdaBoost
+                    typically requires. If training fails, choose another base estimator or use Bagging/Voting.
+                  </Text>
+                </Alert>
+              )}
+
+              {!metricIsAllowed && metricOverride && (
+                <Alert color="yellow" variant="light">
+                  <Text size="sm" fw={600}>
+                    Metric not available for this task
+                  </Text>
+                  <Text size="sm">
+                    The selected metric (<strong>{metricOverride}</strong>) is not listed for the current task.
+                    {effectiveTask === 'regression' && defaultMetricFromSchema
+                      ? ` Using '${defaultMetricFromSchema}' for this run.`
+                      : ' Please update Settings → Metric.'}
+                  </Text>
+                </Alert>
+              )}
+
+              {algoOptions.length === 0 && (
+                <Alert color="yellow" variant="light">
+                  <Text size="sm" fw={600}>
+                    Schema defaults not loaded
+                  </Text>
+                  <Text size="sm">
+                    AdaBoost ensemble needs backend schema defaults to list compatible algorithms. Please wait for
+                    <strong> /api/v1/schema/defaults</strong> to load.
+                  </Text>
+                </Alert>
+              )}
+
+              {!effectiveSplitMode && (
+                <Alert color="yellow" variant="light">
+                  <Text size="sm" fw={600}>
+                    Split defaults not available
+                  </Text>
+                  <Text size="sm">
+                    This panel relies on backend split defaults to choose a split strategy. Please wait for
+                    <strong> /api/v1/schema/defaults</strong> to load.
                   </Text>
                 </Alert>
               )}
@@ -407,16 +496,18 @@ export default function AdaBoostEnsemblePanel() {
                   label="Number of estimators"
                   min={1}
                   step={1}
-                  value={adaboost.n_estimators}
-                  onChange={(v) => setAdaBoost({ n_estimators: v })}
+                  value={dispNEstimators}
+                  onChange={(v) => setAdaBoost({ n_estimators: v === '' || v == null ? undefined : v })}
+                  placeholder="default"
                 />
 
                 <NumberInput
                   label="Learning rate"
                   step={0.1}
                   min={0}
-                  value={adaboost.learning_rate}
-                  onChange={(v) => setAdaBoost({ learning_rate: v })}
+                  value={dispLearningRate}
+                  onChange={(v) => setAdaBoost({ learning_rate: v === '' || v == null ? undefined : v })}
+                  placeholder="default"
                 />
               </Group>
             </Stack>
@@ -447,8 +538,8 @@ export default function AdaBoostEnsemblePanel() {
           <Group grow align="flex-end" wrap="wrap">
             <Select
               label="Algorithm (classification only)"
-              value={adaboost.algorithm ?? '__default__'}
-              onChange={(v) => setAdaBoost({ algorithm: v || '__default__' })}
+              value={dispAlgorithm ?? '__default__'}
+              onChange={(v) => setAdaBoost({ algorithm: !v || v === '__default__' ? undefined : v })}
               data={algorithmOptions}
               disabled={effectiveTask === 'regression'}
             />
@@ -456,8 +547,8 @@ export default function AdaBoostEnsemblePanel() {
             <NumberInput
               label="Random state"
               step={1}
-              value={adaboost.random_state}
-              onChange={(v) => setAdaBoost({ random_state: v })}
+              value={dispRandomState}
+              onChange={(v) => setAdaBoost({ random_state: v === '' || v == null ? undefined : v })}
               placeholder="default"
             />
           </Group>
@@ -481,13 +572,12 @@ export default function AdaBoostEnsemblePanel() {
         onSeedChange={(v) => setAdaBoost({ seed: v })}
       />
 
-      {trainResult?.ensemble_report?.kind === 'adaboost' && (
+      {trainResult?.ensemble_report?.kind === 'adaboost' &&
         (trainResult.ensemble_report.task || 'classification') === 'regression' ? (
           <AdaBoostEnsembleRegressionResults report={trainResult.ensemble_report} />
         ) : (
           <AdaBoostEnsembleClassificationResults report={trainResult.ensemble_report} />
-        )
-      )}
+        )}
 
       {err && (
         <Alert color="red" variant="light">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Card,
   Stack,
@@ -26,6 +26,7 @@ import { useEnsembleStore } from '../../state/useEnsembleStore.js';
 import SplitOptionsCard from '../SplitOptionsCard.jsx';
 
 import { runEnsembleTrainRequest } from '../../api/ensembles.js';
+import { compactPayload } from '../../utils/compactPayload.js';
 
 import EnsembleHelpText, { XGBoostIntroText } from '../helpers/helpTexts/EnsembleHelpText.jsx';
 import XGBoostEnsembleResults from './XGBoostEnsembleResults.jsx';
@@ -74,15 +75,16 @@ function buildFeaturesPayload(fctx) {
   };
 }
 
-function num(v, fallback) {
+function numOrUndef(v) {
+  if (v === '' || v == null) return undefined;
   const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
+  return Number.isFinite(n) ? n : undefined;
 }
 
-function numOrNull(v) {
-  if (v === '' || v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+function intOrUndef(v) {
+  const n = numOrUndef(v);
+  if (n === undefined) return undefined;
+  return Math.trunc(n);
 }
 
 export default function XGBoostEnsemblePanel() {
@@ -103,6 +105,7 @@ export default function XGBoostEnsemblePanel() {
   const metric = useSettingsStore((s) => s.metric);
 
   const { getEnsembleDefaults } = useSchemaDefaults();
+  const xgbDefaults = getEnsembleDefaults?.('xgboost') ?? null;
 
   const setTrainResult = useResultsStore((s) => s.setTrainResult);
   const trainResult = useResultsStore((s) => s.trainResult);
@@ -117,34 +120,6 @@ export default function XGBoostEnsemblePanel() {
   const [err, setErr] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
 
-  useEffect(() => {
-    // one-time gentle hydrate from backend defaults if store still default-ish
-    const defs = getEnsembleDefaults?.('xgboost') || null;
-    if (!defs) return;
-
-    // Only patch if user didn't touch values (heuristic: keep if already set)
-    if (xgb.__hydrated) return;
-
-    setXGBoost({
-      n_estimators: defs.n_estimators ?? xgb.n_estimators,
-      learning_rate: defs.learning_rate ?? xgb.learning_rate,
-      max_depth: defs.max_depth ?? xgb.max_depth,
-      subsample: defs.subsample ?? xgb.subsample,
-      colsample_bytree: defs.colsample_bytree ?? xgb.colsample_bytree,
-      reg_lambda: defs.reg_lambda ?? xgb.reg_lambda,
-      reg_alpha: defs.reg_alpha ?? xgb.reg_alpha,
-      min_child_weight: defs.min_child_weight ?? xgb.min_child_weight,
-      gamma: defs.gamma ?? xgb.gamma,
-      n_jobs: defs.n_jobs ?? xgb.n_jobs,
-      random_state: defs.random_state ?? xgb.random_state,
-      use_early_stopping: defs.use_early_stopping ?? xgb.use_early_stopping,
-      early_stopping_rounds: defs.early_stopping_rounds ?? xgb.early_stopping_rounds,
-      eval_set_fraction: defs.eval_set_fraction ?? xgb.eval_set_fraction,
-      __hydrated: true,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getEnsembleDefaults]);
-
   const handleReset = () => {
     resetXGBoost(effectiveTask);
     setErr(null);
@@ -155,71 +130,64 @@ export default function XGBoostEnsemblePanel() {
       x_path: xPath || null,
       y_path: yPath || null,
       npz_path: npzPath || null,
-      x_key: xKey || null,
-      y_key: yKey || null,
+      // empty string means "unset" (backend defaults to X / y)
+      x_key: xKey,
+      y_key: yKey,
     };
 
+    // The run contract requires a split object; if user did not pick a mode,
+    // we follow the UI default (holdout).
+    const splitMode = xgb.splitMode ?? 'holdout';
     const split =
-      xgb.splitMode === 'kfold'
+      splitMode === 'kfold'
         ? {
             mode: 'kfold',
-            n_splits: Number(xgb.nSplits) || 5,
-            stratified: effectiveTask === 'regression' ? false : !!xgb.stratified,
-            shuffle: !!xgb.shuffle,
+            n_splits: intOrUndef(xgb.nSplits),
+            stratified: xgb.stratified,
+            shuffle: xgb.shuffle,
           }
         : {
             mode: 'holdout',
-            train_frac: Number(xgb.trainFrac) || 0.75,
-            stratified: effectiveTask === 'regression' ? false : !!xgb.stratified,
-            shuffle: !!xgb.shuffle,
+            train_frac: numOrUndef(xgb.trainFrac),
+            stratified: xgb.stratified,
+            shuffle: xgb.shuffle,
           };
 
-    const scale = { method: scaleMethod || 'standard' };
+    // Settings / features / eval are owned by backend defaults when unset.
+    const scale = { method: scaleMethod };
     const features = buildFeaturesPayload(fctx);
-
     const evalCfg = {
-      metric: metric || (effectiveTask === 'regression' ? 'r2' : 'accuracy'),
-      seed: xgb.seed === '' || xgb.seed == null ? null : Number(xgb.seed),
-      n_shuffles: 0,
-      progress_id: null,
-      decoder: {
-        enabled: true,
-        include_decision_scores: true,
-        include_probabilities: true,
-        include_margin: true,
-        positive_class_label: null,
-        calibrate_probabilities: false,
-        calibration_method: 'sigmoid',
-        calibration_cv: 5,
-        enable_export: true,
-      },
+      metric,
+      seed: intOrUndef(xgb.seed),
+      // decoder defaults are engine-owned
     };
 
     const ensemble = {
       kind: 'xgboost',
-      problem_kind: effectiveTask === 'regression' ? 'regression' : 'classification',
+      // Only override when task implies regression; otherwise backend defaults apply.
+      problem_kind: effectiveTask === 'regression' ? 'regression' : undefined,
 
-      n_estimators: num(xgb.n_estimators, 300),
-      learning_rate: num(xgb.learning_rate, 0.1),
-      max_depth: num(xgb.max_depth, 6),
-      subsample: num(xgb.subsample, 1.0),
-      colsample_bytree: num(xgb.colsample_bytree, 1.0),
+      n_estimators: intOrUndef(xgb.n_estimators),
+      learning_rate: numOrUndef(xgb.learning_rate),
+      max_depth: intOrUndef(xgb.max_depth),
+      subsample: numOrUndef(xgb.subsample),
+      colsample_bytree: numOrUndef(xgb.colsample_bytree),
 
-      reg_lambda: num(xgb.reg_lambda, 1.0),
-      reg_alpha: num(xgb.reg_alpha, 0.0),
+      reg_lambda: numOrUndef(xgb.reg_lambda),
+      reg_alpha: numOrUndef(xgb.reg_alpha),
 
-      min_child_weight: num(xgb.min_child_weight, 1.0),
-      gamma: num(xgb.gamma, 0.0),
+      min_child_weight: numOrUndef(xgb.min_child_weight),
+      gamma: numOrUndef(xgb.gamma),
 
-      use_early_stopping: !!xgb.use_early_stopping,
-      early_stopping_rounds: numOrNull(xgb.early_stopping_rounds),
-      eval_set_fraction: num(xgb.eval_set_fraction, 0.2),
+      use_early_stopping: xgb.use_early_stopping,
+      early_stopping_rounds: intOrUndef(xgb.early_stopping_rounds),
+      eval_set_fraction: numOrUndef(xgb.eval_set_fraction),
 
-      n_jobs: numOrNull(xgb.n_jobs),
-      random_state: numOrNull(xgb.random_state),
+      n_jobs: intOrUndef(xgb.n_jobs),
+      random_state: intOrUndef(xgb.random_state),
     };
 
-    return { data, split, scale, features, ensemble, eval: evalCfg };
+    return compactPayload({ data, split, scale, features, ensemble, eval: evalCfg });
   };
 
   const handleRun = async () => {
@@ -286,22 +254,22 @@ export default function XGBoostEnsemblePanel() {
                   label="Estimators"
                   min={1}
                   step={10}
-                  value={xgb.n_estimators}
-                  onChange={(v) => setXGBoost({ n_estimators: v })}
+                  value={xgb.n_estimators ?? xgbDefaults?.n_estimators ?? undefined}
+                  onChange={(v) => setXGBoost({ n_estimators: v === '' ? undefined : v })}
                 />
                 <NumberInput
                   label="Learning rate"
                   step={0.01}
                   min={0}
-                  value={xgb.learning_rate}
-                  onChange={(v) => setXGBoost({ learning_rate: v })}
+                  value={xgb.learning_rate ?? xgbDefaults?.learning_rate ?? undefined}
+                  onChange={(v) => setXGBoost({ learning_rate: v === '' ? undefined : v })}
                 />
                 <NumberInput
                   label="Max depth"
                   step={1}
                   min={1}
-                  value={xgb.max_depth}
-                  onChange={(v) => setXGBoost({ max_depth: v })}
+                  value={xgb.max_depth ?? xgbDefaults?.max_depth ?? undefined}
+                  onChange={(v) => setXGBoost({ max_depth: v === '' ? undefined : v })}
                 />
               </Group>
 
@@ -312,16 +280,16 @@ export default function XGBoostEnsemblePanel() {
                   step={0.05}
                   min={0}
                   max={1}
-                  value={xgb.subsample}
-                  onChange={(v) => setXGBoost({ subsample: v })}
+                  value={xgb.subsample ?? xgbDefaults?.subsample ?? undefined}
+                  onChange={(v) => setXGBoost({ subsample: v === '' ? undefined : v })}
                 />
                 <NumberInput
                   label="Column sample by tree"
                   step={0.05}
                   min={0}
                   max={1}
-                  value={xgb.colsample_bytree}
-                  onChange={(v) => setXGBoost({ colsample_bytree: v })}
+                  value={xgb.colsample_bytree ?? xgbDefaults?.colsample_bytree ?? undefined}
+                  onChange={(v) => setXGBoost({ colsample_bytree: v === '' ? undefined : v })}
                 />
               </Group>
             </Stack>
@@ -357,49 +325,64 @@ export default function XGBoostEnsemblePanel() {
                   label="L2 (λ)"
                   step={0.1}
                   min={0}
-                  value={xgb.reg_lambda}
-                  onChange={(v) => setXGBoost({ reg_lambda: v })}
+                  value={xgb.reg_lambda ?? xgbDefaults?.reg_lambda ?? undefined}
+                  onChange={(v) => setXGBoost({ reg_lambda: v === '' ? undefined : v })}
                 />
                 <NumberInput
                   label="L1 (α)"
                   step={0.1}
                   min={0}
-                  value={xgb.reg_alpha}
-                  onChange={(v) => setXGBoost({ reg_alpha: v })}
+                  value={xgb.reg_alpha ?? xgbDefaults?.reg_alpha ?? undefined}
+                  onChange={(v) => setXGBoost({ reg_alpha: v === '' ? undefined : v })}
                 />
                 <NumberInput
                   label="Min child weight"
                   step={0.5}
                   min={0}
-                  value={xgb.min_child_weight}
-                  onChange={(v) => setXGBoost({ min_child_weight: v })}
+                  value={xgb.min_child_weight ?? xgbDefaults?.min_child_weight ?? undefined}
+                  onChange={(v) => setXGBoost({ min_child_weight: v === '' ? undefined : v })}
                 />
                 <NumberInput
                   label="Gamma"
                   step={0.1}
                   min={0}
-                  value={xgb.gamma}
-                  onChange={(v) => setXGBoost({ gamma: v })}
+                  value={xgb.gamma ?? xgbDefaults?.gamma ?? undefined}
+                  onChange={(v) => setXGBoost({ gamma: v === '' ? undefined : v })}
                 />
               </Group>
 
               <Divider />
 
               <Group align="flex-end" wrap="wrap" gap="md">
+                {(() => {
+                  const effectiveUseEarly =
+                    xgb.use_early_stopping ?? xgbDefaults?.use_early_stopping ?? true;
+                  const effectiveEvalFrac =
+                    xgb.eval_set_fraction ?? xgbDefaults?.eval_set_fraction ?? undefined;
+                  return (
+                    <>
                 <Switch
                   label="Use early stopping"
-                  checked={!!xgb.use_early_stopping}
-                  onChange={(e) => setXGBoost({ use_early_stopping: e.currentTarget.checked })}
+                  checked={Boolean(effectiveUseEarly)}
+                  onChange={(e) =>
+                    setXGBoost({ use_early_stopping: e.currentTarget.checked })
+                  }
                 />
 
                 <NumberInput
                   label="Early stopping rounds (patience)"
                   min={1}
                   step={1}
-                  value={xgb.early_stopping_rounds}
-                  onChange={(v) => setXGBoost({ early_stopping_rounds: v })}
+                  value={
+                    xgb.early_stopping_rounds ??
+                    xgbDefaults?.early_stopping_rounds ??
+                    undefined
+                  }
+                  onChange={(v) =>
+                    setXGBoost({ early_stopping_rounds: v === '' ? undefined : v })
+                  }
                   placeholder="auto"
-                  disabled={!xgb.use_early_stopping}
+                  disabled={!effectiveUseEarly}
                 />
 
                 <NumberInput
@@ -408,11 +391,16 @@ export default function XGBoostEnsemblePanel() {
                   max={0.5}
                   step={0.05}
                   precision={2}
-                  value={xgb.eval_set_fraction}
-                  onChange={(v) => setXGBoost({ eval_set_fraction: v })}
+                  value={effectiveEvalFrac}
+                  onChange={(v) =>
+                    setXGBoost({ eval_set_fraction: v === '' ? undefined : v })
+                  }
                   placeholder="0.20"
-                  disabled={!xgb.use_early_stopping}
+                  disabled={!effectiveUseEarly}
                 />
+                    </>
+                  );
+                })()}
               </Group>
 
               <Text size="xs" c="dimmed">
@@ -427,15 +415,15 @@ export default function XGBoostEnsemblePanel() {
             <NumberInput
               label="Number of jobs"
               step={1}
-              value={xgb.n_jobs}
-              onChange={(v) => setXGBoost({ n_jobs: v })}
+              value={xgb.n_jobs ?? xgbDefaults?.n_jobs ?? undefined}
+              onChange={(v) => setXGBoost({ n_jobs: v === '' ? undefined : v })}
               placeholder="default"
             />
             <NumberInput
               label="Random state"
               step={1}
-              value={xgb.random_state}
-              onChange={(v) => setXGBoost({ random_state: v })}
+              value={xgb.random_state ?? xgbDefaults?.random_state ?? undefined}
+              onChange={(v) => setXGBoost({ random_state: v === '' ? undefined : v })}
               placeholder="default"
             />
           </Group>
@@ -460,7 +448,7 @@ export default function XGBoostEnsemblePanel() {
       />
       {trainResult?.ensemble_report?.kind === 'xgboost' && (
         <XGBoostEnsembleResults report={trainResult.ensemble_report} />
-        )}
+      )}
       {err && (
         <Alert color="red" variant="light">
           <Text fw={600}>Training failed</Text>
