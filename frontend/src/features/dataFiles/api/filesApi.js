@@ -1,4 +1,4 @@
-import api from './client'; // baseURL '/api/v1'
+import api from '../../../shared/api/client.js'; // baseURL '/api/v1'
 
 export async function uploadFile(file) {
   const fd = new FormData();

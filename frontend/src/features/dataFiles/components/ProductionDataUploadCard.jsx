@@ -13,19 +13,19 @@ import {
   FileButton,
 } from '@mantine/core';
 
-import { uploadFile } from '../../../api/files.js';
-import { useFilesConstraintsQuery } from '../state/useFilesConstraintsQuery.js';
-import { compactPayload } from '../utils/compactPayload.js';
-import { useInspectProductionDataMutation } from '../../../state/useInspectDataMutation.js';
-import { useProductionDataStore } from '../../../state/useProductionDataStore.js';
-import { useModelArtifactStore } from '../../../state/useModelArtifactStore.js';
+import { uploadFile } from '../api/filesApi.js';
+import { useFilesConstraintsQuery } from '../../../shared/schema/useFilesConstraintsQuery.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
+import { useInspectProductionDataMutation } from '../state/useInspectDataMutation.js';
+import { useProductionDataStore } from '../state/useProductionDataStore.js';
+import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
 
-import DataSummaryCard from '../../../components/helpers/DataSummaryCard.jsx';
+import DataSummaryCard from './helpers/DataSummaryCard.jsx';
 import {
   ProductionDataIntroText,
   ProductionIndividualFilesText,
   ProductionCompoundFileText,
-} from '../../../components/helpers/helpTexts/DataFilesHelpTexts.jsx';
+} from '../../../shared/content/help/DataFilesHelpTexts.jsx';
 
 function displayLocalFilePath(file) {
   if (!file) return '';

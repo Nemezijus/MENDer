@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Card, Stack, Text, Button } from '@mantine/core';
 
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
-import { loadModel } from '../../../api/models.js';
+import { loadModel } from '../api/modelsApi.js';
 
 export default function ModelLoadCard() {
   const fileInputRef = useRef(null);

@@ -1,4 +1,4 @@
-import api from './client';
+import api from '../../../shared/api/client.js';
 
 // Learning curve
 export async function requestLearningCurve(payload) {

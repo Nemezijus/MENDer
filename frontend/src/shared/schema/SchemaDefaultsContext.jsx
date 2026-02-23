@@ -1,7 +1,7 @@
 // src/state/SchemaDefaultsContext.jsx
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAllDefaults } from '../../api/schema';
+import { getAllDefaults } from './schemaApi.js';
 
 /**
  * Fetch + normalize the /schema/defaults payload using TanStack Query.

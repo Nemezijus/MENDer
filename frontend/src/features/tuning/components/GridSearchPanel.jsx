@@ -12,21 +12,21 @@ import {
   NumberInput,
 } from '@mantine/core';
 
-import { useDataStore } from '../state/useDataStore.js';
-import { useFeatureStore } from '../../../state/useFeatureStore.js';
-import { useSettingsStore } from '../../../state/useSettingsStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
+import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
+import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
-import { useTuningStore } from '../../../state/useTuningStore.js';
-import { useModelConfigStore } from '../state/useModelConfigStore.js';
-import { useTuningDefaultsQuery } from '../state/useTuningDefaultsQuery.js';
+import { useTuningStore } from '../state/useTuningStore.js';
+import { useModelConfigStore } from '../../training/state/useModelConfigStore.js';
+import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaultsQuery.js';
 
-import { compactPayload } from '../utils/compactPayload.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
-import SplitOptionsCard from '../../../components/SplitOptionsCard.jsx';
-import ModelSelectionCard from './ModelSelectionCard.jsx';
-import { requestGridSearch } from '../../../api/tuning.js';
-import GridSearchResultsPanel from '../../../components/visualizations/GridSearchResultsPanel.jsx';
-import HyperparameterSelector from '../../../components/helpers/HyperparameterSelector.jsx';
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
+import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
+import { requestGridSearch } from '../api/tuningApi.js';
+import GridSearchResultsPanel from './results/GridSearchResultsPanel.jsx';
+import HyperparameterSelector from './helpers/HyperparameterSelector.jsx';
 
 const EMPTY_PARAM = { paramName: '', values: [] };
 

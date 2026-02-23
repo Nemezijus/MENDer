@@ -13,10 +13,10 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
-import { useDataStore } from '../state/useDataStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import ModelHelpText, {
   ModelIntroText,
-} from '../../../components/helpers/helpTexts/ModelHelpText.jsx';
+} from '../../../shared/content/help/ModelHelpText.jsx';
 
 /** ---------------- helpers ---------------- **/
 

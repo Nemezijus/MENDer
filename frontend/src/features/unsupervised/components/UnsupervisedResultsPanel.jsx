@@ -13,7 +13,7 @@ import {
   SimpleGrid,
 } from '@mantine/core';
 
-import { downloadBlob, exportDecoderOutputs } from '../api/models.js';
+import { downloadBlob, exportDecoderOutputs } from '../../modelArtifacts/api/modelsApi.js';
 
 import UnsupervisedTrainingResults from './results/UnsupervisedTrainingResults.jsx';
 import UnsupervisedTrainingDecoderResults from './results/UnsupervisedTrainingDecoderResults.jsx';

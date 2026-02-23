@@ -1,12 +1,12 @@
 import { Card, Stack, Text } from '@mantine/core';
-import { useResultsStore } from '../../../state/useResultsStore.js';
-import GeneralSummary from '../../../components/visualizations/GeneralSummary.jsx';
-import KFoldResults from '../../../components/visualizations/KFoldResults.jsx';
-import BaselineShufflingResults from '../../../components/visualizations/BaselineShufflingResults.jsx';
+import { useResultsStore } from '../state/useResultsStore.js';
+import GeneralSummary from './visualizations/GeneralSummary.jsx';
+import KFoldResults from './visualizations/KFoldResults.jsx';
+import BaselineShufflingResults from './visualizations/BaselineShufflingResults.jsx';
 import ClassificationResultsPanel from './ClassificationResultsPanel.jsx';
 import RegressionResultsPanel from './RegressionResultsPanel.jsx';
-import DecoderOutputsResults from '../../../components/visualizations/DecoderOutputsResults.jsx';
-import UnsupervisedResultsPanel from './UnsupervisedResultsPanel.jsx';
+import DecoderOutputsResults from './visualizations/DecoderOutputsResults.jsx';
+import UnsupervisedResultsPanel from '../../unsupervised/components/UnsupervisedResultsPanel.jsx';
 
 export default function TrainingResultsPanel() {
   const trainResult = useResultsStore((s) => s.trainResult);

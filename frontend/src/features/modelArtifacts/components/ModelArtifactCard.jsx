@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card, Text, Group, Stack, Divider, Badge, Button, Tooltip } from '@mantine/core';
-import { useModelArtifactStore } from '../../../state/useModelArtifactStore.js';
-import { useDataStore } from '../state/useDataStore.js';
-import { saveModel, saveBlobInteractive } from '../../../api/models.js';
+import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
+import { saveModel, saveBlobInteractive } from '../api/modelsApi.js';
 
 function fmt(val, digits = 4) {
   if (val == null || Number.isNaN(Number(val))) return '—';

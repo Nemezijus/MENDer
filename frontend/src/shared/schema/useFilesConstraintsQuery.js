@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getFilesConstraints } from '../../api/files';
+import { getFilesConstraints } from '../../features/dataFiles/api/filesApi.js';
 
 /**
  * Fetch backend-owned upload/data IO constraints.

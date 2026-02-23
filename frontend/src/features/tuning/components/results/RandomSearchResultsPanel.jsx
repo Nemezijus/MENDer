@@ -1,7 +1,7 @@
 // frontend/src/components/visualizations/RandomSearchResultsPanel.jsx
 import { useMemo } from 'react';
 import { Card, Stack, Text, useMantineTheme } from '@mantine/core';
-import { useSettingsStore } from '../../../../state/useSettingsStore.js';
+import { useSettingsStore } from '../../../settings/state/useSettingsStore.js';
 import RandomSearchResults from './RandomSearchResults.jsx';
 import RandomSearchAnalyticsResults from './RandomSearchAnalyticsResults.jsx';
 

@@ -1,4 +1,4 @@
-import api from './client';
+import api from '../../../shared/api/client.js';
 
 // existing inspect endpoint (reuse)
 export async function inspectData(payload) {

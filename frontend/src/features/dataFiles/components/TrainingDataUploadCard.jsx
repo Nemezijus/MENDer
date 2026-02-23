@@ -14,18 +14,18 @@ import {
   FileButton,
 } from '@mantine/core';
 
-import { useDataStore } from '../../../state/useDataStore.js';
-import { useInspectDataMutation } from '../../../state/useInspectDataMutation.js';
-import { uploadFile } from '../../../api/files.js';
-import { useFilesConstraintsQuery } from '../state/useFilesConstraintsQuery.js';
-import { compactPayload } from '../utils/compactPayload.js';
+import { useDataStore } from '../state/useDataStore.js';
+import { useInspectDataMutation } from '../state/useInspectDataMutation.js';
+import { uploadFile } from '../api/filesApi.js';
+import { useFilesConstraintsQuery } from '../../../shared/schema/useFilesConstraintsQuery.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
-import DataSummaryCard from '../../../components/helpers/DataSummaryCard.jsx';
+import DataSummaryCard from './helpers/DataSummaryCard.jsx';
 import {
   TrainingDataIntroText,
   TrainingIndividualFilesText,
   TrainingCompoundFileText,
-} from '../../../components/helpers/helpTexts/DataFilesHelpTexts.jsx';
+} from '../../../shared/content/help/DataFilesHelpTexts.jsx';
 
 // -------------------------
 // Helpers

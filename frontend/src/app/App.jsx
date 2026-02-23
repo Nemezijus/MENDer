@@ -5,19 +5,19 @@ import SidebarNav from './navigation/SidebarNav.jsx';
 
 
 import DataFilesPanel from '../features/dataFiles/components/DataFilesPanel.jsx';
-import SingleModelTrainingPanel from '../components/SingleModelTrainingPanel.jsx';
-import LearningCurvePanel from '../components/LearningCurvePanel.jsx';
+import SingleModelTrainingPanel from '../features/training/components/SingleModelTrainingPanel.jsx';
+import LearningCurvePanel from '../features/tuning/components/LearningCurvePanel.jsx';
 import ModelArtifactCard from '../features/modelArtifacts/components/ModelArtifactCard.jsx';
-import ResultsPanel from '../components/ResultsPanel.jsx';
+import ResultsPanel from '../features/results/components/ResultsPanel.jsx';
 import ApplyModelPanel from '../features/inference/components/ApplyModelPanel.jsx';
-import SettingsPanel from '../components/SettingsPanel.jsx';
+import SettingsPanel from '../features/settings/components/SettingsPanel.jsx';
 
-import { useDataStore } from '../state/useDataStore.js';
-import ValidationCurvePanel from '../components/ValidationCurvePanel.jsx';
-import GridSearchPanel from '../components/GridSearchPanel.jsx';
-import RandomSearchPanel from '../components/RandomSearchPanel.jsx';
-import EnsembleTrainingPanel from '../components/EnsembleTrainingPanel.jsx';
-import UnsupervisedTrainingPanel from '../components/UnsupervisedTrainingPanel.jsx';
+import { useDataStore } from '../features/dataFiles/state/useDataStore.js';
+import ValidationCurvePanel from '../features/tuning/components/ValidationCurvePanel.jsx';
+import GridSearchPanel from '../features/tuning/components/GridSearchPanel.jsx';
+import RandomSearchPanel from '../features/tuning/components/RandomSearchPanel.jsx';
+import EnsembleTrainingPanel from '../features/ensembles/components/EnsembleTrainingPanel.jsx';
+import UnsupervisedTrainingPanel from '../features/unsupervised/components/UnsupervisedTrainingPanel.jsx';
 
 const COLUMN_GAP = 'var(--mantine-spacing-lg)';
 

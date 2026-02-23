@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getTuningDefaults } from '../../api/schema';
+import { getTuningDefaults } from './schemaApi.js';
 
 /**
  * Fetch backend-owned tuning request-model defaults.

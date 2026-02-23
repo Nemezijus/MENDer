@@ -4,21 +4,21 @@ import {
   Stack, Group, Divider, Alert, Title, Box, Progress
 } from '@mantine/core';
 
-import { useDataStore } from '../state/useDataStore.js';
-import { useResultsStore } from '../../../state/useResultsStore.js';
-import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
+import { useResultsStore } from '../../results/state/useResultsStore.js';
+import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
-import { useFeatureStore } from '../../../state/useFeatureStore.js';
-import { useSettingsStore } from '../../../state/useSettingsStore.js';
-import { useModelConfigStore } from '../../../state/useModelConfigStore.js';
+import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
+import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
+import { useModelConfigStore } from '../state/useModelConfigStore.js';
 
-import ModelSelectionCard from '../../../components/ModelSelectionCard.jsx';
-import ShuffleLabelsCard from '../../../components/ShuffleLabelsCard.jsx';
-import SplitOptionsCard from '../../../components/SplitOptionsCard.jsx';
+import ModelSelectionCard from './ModelSelectionCard.jsx';
+import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 
-import { runTrainRequest } from '../../../api/train.js';
-import { fetchProgress } from '../../../api/progress.js';
-import { compactPayload } from '../utils/compactPayload.js';
+import { runTrainRequest } from '../api/trainApi.js';
+import { fetchProgress } from '../api/progressApi.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
 /** ---------- helpers ---------- **/
 

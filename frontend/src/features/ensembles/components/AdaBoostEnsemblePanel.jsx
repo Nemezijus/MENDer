@@ -16,24 +16,24 @@ import {
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 
-import { useDataStore } from '../../state/useDataStore.js';
-import { useSettingsStore } from '../../../state/useSettingsStore.js';
-import { useFeatureStore } from '../../../state/useFeatureStore.js';
-import { useResultsStore } from '../../../state/useResultsStore.js';
-import { useModelArtifactStore } from '../../state/useModelArtifactStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
+import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
+import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
+import { useResultsStore } from '../../results/state/useResultsStore.js';
+import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
 import { useEnsembleStore } from '../state/useEnsembleStore.js';
 
-import { compactPayload } from '../../utils/compactPayload.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
-import SplitOptionsCard from '../../../components/SplitOptionsCard.jsx';
-import ModelSelectionCard from '../ModelSelectionCard.jsx';
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
+import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
 
 import { runEnsembleTrainRequest } from '../api/ensemblesApi.js';
 
 import EnsembleHelpText, {
   AdaBoostIntroText,
-} from '../../../components/helpers/helpTexts/EnsembleHelpText.jsx';
+} from '../../../shared/content/help/EnsembleHelpText.jsx';
 import AdaBoostEnsembleClassificationResults from './AdaBoostEnsembleClassificationResults.jsx';
 import AdaBoostEnsembleRegressionResults from './AdaBoostEnsembleRegressionResults.jsx';
 

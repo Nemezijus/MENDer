@@ -2,7 +2,7 @@ import { Card, Stack, Text, Select, Group, Box } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
 import ScalingHelpText, {
   ScalingIntroText,
-} from '../../../components/helpers/helpTexts/ScalingHelpText.jsx';
+} from '../../content/help/ScalingHelpText.jsx';
 
 export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
   const { enums } = useSchemaDefaults();

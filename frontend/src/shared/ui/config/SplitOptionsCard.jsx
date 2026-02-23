@@ -10,11 +10,11 @@ import {
   Box,
   Button,
 } from '@mantine/core';
-import { useDataStore } from '../state/useDataStore.js';
+import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
 import SplitHelpText, {
   SplitIntroText,
-} from '../../../components/helpers/helpTexts/SplitHelpText.jsx';
+} from '../../content/help/SplitHelpText.jsx';
 
 export default function SplitOptionsCard({
   title = 'Data split',

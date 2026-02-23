@@ -12,16 +12,16 @@ import {
 } from '@mantine/core';
 
 import { useProductionDataStore } from '../../dataFiles/state/useProductionDataStore.js';
-import { useResultsStore } from '../../../state/useResultsStore.js';
-import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
+import { useResultsStore } from '../../results/state/useResultsStore.js';
+import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
 import {
   applyModelToData,
   exportPredictions,
   saveBlobInteractive,
   downloadBlob,
 } from '../../modelArtifacts/api/modelsApi.js';
-import { useFilesConstraintsQuery } from '../state/useFilesConstraintsQuery.js';
-import { compactPayload } from '../utils/compactPayload.js';
+import { useFilesConstraintsQuery } from '../../../shared/schema/useFilesConstraintsQuery.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
 function ModelSummary({ artifact }) {
   if (!artifact) {

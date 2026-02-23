@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Stack, Text, Card, useMantineTheme } from '@mantine/core';
-import { useResultsStore } from '../../../../state/useResultsStore.js';
-import { useSettingsStore } from '../../../../state/useSettingsStore.js';
+import { useResultsStore } from '../../../results/state/useResultsStore.js';
+import { useSettingsStore } from '../../../settings/state/useSettingsStore.js';
 import LearningCurveResults from './LearningCurveResults.jsx';
 import LearningCurveAnalyticsResults from './LearningCurveAnalyticsResults.jsx';
 

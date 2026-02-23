@@ -1,9 +1,9 @@
 
 import { Card, Tabs } from '@mantine/core';
 
-import TrainingDataUploadCard from '../../../components/TrainingDataUploadCard.jsx';
-import SavedModelUploadCard from '../../../components/SavedModelUploadCard.jsx';
-import ProductionDataUploadCard from '../../../components/ProductionDataUploadCard.jsx';
+import TrainingDataUploadCard from './TrainingDataUploadCard.jsx';
+import SavedModelUploadCard from '../../modelArtifacts/components/SavedModelUploadCard.jsx';
+import ProductionDataUploadCard from './ProductionDataUploadCard.jsx';
 
 export default function DataFilesPanel() {
   return (

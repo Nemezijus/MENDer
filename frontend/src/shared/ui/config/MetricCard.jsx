@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Card, Stack, Text, Select, Group, Box, MultiSelect } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
-import { useDataStore } from '../state/useDataStore.js';
-import MetricHelpText, { MetricIntroText } from '../../../components/helpers/helpTexts/MetricHelpText.jsx';
+import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
+import MetricHelpText, { MetricIntroText } from '../../content/help/MetricHelpText.jsx';
 
 function normalizeTaskName(t) {
   if (!t) return null;

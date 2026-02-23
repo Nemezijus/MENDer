@@ -1,10 +1,10 @@
 // frontend/src/components/EnsembleTrainingPanel.jsx
 import { Tabs, Stack, Card, Text } from '@mantine/core';
 
-import VotingEnsemblePanel from '../../../components/ensembles/VotingEnsemblePanel.jsx';
-import BaggingEnsemblePanel from '../../../components/ensembles/BaggingEnsemblePanel.jsx';
-import AdaBoostEnsemblePanel from '../../../components/ensembles/AdaBoostEnsemblePanel.jsx';
-import XGBoostEnsemblePanel from '../../../components/ensembles/XGBoostEnsemblePanel.jsx';    
+import VotingEnsemblePanel from './VotingEnsemblePanel.jsx';
+import BaggingEnsemblePanel from './BaggingEnsemblePanel.jsx';
+import AdaBoostEnsemblePanel from './AdaBoostEnsemblePanel.jsx';
+import XGBoostEnsemblePanel from './XGBoostEnsemblePanel.jsx';    
 
 export default function EnsembleTrainingPanel() {
   return (

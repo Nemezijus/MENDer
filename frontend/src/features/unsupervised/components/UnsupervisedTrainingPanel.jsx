@@ -3,16 +3,16 @@ import { Stack, Card, Text, Group, Button, Alert, Title } from '@mantine/core';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
-import { useDataStore } from '../state/useDataStore.js';
-import { useSettingsStore } from '../../../state/useSettingsStore.js';
-import { useFeatureStore } from '../../../state/useFeatureStore.js';
-import { useResultsStore } from '../../../state/useResultsStore.js';
-import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
-import { useUnsupervisedStore } from '../../../state/useUnsupervisedStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
+import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
+import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
+import { useResultsStore } from '../../results/state/useResultsStore.js';
+import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
+import { useUnsupervisedStore } from '../state/useUnsupervisedStore.js';
 
-import ModelSelectionCard from './ModelSelectionCard.jsx';
-import { runUnsupervisedTrainRequest } from '../../../api/unsupervised.js';
-import { compactPayload } from '../utils/compactPayload.js';
+import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
+import { runUnsupervisedTrainRequest } from '../api/unsupervisedApi.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
 function cloneDefaults(obj) {
   if (!obj) return obj;

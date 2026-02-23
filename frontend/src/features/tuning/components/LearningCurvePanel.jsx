@@ -12,22 +12,22 @@ import {
   NumberInput,
 } from '@mantine/core';
 
-import { useDataStore } from '../state/useDataStore.js';
-import { useFeatureStore } from '../../../state/useFeatureStore.js';
-import { useResultsStore } from '../../../state/useResultsStore.js';
+import { useDataStore } from '../../dataFiles/state/useDataStore.js';
+import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
+import { useResultsStore } from '../../results/state/useResultsStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
-import { useSettingsStore } from '../../../state/useSettingsStore.js';
-import { useTuningStore } from '../../../state/useTuningStore.js';
-import { useModelConfigStore } from '../state/useModelConfigStore.js';
-import { useTuningDefaultsQuery } from '../state/useTuningDefaultsQuery.js';
+import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
+import { useTuningStore } from '../state/useTuningStore.js';
+import { useModelConfigStore } from '../../training/state/useModelConfigStore.js';
+import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaultsQuery.js';
 
-import { compactPayload } from '../utils/compactPayload.js';
+import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
-import ModelSelectionCard from './ModelSelectionCard.jsx';
-import SplitOptionsCard from '../../../components/SplitOptionsCard.jsx';
+import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 
-import { requestLearningCurve } from '../../../api/tuning.js';
-import LearningCurveResultsPanel from '../../../components/visualizations/LearningCurveResultsPanel.jsx';
+import { requestLearningCurve } from '../api/tuningApi.js';
+import LearningCurveResultsPanel from './results/LearningCurveResultsPanel.jsx';
 
 export default function LearningCurvePanel() {
   const xPath = useDataStore((s) => s.xPath);

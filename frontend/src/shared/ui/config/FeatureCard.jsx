@@ -11,10 +11,10 @@ import {
   Box,
 } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
-import { useFeatureStore } from '../../../state/useFeatureStore.js';
+import { useFeatureStore } from '../../state/useFeatureStore.js';
 import FeatureHelpText, {
   FeatureIntroText,
-} from '../../../components/helpers/helpTexts/FeatureHelpText.jsx';
+} from '../../content/help/FeatureHelpText.jsx';
 
 /** -------- helpers to read enums from the Features schema -------- **/
 

@@ -1,4 +1,4 @@
-import api from './client.js';
+import api from '../../../shared/api/client.js';
 
 /**
  * Run an unsupervised (clustering) training request.

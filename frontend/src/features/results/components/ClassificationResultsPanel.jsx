@@ -1,7 +1,7 @@
 import { Card, Stack, Text, Divider } from '@mantine/core';
-import ConfusionMatrixResults from '../../../components/visualizations/ConfusionMatrixResults.jsx';
-import ClassificationMetricResults from '../../../components/visualizations/ClassificationMetricResults.jsx';
-import RocResults from '../../../components/visualizations/RocResults.jsx';
+import ConfusionMatrixResults from './visualizations/ConfusionMatrixResults.jsx';
+import ClassificationMetricResults from './visualizations/ClassificationMetricResults.jsx';
+import RocResults from './visualizations/RocResults.jsx';
 
 export default function ClassificationResultsPanel({ trainResult }) {
   if (!trainResult) return null;
