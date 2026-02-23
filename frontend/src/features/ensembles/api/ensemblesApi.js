@@ -1,8 +1,7 @@
-// frontend/src/api/ensembles.js
-import api from '../../../shared/api/client.js';
+// frontend/src/features/ensembles/api/ensemblesApi.js
+import { postJson } from '../../../shared/api/http.js';
 
 export async function runEnsembleTrainRequest(payload) {
   // POST /api/v1/ensembles/train
-  const { data } = await api.post('/ensembles/train', payload);
-  return data;
+  return await postJson('/ensembles/train', payload);
 }

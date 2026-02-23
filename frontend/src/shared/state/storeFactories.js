@@ -63,3 +63,36 @@ export function makeArrayItemRemover(key, set, opts = {}) {
       return { [key]: next };
     });
 }
+
+/**
+ * Update an item within an array nested under a slice.
+ *
+ * Example:
+ *   makeNestedArrayItemUpdater('voting', 'estimators', set)
+ */
+export function makeNestedArrayItemUpdater(sliceKey, arrayKey, set) {
+  return (idx, patch) =>
+    set((state) => {
+      const slice = state?.[sliceKey] || {};
+      const cur = Array.isArray(slice?.[arrayKey]) ? slice[arrayKey] : [];
+      const next = cur.map((it, i) =>
+        i === idx ? { ...(it || {}), ...(patch || {}) } : it,
+      );
+      return { [sliceKey]: { ...(slice || {}), [arrayKey]: next } };
+    });
+}
+
+/**
+ * Remove an item within an array nested under a slice.
+ */
+export function makeNestedArrayItemRemover(sliceKey, arrayKey, set, opts = {}) {
+  const { minLength = 0 } = opts;
+  return (idx) =>
+    set((state) => {
+      const slice = state?.[sliceKey] || {};
+      const cur = Array.isArray(slice?.[arrayKey]) ? slice[arrayKey] : [];
+      if (cur.length <= minLength) return state;
+      const next = cur.filter((_, i) => i !== idx);
+      return { [sliceKey]: { ...(slice || {}), [arrayKey]: next } };
+    });
+}

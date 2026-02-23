@@ -7,29 +7,23 @@ import {
   Button,
   Select,
   NumberInput,
-  SegmentedControl,
   Divider,
   Alert,
   Box,
   ActionIcon,
   TextInput,
 } from '@mantine/core';
-import { IconPlus, IconTrash, IconRefresh } from '@tabler/icons-react';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
 import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
 import { useResultsStore } from '../../results/state/useResultsStore.js';
-import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
 import { useEnsembleStore } from '../state/useEnsembleStore.js';
 
-import { compactPayload } from '../../../shared/utils/compactPayload.js';
-
 import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
-
-import { runEnsembleTrainRequest } from '../api/ensemblesApi.js';
 
 import EnsembleHelpText, {
   VotingIntroText,
@@ -38,93 +32,33 @@ import EnsembleHelpText, {
 import VotingEnsembleClassificationResults from './VotingEnsembleClassificationResults.jsx';
 import VotingEnsembleRegressionResults from './VotingEnsembleRegressionResults.jsx';
 
-/** ---------- helpers ---------- **/
+import EnsemblePanelHeader from './common/EnsemblePanelHeader.jsx';
+import EnsembleErrorAlert from './common/EnsembleErrorAlert.jsx';
 
-// User-friendly names for the Algorithm dropdown.
-// Values must remain the internal algo keys used by the backend.
-const ALGO_LABELS = {
-  // -------- classifiers --------
-  logreg: 'Logistic Regression',
-  ridge: 'Ridge Classifier',
-  sgd: 'SGD Classifier',
-  svm: 'Support Vector Machine (SVC)',
-  tree: 'Decision Tree',
-  forest: 'Random Forest',
-  extratrees: 'Extra Trees Classifier',
-  hgb: 'Histogram Gradient Boosting',
-  knn: 'k-Nearest Neighbors',
-  gnb: 'Gaussian Naive Bayes',
+import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
 
-  // -------- regressors --------
-  linreg: 'Linear Regression',
-  ridgereg: 'Ridge Regression',
-  ridgecv: 'Ridge Regression (CV)',
-  enet: 'Elastic Net',
-  enetcv: 'Elastic Net (CV)',
-  lasso: 'Lasso',
-  lassocv: 'Lasso (CV)',
-  bayridge: 'Bayesian Ridge',
-  svr: 'Support Vector Regression (SVR)',
-  linsvr: 'Linear SVR',
-  knnreg: 'k-Nearest Neighbors Regressor',
-  treereg: 'Decision Tree Regressor',
-  rfreg: 'Random Forest Regressor',
-};
+import { useEnsembleTrainRunner } from '../hooks/useEnsembleTrainRunner.js';
+import { buildCommonEnsemblePayload, buildEnsembleTrainPayload } from '../utils/payload.js';
+import { getAllowedMetrics, resolveMetricForPayload } from '../utils/metric.js';
+import { intOrUndef, numOrUndef } from '../utils/coerce.js';
+import { dedupeWarning, normalizeWeight } from '../utils/voting.js';
 
-function algoKeyToLabel(algo) {
-  if (!algo) return '';
-  return ALGO_LABELS[algo] ?? String(algo);
+function titleCase(s) {
+  return String(s || '')
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
 }
 
-function toErrorText(e) {
-  if (typeof e === 'string') return e;
-  const data = e?.response?.data;
-  const detail = data?.detail ?? e?.detail;
-  const pick = detail ?? data ?? e?.message ?? e;
-  if (typeof pick === 'string') return pick;
-
-  if (Array.isArray(pick)) {
-    return pick
-      .map((it) => {
-        if (typeof it === 'string') return it;
-        if (it && typeof it === 'object') {
-          const loc = Array.isArray(it.loc) ? it.loc.join('.') : it.loc;
-          return it.msg ? `${loc ? loc + ': ' : ''}${it.msg}` : JSON.stringify(it);
-        }
-        return String(it);
-      })
-      .join('\n');
-  }
-
-  try {
-    return JSON.stringify(pick);
-  } catch {
-    return String(pick);
-  }
+function algoLabelWithFallback(key) {
+  const k = String(key || '');
+  const lbl = getAlgoLabel(k);
+  return lbl === k ? titleCase(k) : lbl;
 }
-
-function dedupeWarning(estimators) {
-  const algos = (estimators || []).map((s) => s?.model?.algo).filter(Boolean);
-  const set = new Set();
-  const dup = new Set();
-  for (const a of algos) {
-    if (set.has(a)) dup.add(a);
-    set.add(a);
-  }
-  return dup.size ? Array.from(dup) : null;
-}
-
-function normalizeWeight(v) {
-  if (v === '' || v == null) return undefined;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-/** ---------- component ---------- **/
 
 export default function VotingEnsemblePanel() {
-  const inspectReport = useDataStore((s) => s.inspectReport);
-
   const xPath = useDataStore((s) => s.xPath);
   const yPath = useDataStore((s) => s.yPath);
   const npzPath = useDataStore((s) => s.npzPath);
@@ -149,10 +83,7 @@ export default function VotingEnsemblePanel() {
     getEnsembleDefaults,
   } = useSchemaDefaults();
 
-  const setTrainResult = useResultsStore((s) => s.setTrainResult);
   const trainResult = useResultsStore((s) => s.trainResult);
-  const setActiveResultKind = useResultsStore((s) => s.setActiveResultKind);
-  const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
   // ---- ensemble store slice ----
   const voting = useEnsembleStore((s) => s.voting);
@@ -162,9 +93,8 @@ export default function VotingEnsemblePanel() {
   const removeVotingEstimatorAt = useEnsembleStore((s) => s.removeVotingEstimatorAt);
   const resetVoting = useEnsembleStore((s) => s.resetVoting);
 
-  // ---- local run state + help toggle ----
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
+  const { loading, err, setErr, runTrain } = useEnsembleTrainRunner();
+
   const [showHelp, setShowHelp] = useState(false);
 
   const initializedRef = useRef(false);
@@ -177,33 +107,33 @@ export default function VotingEnsemblePanel() {
   );
 
   const algoOptions = useMemo(
-    () => compatibleAlgos.map((a) => ({ value: a, label: algoKeyToLabel(a) })),
+    () => compatibleAlgos.map((a) => ({ value: a, label: algoLabelWithFallback(a) })),
     [compatibleAlgos],
   );
 
-  const duplicateAlgos = useMemo(() => dedupeWarning(voting.estimators), [voting.estimators]);
+  const estimators = Array.isArray(voting.estimators) ? voting.estimators : [];
+
+  const duplicateAlgos = useMemo(
+    () => dedupeWarning(voting.estimators),
+    [voting.estimators],
+  );
 
   // ----------------- schema-driven defaults (display + payload) -----------------
 
-  const allowedMetrics = useMemo(() => {
-    if (!enums) return [];
-    const metricByTask = enums.MetricByTask || null;
-    if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
-      return metricByTask[effectiveTask].map(String);
-    }
-    if (Array.isArray(enums.MetricName)) return enums.MetricName.map(String);
-    return [];
-  }, [effectiveTask, enums]);
+  const allowedMetrics = useMemo(
+    () => getAllowedMetrics(enums, effectiveTask),
+    [enums, effectiveTask],
+  );
 
-  // Use backend-provided task ordering as a suggestion without writing into state.
-  // For regression we must avoid falling back to EvalModel.metric='accuracy'.
   const defaultMetricFromSchema = allowedMetrics?.[0] ?? undefined;
   const metricOverride = metric ? String(metric) : undefined;
   const metricIsAllowed =
     !metricOverride || allowedMetrics.length === 0 || allowedMetrics.includes(metricOverride);
-  const metricForPayload = metricIsAllowed
-    ? (metricOverride ?? (effectiveTask === 'regression' ? defaultMetricFromSchema : undefined))
-    : (effectiveTask === 'regression' ? defaultMetricFromSchema : undefined);
+
+  const metricForPayload = useMemo(
+    () => resolveMetricForPayload({ metric, effectiveTask, allowedMetrics }),
+    [metric, effectiveTask, allowedMetrics],
+  );
 
   // Split defaults (schema-owned)
   const holdoutDefaults = split?.holdout?.defaults ?? null;
@@ -322,100 +252,63 @@ export default function VotingEnsemblePanel() {
       throw new Error('Schema defaults not loaded: split mode is unavailable.');
     }
 
-    // DATA (override-only; empty-string keys are omitted)
-    const data = compactPayload({
-      x_path: npzPath ? undefined : xPath,
-      y_path: npzPath ? undefined : yPath,
-      npz_path: npzPath,
-      x_key: xKey,
-      y_key: yKey,
+    const common = buildCommonEnsemblePayload({
+      dataInputs: { xPath, yPath, npzPath, xKey, yKey },
+      splitInputs:
+        effectiveSplitMode === 'kfold'
+          ? {
+              mode: 'kfold',
+              nSplits: intOrUndef(voting.nSplits),
+              stratified: voting.stratified,
+              shuffle: voting.shuffle,
+            }
+          : {
+              mode: 'holdout',
+              trainFrac: numOrUndef(voting.trainFrac),
+              stratified: voting.stratified,
+              shuffle: voting.shuffle,
+            },
+      scaleMethod,
+      featureCtx: fctx,
+      evalInputs: {
+        metric: metricForPayload,
+        seed: intOrUndef(voting.seed),
+      },
     });
 
-    // SPLIT (override-only; if mode is unset, let backend defaults apply)
-    const splitCfg = compactPayload(
-      effectiveSplitMode === 'kfold'
-        ? {
-            mode: 'kfold',
-            n_splits: voting.nSplits,
-            stratified: voting.stratified,
-            shuffle: voting.shuffle,
-          }
-        : {
-            mode: 'holdout',
-            train_frac: voting.trainFrac,
-            stratified: voting.stratified,
-            shuffle: voting.shuffle,
-          },
-    );
-
-    // SCALE (override-only)
-    const scale = compactPayload({ method: scaleMethod });
-
-    // FEATURES (override-only)
-    let features = {};
-    const m = fctx?.method;
-    if (m === 'pca') {
-      features = compactPayload({
-        method: m,
-        pca_n: fctx.pca_n,
-        pca_var: fctx.pca_var,
-        pca_whiten: fctx.pca_whiten,
-      });
-    } else if (m === 'lda') {
-      features = compactPayload({
-        method: m,
-        lda_n: fctx.lda_n,
-        lda_solver: fctx.lda_solver,
-        lda_shrinkage: fctx.lda_shrinkage,
-        lda_tol: fctx.lda_tol,
-      });
-    } else if (m === 'sfs') {
-      features = compactPayload({
-        method: m,
-        sfs_k: fctx.sfs_k,
-        sfs_direction: fctx.sfs_direction,
-        sfs_cv: fctx.sfs_cv,
-        sfs_n_jobs: fctx.sfs_n_jobs,
-      });
-    } else {
-      features = compactPayload({ method: m });
-    }
-
-    // EVAL (schema-driven metric; decoder defaults owned by engine)
-    const seedInt =
-      voting.seed === '' || voting.seed == null
-        ? undefined
-        : Number.parseInt(String(voting.seed), 10);
-
-    const evalCfg = compactPayload({
-      metric: metricForPayload,
-      seed: Number.isFinite(seedInt) ? seedInt : undefined,
-    });
-
-    // ESTIMATORS
-    const estimators = (voting.estimators || []).map((s) => {
+    const payloadEstimators = (voting.estimators || []).map((s) => {
       const nm = s?.name ? String(s.name).trim() : '';
-      return compactPayload({
+      return {
         model: s?.model,
         name: nm || undefined,
         weight: normalizeWeight(s?.weight),
-      });
+      };
     });
 
-    const ensemble = compactPayload({
+    const ensemble = {
       kind: 'voting',
       voting: voting.votingType,
-      estimators,
-    });
+      estimators: payloadEstimators,
+    };
 
-    return { data, split: splitCfg, scale, features, ensemble, eval: evalCfg };
+    return buildEnsembleTrainPayload({ common, ensemble });
   };
 
   const handleRun = async () => {
     setErr(null);
 
-    if (!inspectReport || inspectReport?.n_samples <= 0) {
-      setErr('No inspected training data. Please upload and inspect your data first.');
+    if (defsLoading) {
+      setErr('Schema defaults are still loading. Please try again in a moment.');
+      return;
+    }
+
+    if (algoOptions.length === 0) {
+      setErr('Schema defaults not loaded: compatible algorithms are unavailable.');
+      return;
+    }
+
+    if (!effectiveSplitMode) {
+      setErr('Schema defaults not loaded: split defaults are unavailable.');
       return;
     }
 
@@ -438,48 +331,30 @@ export default function VotingEnsemblePanel() {
       }
     }
 
-    setLoading(true);
-    try {
-      const payload = buildPayload();
-      const result = await runEnsembleTrainRequest(payload);
-
-      setTrainResult(result);
-      setActiveResultKind('train');
-
-      if (result?.artifact) setArtifact(result.artifact);
-
-      setLoading(false);
-    } catch (e) {
-      setLoading(false);
-      setErr(toErrorText(e));
-    }
+    await runTrain({ buildPayload });
   };
 
   const renderSimpleEstimatorRow = (s, idx) => (
-  <Group key={idx} align="flex-end" wrap="nowrap">
-    <Select
-      style={{ flex: 1, minWidth: 180, maxWidth: 360 }}
-      label={`Estimator ${idx + 1}`}
-      value={s?.model?.algo || null}
-      onChange={(v) => updateEstimatorAlgoSimple(idx, v || s?.model?.algo)}
-      data={algoOptions}
-    />
+    <Group key={idx} align="flex-end" wrap="nowrap">
+      <Select
+        style={{ flex: 1, minWidth: 180, maxWidth: 360 }}
+        label={`Estimator ${idx + 1}`}
+        value={s?.model?.algo || null}
+        onChange={(v) => updateEstimatorAlgoSimple(idx, v || s?.model?.algo)}
+        data={algoOptions}
+      />
 
-    <ActionIcon
-      variant="subtle"
-      color="red"
-      onClick={() => removeVotingEstimatorAt(idx)}
-      disabled={estimators.length <= 2}
-      title="Remove estimator"
-    >
-      <IconTrash size={18} />
-    </ActionIcon>
-  </Group>
-);
-
-  // ----------------- render -----------------
-
-  const estimators = Array.isArray(voting.estimators) ? voting.estimators : [];
+      <ActionIcon
+        variant="subtle"
+        color="red"
+        onClick={() => removeVotingEstimatorAt(idx)}
+        disabled={estimators.length <= 2}
+        title="Remove estimator"
+      >
+        <IconTrash size={18} />
+      </ActionIcon>
+    </Group>
+  );
 
   const ensembleDefaults = getEnsembleDefaults?.('voting') || null;
   const defaultVotingType = ensembleDefaults?.voting;
@@ -489,26 +364,13 @@ export default function VotingEnsemblePanel() {
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Text fw={700} size="lg">
-              Voting ensemble
-            </Text>
+          <EnsemblePanelHeader
+            title="Voting ensemble"
+            mode={voting.mode}
+            onModeChange={(v) => setVoting({ mode: v })}
+            onReset={resetToDefaults}
+          />
 
-            <Group gap="xs">
-              <ActionIcon variant="subtle" onClick={resetToDefaults} title="Reset to defaults">
-                <IconRefresh size={18} />
-              </ActionIcon>
-
-              <SegmentedControl
-                value={voting.mode}
-                onChange={(v) => setVoting({ mode: v })}
-                data={[
-                  { value: 'simple', label: 'Simple' },
-                  { value: 'advanced', label: 'Advanced' },
-                ]}
-              />
-            </Group>
-          </Group>
           <Group justify="flex-end">
             <Button
               onClick={handleRun}
@@ -518,6 +380,8 @@ export default function VotingEnsemblePanel() {
               Train voting ensemble
             </Button>
           </Group>
+
+          <EnsembleErrorAlert error={err} />
 
           {/* First row: left A+B stacked, right C help preview */}
           <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
@@ -569,17 +433,24 @@ export default function VotingEnsemblePanel() {
 
             {/* Right: C help preview (same height as left stack) */}
             <Box style={{ flex: 1, minWidth: 260 }}>
-                <Stack justify="space-between" style={{ height: '100%' }} gap="xs">
-                    <Box>
-                    <VotingIntroText effectiveTask={effectiveTask} votingType={voting.votingType} />
-                    </Box>
+              <Stack justify="space-between" style={{ height: '100%' }} gap="xs">
+                <Box>
+                  <VotingIntroText
+                    effectiveTask={effectiveTask}
+                    votingType={voting.votingType}
+                  />
+                </Box>
 
-                    <Group justify="flex-end">
-                    <Button size="xs" variant="subtle" onClick={() => setShowHelp((p) => !p)}>
-                        {showHelp ? 'Show less' : 'Show more'}
-                    </Button>
-                    </Group>
-                </Stack>
+                <Group justify="flex-end">
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => setShowHelp((p) => !p)}
+                  >
+                    {showHelp ? 'Show less' : 'Show more'}
+                  </Button>
+                </Group>
+              </Stack>
             </Box>
           </Group>
 
@@ -601,7 +472,7 @@ export default function VotingEnsemblePanel() {
                 Duplicate estimator types detected
               </Text>
               <Text size="sm">
-                You selected: <strong>{duplicateAlgos.map(algoKeyToLabel).join(', ')}</strong> more than once. If these are
+                You selected: <strong>{duplicateAlgos.map(algoLabelWithFallback).join(', ')}</strong> more than once. If these are
                 identical, this acts like implicit weighting. Prefer using explicit weights in Advanced mode.
               </Text>
             </Alert>
@@ -655,23 +526,21 @@ export default function VotingEnsemblePanel() {
                 and set weights.
               </Text>
 
-              
-                <Group align="flex-start" wrap="nowrap" gap="md">
-                    <Stack style={{ flex: 1 }} gap="sm">
-                        {estimators
-                        .map((s, idx) => ({ s, idx }))
-                        .filter((x) => x.idx % 2 === 0)
-                        .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
-                    </Stack>
+              <Group align="flex-start" wrap="nowrap" gap="md">
+                <Stack style={{ flex: 1 }} gap="sm">
+                  {estimators
+                    .map((s, idx) => ({ s, idx }))
+                    .filter((x) => x.idx % 2 === 0)
+                    .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
+                </Stack>
 
-                    <Stack style={{ flex: 1 }} gap="sm">
-                        {estimators
-                        .map((s, idx) => ({ s, idx }))
-                        .filter((x) => x.idx % 2 === 1)
-                        .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
-                    </Stack>
-                </Group>
-              
+                <Stack style={{ flex: 1 }} gap="sm">
+                  {estimators
+                    .map((s, idx) => ({ s, idx }))
+                    .filter((x) => x.idx % 2 === 1)
+                    .map(({ s, idx }) => renderSimpleEstimatorRow(s, idx))}
+                </Stack>
+              </Group>
             </Stack>
           )}
 
@@ -751,23 +620,16 @@ export default function VotingEnsemblePanel() {
         seed={voting.seed}
         onSeedChange={(v) => setVoting({ seed: v })}
       />
-      {trainResult?.ensemble_report?.kind === 'voting' &&
-      trainResult.ensemble_report.task === 'classification' && (
-        <VotingEnsembleClassificationResults report={trainResult.ensemble_report} />
-      )}
 
       {trainResult?.ensemble_report?.kind === 'voting' &&
-      trainResult.ensemble_report.task === 'regression' && (
-        <VotingEnsembleRegressionResults report={trainResult.ensemble_report} />
-      )}
-      {err && (
-        <Alert color="red" variant="light">
-          <Text fw={600}>Training failed</Text>
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-            {err}
-          </Text>
-        </Alert>
-      )}
+        trainResult.ensemble_report.task === 'classification' && (
+          <VotingEnsembleClassificationResults report={trainResult.ensemble_report} />
+        )}
+
+      {trainResult?.ensemble_report?.kind === 'voting' &&
+        trainResult.ensemble_report.task === 'regression' && (
+          <VotingEnsembleRegressionResults report={trainResult.ensemble_report} />
+        )}
 
       <Group justify="flex-end">
         <Button

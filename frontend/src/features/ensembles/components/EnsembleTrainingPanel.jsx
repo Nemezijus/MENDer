@@ -1,10 +1,10 @@
-// frontend/src/components/EnsembleTrainingPanel.jsx
-import { Tabs, Stack, Card, Text } from '@mantine/core';
+// frontend/src/features/ensembles/components/EnsembleTrainingPanel.jsx
+import { Tabs, Stack } from '@mantine/core';
 
 import VotingEnsemblePanel from './VotingEnsemblePanel.jsx';
 import BaggingEnsemblePanel from './BaggingEnsemblePanel.jsx';
 import AdaBoostEnsemblePanel from './AdaBoostEnsemblePanel.jsx';
-import XGBoostEnsemblePanel from './XGBoostEnsemblePanel.jsx';    
+import XGBoostEnsemblePanel from './XGBoostEnsemblePanel.jsx';
 
 export default function EnsembleTrainingPanel() {
   return (
@@ -22,7 +22,7 @@ export default function EnsembleTrainingPanel() {
         </Tabs.Panel>
 
         <Tabs.Panel value="bagging" pt="md">
-            <BaggingEnsemblePanel />
+          <BaggingEnsemblePanel />
         </Tabs.Panel>
 
         <Tabs.Panel value="adaboost" pt="md">
@@ -30,7 +30,7 @@ export default function EnsembleTrainingPanel() {
         </Tabs.Panel>
 
         <Tabs.Panel value="xgboost" pt="md">
-            <XGBoostEnsemblePanel />
+          <XGBoostEnsemblePanel />
         </Tabs.Panel>
       </Tabs>
     </Stack>

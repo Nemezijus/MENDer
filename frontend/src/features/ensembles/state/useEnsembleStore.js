@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+import {
+  makeShallowMergeSetter,
+  makeNestedArrayItemRemover,
+  makeNestedArrayItemUpdater,
+} from '../../../shared/state/storeFactories.js';
+
 /**
  * Ensemble config overrides only.
  *
@@ -78,6 +84,10 @@ const makeXGBoostInitial = () => ({
   min_child_weight: undefined,
   gamma: undefined,
 
+  use_early_stopping: undefined,
+  early_stopping_rounds: undefined,
+  eval_set_fraction: undefined,
+
   n_jobs: undefined,
   random_state: undefined,
 
@@ -91,50 +101,37 @@ export const useEnsembleStore = create((set) => ({
   xgboost: makeXGBoostInitial(),
 
   // ---- voting ----
-  setVoting: (partial) =>
-    set((state) => ({ voting: { ...state.voting, ...partial } })),
+  setVoting: makeShallowMergeSetter('voting', set),
 
   setVotingEstimators: (estimators) =>
-    set((state) => ({ voting: { ...state.voting, estimators } })),
+    set((state) => ({ voting: { ...(state?.voting || {}), estimators } })),
 
-  updateVotingEstimatorAt: (idx, patch) =>
-    set((state) => {
-      const cur = state.voting.estimators || [];
-      const next = cur.map((s, i) => (i === idx ? { ...s, ...patch } : s));
-      return { voting: { ...state.voting, estimators: next } };
-    }),
+  updateVotingEstimatorAt: makeNestedArrayItemUpdater('voting', 'estimators', set),
 
-  removeVotingEstimatorAt: (idx) =>
-    set((state) => {
-      const cur = state.voting.estimators || [];
-      if (cur.length <= 2) return state;
-      const next = cur.filter((_, i) => i !== idx);
-      return { voting: { ...state.voting, estimators: next } };
-    }),
+  removeVotingEstimatorAt: makeNestedArrayItemRemover('voting', 'estimators', set, {
+    minLength: 2,
+  }),
 
   resetVoting: () => set(() => ({ voting: makeVotingInitial() })),
 
   // ---- bagging ----
-  setBagging: (partial) =>
-    set((state) => ({ bagging: { ...state.bagging, ...partial } })),
+  setBagging: makeShallowMergeSetter('bagging', set),
 
   setBaggingBaseEstimator: (base_estimator) =>
-    set((state) => ({ bagging: { ...state.bagging, base_estimator } })),
+    set((state) => ({ bagging: { ...(state?.bagging || {}), base_estimator } })),
 
   resetBagging: (_effectiveTask) => set(() => ({ bagging: makeBaggingInitial() })),
 
   // ---- adaboost ----
-  setAdaBoost: (partial) =>
-    set((state) => ({ adaboost: { ...state.adaboost, ...partial } })),
+  setAdaBoost: makeShallowMergeSetter('adaboost', set),
 
   setAdaBoostBaseEstimator: (base_estimator) =>
-    set((state) => ({ adaboost: { ...state.adaboost, base_estimator } })),
+    set((state) => ({ adaboost: { ...(state?.adaboost || {}), base_estimator } })),
 
   resetAdaBoost: (_effectiveTask) => set(() => ({ adaboost: makeAdaBoostInitial() })),
 
   // ---- xgboost ----
-  setXGBoost: (partial) =>
-    set((state) => ({ xgboost: { ...state.xgboost, ...partial } })),
+  setXGBoost: makeShallowMergeSetter('xgboost', set),
 
   resetXGBoost: (_effectiveTask) => set(() => ({ xgboost: makeXGBoostInitial() })),
 }));
