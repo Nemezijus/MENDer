@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-export const useSettingsStore = create((set) => ({
+import { makeReset } from '../../../shared/state/storeFactories.js';
+
+const INITIAL_STATE = {
   /**
    * Global settings overrides only.
    *
@@ -10,8 +12,13 @@ export const useSettingsStore = create((set) => ({
    */
   scaleMethod: undefined,
   metric: undefined,
+};
+
+export const useSettingsStore = create((set) => ({
+  ...INITIAL_STATE,
+
+  resetSettings: makeReset(INITIAL_STATE, set),
 
   setScaleMethod: (scaleMethod) => set({ scaleMethod }),
-
   setMetric: (metric) => set({ metric }),
 }));
