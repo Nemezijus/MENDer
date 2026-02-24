@@ -15,6 +15,7 @@ export default function BaggingConfigPane({
   algoOptions,
   compatibleAlgos,
   models,
+  enums,
   effectiveTask,
   effectiveBaseEstimator,
   getModelDefaults,
@@ -60,6 +61,9 @@ export default function BaggingConfigPane({
           title="Base estimator configuration"
           model={effectiveBaseEstimator}
           models={models}
+          schema={models?.schema}
+          enums={enums}
+          taskOverride={effectiveTask}
           compatibleAlgos={compatibleAlgos}
           onChange={onBaseEstimatorConfigChange}
         />

@@ -252,6 +252,7 @@ export default function BaggingEnsemblePanel() {
             algoOptions={algoOptions}
             compatibleAlgos={compatibleAlgos}
             models={models}
+            enums={enums}
             effectiveTask={effectiveTask}
             effectiveBaseEstimator={effectiveBaseEstimator}
             getModelDefaults={getModelDefaults}

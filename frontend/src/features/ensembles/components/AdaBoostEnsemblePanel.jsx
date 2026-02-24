@@ -255,6 +255,7 @@ export default function AdaBoostEnsemblePanel() {
             algoOptions={algoOptions}
             compatibleAlgos={compatibleAlgos}
             models={models}
+            enums={enums}
             effectiveTask={effectiveTask}
             effectiveBaseEstimator={effectiveBaseEstimator}
             getModelDefaults={getModelDefaults}
