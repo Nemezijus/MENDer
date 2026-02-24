@@ -9,7 +9,9 @@ import { getFilenameFromContentDisposition } from '../../../shared/utils/downloa
  * @returns {Promise<{ blob: Blob, filename: string, sha256?: string, size?: number }>}
  */
 export async function saveModel({ artifactUid, artifactMeta, filename }) {
-  const { blob, headers } = await postBlob('/api/v1/models/save', {
+  // NOTE: shared/api/client.js is configured with baseURL='/api/v1'
+  // so endpoints here should be relative to that base.
+  const { blob, headers } = await postBlob('/models/save', {
     artifact_uid: artifactUid,
     artifact_meta: artifactMeta,
     filename,
@@ -37,7 +39,7 @@ export async function loadModel(file) {
   const fd = new FormData();
   fd.append('file', file);
 
-  return await postFormData('/api/v1/models/load', fd);
+  return await postFormData('/models/load', fd);
 }
 
 /**
@@ -49,7 +51,7 @@ export async function loadModel(file) {
  * @returns {Promise<object>} ApplyModelResponse
  */
 export async function applyModelToData({ artifactUid, artifactMeta, data }) {
-  return await postJson('/api/v1/models/apply', {
+  return await postJson('/models/apply', {
     artifact_uid: artifactUid,
     artifact_meta: artifactMeta,
     data,
@@ -68,7 +70,7 @@ export async function applyModelToData({ artifactUid, artifactMeta, data }) {
  * @returns {Promise<{ blob: Blob, filename: string }>}
  */
 export async function exportPredictions({ artifactUid, artifactMeta, data, filename }) {
-  const { blob, headers } = await postBlob('/api/v1/models/apply/export', {
+  const { blob, headers } = await postBlob('/models/apply/export', {
     artifact_uid: artifactUid,
     artifact_meta: artifactMeta,
     data,
@@ -91,7 +93,7 @@ export async function exportPredictions({ artifactUid, artifactMeta, data, filen
  * @returns {Promise<{ blob: Blob, filename: string }>} 
  */
 export async function exportDecoderOutputs({ artifactUid, filename }) {
-  const { blob, headers } = await postBlob('/api/v1/decoder/export', {
+  const { blob, headers } = await postBlob('/decoder/export', {
     artifact_uid: artifactUid,
     filename,
   });

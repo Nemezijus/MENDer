@@ -20,6 +20,42 @@ function rethrowNormalized(e) {
 }
 
 /**
+ * When axios is configured with responseType='blob', error responses may
+ * also arrive as a Blob (e.g. FastAPI JSON errors). Convert them to text
+ * so users don't see "[object Blob]".
+ *
+ * @param {any} e
+ * @returns {Promise<never>}
+ */
+async function rethrowNormalizedBlobAware(e) {
+  const data = e?.response?.data;
+  // Blob exists in browsers; guard for non-browser environments.
+  const isBlob = typeof Blob !== 'undefined' && data instanceof Blob;
+
+  if (isBlob) {
+    try {
+      const text = await data.text();
+      // Try to rehydrate JSON so toErrorText can pick {detail: ...}
+      try {
+        const parsed = JSON.parse(text);
+        const err = new Error(toErrorText({ ...e, response: { ...(e.response || {}), data: parsed } }));
+        err.cause = e;
+        throw err;
+      } catch {
+        const err = new Error(text || toErrorText(e));
+        err.cause = e;
+        throw err;
+      }
+    } catch {
+      // Fall back to the generic formatter.
+      rethrowNormalized(e);
+    }
+  }
+
+  rethrowNormalized(e);
+}
+
+/**
  * @template T
  * @param {string} url
  * @param {import('axios').AxiosRequestConfig} [config]
@@ -126,6 +162,6 @@ export async function postBlob(url, body, config) {
     });
     return { blob: res.data, headers: res.headers || {} };
   } catch (e) {
-    rethrowNormalized(e);
+    await rethrowNormalizedBlobAware(e);
   }
 }
