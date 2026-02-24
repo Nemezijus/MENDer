@@ -17,71 +17,10 @@ import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import ModelHelpText, {
   ModelIntroText,
 } from '../../../shared/content/help/ModelHelpText.jsx';
+import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
+import { enumFromSubSchema, getVariantSchema, listDiscriminatorValues, toSelectData, fromSelectNullable } from '../../../shared/utils/schema/jsonSchema.js';
 
 /** ---------------- helpers ---------------- **/
-
-function resolveRef(schema, ref) {
-  if (!schema || !ref || typeof ref !== 'string') return null;
-  const prefix = '#/$defs/';
-  if (!ref.startsWith(prefix)) return null;
-  const key = ref.slice(prefix.length);
-  return schema?.$defs?.[key] ?? null;
-}
-
-function getAlgoSchema(schema, algo) {
-  if (!schema || !algo) return null;
-
-  const mapping = schema?.discriminator?.mapping;
-  if (mapping && mapping[algo]) {
-    const target = resolveRef(schema, mapping[algo]);
-    if (target) return target;
-  }
-
-  const variants = schema?.oneOf || schema?.anyOf || [];
-  for (const entry of variants) {
-    const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
-    const alg = target?.properties?.algo?.const ?? target?.properties?.algo?.default;
-    if (alg === algo) return target || null;
-  }
-
-  return null;
-}
-
-function enumFromSubSchema(sub, key, fallback) {
-  try {
-    const p = sub?.properties?.[key];
-    if (!p) return fallback;
-    if (Array.isArray(p.enum)) return fallback && fallback.length ? fallback : p.enum;
-    const list = (p.anyOf ?? p.oneOf ?? [])
-      .flatMap((x) => {
-        if (Array.isArray(x.enum)) return x.enum;
-        if (x.const != null) return [x.const];
-        if (x.type === 'null') return [null];
-        return [];
-      });
-    return list.length ? list : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function toSelectData(enums, { includeNoneLabel = false } = {}) {
-  const out = [];
-  let hasNull = false;
-  for (const v of enums ?? []) {
-    if (v === null) {
-      hasNull = true;
-      continue;
-    }
-    out.push({ value: String(v), label: String(v) });
-  }
-  if (hasNull && includeNoneLabel) out.unshift({ value: 'none', label: 'none' });
-  return out;
-}
-
-function fromSelectNullable(v) {
-  return v === 'none' ? null : v;
-}
 
 function parseCsvFloats(s) {
   if (s == null) return null;
@@ -122,72 +61,12 @@ function modeValToMaxFeat(mode, value) {
   return null;
 }
 
-// User-friendly names for the Algorithm dropdown.
-// Values must remain the internal algo keys used by the backend.
-const ALGO_LABELS = {
-  // -------- classifiers --------
-  logreg: 'Logistic Regression',
-  ridge: 'Ridge Classifier',
-  sgd: 'SGD Classifier',
-  svm: 'Support Vector Machine (SVC)',
-  tree: 'Decision Tree',
-  forest: 'Random Forest',
-  extratrees: 'Extra Trees Classifier',
-  hgb: 'Histogram Gradient Boosting',
-  knn: 'k-Nearest Neighbors',
-  gnb: 'Gaussian Naive Bayes',
-
-  // -------- regressors --------
-  linreg: 'Linear Regression',
-  ridgereg: 'Ridge Regression',
-  ridgecv: 'Ridge Regression (CV)',
-  enet: 'Elastic Net',
-  enetcv: 'Elastic Net (CV)',
-  lasso: 'Lasso',
-  lassocv: 'Lasso (CV)',
-  bayridge: 'Bayesian Ridge',
-  svr: 'Support Vector Regression (SVR)',
-  linsvr: 'Linear SVR',
-  knnreg: 'k-Nearest Neighbors Regressor',
-  treereg: 'Decision Tree Regressor',
-  rfreg: 'Random Forest Regressor',
-
-  // -------- unsupervised --------
-  kmeans: 'K-Means',
-  dbscan: 'DBSCAN',
-  spectral: 'Spectral Clustering',
-  agglo: 'Agglomerative Clustering',
-  gmm: 'Gaussian Mixture',
-  bgmm: 'Bayesian Gaussian Mixture',
-  meanshift: 'MeanShift',
-  birch: 'Birch',
-};
 
 function algoKeyToLabel(algo) {
   if (!algo) return '';
-  return ALGO_LABELS[algo] ?? String(algo);
+  return getAlgoLabel(algo);
 }
 
-function algoListFromSchema(schema) {
-  if (!schema) return null;
-
-  const mapping = schema?.discriminator?.mapping;
-  if (mapping && typeof mapping === 'object') {
-    const keys = Object.keys(mapping);
-    if (keys.length) return keys;
-  }
-
-  const variants = schema?.oneOf || schema?.anyOf || [];
-  const set = new Set();
-  for (const entry of variants) {
-    const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
-    const alg = target?.properties?.algo?.const ?? target?.properties?.algo?.default;
-    if (alg) set.add(String(alg));
-  }
-  if (set.size) return Array.from(set);
-
-  return null;
-}
 
 /** --------------- component --------------- **/
 
@@ -233,7 +112,7 @@ export default function ModelSelectionCard({
 
   // IMPORTANT: This card must not be the authority for "what models exist".
   // Available algorithms must come from the engine schema bundle.
-  const schemaAlgos = algoListFromSchema(schema);
+  const schemaAlgos = listDiscriminatorValues(schema, 'algo');
   const defaultsAlgos = models?.defaults ? Object.keys(models.defaults) : null;
   const availableAlgos = (schemaAlgos || defaultsAlgos || []).map((a) => String(a));
   const hasInventory = availableAlgos.length > 0;
@@ -319,7 +198,7 @@ export default function ModelSelectionCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTask, visibleKey, meta, m.algo, hasInventory]);
 
-  const sub = getAlgoSchema(schema, m.algo);
+  const sub = getVariantSchema(schema, 'algo', m.algo);
 
   // Logistic Regression enums
   const lrPenalty = toSelectData(

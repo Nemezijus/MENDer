@@ -15,68 +15,9 @@ import { useFeatureStore } from '../../state/useFeatureStore.js';
 import FeatureHelpText, {
   FeatureIntroText,
 } from '../../content/help/FeatureHelpText.jsx';
+import { getVariantSchema, enumFromSubSchema, toSelectData } from '../../utils/schema/jsonSchema.js';
 
 /** -------- helpers to read enums from the Features schema -------- **/
-
-function resolveRef(schema, ref) {
-  if (!schema || !ref || typeof ref !== 'string') return null;
-  const prefix = '#/$defs/';
-  if (!ref.startsWith(prefix)) return null;
-  const key = ref.slice(prefix.length);
-  return schema?.$defs?.[key] ?? null;
-}
-
-function getMethodSchema(schema, method) {
-  if (!schema || !method) return null;
-
-  // try discriminator mapping
-  const mapping = schema?.discriminator?.mapping;
-  if (mapping && mapping[method]) {
-    const target = resolveRef(schema, mapping[method]);
-    if (target) return target;
-  }
-
-  // fallback: scan oneOf/anyOf and check properties.method const/default
-  const variants = schema?.oneOf || schema?.anyOf || [];
-  for (const entry of variants) {
-    const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
-    const m = target?.properties?.method?.const ?? target?.properties?.method?.default;
-    if (m === method) return target || null;
-  }
-  return null;
-}
-
-function enumFromSubSchema(sub, key, fallback) {
-  try {
-    const p = sub?.properties?.[key];
-    if (!p) return fallback;
-    if (Array.isArray(p.enum)) return p.enum;
-    const list = (p.anyOf ?? p.oneOf ?? [])
-      .flatMap((x) => {
-        if (Array.isArray(x.enum)) return x.enum;
-        if (x.const != null) return [x.const];
-        if (x.type === 'null') return [null];
-        return [];
-      });
-    return list.length ? list : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function toSelectData(values, { includeNone = false } = {}) {
-  const out = [];
-  let sawNull = false;
-  for (const v of values ?? []) {
-    if (v === null) {
-      sawNull = true;
-      continue;
-    }
-    out.push({ value: String(v), label: String(v) });
-  }
-  if (includeNone && sawNull) out.unshift({ value: 'none', label: 'none' });
-  return out;
-}
 
 /** ---------------- component ---------------- **/
 
@@ -118,7 +59,7 @@ export default function FeatureCard({ title = 'Features' }) {
   const defaultMethod = baseDefaults?.method;
   const effectiveMethod = method ?? defaultMethod ?? null;
 
-  const sub = getMethodSchema(features?.schema, effectiveMethod);
+  const sub = getVariantSchema(features?.schema, 'method', effectiveMethod);
 
   const propDefault = (key) => {
     const d = sub?.properties?.[key]?.default;

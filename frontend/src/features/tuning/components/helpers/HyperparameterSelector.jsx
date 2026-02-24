@@ -10,37 +10,12 @@ import {
   SegmentedControl,
   Box,
 } from '@mantine/core';
+import { getVariantSchema } from '../../../../shared/utils/schema/jsonSchema.js';
 
 /**
  * Helpers adapted from ModelSelectionCard
  */
 
-function resolveRef(schema, ref) {
-  if (!schema || !ref || typeof ref !== 'string') return null;
-  const prefix = '#/$defs/';
-  if (!ref.startsWith(prefix)) return null;
-  const key = ref.slice(prefix.length);
-  return schema?.$defs?.[key] ?? null;
-}
-
-function getAlgoSchema(schema, algo) {
-  if (!schema || !algo) return null;
-
-  const mapping = schema?.discriminator?.mapping;
-  if (mapping && mapping[algo]) {
-    const target = resolveRef(schema, mapping[algo]);
-    if (target) return target;
-  }
-
-  const variants = schema?.oneOf || schema?.anyOf || [];
-  for (const entry of variants) {
-    const target = entry?.$ref ? resolveRef(schema, entry.$ref) : entry;
-    const alg = target?.properties?.algo?.const ?? target?.properties?.algo?.default;
-    if (alg === algo) return target || null;
-  }
-
-  return null;
-}
 
 function getParamSchema(sub, key) {
   if (!sub || !key) return null;
@@ -210,7 +185,7 @@ export default function HyperparameterSelector({
   const [helperError, setHelperError] = useState('');
   const [displayPrecision, setDisplayPrecision] = useState(null);
 
-  const sub = useMemo(() => getAlgoSchema(schema, algo), [schema, algo]);
+  const sub = useMemo(() => getVariantSchema(schema, 'algo', algo), [schema, algo]);
 
   const paramOptions = useMemo(() => {
     const props = sub?.properties ?? {};

@@ -1,6 +1,5 @@
-import api from '../../../shared/api/client.js';
+import { postJson } from '../../../shared/api/http.js';
 
 export async function runTrainRequest(payload) {
-  const { data } = await api.post('/train', payload);
-  return data;
+  return await postJson('/train', payload);
 }
