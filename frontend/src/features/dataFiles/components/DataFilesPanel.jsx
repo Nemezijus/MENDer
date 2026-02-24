@@ -1,4 +1,3 @@
-
 import { Card, Tabs } from '@mantine/core';
 
 import TrainingDataUploadCard from './TrainingDataUploadCard.jsx';
