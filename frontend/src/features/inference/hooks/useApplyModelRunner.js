@@ -5,10 +5,9 @@ import { useResultsStore } from '../../results/state/useResultsStore.js';
 import { useModelArtifactStore } from '../../modelArtifacts/state/useModelArtifactStore.js';
 import {
   applyModelToData,
-  downloadBlob,
   exportPredictions,
-  saveBlobInteractive,
 } from '../../modelArtifacts/api/modelsApi.js';
+import { downloadBlob, saveBlobInteractive } from '../../../shared/utils/download.js';
 import { buildDataPayload } from '../../../shared/utils/payload/buildDataPayload.js';
 import { toErrorText } from '../../../shared/utils/errors.js';
 

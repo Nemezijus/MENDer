@@ -1,11 +1,11 @@
-// frontend/src/components/ModelLoadCard.jsx
 import { useRef, useState } from 'react';
 import { Card, Stack, Text, Button } from '@mantine/core';
 
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { loadModel } from '../api/modelsApi.js';
+import { toErrorText } from '../../../shared/utils/errors.js';
 
-export default function ModelLoadCard() {
+export default function SavedModelUploadCard() {
   const fileInputRef = useRef(null);
   const setArtifact = useModelArtifactStore((s) => s.setArtifact);
 
@@ -21,10 +21,10 @@ export default function ModelLoadCard() {
     setErr(null);
     try {
       const { artifact: loadedMeta } = await loadModel(file);
-      setArtifact(loadedMeta);
+      setArtifact(loadedMeta, 'loaded');
       setInfo(`Loaded model "${file.name}".`);
     } catch (e) {
-      setErr(e?.message || String(e));
+      setErr(toErrorText(e) || 'Load failed');
     } finally {
       setLoading(false);
       event.target.value = '';

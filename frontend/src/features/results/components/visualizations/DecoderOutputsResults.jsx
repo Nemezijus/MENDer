@@ -13,7 +13,8 @@ import {
   SimpleGrid,
 } from '@mantine/core';
 
-import { downloadBlob, exportDecoderOutputs } from '../../../modelArtifacts/api/modelsApi.js';
+import { exportDecoderOutputs } from '../../../modelArtifacts/api/modelsApi.js';
+import { downloadBlob } from '../../../../shared/utils/download.js';
 
 function toCsvValue(v) {
   if (v === null || v === undefined) return '';

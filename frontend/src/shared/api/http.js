@@ -104,3 +104,28 @@ export async function postFormData(url, formData, config) {
     rethrowNormalized(e);
   }
 }
+
+/**
+ * POST and return a Blob (also returns response headers).
+ *
+ * Useful for streaming endpoints like:
+ * - /api/v1/models/save
+ * - /api/v1/models/apply/export
+ * - /api/v1/decoder/export
+ *
+ * @param {string} url
+ * @param {any} body
+ * @param {import('axios').AxiosRequestConfig} [config]
+ * @returns {Promise<{ blob: Blob, headers: Record<string, string> }>} 
+ */
+export async function postBlob(url, body, config) {
+  try {
+    const res = await api.post(url, body, {
+      ...config,
+      responseType: 'blob',
+    });
+    return { blob: res.data, headers: res.headers || {} };
+  } catch (e) {
+    rethrowNormalized(e);
+  }
+}

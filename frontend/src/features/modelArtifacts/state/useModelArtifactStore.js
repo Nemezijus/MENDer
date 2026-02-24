@@ -1,9 +1,23 @@
 import { create } from 'zustand';
 
-export const useModelArtifactStore = create((set) => ({
+import { makeReset } from '../../../shared/state/storeFactories.js';
+
+const initialState = {
   artifact: null,
+  /** 'trained' | 'loaded' | null */
+  source: null,
+};
 
-  setArtifact: (artifact) => set({ artifact }),
+export const useModelArtifactStore = create((set) => ({
+  ...initialState,
 
-  clearArtifact: () => set({ artifact: null }),
+  /**
+   * @param {any} artifact
+   * @param {'trained' | 'loaded'} [source]
+   */
+  setArtifact: (artifact, source = 'trained') => set({ artifact, source }),
+
+  clearArtifact: () => set({ artifact: null, source: null }),
+
+  reset: makeReset(initialState, set),
 }));
