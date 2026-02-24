@@ -1,6 +1,5 @@
 import { Stack, Divider, Group, Alert } from '@mantine/core';
 
-import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
 
 import ParamNumber from '../common/ParamNumber.jsx';
@@ -34,17 +33,15 @@ export default function BaggingConfigPane({
   const dispRandomState = bagging.random_state ?? baggingDefaults?.random_state;
 
   const dispBootstrap = bagging.bootstrap ?? baggingDefaults?.bootstrap ?? false;
-  const dispBootstrapFeatures =
-    bagging.bootstrap_features ?? baggingDefaults?.bootstrap_features ?? false;
+  const dispBootstrapFeatures = bagging.bootstrap_features ?? baggingDefaults?.bootstrap_features ?? false;
   const dispOobScore = bagging.oob_score ?? baggingDefaults?.oob_score ?? false;
 
   const dispBalanced = bagging.balanced ?? baggingDefaults?.balanced ?? false;
-  const dispSamplingStrategy =
-    bagging.sampling_strategy ?? baggingDefaults?.sampling_strategy;
+  const dispSamplingStrategy = bagging.sampling_strategy ?? baggingDefaults?.sampling_strategy;
   const dispReplacement = bagging.replacement ?? baggingDefaults?.replacement ?? false;
 
   return (
-    <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
+    <Stack style={{ width: '100%' }} gap="sm">
       <ParamSelect
         label="Base estimator"
         placeholder={algoOptions.length ? 'Select model' : 'Loading…'}
@@ -99,13 +96,7 @@ export default function BaggingConfigPane({
       </Group>
 
       <Group grow align="flex-end" wrap="wrap">
-        <ParamNumber
-          label="n_jobs"
-          min={-1}
-          step={1}
-          value={dispNJobs}
-          onChange={(v) => setBagging({ n_jobs: v })}
-        />
+        <ParamNumber label="n_jobs" min={-1} step={1} value={dispNJobs} onChange={(v) => setBagging({ n_jobs: v })} />
 
         <ParamNumber
           label="Random state"
@@ -159,23 +150,6 @@ export default function BaggingConfigPane({
         value={dispSamplingStrategy ?? null}
         onChange={(v) => setBagging({ sampling_strategy: v })}
         disabled={!Boolean(dispBalanced)}
-      />
-
-      <SplitOptionsCard
-        title="Data split"
-        allowedModes={['holdout', 'kfold']}
-        mode={bagging.splitMode}
-        onModeChange={(v) => setBagging({ splitMode: v })}
-        trainFrac={bagging.trainFrac}
-        onTrainFracChange={(v) => setBagging({ trainFrac: v })}
-        nSplits={bagging.nSplits}
-        onNSplitsChange={(v) => setBagging({ nSplits: v })}
-        stratified={bagging.stratified}
-        onStratifiedChange={(v) => setBagging({ stratified: v })}
-        shuffle={bagging.shuffle}
-        onShuffleChange={(v) => setBagging({ shuffle: v })}
-        seed={bagging.seed}
-        onSeedChange={(v) => setBagging({ seed: v })}
       />
 
       {effectiveTask === 'regression' && !metricForPayload && (

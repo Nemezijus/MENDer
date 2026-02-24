@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Card, Stack, Group, Text, Button } from '@mantine/core';
+import { Card, Stack, Group, Button, Divider, Alert, Text } from '@mantine/core';
+
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
@@ -28,15 +30,13 @@ export default function XGBoostEnsemblePanel() {
   const xKey = useDataStore((s) => s.xKey);
   const yKey = useDataStore((s) => s.yKey);
 
-  const effectiveTask = useDataStore(
-    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
-  );
+  const effectiveTask = useDataStore((s) => s.taskSelected || s.inspectReport?.task_inferred || null);
 
   const fctx = useFeatureStore();
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
 
-  const { enums, split, getEnsembleDefaults } = useSchemaDefaults();
+  const { loading: defsLoading, enums, split, getEnsembleDefaults } = useSchemaDefaults();
   const xgbDefaults = getEnsembleDefaults?.('xgboost') ?? null;
 
   const trainResult = useResultsStore((s) => s.trainResult);
@@ -49,23 +49,19 @@ export default function XGBoostEnsemblePanel() {
 
   const { loading, err, setErr, runTrain } = useEnsembleTrainRunner();
 
-  const allowedMetrics = useMemo(
-    () => getAllowedMetrics(enums, effectiveTask),
-    [enums, effectiveTask],
-  );
+  const allowedMetrics = useMemo(() => getAllowedMetrics(enums, effectiveTask), [enums, effectiveTask]);
 
   const metricForPayload = useMemo(
     () => resolveMetricForPayload({ metric, effectiveTask, allowedMetrics }),
     [metric, effectiveTask, allowedMetrics],
   );
 
-  // The run contract requires a split object; if user did not pick a mode,
-  // follow the UI default (holdout).
-  const splitMode = xgb.splitMode ?? 'holdout';
-
   // Split defaults (schema-owned)
   const holdoutDefaults = split?.holdout?.defaults ?? null;
   const kfoldDefaults = split?.kfold?.defaults ?? null;
+  const defaultSplitMode = holdoutDefaults?.mode ?? kfoldDefaults?.mode ?? 'holdout';
+  const effectiveSplitMode = xgb.splitMode ?? defaultSplitMode;
+
   const defaultTrainFrac = holdoutDefaults?.train_frac ?? undefined;
   const defaultNSplits = kfoldDefaults?.n_splits ?? undefined;
 
@@ -78,7 +74,7 @@ export default function XGBoostEnsemblePanel() {
     const common = buildCommonEnsemblePayload({
       dataInputs: { xPath, yPath, npzPath, xKey, yKey },
       splitInputs:
-        splitMode === 'kfold'
+        effectiveSplitMode === 'kfold'
           ? {
               mode: 'kfold',
               nSplits: intOrUndef(xgb.nSplits ?? defaultNSplits),
@@ -129,6 +125,16 @@ export default function XGBoostEnsemblePanel() {
   const handleRun = async () => {
     setErr(null);
 
+    if (defsLoading) {
+      setErr('Schema defaults are still loading. Please try again in a moment.');
+      return;
+    }
+
+    if (!effectiveSplitMode) {
+      setErr('Schema defaults not loaded: split defaults are unavailable.');
+      return;
+    }
+
     if (effectiveTask === 'regression' && !metricForPayload) {
       setErr('No metric selected. Please choose a regression metric in Settings → Metric.');
       return;
@@ -136,6 +142,8 @@ export default function XGBoostEnsemblePanel() {
 
     await runTrain({ buildPayload });
   };
+
+  const xgbReport = trainResult?.ensemble_report?.kind === 'xgboost' ? trainResult.ensemble_report : null;
 
   return (
     <Stack gap="md">
@@ -149,39 +157,51 @@ export default function XGBoostEnsemblePanel() {
           />
 
           <Group justify="flex-end">
-            <Button onClick={handleRun} loading={loading}>
+            <Button onClick={handleRun} loading={loading} disabled={defsLoading || !effectiveSplitMode}>
               Train XGBoost ensemble
             </Button>
           </Group>
 
           <EnsembleErrorAlert error={err} />
 
-          <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
-            <XGBoostConfigPane
-              mode={xgb.mode}
-              xgb={xgb}
-              xgbDefaults={xgbDefaults}
-              setXGBoost={setXGBoost}
-            />
+          <XGBoostConfigPane mode={xgb.mode} xgb={xgb} xgbDefaults={xgbDefaults} setXGBoost={setXGBoost} />
 
-            <XGBoostHelpPane
-              showHelp={showHelp}
-              onToggleHelp={() => setShowHelp((p) => !p)}
-            />
-          </Group>
+          <Divider my="xs" />
+
+          <XGBoostHelpPane showHelp={showHelp} onToggleHelp={() => setShowHelp((p) => !p)} />
         </Stack>
       </Card>
 
-      {trainResult && (
-        <Card withBorder shadow="sm" radius="md" padding="lg">
-          <Stack gap="md">
-            <Text fw={700} size="lg">
-              Results
-            </Text>
-            <XGBoostEnsembleResults result={trainResult} />
-          </Stack>
-        </Card>
-      )}
+      <SplitOptionsCard
+        title="Data split"
+        allowedModes={['holdout', 'kfold']}
+        mode={effectiveSplitMode}
+        onModeChange={(m) => setXGBoost({ splitMode: m })}
+        trainFrac={xgb.trainFrac}
+        onTrainFracChange={(v) => setXGBoost({ trainFrac: v })}
+        nSplits={xgb.nSplits}
+        onNSplitsChange={(v) => setXGBoost({ nSplits: v })}
+        stratified={xgb.stratified}
+        onStratifiedChange={(v) => setXGBoost({ stratified: v })}
+        shuffle={xgb.shuffle}
+        onShuffleChange={(v) => setXGBoost({ shuffle: v })}
+        seed={xgb.seed}
+        onSeedChange={(v) => setXGBoost({ seed: v })}
+      />
+
+      {xgbReport && <XGBoostEnsembleResults report={xgbReport} />}
+
+      <Group justify="flex-end">
+        <Button onClick={handleRun} loading={loading} disabled={defsLoading || !effectiveSplitMode}>
+          Train XGBoost ensemble
+        </Button>
+      </Group>
+
+      <Alert color="blue" variant="light">
+        <Text size="sm">
+          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings section.
+        </Text>
+      </Alert>
     </Stack>
   );
 }

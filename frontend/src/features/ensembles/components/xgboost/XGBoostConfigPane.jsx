@@ -1,20 +1,13 @@
 import { Stack, Group, Divider } from '@mantine/core';
 
-import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
-
 import ParamNumber from '../common/ParamNumber.jsx';
 import ParamSwitch from '../common/ParamSwitch.jsx';
 
-export default function XGBoostConfigPane({
-  mode,
-  xgb,
-  xgbDefaults,
-  setXGBoost,
-}) {
+export default function XGBoostConfigPane({ mode, xgb, xgbDefaults, setXGBoost }) {
   const useEarlyStopping = Boolean(xgb.use_early_stopping ?? xgbDefaults?.use_early_stopping);
 
   return (
-    <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
+    <Stack style={{ width: '100%' }} gap="sm">
       {/* Core */}
       <Group grow align="flex-end" wrap="wrap">
         <ParamNumber
@@ -112,7 +105,7 @@ export default function XGBoostConfigPane({
               step={1}
               value={xgb.early_stopping_rounds ?? xgbDefaults?.early_stopping_rounds ?? undefined}
               onChange={(v) => setXGBoost({ early_stopping_rounds: v })}
-              disabled={!Boolean(xgb.use_early_stopping)}
+              disabled={!useEarlyStopping}
             />
 
             <ParamNumber
@@ -122,7 +115,7 @@ export default function XGBoostConfigPane({
               step={0.05}
               value={xgb.eval_set_fraction ?? xgbDefaults?.eval_set_fraction ?? undefined}
               onChange={(v) => setXGBoost({ eval_set_fraction: v })}
-              disabled={!Boolean(xgb.use_early_stopping)}
+              disabled={!useEarlyStopping}
             />
           </Group>
 
@@ -146,23 +139,6 @@ export default function XGBoostConfigPane({
           </Group>
         </>
       )}
-
-      <SplitOptionsCard
-        title="Data split"
-        allowedModes={['holdout', 'kfold']}
-        mode={xgb.splitMode}
-        onModeChange={(v) => setXGBoost({ splitMode: v })}
-        trainFrac={xgb.trainFrac}
-        onTrainFracChange={(v) => setXGBoost({ trainFrac: v })}
-        nSplits={xgb.nSplits}
-        onNSplitsChange={(v) => setXGBoost({ nSplits: v })}
-        stratified={xgb.stratified}
-        onStratifiedChange={(v) => setXGBoost({ stratified: v })}
-        shuffle={xgb.shuffle}
-        onShuffleChange={(v) => setXGBoost({ shuffle: v })}
-        seed={xgb.seed}
-        onSeedChange={(v) => setXGBoost({ seed: v })}
-      />
     </Stack>
   );
 }

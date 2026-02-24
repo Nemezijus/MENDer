@@ -1,6 +1,5 @@
 import { Stack, Divider, Group, Alert } from '@mantine/core';
 
-import SplitOptionsCard from '../../../../shared/ui/config/SplitOptionsCard.jsx';
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
 
 import ParamNumber from '../common/ParamNumber.jsx';
@@ -28,12 +27,10 @@ export default function AdaBoostConfigPane({
   const dispRandomState = adaboost.random_state ?? adaboostDefaults?.random_state;
 
   const dispAlgorithm =
-    effectiveTask === 'regression'
-      ? undefined
-      : adaboost.algorithm ?? adaboostDefaults?.algorithm ?? undefined;
+    effectiveTask === 'regression' ? undefined : adaboost.algorithm ?? adaboostDefaults?.algorithm ?? undefined;
 
   return (
-    <Stack style={{ flex: 1, minWidth: 260 }} gap="sm">
+    <Stack style={{ width: '100%' }} gap="sm">
       <ParamSelect
         label="Base estimator"
         placeholder={algoOptions.length ? 'Select model' : 'Loading…'}
@@ -59,21 +56,15 @@ export default function AdaBoostConfigPane({
 
       {showSampleWeightWarning && (
         <Alert color="yellow" title="Base estimator">
-          The selected base estimator may not support sample weights. AdaBoost can still run,
-          but performance may differ.
+          The selected base estimator may not support sample weights. AdaBoost can still run, but performance may
+          differ.
         </Alert>
       )}
 
       <Divider my="xs" label="AdaBoost" labelPosition="center" />
 
       <Group grow align="flex-end" wrap="wrap">
-        <ParamNumber
-          label="Estimators"
-          min={1}
-          step={10}
-          value={dispNEstimators}
-          onChange={(v) => setAdaBoost({ n_estimators: v })}
-        />
+        <ParamNumber label="Estimators" min={1} step={10} value={dispNEstimators} onChange={(v) => setAdaBoost({ n_estimators: v })} />
 
         <ParamNumber
           label="Learning rate"
@@ -100,23 +91,6 @@ export default function AdaBoostConfigPane({
           onChange={(v) => setAdaBoost({ algorithm: v })}
         />
       )}
-
-      <SplitOptionsCard
-        title="Data split"
-        allowedModes={['holdout', 'kfold']}
-        mode={adaboost.splitMode}
-        onModeChange={(v) => setAdaBoost({ splitMode: v })}
-        trainFrac={adaboost.trainFrac}
-        onTrainFracChange={(v) => setAdaBoost({ trainFrac: v })}
-        nSplits={adaboost.nSplits}
-        onNSplitsChange={(v) => setAdaBoost({ nSplits: v })}
-        stratified={adaboost.stratified}
-        onStratifiedChange={(v) => setAdaBoost({ stratified: v })}
-        shuffle={adaboost.shuffle}
-        onShuffleChange={(v) => setAdaBoost({ shuffle: v })}
-        seed={adaboost.seed}
-        onSeedChange={(v) => setAdaBoost({ seed: v })}
-      />
 
       {effectiveTask === 'regression' && !metricForPayload && (
         <Alert color="yellow" title="Metric">

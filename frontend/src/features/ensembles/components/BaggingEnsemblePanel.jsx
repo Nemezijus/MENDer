@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Card, Stack, Group, Text, Button } from '@mantine/core';
+import { Card, Stack, Group, Button, Divider, Alert, Text } from '@mantine/core';
+
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
@@ -46,9 +48,7 @@ export default function BaggingEnsemblePanel() {
   const xKey = useDataStore((s) => s.xKey);
   const yKey = useDataStore((s) => s.yKey);
 
-  const effectiveTask = useDataStore(
-    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
-  );
+  const effectiveTask = useDataStore((s) => s.taskSelected || s.inspectReport?.task_inferred || null);
 
   const fctx = useFeatureStore();
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
@@ -108,10 +108,7 @@ export default function BaggingEnsemblePanel() {
 
   // ----------------- schema-driven defaults (display + payload) -----------------
 
-  const allowedMetrics = useMemo(
-    () => getAllowedMetrics(enums, effectiveTask),
-    [enums, effectiveTask],
-  );
+  const allowedMetrics = useMemo(() => getAllowedMetrics(enums, effectiveTask), [enums, effectiveTask]);
 
   const metricForPayload = useMemo(
     () => resolveMetricForPayload({ metric, effectiveTask, allowedMetrics }),
@@ -126,8 +123,7 @@ export default function BaggingEnsemblePanel() {
 
   // Base estimator: schema default (or first compatible) without mutating store.
   const defaultBaseAlgo =
-    baggingDefaults?.base_estimator?.algo ||
-    (Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null);
+    baggingDefaults?.base_estimator?.algo || (Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null);
 
   const defaultBaseEstimator = useMemo(() => {
     if (!defaultBaseAlgo) return undefined;
@@ -226,6 +222,8 @@ export default function BaggingEnsemblePanel() {
     await runTrain({ buildPayload });
   };
 
+  const baggingReport = trainResult?.ensemble_report?.kind === 'bagging' ? trainResult.ensemble_report : null;
+
   return (
     <Stack gap="md">
       <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -249,49 +247,68 @@ export default function BaggingEnsemblePanel() {
 
           <EnsembleErrorAlert error={err} />
 
-          {/* First row: left parameters, right help preview */}
-          <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
-            <BaggingConfigPane
-              mode={bagging.mode}
-              algoOptions={algoOptions}
-              compatibleAlgos={compatibleAlgos}
-              models={models}
-              effectiveTask={effectiveTask}
-              effectiveBaseEstimator={effectiveBaseEstimator}
-              getModelDefaults={getModelDefaults}
-              onBaseEstimatorChange={setBaggingBaseEstimator}
-              onBaseEstimatorConfigChange={(next) => setBaggingBaseEstimator(next)}
-              bagging={bagging}
-              baggingDefaults={baggingDefaults}
-              samplingStrategyOptions={samplingStrategyOptions}
-              metricForPayload={metricForPayload}
-              setBagging={setBagging}
-            />
+          <BaggingConfigPane
+            mode={bagging.mode}
+            algoOptions={algoOptions}
+            compatibleAlgos={compatibleAlgos}
+            models={models}
+            effectiveTask={effectiveTask}
+            effectiveBaseEstimator={effectiveBaseEstimator}
+            getModelDefaults={getModelDefaults}
+            onBaseEstimatorChange={setBaggingBaseEstimator}
+            onBaseEstimatorConfigChange={(next) => setBaggingBaseEstimator(next)}
+            bagging={bagging}
+            baggingDefaults={baggingDefaults}
+            samplingStrategyOptions={samplingStrategyOptions}
+            metricForPayload={metricForPayload}
+            setBagging={setBagging}
+          />
 
-            <BaggingHelpPane
-              showHelp={showHelp}
-              onToggleHelp={() => setShowHelp((p) => !p)}
-            />
-          </Group>
+          <Divider my="xs" />
+
+          <BaggingHelpPane showHelp={showHelp} onToggleHelp={() => setShowHelp((p) => !p)} />
         </Stack>
       </Card>
 
-      {/* Results */}
-      {trainResult && (
-        <Card withBorder shadow="sm" radius="md" padding="lg">
-          <Stack gap="md">
-            <Text fw={700} size="lg">
-              Results
-            </Text>
+      <SplitOptionsCard
+        title="Data split"
+        allowedModes={['holdout', 'kfold']}
+        mode={effectiveSplitMode}
+        onModeChange={(m) => setBagging({ splitMode: m })}
+        trainFrac={bagging.trainFrac}
+        onTrainFracChange={(v) => setBagging({ trainFrac: v })}
+        nSplits={bagging.nSplits}
+        onNSplitsChange={(v) => setBagging({ nSplits: v })}
+        stratified={bagging.stratified}
+        onStratifiedChange={(v) => setBagging({ stratified: v })}
+        shuffle={bagging.shuffle}
+        onShuffleChange={(v) => setBagging({ shuffle: v })}
+        seed={bagging.seed}
+        onSeedChange={(v) => setBagging({ seed: v })}
+      />
 
-            {effectiveTask === 'regression' ? (
-              <BaggingEnsembleRegressionResults result={trainResult} />
-            ) : (
-              <BaggingEnsembleClassificationResults result={trainResult} />
-            )}
-          </Stack>
-        </Card>
+      {baggingReport?.task === 'classification' && (
+        <BaggingEnsembleClassificationResults report={baggingReport} />
       )}
+
+      {baggingReport?.task === 'regression' && <BaggingEnsembleRegressionResults report={baggingReport} />}
+
+      <Group justify="flex-end">
+        <Button
+          onClick={handleRun}
+          loading={loading}
+          disabled={defsLoading || algoOptions.length === 0 || !effectiveSplitMode}
+        >
+          Train bagging ensemble
+        </Button>
+      </Group>
+
+      <Alert color="blue" variant="light">
+        <Text size="sm">
+          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings
+          section.
+        </Text>
+      </Alert>
     </Stack>
   );
 }

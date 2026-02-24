@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Card, Stack, Group, Text, Button } from '@mantine/core';
+import { Card, Stack, Group, Button, Divider, Alert, Text } from '@mantine/core';
+
+import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
@@ -46,9 +48,7 @@ export default function AdaBoostEnsemblePanel() {
   const xKey = useDataStore((s) => s.xKey);
   const yKey = useDataStore((s) => s.yKey);
 
-  const effectiveTask = useDataStore(
-    (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
-  );
+  const effectiveTask = useDataStore((s) => s.taskSelected || s.inspectReport?.task_inferred || null);
 
   const fctx = useFeatureStore();
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
@@ -79,10 +79,7 @@ export default function AdaBoostEnsemblePanel() {
   // ---- shared run state ----
   const { loading, err, setErr, runTrain } = useEnsembleTrainRunner();
 
-  const adaboostDefaults = useMemo(
-    () => getEnsembleDefaults?.('adaboost') || null,
-    [getEnsembleDefaults],
-  );
+  const adaboostDefaults = useMemo(() => getEnsembleDefaults?.('adaboost') || null, [getEnsembleDefaults]);
 
   // ----------------- derived -----------------
 
@@ -98,10 +95,7 @@ export default function AdaBoostEnsemblePanel() {
 
   // ----------------- schema-driven defaults (display + payload) -----------------
 
-  const allowedMetrics = useMemo(
-    () => getAllowedMetrics(enums, effectiveTask),
-    [enums, effectiveTask],
-  );
+  const allowedMetrics = useMemo(() => getAllowedMetrics(enums, effectiveTask), [enums, effectiveTask]);
 
   const metricForPayload = useMemo(
     () => resolveMetricForPayload({ metric, effectiveTask, allowedMetrics }),
@@ -116,8 +110,7 @@ export default function AdaBoostEnsemblePanel() {
 
   // Base estimator: schema default (or first compatible) without mutating store.
   const defaultBaseAlgo =
-    adaboostDefaults?.base_estimator?.algo ||
-    (Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null);
+    adaboostDefaults?.base_estimator?.algo || (Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null);
 
   const defaultBaseEstimator = useMemo(() => {
     if (!defaultBaseAlgo) return undefined;
@@ -130,9 +123,7 @@ export default function AdaBoostEnsemblePanel() {
   // If the backend provides capability metadata, reflect it; do not enforce.
   const baseMeta = baseAlgo ? getModelMeta?.(baseAlgo) : null;
   const baseSupportsSampleWeight =
-    baseMeta && typeof baseMeta.supports_sample_weight === 'boolean'
-      ? baseMeta.supports_sample_weight
-      : undefined;
+    baseMeta && typeof baseMeta.supports_sample_weight === 'boolean' ? baseMeta.supports_sample_weight : undefined;
 
   const showSampleWeightWarning = baseSupportsSampleWeight === false;
 
@@ -140,6 +131,16 @@ export default function AdaBoostEnsemblePanel() {
     resetAdaBoost(effectiveTask);
     setErr(null);
   };
+
+  const algorithmOptions = useMemo(() => {
+    if (effectiveTask === 'regression') return [];
+    // Backend accepts SAMME / SAMME.R; keep UI forgiving.
+    return [
+      { value: '__default__', label: 'Default (backend)' },
+      { value: 'SAMME', label: 'SAMME' },
+      { value: 'SAMME.R', label: 'SAMME.R' },
+    ];
+  }, [effectiveTask]);
 
   const buildPayload = () => {
     if (!effectiveSplitMode) {
@@ -178,8 +179,8 @@ export default function AdaBoostEnsemblePanel() {
       effectiveTask === 'regression'
         ? undefined
         : adaboost.algorithm && adaboost.algorithm !== '__default__'
-        ? adaboost.algorithm
-        : undefined;
+          ? adaboost.algorithm
+          : undefined;
 
     const ensemble = {
       kind: 'adaboost',
@@ -224,15 +225,7 @@ export default function AdaBoostEnsemblePanel() {
     await runTrain({ buildPayload, clearPrevious: true });
   };
 
-  const algorithmOptions = useMemo(() => {
-    if (effectiveTask === 'regression') return [];
-    // Backend accepts SAMME / SAMME.R; keep UI forgiving.
-    return [
-      { value: '__default__', label: 'Default (backend)' },
-      { value: 'SAMME', label: 'SAMME' },
-      { value: 'SAMME.R', label: 'SAMME.R' },
-    ];
-  }, [effectiveTask]);
+  const adaboostReport = trainResult?.ensemble_report?.kind === 'adaboost' ? trainResult.ensemble_report : null;
 
   return (
     <Stack gap="md">
@@ -257,48 +250,68 @@ export default function AdaBoostEnsemblePanel() {
 
           <EnsembleErrorAlert error={err} />
 
-          <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
-            <AdaBoostConfigPane
-              mode={adaboost.mode}
-              algoOptions={algoOptions}
-              compatibleAlgos={compatibleAlgos}
-              models={models}
-              effectiveTask={effectiveTask}
-              effectiveBaseEstimator={effectiveBaseEstimator}
-              getModelDefaults={getModelDefaults}
-              onBaseEstimatorChange={setAdaBoostBaseEstimator}
-              onBaseEstimatorConfigChange={(next) => setAdaBoostBaseEstimator(next)}
-              showSampleWeightWarning={showSampleWeightWarning}
-              algorithmOptions={algorithmOptions}
-              adaboost={adaboost}
-              adaboostDefaults={adaboostDefaults}
-              metricForPayload={metricForPayload}
-              setAdaBoost={setAdaBoost}
-            />
+          <AdaBoostConfigPane
+            mode={adaboost.mode}
+            algoOptions={algoOptions}
+            compatibleAlgos={compatibleAlgos}
+            models={models}
+            effectiveTask={effectiveTask}
+            effectiveBaseEstimator={effectiveBaseEstimator}
+            getModelDefaults={getModelDefaults}
+            onBaseEstimatorChange={setAdaBoostBaseEstimator}
+            onBaseEstimatorConfigChange={(next) => setAdaBoostBaseEstimator(next)}
+            showSampleWeightWarning={showSampleWeightWarning}
+            algorithmOptions={algorithmOptions}
+            adaboost={adaboost}
+            adaboostDefaults={adaboostDefaults}
+            metricForPayload={metricForPayload}
+            setAdaBoost={setAdaBoost}
+          />
 
-            <AdaBoostHelpPane
-              showHelp={showHelp}
-              onToggleHelp={() => setShowHelp((p) => !p)}
-            />
-          </Group>
+          <Divider my="xs" />
+
+          <AdaBoostHelpPane showHelp={showHelp} onToggleHelp={() => setShowHelp((p) => !p)} />
         </Stack>
       </Card>
 
-      {trainResult && (
-        <Card withBorder shadow="sm" radius="md" padding="lg">
-          <Stack gap="md">
-            <Text fw={700} size="lg">
-              Results
-            </Text>
+      <SplitOptionsCard
+        title="Data split"
+        allowedModes={['holdout', 'kfold']}
+        mode={effectiveSplitMode}
+        onModeChange={(m) => setAdaBoost({ splitMode: m })}
+        trainFrac={adaboost.trainFrac}
+        onTrainFracChange={(v) => setAdaBoost({ trainFrac: v })}
+        nSplits={adaboost.nSplits}
+        onNSplitsChange={(v) => setAdaBoost({ nSplits: v })}
+        stratified={adaboost.stratified}
+        onStratifiedChange={(v) => setAdaBoost({ stratified: v })}
+        shuffle={adaboost.shuffle}
+        onShuffleChange={(v) => setAdaBoost({ shuffle: v })}
+        seed={adaboost.seed}
+        onSeedChange={(v) => setAdaBoost({ seed: v })}
+      />
 
-            {effectiveTask === 'regression' ? (
-              <AdaBoostEnsembleRegressionResults result={trainResult} />
-            ) : (
-              <AdaBoostEnsembleClassificationResults result={trainResult} />
-            )}
-          </Stack>
-        </Card>
+      {adaboostReport?.task === 'classification' && (
+        <AdaBoostEnsembleClassificationResults report={adaboostReport} />
       )}
+
+      {adaboostReport?.task === 'regression' && <AdaBoostEnsembleRegressionResults report={adaboostReport} />}
+
+      <Group justify="flex-end">
+        <Button
+          onClick={handleRun}
+          loading={loading}
+          disabled={defsLoading || algoOptions.length === 0 || !effectiveSplitMode}
+        >
+          Train AdaBoost ensemble
+        </Button>
+      </Group>
+
+      <Alert color="blue" variant="light">
+        <Text size="sm">
+          This uses your current <strong>global</strong> Scaling / Metric / Features settings from the Settings section.
+        </Text>
+      </Alert>
     </Stack>
   );
 }
