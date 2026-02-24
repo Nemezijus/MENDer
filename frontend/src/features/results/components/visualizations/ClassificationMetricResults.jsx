@@ -1,5 +1,11 @@
 import { Stack, Text, Table, Tooltip } from '@mantine/core';
 
+import {
+  safeMean,
+  safeWeightedMean,
+  computeImbalanceInfo,
+} from '../../utils/classificationMath.js';
+
 export default function ClassificationMetricResults({
   confusion,
   metricName,
@@ -24,49 +30,7 @@ export default function ClassificationMetricResults({
   const nClasses = per_class.length;
   const isMulticlass = nClasses > 2;
 
-  // ---- class imbalance (max/min support, ignoring zeros) ----
-  const nonZeroSupports = supports.filter((s) => s > 0);
-  const imbalanceRatio =
-    nonZeroSupports.length >= 2
-      ? Math.max(...nonZeroSupports) / Math.min(...nonZeroSupports)
-      : null;
-
-  let imbalanceDesc = null;
-  if (typeof imbalanceRatio === 'number' && Number.isFinite(imbalanceRatio)) {
-    if (imbalanceRatio <= 1.5) {
-      imbalanceDesc = 'Classes are well balanced.';
-    } else if (imbalanceRatio <= 3) {
-      imbalanceDesc = 'Classes are mildly imbalanced.';
-    } else if (imbalanceRatio <= 5) {
-      imbalanceDesc = 'Classes are moderately imbalanced.';
-    } else {
-      imbalanceDesc =
-        'Classes are strongly imbalanced (majority class dominates the minority).';
-    }
-  }
-
-  const safeMean = (vals) => {
-    const arr = vals.filter((v) => typeof v === 'number' && Number.isFinite(v));
-    if (!arr.length) return null;
-    return arr.reduce((a, b) => a + b, 0) / arr.length;
-  };
-
-  const safeWeightedMean = (vals, weights) => {
-    const pairs = vals
-      .map((v, i) => [v, weights[i]])
-      .filter(
-        ([v, w]) =>
-          typeof v === 'number' &&
-          Number.isFinite(v) &&
-          typeof w === 'number' &&
-          w > 0,
-      );
-    if (!pairs.length) return null;
-    const num = pairs.reduce((acc, [v, w]) => acc + v * w, 0);
-    const den = pairs.reduce((acc, [, w]) => acc + w, 0);
-    if (!den) return null;
-    return num / den;
-  };
+  const { ratio: imbalanceRatio, desc: imbalanceDesc } = computeImbalanceInfo(supports);
 
   // Macro values (precision/recall/f1 from backend if present; otherwise from per_class)
   const macroPrecision =

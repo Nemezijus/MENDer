@@ -1,6 +1,8 @@
 import { Stack, Text } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
+import { PLOT_CONFIG, makeBaseLayout } from '../../utils/plotly.js';
+
 export default function RocResults({ roc }) {
   if (!roc || !Array.isArray(roc.curves) || roc.curves.length === 0) {
     return null;
@@ -126,7 +128,7 @@ const baseColors = [
       >
         <Plot
           data={traces}
-          layout={{
+          layout={makeBaseLayout({
             margin: { l: 70, r: 40, t: 20, b: 70 },
             xaxis: {
               title: {
@@ -191,15 +193,8 @@ const baseColors = [
               borderwidth: 0,
               bgcolor: 'rgba(255,255,255,0.7)',
             },
-            hovermode: 'closest',
-            plot_bgcolor: '#ffffff',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-          }}
-          config={{
-            displayModeBar: false,
-            responsive: true,
-            useResizeHandler: true,
-          }}
+          })}
+          config={PLOT_CONFIG}
           style={{ width: '100%', height: '100%' }}
         />
       </div>

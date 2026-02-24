@@ -16,6 +16,19 @@ export function fmt3(v) {
   return num.toFixed(3);
 }
 
+export function fmtMaybe3(v) {
+  if (v === null || v === undefined) return '—';
+  const num = parseNumber(v);
+  if (num === null) return String(v);
+  return fmt3(num);
+}
+
+export function fmtMaybePct(v) {
+  const num = parseNumber(v);
+  if (num === null) return '—';
+  return `${(num * 100).toFixed(1)}%`;
+}
+
 export function rangeText(minV, maxV) {
   const a = parseNumber(minV);
   const b = parseNumber(maxV);
