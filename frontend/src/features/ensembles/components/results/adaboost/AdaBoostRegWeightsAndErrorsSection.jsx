@@ -71,11 +71,11 @@ export default function AdaBoostRegWeightsAndErrorsSection({ report }) {
         )}
       </Box>
 
-      <Box style={{ flex: 1, minWidth: 340 }}>
+      <Box style={{ flex: 1, minWidth: 340 }} maw={380}>
         <SectionTitle
           title="Estimator errors"
-          tooltip="Estimator \"error\" is algorithm-defined; for AdaBoostRegressor this is typically based on loss."
-          maw={380}
+          tooltip='Estimator "error" is algorithm-defined; for AdaBoostRegressor this is typically based on loss.'
+
         />
 
         {errorPlot?.trace ? (
