@@ -101,9 +101,16 @@ export default function ProductionCompoundFileTab({
         label="Compound dataset (.npz)"
         acceptExts={acceptExts}
         value={npzPathDisplay}
-        onTextChange={(v) => {
-          setNpzPathDisplay(v);
-          setNpzBackendPath(v?.trim() || null);
+        onTextChange={(v, meta) => {
+          const vv = v ?? '';
+          setNpzPathDisplay(vv);
+
+          if (meta?.source === 'browse' || String(vv).startsWith('local://')) {
+            setNpzBackendPath(null);
+            return;
+          }
+
+          setNpzBackendPath(vv.trim() || null);
           setNpzLocalFile(null);
           setNpzUploadInfo(null);
         }}

@@ -131,9 +131,18 @@ export default function ProductionIndividualFilesTab({
         label="Feature matrix (X)"
         acceptExts={acceptExts}
         value={xPathDisplay}
-        onTextChange={(v) => {
-          setXPathDisplay(v);
-          setXBackendPath(v?.trim() || null);
+        onTextChange={(v, meta) => {
+          const vv = v ?? '';
+          setXPathDisplay(vv);
+
+          // If the value came from the file picker (local://...), keep the File object.
+          if (meta?.source === 'browse' || String(vv).startsWith('local://')) {
+            setXBackendPath(null);
+            return;
+          }
+
+          // Typed paths are treated as backend paths.
+          setXBackendPath(vv.trim() || null);
           setXLocalFile(null);
           setXUploadInfo(null);
         }}
@@ -150,9 +159,16 @@ export default function ProductionIndividualFilesTab({
         label="Label vector (y) (optional)"
         acceptExts={acceptExts}
         value={yPathDisplay}
-        onTextChange={(v) => {
-          setYPathDisplay(v);
-          setYBackendPath(v?.trim() || null);
+        onTextChange={(v, meta) => {
+          const vv = v ?? '';
+          setYPathDisplay(vv);
+
+          if (meta?.source === 'browse' || String(vv).startsWith('local://')) {
+            setYBackendPath(null);
+            return;
+          }
+
+          setYBackendPath(vv.trim() || null);
           setYLocalFile(null);
           setYUploadInfo(null);
         }}

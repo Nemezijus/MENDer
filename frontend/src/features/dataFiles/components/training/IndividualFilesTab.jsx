@@ -135,10 +135,18 @@ export default function TrainingIndividualFilesTab({
         label="Feature matrix (X)"
         acceptExts={acceptExts}
         value={xPathDisplay}
-        onTextChange={(v) => {
-          setXPathDisplay(v);
+        onTextChange={(v, meta) => {
+          const vv = v ?? '';
+          setXPathDisplay(vv);
+
+          // If the value came from the file picker (local://...), keep the File object.
+          if (meta?.source === 'browse' || String(vv).startsWith('local://')) {
+            setXBackendPath(null);
+            return;
+          }
+
           // Treat typed values as backend paths (dev quick-start is this case)
-          setXBackendPath(v?.trim() || null);
+          setXBackendPath(vv.trim() || null);
           // Clear file-upload state when user types
           setXLocalFile(null);
           setXUploadInfo(null);
@@ -156,9 +164,16 @@ export default function TrainingIndividualFilesTab({
         label="Label vector (y)"
         acceptExts={acceptExts}
         value={yPathDisplay}
-        onTextChange={(v) => {
-          setYPathDisplay(v);
-          setYBackendPath(v?.trim() || null);
+        onTextChange={(v, meta) => {
+          const vv = v ?? '';
+          setYPathDisplay(vv);
+
+          if (meta?.source === 'browse' || String(vv).startsWith('local://')) {
+            setYBackendPath(null);
+            return;
+          }
+
+          setYBackendPath(vv.trim() || null);
           setYLocalFile(null);
           setYUploadInfo(null);
         }}

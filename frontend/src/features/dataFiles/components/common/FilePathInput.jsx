@@ -33,13 +33,20 @@ export default function FilePathInput({
         label={label}
         placeholder={placeholder}
         value={value}
-        onChange={(e) => onTextChange?.(e.currentTarget.value)}
+        onChange={(e) => onTextChange?.(e.currentTarget.value, { source: 'text' })}
         rightSectionWidth={86}
         rightSection={
           <FileButton
             onChange={(file) => {
               onBrowseFile?.(file);
-              if (file) onTextChange?.(displayLocalFilePath(file));
+              // Keep "browse" changes distinct from typed paths.
+              // Parents can treat local://... as display-only while retaining the File object.
+              if (file) {
+                onTextChange?.(displayLocalFilePath(file), {
+                  source: 'browse',
+                  file,
+                });
+              }
             }}
             accept={acceptExts}
           >
