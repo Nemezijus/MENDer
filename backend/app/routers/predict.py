@@ -34,10 +34,6 @@ router = APIRouter()
 models_router = APIRouter(prefix="/models")
 decoder_router = APIRouter(prefix="/decoder")
 
-# Keep backward-compatible paths while improving internal structure.
-router.include_router(models_router)
-router.include_router(decoder_router)
-
 
 def _load_prediction_data(data: Any) -> tuple[Any, Any]:
     """
@@ -144,3 +140,16 @@ def export_decoder_outputs_endpoint(req: ExportDecoderOutputsRequest) -> Streami
         media_type=export_result["mime_type"],
         headers=headers,
     )
+
+
+# ---------------------------------------------------------------------------
+# IMPORTANT:
+# Include the sub-routers only AFTER all route decorators have run.
+# APIRouter.include_router() copies the current routes at include-time.
+# If we include sub-routers before defining their endpoints, those endpoints
+# will not be registered, causing 404s (e.g., POST /api/v1/models/apply).
+# ---------------------------------------------------------------------------
+
+# Keep backward-compatible paths while improving internal structure.
+router.include_router(models_router)
+router.include_router(decoder_router)
