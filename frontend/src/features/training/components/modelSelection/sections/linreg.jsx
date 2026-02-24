@@ -1,36 +1,36 @@
-import { Stack, SimpleGrid, NumberInput, Checkbox } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 
 export default function LinregSection({ m, set, sub, enums }) {  return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <Checkbox
+    <ParamGrid>
+        <ParamCheckbox
           label="Fit intercept"
           checked={!!m.fit_intercept}
-          onChange={(e) =>
-            set({ fit_intercept: e.currentTarget.checked })
+          onChange={(checked) =>
+            set({ fit_intercept: checked })
           }
         />
-        <Checkbox
+        <ParamCheckbox
           label="Copy X"
           checked={m.copy_X ?? true}
-          onChange={(e) =>
-            set({ copy_X: e.currentTarget.checked })
+          onChange={(checked) =>
+            set({ copy_X: checked })
           }
         />
-        <NumberInput
+        <ParamNumber
           label="Jobs (n_jobs)"
           value={m.n_jobs ?? null}
           onChange={(v) => set({ n_jobs: v })}
           allowDecimal={false}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Positive coefficients"
           checked={!!m.positive}
-          onChange={(e) =>
-            set({ positive: e.currentTarget.checked })
+          onChange={(checked) =>
+            set({ positive: checked })
           }
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

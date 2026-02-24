@@ -1,4 +1,7 @@
-import { Stack, SimpleGrid, NumberInput, Select, Checkbox } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamSelect from '../inputs/ParamSelect.jsx';
+import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { maxFeatToModeVal, modeValToMaxFeat, makeSelectData } from '../../../utils/modelSelectionUtils.js';
 
@@ -7,37 +10,36 @@ export default function ExtratreesSection({ m, set, sub, enums }) {
   const forestClassWeight = makeSelectData(sub, 'class_weight', (enums?.ForestClassWeight ?? ['balanced', 'balanced_subsample', null]), { includeNoneLabel: true });
   const fMF = maxFeatToModeVal(m.max_features);
   return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <NumberInput
+    <ParamGrid>
+        <ParamNumber
           label="Trees (n_estimators)"
           value={m.n_estimators ?? 100}
           onChange={(v) => set({ n_estimators: v })}
           allowDecimal={false}
           min={1}
         />
-        <Select
+        <ParamSelect
           label="Criterion"
           data={forestCriterion}
           value={m.criterion ?? 'gini'}
           onChange={(v) => set({ criterion: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Max depth"
           value={m.max_depth ?? null}
           onChange={(v) => set({ max_depth: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Min samples split"
           value={m.min_samples_split ?? 2}
           onChange={(v) => set({ min_samples_split: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Min samples leaf"
           value={m.min_samples_leaf ?? 1}
           onChange={(v) => set({ min_samples_leaf: v })}
         />
-        <Select
+        <ParamSelect
           label="Max features mode"
           data={[
             { value: 'sqrt', label: 'sqrt' },
@@ -50,7 +52,7 @@ export default function ExtratreesSection({ m, set, sub, enums }) {
           onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, fMF.value) })}
         />
         {(fMF.mode === 'int' || fMF.mode === 'float') && (
-          <NumberInput
+          <ParamNumber
             label="Max features value"
             value={fMF.value ?? null}
             onChange={(v) => set({ max_features: modeValToMaxFeat(fMF.mode, v) })}
@@ -58,41 +60,40 @@ export default function ExtratreesSection({ m, set, sub, enums }) {
             allowDecimal={fMF.mode === 'float'}
           />
         )}
-        <NumberInput
+        <ParamNumber
           label="Max leaf nodes"
           value={m.max_leaf_nodes ?? null}
           onChange={(v) => set({ max_leaf_nodes: v })}
           allowDecimal={false}
         />
-        <Select
+        <ParamSelect
           label="Class weight"
           data={forestClassWeight}
           value={m.class_weight == null ? 'none' : String(m.class_weight)}
           onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Use bootstrap"
           checked={!!m.bootstrap}
-          onChange={(e) => set({ bootstrap: e.currentTarget.checked })}
+          onChange={(checked) => set({ bootstrap: checked })}
         />
-        <Checkbox
+        <ParamCheckbox
           label="OOB score"
           checked={!!m.oob_score}
-          onChange={(e) => set({ oob_score: e.currentTarget.checked })}
+          onChange={(checked) => set({ oob_score: checked })}
         />
-        <NumberInput
+        <ParamNumber
           label="Jobs (n_jobs)"
           value={m.n_jobs ?? null}
           onChange={(v) => set({ n_jobs: v })}
           allowDecimal={false}
         />
-        <NumberInput
+        <ParamNumber
           label="Random state"
           value={m.random_state ?? null}
           onChange={(v) => set({ random_state: v })}
           allowDecimal={false}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

@@ -1,10 +1,11 @@
-import { Stack, SimpleGrid, NumberInput, TextInput } from '@mantine/core';
+import { TextInput } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
 import { parseCsvFloats, formatCsvFloats } from '../../../utils/modelSelectionUtils.js';
 
 export default function GnbSection({ m, set, sub, enums }) {  return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <NumberInput
+    <ParamGrid>
+        <ParamNumber
           label="Variance smoothing"
           value={m.var_smoothing ?? 1e-9}
           onChange={(v) => set({ var_smoothing: v })}
@@ -17,7 +18,6 @@ export default function GnbSection({ m, set, sub, enums }) {  return (
           value={formatCsvFloats(m.priors)}
           onChange={(e) => set({ priors: parseCsvFloats(e.currentTarget.value) })}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

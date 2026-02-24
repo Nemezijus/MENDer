@@ -1,71 +1,71 @@
-import { Stack, SimpleGrid, NumberInput, Checkbox } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 
 export default function BayridgeSection({ m, set, sub, enums }) {  return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <NumberInput
+    <ParamGrid>
+        <ParamNumber
           label="Iterations (n_iter)"
           value={m.n_iter ?? 300}
           onChange={(v) => set({ n_iter: v })}
           allowDecimal={false}
           min={1}
         />
-        <NumberInput
+        <ParamNumber
           label="Tolerance (tol)"
           value={m.tol ?? 1e-3}
           onChange={(v) => set({ tol: v })}
           step={1e-4}
           min={0}
         />
-        <NumberInput
+        <ParamNumber
           label="alpha_1"
           value={m.alpha_1 ?? 1e-6}
           onChange={(v) => set({ alpha_1: v })}
           step={1e-6}
           min={0}
         />
-        <NumberInput
+        <ParamNumber
           label="alpha_2"
           value={m.alpha_2 ?? 1e-6}
           onChange={(v) => set({ alpha_2: v })}
           step={1e-6}
           min={0}
         />
-        <NumberInput
+        <ParamNumber
           label="lambda_1"
           value={m.lambda_1 ?? 1e-6}
           onChange={(v) => set({ lambda_1: v })}
           step={1e-6}
           min={0}
         />
-        <NumberInput
+        <ParamNumber
           label="lambda_2"
           value={m.lambda_2 ?? 1e-6}
           onChange={(v) => set({ lambda_2: v })}
           step={1e-6}
           min={0}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Compute score"
           checked={!!m.compute_score}
-          onChange={(e) => set({ compute_score: e.currentTarget.checked })}
+          onChange={(checked) => set({ compute_score: checked })}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Fit intercept"
           checked={m.fit_intercept ?? true}
-          onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+          onChange={(checked) => set({ fit_intercept: checked })}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Copy X"
           checked={m.copy_X ?? true}
-          onChange={(e) => set({ copy_X: e.currentTarget.checked })}
+          onChange={(checked) => set({ copy_X: checked })}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Verbose"
           checked={!!m.verbose}
-          onChange={(e) => set({ verbose: e.currentTarget.checked })}
+          onChange={(checked) => set({ verbose: checked })}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

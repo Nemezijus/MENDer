@@ -1,17 +1,19 @@
-import { Stack, SimpleGrid, NumberInput, Select, TextInput } from '@mantine/core';
+import { TextInput } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamSelect from '../inputs/ParamSelect.jsx';
 import { enumFromSubSchema, toSelectData } from '../../../../../shared/utils/schema/jsonSchema.js';
 
 export default function KmeansSection({ m, set, sub, enums }) {  return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <NumberInput
+    <ParamGrid>
+        <ParamNumber
           label="Clusters (n_clusters)"
           value={m.n_clusters ?? 8}
           onChange={(v) => set({ n_clusters: v })}
           allowDecimal={false}
           min={1}
         />
-        <Select
+        <ParamSelect
           label="Init"
           data={toSelectData(enumFromSubSchema(sub, 'init', ['k-means++', 'random']))}
           value={m.init ?? 'k-means++'}
@@ -31,40 +33,39 @@ export default function KmeansSection({ m, set, sub, enums }) {  return (
             set({ n_init: Number.isFinite(n) ? Math.max(1, Math.trunc(n)) : 'auto' });
           }}
         />
-        <NumberInput
+        <ParamNumber
           label="Max iterations"
           value={m.max_iter ?? 300}
           onChange={(v) => set({ max_iter: v })}
           allowDecimal={false}
           min={1}
         />
-        <NumberInput
+        <ParamNumber
           label="Tolerance (tol)"
           value={m.tol ?? 1e-4}
           onChange={(v) => set({ tol: v })}
           step={1e-5}
           min={0}
         />
-        <NumberInput
+        <ParamNumber
           label="Verbose"
           value={m.verbose ?? 0}
           onChange={(v) => set({ verbose: v })}
           allowDecimal={false}
           min={0}
         />
-        <Select
+        <ParamSelect
           label="Algorithm"
           data={toSelectData(enumFromSubSchema(sub, 'algorithm', ['lloyd', 'elkan', 'auto']))}
           value={m.algorithm ?? 'lloyd'}
           onChange={(v) => set({ algorithm: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Random state"
           value={m.random_state ?? null}
           onChange={(v) => set({ random_state: v })}
           allowDecimal={false}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

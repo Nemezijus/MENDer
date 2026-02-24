@@ -1,19 +1,21 @@
-import { Stack, SimpleGrid, NumberInput, Select, Checkbox } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamSelect from '../inputs/ParamSelect.jsx';
+import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
 
 export default function EnetSection({ m, set, sub, enums }) {
   const cdSelection = makeSelectData(sub, 'selection', enums?.CoordinateDescentSelection);
   return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <NumberInput
+    <ParamGrid>
+        <ParamNumber
           label="Alpha"
           value={m.alpha ?? 1.0}
           onChange={(v) => set({ alpha: v })}
           min={0}
           step={0.1}
         />
-        <NumberInput
+        <ParamNumber
           label="L1 ratio"
           value={m.l1_ratio ?? 0.5}
           onChange={(v) => set({ l1_ratio: v })}
@@ -21,43 +23,42 @@ export default function EnetSection({ m, set, sub, enums }) {
           max={1}
           step={0.05}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Fit intercept"
           checked={m.fit_intercept ?? true}
-          onChange={(e) => set({ fit_intercept: e.currentTarget.checked })}
+          onChange={(checked) => set({ fit_intercept: checked })}
         />
-        <Select
+        <ParamSelect
           label="Selection"
           data={cdSelection}
           value={m.selection ?? 'cyclic'}
           onChange={(v) => set({ selection: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Max iterations"
           value={m.max_iter ?? 1000}
           onChange={(v) => set({ max_iter: v })}
           allowDecimal={false}
           min={1}
         />
-        <NumberInput
+        <ParamNumber
           label="Tolerance (tol)"
           value={m.tol ?? 1e-4}
           onChange={(v) => set({ tol: v })}
           step={1e-5}
           min={0}
         />
-        <NumberInput
+        <ParamNumber
           label="Random state"
           value={m.random_state ?? null}
           onChange={(v) => set({ random_state: v })}
           allowDecimal={false}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Positive coefficients"
           checked={!!m.positive}
-          onChange={(e) => set({ positive: e.currentTarget.checked })}
+          onChange={(checked) => set({ positive: checked })}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

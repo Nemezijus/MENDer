@@ -1,4 +1,6 @@
-import { Stack, SimpleGrid, NumberInput, Select } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamSelect from '../inputs/ParamSelect.jsx';
 import { maxFeatToModeVal, modeValToMaxFeat, makeSelectData } from '../../../utils/modelSelectionUtils.js';
 
 export default function TreeregSection({ m, set, sub, enums }) {
@@ -6,36 +8,35 @@ export default function TreeregSection({ m, set, sub, enums }) {
   const regTreeCriterion = makeSelectData(sub, 'criterion', enums?.RegTreeCriterion);
   const tMF = maxFeatToModeVal(m.max_features);
   return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <Select
+    <ParamGrid>
+        <ParamSelect
           label="Criterion"
           data={regTreeCriterion}
           value={m.criterion ?? 'squared_error'}
           onChange={(v) => set({ criterion: v })}
         />
-        <Select
+        <ParamSelect
           label="Splitter"
           data={treeSplitter}
           value={m.splitter ?? 'best'}
           onChange={(v) => set({ splitter: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Max depth"
           value={m.max_depth ?? null}
           onChange={(v) => set({ max_depth: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Min samples split"
           value={m.min_samples_split ?? 2}
           onChange={(v) => set({ min_samples_split: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Min samples leaf"
           value={m.min_samples_leaf ?? 1}
           onChange={(v) => set({ min_samples_leaf: v })}
         />
-        <NumberInput
+        <ParamNumber
           label="Min weight fraction"
           value={m.min_weight_fraction_leaf ?? 0.0}
           onChange={(v) => set({ min_weight_fraction_leaf: v })}
@@ -43,7 +44,7 @@ export default function TreeregSection({ m, set, sub, enums }) {
           min={0}
           max={1}
         />
-        <Select
+        <ParamSelect
           label="Max features mode"
           data={[
             { value: 'sqrt', label: 'sqrt' },
@@ -56,7 +57,7 @@ export default function TreeregSection({ m, set, sub, enums }) {
           onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, tMF.value) })}
         />
         {(tMF.mode === 'int' || tMF.mode === 'float') && (
-          <NumberInput
+          <ParamNumber
             label="Max features value"
             value={tMF.value ?? null}
             onChange={(v) => set({ max_features: modeValToMaxFeat(tMF.mode, v) })}
@@ -64,31 +65,30 @@ export default function TreeregSection({ m, set, sub, enums }) {
             allowDecimal={tMF.mode === 'float'}
           />
         )}
-        <NumberInput
+        <ParamNumber
           label="Max leaf nodes"
           value={m.max_leaf_nodes ?? null}
           onChange={(v) => set({ max_leaf_nodes: v })}
           allowDecimal={false}
         />
-        <NumberInput
+        <ParamNumber
           label="Min impurity decrease"
           value={m.min_impurity_decrease ?? 0.0}
           onChange={(v) => set({ min_impurity_decrease: v })}
           step={0.0001}
         />
-        <NumberInput
+        <ParamNumber
           label="Random state"
           value={m.random_state ?? null}
           onChange={(v) => set({ random_state: v })}
           allowDecimal={false}
         />
-        <NumberInput
+        <ParamNumber
           label="CCP alpha"
           value={m.ccp_alpha ?? 0.0}
           onChange={(v) => set({ ccp_alpha: v })}
           step={0.0001}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }

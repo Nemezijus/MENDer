@@ -1,38 +1,38 @@
-import { Stack, SimpleGrid, NumberInput, Checkbox } from '@mantine/core';
+import ParamGrid from '../inputs/ParamGrid.jsx';
+import ParamNumber from '../inputs/ParamNumber.jsx';
+import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 
 export default function MeanshiftSection({ m, set, sub, enums }) {  return (
-    <Stack gap="sm">
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-        <NumberInput
+    <ParamGrid>
+        <ParamNumber
           label="Bandwidth (optional)"
           value={m.bandwidth ?? null}
           onChange={(v) => set({ bandwidth: v })}
           min={0}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Bin seeding"
           checked={!!m.bin_seeding}
-          onChange={(e) => set({ bin_seeding: e.currentTarget.checked })}
+          onChange={(checked) => set({ bin_seeding: checked })}
         />
-        <NumberInput
+        <ParamNumber
           label="Min bin freq"
           value={m.min_bin_freq ?? 1}
           onChange={(v) => set({ min_bin_freq: v })}
           allowDecimal={false}
           min={1}
         />
-        <Checkbox
+        <ParamCheckbox
           label="Cluster all"
           checked={m.cluster_all ?? true}
-          onChange={(e) => set({ cluster_all: e.currentTarget.checked })}
+          onChange={(checked) => set({ cluster_all: checked })}
         />
-        <NumberInput
+        <ParamNumber
           label="Jobs (n_jobs)"
           value={m.n_jobs ?? null}
           onChange={(v) => set({ n_jobs: v })}
           allowDecimal={false}
         />
-      </SimpleGrid>
-    </Stack>
+      </ParamGrid>
   );
 }
