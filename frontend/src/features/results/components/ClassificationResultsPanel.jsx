@@ -1,4 +1,4 @@
-import { Card, Stack, Text, Divider } from '@mantine/core';
+import { Card, Stack, Text } from '@mantine/core';
 import ConfusionMatrixResults from './visualizations/ConfusionMatrixResults.jsx';
 import ClassificationMetricResults from './visualizations/ClassificationMetricResults.jsx';
 import RocResults from './visualizations/RocResults.jsx';
@@ -26,21 +26,19 @@ export default function ClassificationResultsPanel({ trainResult }) {
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
       <Stack gap="sm">
-        <Text fw={600} size="xl" align="center">Classification diagnostics</Text>
+        <Text fw={600} size="xl" align="center">
+          Classification diagnostics
+        </Text>
 
         {hasConfusion && (
           <>
             <ConfusionMatrixResults confusion={confusion} />
-            <ClassificationMetricResults
-              confusion={confusion}
-              metricName={metricName}
-            />
+            <ClassificationMetricResults confusion={confusion} metricName={metricName} />
           </>
         )}
 
         {hasRoc && (
           <>
-            {hasConfusion}
             <RocResults roc={roc} />
           </>
         )}

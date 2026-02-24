@@ -7,18 +7,16 @@ import ClassificationResultsPanel from './ClassificationResultsPanel.jsx';
 import RegressionResultsPanel from './RegressionResultsPanel.jsx';
 import DecoderOutputsResults from './visualizations/DecoderOutputsResults.jsx';
 import UnsupervisedResultsPanel from '../../unsupervised/components/UnsupervisedResultsPanel.jsx';
+import {
+  getTask,
+  isClassificationResult,
+  isCVResult,
+  isRegressionResult,
+  isUnsupervisedTask,
+} from '../utils/taskGuards.js';
 
 export default function TrainingResultsPanel() {
   const trainResult = useResultsStore((s) => s.trainResult);
-
-  const task =
-    trainResult?.task ||
-    trainResult?.artifact?.kind ||
-    null;
-
-  const isUnsupervised = task === 'unsupervised';
-
-  const isCV = trainResult && Array.isArray(trainResult.fold_scores);
 
   if (!trainResult) {
     return (
@@ -33,15 +31,12 @@ export default function TrainingResultsPanel() {
     );
   }
 
-  const isClassification =
-    task === 'classification' ||
-    (trainResult?.confusion &&
-      Array.isArray(trainResult.confusion.matrix) &&
-      trainResult.confusion.matrix.length > 0);
+  const task = getTask(trainResult);
+  const isUnsupervised = isUnsupervisedTask(task);
+  const isCV = isCVResult(trainResult);
 
-  const isRegression =
-    task === 'regression' ||
-    (trainResult?.regression && typeof trainResult.regression === 'object');
+  const isClassification = isClassificationResult(trainResult);
+  const isRegression = isRegressionResult(trainResult);
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
@@ -86,18 +81,15 @@ export default function TrainingResultsPanel() {
           </>
         )}
 
-        {Array.isArray(trainResult.shuffled_scores) &&
-          trainResult.shuffled_scores.length > 0 && (
-            <BaselineShufflingResults
-              metricName={trainResult.metric_name}
-              referenceLabel={isCV ? 'real mean' : 'real'}
-              referenceValue={
-                isCV ? trainResult.mean_score : trainResult.metric_value
-              }
-              shuffledScores={trainResult.shuffled_scores}
-              pValue={trainResult.p_value}
-            />
-          )}
+        {Array.isArray(trainResult.shuffled_scores) && trainResult.shuffled_scores.length > 0 && (
+          <BaselineShufflingResults
+            metricName={trainResult.metric_name}
+            referenceLabel={isCV ? 'real mean' : 'real'}
+            referenceValue={isCV ? trainResult.mean_score : trainResult.metric_value}
+            shuffledScores={trainResult.shuffled_scores}
+            pValue={trainResult.p_value}
+          />
+        )}
 
         {Array.isArray(trainResult.notes) && trainResult.notes.length > 0 && (
           <>
