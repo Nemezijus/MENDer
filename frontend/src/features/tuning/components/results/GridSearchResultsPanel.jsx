@@ -1,7 +1,8 @@
 // frontend/src/components/visualizations/GridSearchResultsPanel.jsx
 import { useMemo } from 'react';
-import { Card, Stack, Text, useMantineTheme } from '@mantine/core';
+import { Card, Stack, Text } from '@mantine/core';
 import { useSettingsStore } from '../../../settings/state/useSettingsStore.js';
+import usePlotTheme from '../../hooks/usePlotTheme.js';
 import GridSearchResults from './GridSearchResults.jsx';
 import GridSearchAnalyticsResults from './GridSearchAnalyticsResults.jsx';
 
@@ -26,11 +27,7 @@ function uniquePreserve(values) {
 }
 
 export default function GridSearchResultsPanel({ result }) {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === 'dark';
-  const textColor = isDark ? theme.colors.gray[2] : theme.black;
-  const gridColor = isDark ? theme.colors.dark[4] : '#e0e0e0';
-  const axisColor = isDark ? theme.colors.dark[2] : '#222';
+  const { textColor, gridColor, axisColor } = usePlotTheme();
 
   const metricFromSettings = useSettingsStore((s) => s.metric);
   const metricFromSettingsScalar = Array.isArray(metricFromSettings)

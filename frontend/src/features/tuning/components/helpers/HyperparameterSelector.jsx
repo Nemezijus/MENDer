@@ -1,162 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Stack,
-  Group,
-  Select,
-  Text,
-  NumberInput,
-  Textarea,
-  Checkbox,
-  SegmentedControl,
-  Box,
-} from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 import { getVariantSchema } from '../../../../shared/utils/schema/jsonSchema.js';
-
-/**
- * Helpers adapted from ModelSelectionCard
- */
-
-
-function getParamSchema(sub, key) {
-  if (!sub || !key) return null;
-  return sub.properties?.[key] ?? null;
-}
-
-function collectTypes(p) {
-  const out = new Set();
-  if (!p) return out;
-  const direct = Array.isArray(p.type) ? p.type : (p.type ? [p.type] : []);
-  for (const t of direct) out.add(t);
-  const unions = [...(p.anyOf ?? []), ...(p.oneOf ?? [])];
-  for (const u of unions) {
-    const ts = Array.isArray(u.type) ? u.type : (u.type ? [u.type] : []);
-    for (const t of ts) out.add(t);
-  }
-  return out;
-}
-
-function collectEnumValues(p) {
-  if (!p) return null;
-  if (Array.isArray(p.enum)) return p.enum;
-
-  // Pydantic frequently represents Optional[...] as anyOf: [{type: <real>}, {type: 'null'}].
-  // We only want to treat a parameter as an enum if there are *actual* concrete values.
-  // Otherwise, Optional[int] would become a bogus enum of [null] in the UI.
-  const unions = [...(p.anyOf ?? []), ...(p.oneOf ?? [])];
-  const list = [];
-  for (const x of unions) {
-    if (Array.isArray(x.enum)) list.push(...x.enum);
-    else if (x.const != null) list.push(x.const);
-    else if (x.type === 'null') list.push(null);
-  }
-
-  // de-duplicate while preserving order (also handles null correctly)
-  const uniq = [];
-  for (const v of list) {
-    if (!uniq.some((u) => Object.is(u, v))) uniq.push(v);
-  }
-
-  // Ignore "enum" lists that are only [null]
-  if (uniq.length === 1 && uniq[0] === null) return null;
-
-  return uniq.length ? uniq : null;
-}
-
-function humanizeParamName(key) {
-  if (!key) return '';
-
-  const map = {
-    // common / shared
-    n_estimators: 'Number of estimators',
-    max_iter: 'Max iterations',
-    n_jobs: 'N jobs',
-    class_weight: 'Class weight',
-    random_state: 'Random state',
-    warm_start: 'Warm start',
-    tol: 'Tolerance',
-
-    // trees / forests
-    max_depth: 'Max depth',
-    min_samples_split: 'Min samples split',
-    min_samples_leaf: 'Min samples leaf',
-    min_impurity_decrease: 'Min impurity decrease',
-    max_leaf_nodes: 'Max leaf nodes',
-    min_weight_fraction_leaf: 'Min weight fraction leaf',
-    max_features: 'Max features',
-    max_samples: 'Max samples',
-    oob_score: 'OOB score',
-    ccp_alpha: 'CCP alpha',
-
-    // linear models
-    fit_intercept: 'Fit intercept',
-    l1_ratio: 'L1 ratio',
-    learning_rate: 'Learning rate schedule',
-    eta0: 'Initial learning rate (eta0)',
-    power_t: 'Power t',
-
-    // HGB
-    max_bins: 'Max bins',
-    validation_fraction: 'Validation fraction',
-    n_iter_no_change: 'N iter no change',
-    l2_regularization: 'L2 regularization',
-  };
-
-  if (map[key]) return map[key];
-
-  // Generic fallback: snake_case -> Title case
-  return key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
-function getParamInfo(sub, key) {
-  const p = getParamSchema(sub, key);
-  if (!p) return { kind: 'other', allowedValues: null };
-
-  const enums = collectEnumValues(p);
-  const types = collectTypes(p);
-
-  // Boolean by explicit type or enum {true,false}
-  if (types.has('boolean')) {
-    return { kind: 'boolean', allowedValues: [true, false] };
-  }
-  if (enums) {
-    const uniq = Array.from(new Set(enums));
-    if (uniq.length === 2 && uniq.includes(true) && uniq.includes(false)) {
-      return { kind: 'boolean', allowedValues: [true, false] };
-    }
-    return { kind: 'enum', allowedValues: enums };
-  }
-
-  if (types.has('number') || types.has('integer')) {
-    return { kind: 'numeric', allowedValues: null };
-  }
-
-  return { kind: 'other', allowedValues: null };
-}
-
-function parseScalar(raw) {
-  const lower = raw.toLowerCase();
-
-  if (lower === 'true' || lower === 'yes') return true;
-  if (lower === 'false' || lower === 'no') return false;
-  if (lower === 'none' || lower === 'null') return null;
-
-  if (/^-?\d+$/.test(raw)) {
-    const v = parseInt(raw, 10);
-    return Number.isNaN(v) ? raw : v;
-  }
-  if (/^-?\d*\.\d+$/.test(raw)) {
-    const v = parseFloat(raw);
-    return Number.isNaN(v) ? raw : v;
-  }
-  return raw;
-}
-
-function countDecimals(str) {
-  const m = String(str).match(/\.(\d+)/);
-  return m ? m[1].length : 0;
-}
+import {
+  formatValueForDisplay,
+  getParamInfo,
+  humanizeParamName,
+  summarizeValues,
+} from '../../utils/hyperparamUtils.js';
+import BooleanNote from '../hyperparams/BooleanNote.jsx';
+import EnumValueSelector from '../hyperparams/EnumValueSelector.jsx';
+import ListValueEditor from '../hyperparams/ListValueEditor.jsx';
+import NumericValueEditor from '../hyperparams/NumericValueEditor.jsx';
+import ParamNameSelect from '../hyperparams/ParamNameSelect.jsx';
 
 /**
  * HyperparameterSelector
@@ -175,11 +30,6 @@ export default function HyperparameterSelector({
   label,
 }) {
   const algo = model?.algo ?? null;
-  const [mode, setMode] = useState('range'); // 'range' | 'list'
-  const [rangeFrom, setRangeFrom] = useState('');
-  const [rangeTo, setRangeTo] = useState('');
-  const [rangeStep, setRangeStep] = useState('');
-  const [rawList, setRawList] = useState('');
   const [enumSelection, setEnumSelection] = useState([]);
 
   const [helperError, setHelperError] = useState('');
@@ -206,10 +56,6 @@ export default function HyperparameterSelector({
 
   // Reset local controls when parameter changes
   useEffect(() => {
-    setRangeFrom('');
-    setRangeTo('');
-    setRangeStep('');
-    setRawList('');
     setHelperError('');
     setDisplayPrecision(null);
 
@@ -243,104 +89,6 @@ export default function HyperparameterSelector({
     onChange?.({ paramName, values: [] });
   }
 
-  function updateFromRange(fromStr, toStr, stepStr) {
-    setRangeFrom(fromStr);
-    setRangeTo(toStr);
-    setRangeStep(stepStr);
-    setHelperError('');
-
-    if (!fromStr || !toStr) {
-      setHelperError('Specify both "from" and "to" for a numeric range.');
-      onChange?.({ paramName: selectedName, values: [] });
-      return;
-    }
-
-    const from = Number(fromStr);
-    const to = Number(toStr);
-    if (!Number.isFinite(from) || !Number.isFinite(to)) {
-      setHelperError('Range bounds must be numeric.');
-      onChange?.({ paramName: selectedName, values: [] });
-      return;
-    }
-    if (from === to) {
-      setHelperError('Range bounds must not be equal.');
-      onChange?.({ paramName: selectedName, values: [] });
-      return;
-    }
-    if (from > to) {
-      setHelperError('"from" should be less than "to".');
-      onChange?.({ paramName: selectedName, values: [] });
-      return;
-    }
-
-    let step;
-    if (!stepStr) {
-      const steps = 10;
-      step = (to - from) / (steps - 1);
-    } else {
-      step = Number(stepStr);
-      if (!Number.isFinite(step) || step <= 0) {
-        setHelperError('"step" must be a positive number.');
-        onChange?.({ paramName: selectedName, values: [] });
-        return;
-      }
-    }
-
-    // Precision: highest decimals from from/to/step
-    let maxDec = 0;
-    [fromStr, toStr, stepStr].forEach((s) => {
-      if (!s) return;
-      const d = countDecimals(s);
-      if (d > maxDec) maxDec = d;
-    });
-    setDisplayPrecision(maxDec || null);
-
-    const values = [];
-    let v = from;
-    const epsilon = (to - from) * 1e-9;
-    while (v <= to + epsilon) {
-      values.push(v);
-      v += step;
-      if (values.length > 1000) break; // safety
-    }
-
-    if (values.length < 2) {
-      setHelperError('Need at least two points in the range.');
-    }
-    onChange?.({ paramName: selectedName, values });
-  }
-
-  function updateFromList(raw) {
-    setRawList(raw);
-    setHelperError('');
-
-    const tokens = raw
-      .split(/[, \t\n\r]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (!tokens.length) {
-      onChange?.({ paramName: selectedName, values: [] });
-      return;
-    }
-
-    // Precision: highest decimals in numeric tokens
-    let maxDec = 0;
-    tokens.forEach((tok) => {
-      if (/^-?\d*\.?\d+$/.test(tok)) {
-        const d = countDecimals(tok);
-        if (d > maxDec) maxDec = d;
-      }
-    });
-    setDisplayPrecision(maxDec || null);
-
-    const values = tokens.map(parseScalar);
-    if (values.length < 2) {
-      setHelperError('Provide at least two values.');
-    }
-    onChange?.({ paramName: selectedName, values });
-  }
-
   function toggleEnumValue(v) {
     const current = Array.isArray(enumSelection) ? enumSelection : [];
     let next;
@@ -364,127 +112,45 @@ export default function HyperparameterSelector({
   const showEnumControls = paramInfo.kind === 'enum';
   const showBooleanNote = paramInfo.kind === 'boolean';
 
-  function formatValueForDisplay(v) {
-    if (typeof v === 'number' && Number.isFinite(v) && displayPrecision != null) {
-      return v.toFixed(displayPrecision);
-    }
-    return String(v);
-  }
-
   const effectiveValues = Array.isArray(value?.values) ? value.values : [];
-  let displayValues = effectiveValues;
+  const displayValues = summarizeValues(effectiveValues, 10);
 
-  if (effectiveValues.length > 10) {
-    displayValues = [
-      ...effectiveValues.slice(0, 9),
-      '…',
-      effectiveValues[effectiveValues.length - 1],
-    ];
-  }
+  const handleEditorValues = ({ values, error, precision }) => {
+    setHelperError(error || '');
+    setDisplayPrecision(precision ?? null);
+    onChange?.({ paramName: selectedName, values: Array.isArray(values) ? values : [] });
+  };
 
   return (
     <Stack gap="sm">
-      <Select
+      <ParamNameSelect
         label={label || 'Hyperparameter to vary'}
-        placeholder={
-          paramOptions.length
-            ? 'Pick a parameter (e.g. C, max_depth)'
-            : 'No parameters available for this model'
-        }
-        data={paramOptions}
-        value={selectedName || null}
+        options={paramOptions}
+        value={selectedName}
         onChange={handleParamChange}
-        searchable
-        clearable
       />
 
-      {selectedName && showBooleanNote && (
-        <Text size="sm" c="dimmed">
-          This is a boolean parameter. The validation curve will automatically
-          evaluate both <Text span fw={500}>true</Text> and <Text span fw={500}>false</Text>.
-        </Text>
-      )}
+      {selectedName && showBooleanNote && <BooleanNote />}
 
-      {selectedName && showEnumControls && Array.isArray(paramInfo.allowedValues) && (
-        <Box>
-          <Text size="sm" fw={500} mb={4}>
-            Values to include
-          </Text>
-          <Stack gap={4}>
-            {paramInfo.allowedValues.map((v) => (
-              <Checkbox
-                key={String(v)}
-                label={v === null ? 'None' : String(v)}
-                checked={enumSelection.includes(v)}
-                onChange={() => toggleEnumValue(v)}
-              />
-            ))}
-          </Stack>
-        </Box>
+      {selectedName && showEnumControls && (
+        <EnumValueSelector
+          allowedValues={paramInfo.allowedValues}
+          selectedValues={enumSelection}
+          onToggle={toggleEnumValue}
+        />
       )}
 
       {selectedName && showNumericControls && (
-        <Stack gap="xs">
-          <SegmentedControl
-            size="xs"
-            value={mode}
-            onChange={setMode}
-            data={[
-              { value: 'range', label: 'Range' },
-              { value: 'list', label: 'Explicit values' },
-            ]}
-          />
-
-          {mode === 'range' && (
-            <Group align="flex-end">
-              <Box style={{ flex: 1 }}>
-                <NumberInput
-                  label="From"
-                  value={rangeFrom}
-                  onChange={(v) => updateFromRange(String(v ?? ''), rangeTo, rangeStep)}
-                />
-              </Box>
-              <Box style={{ flex: 1 }}>
-                <NumberInput
-                  label="Step"
-                  placeholder="auto"
-                  value={rangeStep}
-                  onChange={(v) => updateFromRange(rangeFrom, rangeTo, String(v ?? ''))}
-                />
-              </Box>
-              <Box style={{ flex: 1 }}>
-                <NumberInput
-                  label="To"
-                  value={rangeTo}
-                  onChange={(v) => updateFromRange(rangeFrom, String(v ?? ''), rangeStep)}
-                />
-              </Box>
-            </Group>
-          )}
-
-          {mode === 'list' && (
-            <Textarea
-              label="Parameter values"
-              description="Whitespace or comma-separated. Examples: 0.01 0.1 1 10   or   linear rbf poly"
-              minRows={2}
-              autosize
-              value={rawList}
-              onChange={(e) => updateFromList(e.currentTarget.value)}
-              placeholder="e.g. 0.01 0.1 1 10"
-            />
-          )}
-        </Stack>
+        <NumericValueEditor
+          key={`num-${selectedName}`}
+          onValuesChange={handleEditorValues}
+        />
       )}
 
       {selectedName && showListOnlyControls && (
-        <Textarea
-          label="Parameter values"
-          description="Whitespace or comma-separated. Examples: sag saga lsqr   or   sqrt log2"
-          minRows={2}
-          autosize
-          value={rawList}
-          onChange={(e) => updateFromList(e.currentTarget.value)}
-          placeholder="e.g. value1 value2 value3"
+        <ListValueEditor
+          key={`list-${selectedName}`}
+          onValuesChange={handleEditorValues}
         />
       )}
 
@@ -496,7 +162,9 @@ export default function HyperparameterSelector({
 
       {selectedName && effectiveValues.length >= 2 && (
         <Text size="xs" c="dimmed">
-          Effective values: {displayValues.map((v) => formatValueForDisplay(v)).join(', ')}
+          Effective values: {displayValues
+            .map((v) => formatValueForDisplay(v, displayPrecision))
+            .join(', ')}
         </Text>
       )}
     </Stack>

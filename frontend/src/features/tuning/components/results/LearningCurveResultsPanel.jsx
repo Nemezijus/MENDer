@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { Stack, Text, Card, useMantineTheme } from '@mantine/core';
+import { Stack, Text, Card } from '@mantine/core';
 import { useResultsStore } from '../../../results/state/useResultsStore.js';
 import { useSettingsStore } from '../../../settings/state/useSettingsStore.js';
+import usePlotTheme from '../../hooks/usePlotTheme.js';
 import LearningCurveResults from './LearningCurveResults.jsx';
 import LearningCurveAnalyticsResults from './LearningCurveAnalyticsResults.jsx';
 
@@ -10,11 +11,7 @@ function hasFiniteNumbers(arr) {
 }
 
 export default function LearningCurveResultsPanel() {
-  const theme = useMantineTheme();
-  const isDark = theme.colorScheme === 'dark';
-  const textColor = isDark ? theme.colors.gray[2] : theme.black;
-  const gridColor = isDark ? theme.colors.dark[4] : '#e0e0e0';
-  const axisColor = isDark ? theme.colors.dark[2] : '#222';
+  const { textColor, gridColor, axisColor } = usePlotTheme();
 
   const learningCurveResult = useResultsStore((s) => s.learningCurveResult);
   const learningCurveNSplits = useResultsStore((s) => s.learningCurveNSplits);
