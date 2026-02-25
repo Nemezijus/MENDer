@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   Button,
@@ -20,6 +20,9 @@ import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
 import { useTuningStore } from '../state/useTuningStore.js';
 import { useModelConfigStore } from '../../training/state/useModelConfigStore.js';
 import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaultsQuery.js';
+
+import { useEffectiveMetricForTask } from '../hooks/useEffectiveMetricForTask.js';
+import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
@@ -65,29 +68,12 @@ export default function LearningCurvePanel() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
-
-  const allowedMetrics = useMemo(() => {
-    const mt = enums?.MetricByTask || null;
-    if (taskInferred && mt && Array.isArray(mt[taskInferred])) {
-      return mt[taskInferred].map(String);
-    }
-    if (Array.isArray(enums?.MetricName)) return enums.MetricName.map(String);
-    return [];
-  }, [enums, taskInferred]);
-
-  // Use backend-provided task-specific metric ordering as the default.
-  // Do not write this into state (stores are overrides-only).
-  const defaultMetricFromSchema = allowedMetrics?.[0] ?? null;
-  const effectiveMetric = metric ?? defaultMetricFromSchema;
-
-  // If the user has an explicit metric override that doesn't belong to the
-  // current task's allowed list, clear it.
-  useEffect(() => {
-    if (!metric) return;
-    if (allowedMetrics.length > 0 && !allowedMetrics.includes(String(metric))) {
-      setMetric(undefined);
-    }
-  }, [allowedMetrics, metric, setMetric]);
+  const { effectiveMetric } = useEffectiveMetricForTask({
+    enums,
+    taskInferred,
+    metric,
+    setMetric,
+  });
 
   const {
     method,
@@ -157,31 +143,8 @@ export default function LearningCurvePanel() {
             .filter(Boolean)
             .map((x) => (x.includes('.') ? parseFloat(x) : parseInt(x, 10)))
         : undefined;
-
-      const parsedSeed =
-        shuffle === false
-          ? undefined
-          : seed === '' || seed == null
-          ? undefined
-          : parseInt(seed, 10);
-
-      const payload = compactPayload({
-        data: {
-          x_path: npzPath ? undefined : xPath,
-          y_path: npzPath ? undefined : yPath,
-          npz_path: npzPath,
-          x_key: xKey,
-          y_key: yKey,
-        },
-        split: {
-          mode: 'kfold',
-          n_splits: learningCurveNSplits,
-          stratified,
-          shuffle,
-        },
-        scale: {
-          method: scaleMethod,
-        },
+      const basePayload = buildTuningCommonPayload({
+        data: { xPath, yPath, npzPath, xKey, yKey },
         features: {
           method,
           pca_n,
@@ -196,11 +159,19 @@ export default function LearningCurvePanel() {
           sfs_cv,
           sfs_n_jobs,
         },
+        scaleMethod,
         model: lcModel,
-        eval: {
-          metric: effectiveMetric,
-          seed: parsedSeed,
+        split: {
+          nSplits: learningCurveNSplits,
+          stratified,
+          shuffle,
+          seed,
         },
+        evalMetric: effectiveMetric,
+      });
+
+      const payload = compactPayload({
+        ...basePayload,
         train_sizes,
         n_steps: nSteps,
         n_jobs: nJobs,
@@ -209,9 +180,7 @@ export default function LearningCurvePanel() {
       const data = await requestLearningCurve(payload);
       setLearningCurveResult({ ...data, metric_used: effectiveMetric });
     } catch (e) {
-      const raw = e?.response?.data?.detail ?? e.message ?? String(e);
-      const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
-      setErr(msg);
+      setErr(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }

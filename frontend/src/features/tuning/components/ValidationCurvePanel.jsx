@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   Button,
@@ -19,6 +19,9 @@ import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.
 import { useTuningStore } from '../state/useTuningStore.js';
 import { useModelConfigStore } from '../../training/state/useModelConfigStore.js';
 import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaultsQuery.js';
+
+import { useEffectiveMetricForTask } from '../hooks/useEffectiveMetricForTask.js';
+import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
@@ -62,57 +65,12 @@ export default function ValidationCurvePanel() {
   const [err, setErr] = useState(null);
 
   const taskInferred = inspectReport?.task_inferred || null;
-
-  const allowedMetrics = useMemo(() => {
-    const mt = enums?.MetricByTask || null;
-    if (taskInferred && mt && Array.isArray(mt[taskInferred])) {
-      return mt[taskInferred].map(String);
-    }
-    if (Array.isArray(enums?.MetricName)) return enums.MetricName.map(String);
-    return [];
-  }, [enums, taskInferred]);
-
-  // Use backend-provided task-specific metric ordering as the default.
-  // Do not write this into state (stores are overrides-only).
-  const defaultMetricFromSchema = allowedMetrics?.[0] ?? null;
-  const effectiveMetric = metric ?? defaultMetricFromSchema;
-
-  const {
-    method,
-    pca_n,
-    pca_var,
-    pca_whiten,
-    lda_n,
-    lda_solver,
-    lda_shrinkage,
-    lda_tol,
-    sfs_k,
-    sfs_direction,
-    sfs_cv,
-    sfs_n_jobs,
-  } = useFeatureStore();
-
-  const {
-    nSplits,
-    stratified,
-    shuffle,
-    seed,
-    nJobs,
-    result: validationResult,
-  } = vcState;
-
-  const defaultNJobs = tuningDefaults?.validation_curve?.n_jobs;
-  const effectiveNJobs = nJobs ?? defaultNJobs;
-
-
-  // If the user has an explicit metric override that doesn't belong to the
-  // current task's allowed list, clear it.
-  useEffect(() => {
-    if (!metric) return;
-    if (allowedMetrics.length > 0 && !allowedMetrics.includes(String(metric))) {
-      setMetric(undefined);
-    }
-  }, [allowedMetrics, metric, setMetric]);
+  const { effectiveMetric } = useEffectiveMetricForTask({
+    enums,
+    taskInferred,
+    metric,
+    setMetric,
+  });
 
   // Initialize VC model once
   useEffect(() => {
@@ -148,30 +106,8 @@ export default function ValidationCurvePanel() {
     setLoading(true);
 
     try {
-      const parsedSeed =
-        shuffle === false
-          ? undefined
-          : seed === '' || seed == null
-          ? undefined
-          : parseInt(seed, 10);
-
-      const payload = compactPayload({
-        data: {
-          x_path: npzPath ? undefined : xPath,
-          y_path: npzPath ? undefined : yPath,
-          npz_path: npzPath,
-          x_key: xKey,
-          y_key: yKey,
-        },
-        split: {
-          mode: 'kfold',
-          n_splits: nSplits,
-          stratified,
-          shuffle,
-        },
-        scale: {
-          method: scaleMethod,
-        },
+      const basePayload = buildTuningCommonPayload({
+        data: { xPath, yPath, npzPath, xKey, yKey },
         features: {
           method,
           pca_n,
@@ -186,11 +122,14 @@ export default function ValidationCurvePanel() {
           sfs_cv,
           sfs_n_jobs,
         },
+        scaleMethod,
         model: vcModel,
-        eval: {
-          metric: effectiveMetric,
-          seed: parsedSeed,
-        },
+        split: { nSplits, stratified, shuffle, seed },
+        evalMetric: effectiveMetric,
+      });
+
+      const payload = compactPayload({
+        ...basePayload,
         param_name: name,
         param_range: paramRange,
         n_jobs: nJobs,
@@ -199,9 +138,7 @@ export default function ValidationCurvePanel() {
       const data = await requestValidationCurve(payload);
       setVcState({ result: { ...data, metric_used: effectiveMetric } });
     } catch (e) {
-      const raw = e?.response?.data?.detail ?? e.message ?? String(e);
-      const msg = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
-      setErr(msg);
+      setErr(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }

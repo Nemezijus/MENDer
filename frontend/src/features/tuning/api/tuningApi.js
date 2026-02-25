@@ -1,29 +1,21 @@
-import api from '../../../shared/api/client.js';
+import { postJson } from '../../../shared/api/http.js';
 
 // Learning curve
 export async function requestLearningCurve(payload) {
-  // POST /api/v1/tuning/learning-curve
-  const { data } = await api.post('/tuning/learning-curve', payload);
-  return data;
+  return await postJson('/tuning/learning-curve', payload);
 }
 
 // Validation curve
 export async function requestValidationCurve(payload) {
-  // POST /api/v1/tuning/validation-curve
-  const { data } = await api.post('/tuning/validation-curve', payload);
-  return data;
+  return await postJson('/tuning/validation-curve', payload);
 }
 
 // Grid search (GridSearchCV)
 export async function requestGridSearch(payload) {
-  // POST /api/v1/tuning/grid-search
-  const { data } = await api.post('/tuning/grid-search', payload);
-  return data;
+  return await postJson('/tuning/grid-search', payload);
 }
 
 // Randomized search (RandomizedSearchCV)
 export async function requestRandomSearch(payload) {
-  // POST /api/v1/tuning/random-search
-  const { data } = await api.post('/tuning/random-search', payload);
-  return data;
+  return await postJson('/tuning/random-search', payload);
 }

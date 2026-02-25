@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import { makeReset, makeShallowMergeSetter } from '../../../shared/state/storeFactories.js';
 
 const makeEmptyParam = () => ({
   paramName: '',
   values: [],
 });
 
-export const useTuningStore = create((set) => ({
+const INITIAL_STATE = {
   // Learning curve-specific UI state
   learningCurve: {
     // NOTE: overrides only; leave unset so backend/engine defaults apply.
@@ -52,25 +53,17 @@ export const useTuningStore = create((set) => ({
     hyperParam2: makeEmptyParam(),
     result: null,
   },
+};
 
-  // Shallow-merge updates for each sub-slice
-  setLearningCurve: (partial) =>
-    set((state) => ({
-      learningCurve: { ...state.learningCurve, ...partial },
-    })),
+export const useTuningStore = create((set) => ({
+  ...INITIAL_STATE,
 
-  setValidationCurve: (partial) =>
-    set((state) => ({
-      validationCurve: { ...state.validationCurve, ...partial },
-    })),
+  // Reset all tuning UI state.
+  resetTuning: makeReset(INITIAL_STATE, set),
 
-  setGridSearch: (partial) =>
-    set((state) => ({
-      gridSearch: { ...state.gridSearch, ...partial },
-    })),
-
-  setRandomSearch: (partial) =>
-    set((state) => ({
-      randomSearch: { ...state.randomSearch, ...partial },
-    })),
+  // Shallow-merge updates for each sub-slice.
+  setLearningCurve: makeShallowMergeSetter('learningCurve', set),
+  setValidationCurve: makeShallowMergeSetter('validationCurve', set),
+  setGridSearch: makeShallowMergeSetter('gridSearch', set),
+  setRandomSearch: makeShallowMergeSetter('randomSearch', set),
 }));
