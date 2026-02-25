@@ -1,8 +1,9 @@
-import { Card, Stack, Text, Select, Group, Box } from '@mantine/core';
+import { Stack, Select } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
 import ScalingHelpText, {
   ScalingIntroText,
 } from '../../content/help/ScalingHelpText.jsx';
+import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
   const { enums } = useSchemaDefaults();
@@ -30,47 +31,26 @@ export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
   });
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
-      <Stack gap="md">
-        {/* Centered, larger title */}
-        <Text fw={700} size="lg" align="center">
-          {title}
-        </Text>
-
-        {/* A + B: controls on the left, short intro on the right */}
-        <Group align="flex-start" gap="xl" grow wrap="nowrap">
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            <Stack gap="sm">
-              <Select
-                label="Scaling method"
-                data={scaleOptions}
-                value={value}
-                onChange={onChange}
-                styles={{
-                  input: {
-                    borderWidth: 2,
-                    borderColor: '#5c94ccff',
-                  },
-                }}
-              />
-            </Stack>
-          </Box>
-
-          <Box
-            style={{
-              flex: 1,
-              minWidth: 220,
+    <ConfigCardShell
+      title={title}
+      left={(
+        <Stack gap="sm">
+          <Select
+            label="Scaling method"
+            data={scaleOptions}
+            value={value}
+            onChange={onChange}
+            styles={{
+              input: {
+                borderWidth: 2,
+                borderColor: '#5c94ccff',
+              },
             }}
-          >
-            <ScalingIntroText />
-          </Box>
-        </Group>
-
-        {/* C: full-width detailed help text, with selected scaling highlighted */}
-        <Box mt="md">
-          <ScalingHelpText selectedScaling={value} />
-        </Box>
-      </Stack>
-    </Card>
+          />
+        </Stack>
+      )}
+      right={<ScalingIntroText />}
+      help={<ScalingHelpText selectedScaling={value} />}
+    />
   );
 }

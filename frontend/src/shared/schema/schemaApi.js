@@ -1,23 +1,18 @@
+import { getJson } from '../api/http.js';
+
 export async function getModelSchema() {
-  const res = await fetch('/api/v1/schema/model');
-  if (!res.ok) throw new Error(`Schema fetch failed: ${res.status}`);
-  return res.json(); // { schema, defaults }
+  // returns: { schema, defaults }
+  return getJson('/api/v1/schema/model');
 }
 
 export async function getEnums() {
-  const res = await fetch('/api/v1/schema/enums');
-  if (!res.ok) throw new Error(`Enums fetch failed: ${res.status}`);
-  return res.json();
+  return getJson('/api/v1/schema/enums');
 }
 
 export async function getAllDefaults() {
-  const res = await fetch('/api/v1/schema/defaults');
-  if (!res.ok) throw new Error(`Defaults fetch failed: ${res.status}`);
-  return res.json();
+  return getJson('/api/v1/schema/defaults');
 }
 
 export async function getTuningDefaults() {
-  const res = await fetch('/api/v1/schema/tuning-defaults');
-  if (!res.ok) throw new Error(`Tuning defaults fetch failed: ${res.status}`);
-  return res.json();
+  return getJson('/api/v1/schema/tuning-defaults');
 }

@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { Card, Stack, Text, Select, Group, Box, MultiSelect } from '@mantine/core';
+import { Stack, Text, Select, MultiSelect } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
 import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
 import MetricHelpText, { MetricIntroText } from '../../content/help/MetricHelpText.jsx';
+import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 function normalizeTaskName(t) {
   if (!t) return null;
@@ -205,75 +206,54 @@ export default function MetricCard({
   const selectedMeta = selectedSingle ? metricMeta[selectedSingle] : null;
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
-      <Stack gap="md">
-        {/* Centered, larger title */}
-        <Text fw={700} size="lg" align="center">
-          {title}
-        </Text>
+    <ConfigCardShell
+      title={title}
+      left={(
+        <Stack gap="xs">
+          {isUnsupervised ? (
+            <MultiSelect
+              label="Metrics"
+              description="Optional. If empty, the backend will compute a default set."
+              data={metricOptions}
+              value={unsupervisedDisplay}
+              onChange={handleUnsupervisedChange}
+              searchable
+              clearable
+              styles={{
+                input: {
+                  borderWidth: 2,
+                  borderColor: '#5c94ccff',
+                },
+              }}
+            />
+          ) : (
+            <Select
+              label="Metric method"
+              data={metricOptions}
+              value={supervisedDisplay}
+              onChange={handleSupervisedChange}
+              styles={{
+                input: {
+                  borderWidth: 2,
+                  borderColor: '#5c94ccff',
+                },
+              }}
+            />
+          )}
 
-        {/* A + B: controls on the left, short intro on the right */}
-        <Group align="flex-start" gap="xl" grow wrap="nowrap">
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            <Stack gap="xs">
-              {isUnsupervised ? (
-                <MultiSelect
-                  label="Metrics"
-                  description="Optional. If empty, the backend will compute a default set."
-                  data={metricOptions}
-                  value={unsupervisedDisplay}
-                  onChange={handleUnsupervisedChange}
-                  searchable
-                  clearable
-                  styles={{
-                    input: {
-                      borderWidth: 2,
-                      borderColor: '#5c94ccff',
-                    },
-                  }}
-                />
-              ) : (
-                <Select
-                  label="Metric method"
-                  data={metricOptions}
-                  value={supervisedDisplay}
-                  onChange={handleSupervisedChange}
-                  styles={{
-                    input: {
-                      borderWidth: 2,
-                      borderColor: '#5c94ccff',
-                    },
-                  }}
-                />
-              )}
-
-              {selectedMeta && (
-                <Text size="xs" c="dimmed">
-                  Range:{' '}
-                  <Text span fw={600}>
-                    {selectedMeta.range}
-                  </Text>{' '}
-                  · {selectedMeta.direction}
-                </Text>
-              )}
-            </Stack>
-          </Box>
-
-          <Box
-            style={{
-              flex: 1,
-              minWidth: 220,
-            }}
-          >
-            <MetricIntroText />
-          </Box>
-        </Group>
-
-        {/* C: full-width detailed help text, with the selected metric highlighted */}
-        <Box mt="md">
-          <MetricHelpText selectedMetric={selectedSingle} />
-        </Box>
-      </Stack>
-    </Card>
+          {selectedMeta && (
+            <Text size="xs" c="dimmed">
+              Range:{' '}
+              <Text span fw={600}>
+                {selectedMeta.range}
+              </Text>{' '}
+              · {selectedMeta.direction}
+            </Text>
+          )}
+        </Stack>
+      )}
+      right={<MetricIntroText />}
+      help={<MetricHelpText selectedMetric={selectedSingle} />}
+    />
   );
 }

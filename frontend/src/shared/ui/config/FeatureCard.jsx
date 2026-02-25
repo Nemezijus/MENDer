@@ -1,8 +1,5 @@
 import {
-  Card,
   Stack,
-  Group,
-  Text,
   Select,
   NumberInput,
   Checkbox,
@@ -16,6 +13,7 @@ import FeatureHelpText, {
   FeatureIntroText,
 } from '../../content/help/FeatureHelpText.jsx';
 import { getVariantSchema, enumFromSubSchema, toSelectData } from '../../utils/schema/jsonSchema.js';
+import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 /** -------- helpers to read enums from the Features schema -------- **/
 
@@ -132,216 +130,194 @@ export default function FeatureCard({ title = 'Features' }) {
   };
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
-      <Stack gap="md">
-        {/* Centered, larger title */}
-        <Text fw={700} size="lg" align="center">
-          {title}
-        </Text>
-
-        {/* Row A/B: dropdown + short intro */}
-        <Group align="flex-start" gap="xl" grow wrap="nowrap">
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            <Stack gap="sm">
-              <Select
-                label="Feature method"
-                data={methods}
-                value={effectiveMethod}
-                onChange={handleMethodChange}
-                styles={{
-                  input: {
-                    borderWidth: 2,
-                    borderColor: '#5c94ccff',
-                  },
-                }}
-              />
-            </Stack>
-          </Box>
-
-          <Box
-            style={{
-              flex: 1,
-              minWidth: 220,
+    <ConfigCardShell
+      title={title}
+      left={(
+        <Stack gap="sm">
+          <Select
+            label="Feature method"
+            data={methods}
+            value={effectiveMethod}
+            onChange={handleMethodChange}
+            styles={{
+              input: {
+                borderWidth: 2,
+                borderColor: '#5c94ccff',
+              },
             }}
-          >
-            <FeatureIntroText />
-          </Box>
-        </Group>
-
-        {/* Block C: full-width detailed help text, with selected method highlighted
-            and parameter descriptions only for the active method */}
-        <Box mt="md">
-          <FeatureHelpText selectedMethod={effectiveMethod} />
-        </Box>
-
-        {/* Method-specific controls (grow downward, help text stays relatively stable) */}
-        <Box mt="md">
-          {/* PCA controls */}
-          {effectiveMethod === 'pca' && (
-            <Stack gap="sm">
-              <Tooltip label="Number of components (optional). Leave empty for variance-based.">
-                <NumberInput
-                  label="pca_n"
-                  value={effectivePcaN}
-                  onChange={(v) => {
-                    const next = toIntOrUndef(v);
-                    if (clearIfDefault(next, propDefault('pca_n'))) setPcaN(undefined);
-                    else setPcaN(next);
-                  }}
-                  placeholder="empty = auto by variance"
-                  allowDecimal={false}
-                  min={1}
-                />
-              </Tooltip>
-              <Tooltip label="Retained variance if pca_n is empty (e.g., 0.95)">
-                <NumberInput
-                  label="pca_var"
-                  value={effectivePcaVar}
-                  onChange={(v) => {
-                    const next = toFloatOrUndef(v);
-                    if (clearIfDefault(next, propDefault('pca_var'))) setPcaVar(undefined);
-                    else setPcaVar(next);
-                  }}
-                  min={0.0}
-                  max={1.0}
-                  step={0.01}
-                />
-              </Tooltip>
-              <Checkbox
-                label="pca_whiten"
-                checked={effectivePcaWhiten}
-                onChange={(e) => {
-                  const next = Boolean(e.currentTarget.checked);
-                  if (clearIfDefault(next, propDefault('pca_whiten'))) setPcaWhiten(undefined);
-                  else setPcaWhiten(next);
-                }}
-              />
-            </Stack>
-          )}
-
-          {/* LDA controls */}
-          {effectiveMethod === 'lda' && (
-            <Stack gap="sm">
-              <Tooltip label="Target number of components (<= n_classes - 1). Leave empty to infer.">
-                <NumberInput
-                  label="lda_n"
-                  value={effectiveLdaN}
-                  onChange={(v) => {
-                    const next = toIntOrUndef(v);
-                    if (clearIfDefault(next, propDefault('lda_n'))) setLdaN(undefined);
-                    else setLdaN(next);
-                  }}
-                  allowDecimal={false}
-                  min={1}
-                />
-              </Tooltip>
-              <Select
-                label="lda_solver"
-                data={ldaSolverData}
-                value={effectiveLdaSolver || null}
-                onChange={(v) => {
-                  const next = v || undefined;
-                  if (clearIfDefault(next, propDefault('lda_solver'))) setLdaSolver(undefined);
-                  else setLdaSolver(next);
-                }}
-              />
-              <Tooltip label="Only used with 'lsqr' or 'eigen'. Leave empty for None.">
-                <NumberInput
-                  label="lda_shrinkage"
-                  value={effectiveLdaShrinkage}
-                  onChange={(v) => {
-                    const next = toFloatOrUndef(v);
-                    if (clearIfDefault(next, propDefault('lda_shrinkage'))) setLdaShrinkage(undefined);
-                    else setLdaShrinkage(next);
-                  }}
-                  step={0.1}
-                  min={0}
-                />
-              </Tooltip>
+          />
+        </Stack>
+      )}
+      right={<FeatureIntroText />}
+      help={<FeatureHelpText selectedMethod={effectiveMethod} />}
+    >
+      {/* Method-specific controls (grow downward, help text stays relatively stable) */}
+      <Box mt="md">
+        {/* PCA controls */}
+        {effectiveMethod === 'pca' && (
+          <Stack gap="sm">
+            <Tooltip label="Number of components (optional). Leave empty for variance-based.">
               <NumberInput
-                label="lda_tol"
-                value={effectiveLdaTol}
-                onChange={(v) => {
-                  const next = toFloatOrUndef(v);
-                  if (clearIfDefault(next, propDefault('lda_tol'))) setLdaTol(undefined);
-                  else setLdaTol(next);
-                }}
-                step={1e-4}
-                precision={6}
-                min={0}
-              />
-            </Stack>
-          )}
-
-          {/* SFS controls */}
-          {effectiveMethod === 'sfs' && (
-            <Stack gap="sm">
-              <Tooltip label="Number of selected features; 'auto' or integer">
-                <TextInput
-                  label="sfs_k"
-                  value={effectiveSfsK == null ? '' : String(effectiveSfsK)}
-                  onChange={(e) => {
-                    const v = e.currentTarget.value.trim();
-                    const def = propDefault('sfs_k');
-                    if (v === '') {
-                      setSfsK(undefined);
-                      return;
-                    }
-                    if (v.toLowerCase() === 'auto') {
-                      if (clearIfDefault('auto', def)) setSfsK(undefined);
-                      else setSfsK('auto');
-                      return;
-                    }
-                    const digits = v.replace(/\D/g, '');
-                    if (digits === '') {
-                      setSfsK(undefined);
-                      return;
-                    }
-                    if (clearIfDefault(digits, def)) setSfsK(undefined);
-                    else setSfsK(digits);
-                  }}
-                  placeholder="auto or integer"
-                />
-              </Tooltip>
-              <Select
-                label="sfs_direction"
-                data={sfsDirectionData}
-                value={effectiveSfsDirection || null}
-                onChange={(v) => {
-                  const next = v || undefined;
-                  if (clearIfDefault(next, propDefault('sfs_direction'))) setSfsDirection(undefined);
-                  else setSfsDirection(next);
-                }}
-              />
-              <NumberInput
-                label="sfs_cv"
-                value={effectiveSfsCv}
+                label="pca_n"
+                value={effectivePcaN}
                 onChange={(v) => {
                   const next = toIntOrUndef(v);
-                  if (clearIfDefault(next, propDefault('sfs_cv'))) setSfsCv(undefined);
-                  else setSfsCv(next);
+                  if (clearIfDefault(next, propDefault('pca_n'))) setPcaN(undefined);
+                  else setPcaN(next);
+                }}
+                placeholder="empty = auto by variance"
+                allowDecimal={false}
+                min={1}
+              />
+            </Tooltip>
+            <Tooltip label="Retained variance if pca_n is empty (e.g., 0.95)">
+              <NumberInput
+                label="pca_var"
+                value={effectivePcaVar}
+                onChange={(v) => {
+                  const next = toFloatOrUndef(v);
+                  if (clearIfDefault(next, propDefault('pca_var'))) setPcaVar(undefined);
+                  else setPcaVar(next);
+                }}
+                min={0.0}
+                max={1.0}
+                step={0.01}
+              />
+            </Tooltip>
+            <Checkbox
+              label="pca_whiten"
+              checked={effectivePcaWhiten}
+              onChange={(e) => {
+                const next = Boolean(e.currentTarget.checked);
+                if (clearIfDefault(next, propDefault('pca_whiten'))) setPcaWhiten(undefined);
+                else setPcaWhiten(next);
+              }}
+            />
+          </Stack>
+        )}
+
+        {/* LDA controls */}
+        {effectiveMethod === 'lda' && (
+          <Stack gap="sm">
+            <Tooltip label="Target number of components (<= n_classes - 1). Leave empty to infer.">
+              <NumberInput
+                label="lda_n"
+                value={effectiveLdaN}
+                onChange={(v) => {
+                  const next = toIntOrUndef(v);
+                  if (clearIfDefault(next, propDefault('lda_n'))) setLdaN(undefined);
+                  else setLdaN(next);
                 }}
                 allowDecimal={false}
-                min={2}
-                max={20}
+                min={1}
               />
-              <Tooltip label="Number of parallel jobs for SFS; empty = use default">
-                <NumberInput
-                  label="sfs_n_jobs"
-                  value={effectiveSfsNJobs}
-                  onChange={(v) => {
-                    const next = toIntOrUndef(v);
-                    if (clearIfDefault(next, propDefault('sfs_n_jobs'))) setSfsNJobs(undefined);
-                    else setSfsNJobs(next);
-                  }}
-                  allowDecimal={false}
-                  min={-1}
-                />
-              </Tooltip>
-            </Stack>
-          )}
-        </Box>
-      </Stack>
-    </Card>
+            </Tooltip>
+            <Select
+              label="lda_solver"
+              data={ldaSolverData}
+              value={effectiveLdaSolver || null}
+              onChange={(v) => {
+                const next = v || undefined;
+                if (clearIfDefault(next, propDefault('lda_solver'))) setLdaSolver(undefined);
+                else setLdaSolver(next);
+              }}
+            />
+            <Tooltip label="Only used with 'lsqr' or 'eigen'. Leave empty for None.">
+              <NumberInput
+                label="lda_shrinkage"
+                value={effectiveLdaShrinkage}
+                onChange={(v) => {
+                  const next = toFloatOrUndef(v);
+                  if (clearIfDefault(next, propDefault('lda_shrinkage'))) setLdaShrinkage(undefined);
+                  else setLdaShrinkage(next);
+                }}
+                step={0.1}
+                min={0}
+              />
+            </Tooltip>
+            <NumberInput
+              label="lda_tol"
+              value={effectiveLdaTol}
+              onChange={(v) => {
+                const next = toFloatOrUndef(v);
+                if (clearIfDefault(next, propDefault('lda_tol'))) setLdaTol(undefined);
+                else setLdaTol(next);
+              }}
+              step={1e-4}
+              precision={6}
+              min={0}
+            />
+          </Stack>
+        )}
+
+        {/* SFS controls */}
+        {effectiveMethod === 'sfs' && (
+          <Stack gap="sm">
+            <Tooltip label="Number of selected features; 'auto' or integer">
+              <TextInput
+                label="sfs_k"
+                value={effectiveSfsK == null ? '' : String(effectiveSfsK)}
+                onChange={(e) => {
+                  const v = e.currentTarget.value.trim();
+                  const def = propDefault('sfs_k');
+                  if (v === '') {
+                    setSfsK(undefined);
+                    return;
+                  }
+                  if (v.toLowerCase() === 'auto') {
+                    if (clearIfDefault('auto', def)) setSfsK(undefined);
+                    else setSfsK('auto');
+                    return;
+                  }
+                  const digits = v.replace(/\D/g, '');
+                  if (digits === '') {
+                    setSfsK(undefined);
+                    return;
+                  }
+                  if (clearIfDefault(digits, def)) setSfsK(undefined);
+                  else setSfsK(digits);
+                }}
+                placeholder="auto or integer"
+              />
+            </Tooltip>
+            <Select
+              label="sfs_direction"
+              data={sfsDirectionData}
+              value={effectiveSfsDirection || null}
+              onChange={(v) => {
+                const next = v || undefined;
+                if (clearIfDefault(next, propDefault('sfs_direction'))) setSfsDirection(undefined);
+                else setSfsDirection(next);
+              }}
+            />
+            <NumberInput
+              label="sfs_cv"
+              value={effectiveSfsCv}
+              onChange={(v) => {
+                const next = toIntOrUndef(v);
+                if (clearIfDefault(next, propDefault('sfs_cv'))) setSfsCv(undefined);
+                else setSfsCv(next);
+              }}
+              allowDecimal={false}
+              min={2}
+              max={20}
+            />
+            <Tooltip label="Number of parallel jobs for SFS; empty = use default">
+              <NumberInput
+                label="sfs_n_jobs"
+                value={effectiveSfsNJobs}
+                onChange={(v) => {
+                  const next = toIntOrUndef(v);
+                  if (clearIfDefault(next, propDefault('sfs_n_jobs'))) setSfsNJobs(undefined);
+                  else setSfsNJobs(next);
+                }}
+                allowDecimal={false}
+                min={-1}
+              />
+            </Tooltip>
+          </Stack>
+        )}
+      </Box>
+    </ConfigCardShell>
   );
 }

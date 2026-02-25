@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import {
-  Card,
   Stack,
-  Text,
   Select,
   NumberInput,
   Group,
   Checkbox,
-  Box,
   Button,
 } from '@mantine/core';
 import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
@@ -15,6 +12,7 @@ import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
 import SplitHelpText, {
   SplitIntroText,
 } from '../../content/help/SplitHelpText.jsx';
+import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 export default function SplitOptionsCard({
   title = 'Data split',
@@ -91,107 +89,82 @@ export default function SplitOptionsCard({
   const effectiveShuffle = shuffle ?? defaultShuffle;
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
-      <Stack gap="md">
-        {/* Centered title */}
-        <Text fw={700} size="lg" align="center">
-          {title}
-        </Text>
-
-        {/* A + B row: controls on the left, short intro on the right */}
-        <Group align="flex-start" gap="xl" grow wrap="nowrap">
-          {/* Block A: split controls */}
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            <Stack gap="sm">
-              {showModeSelect && (
-                <Select
-                  label="Split strategy"
-                  data={[
-                    { value: 'holdout', label: 'Hold-out' },
-                    { value: 'kfold', label: 'K-fold cross-validation' },
-                  ]}
-                  value={showModeSelect ? (mode ?? effectiveMode) : effectiveMode}
-                  onChange={(v) => onModeChange?.(v || undefined)}
-                />
-              )}
-
-              {effectiveMode === 'holdout' && hasHoldout && (
-                <NumberInput
-                  label="Train fraction"
-                  min={minTrainFrac}
-                  max={maxTrainFrac}
-                  step={0.05}
-                  value={effectiveTrainFrac}
-                  onChange={onTrainFracChange}
-                />
-              )}
-
-              {effectiveMode === 'kfold' && hasKFold && (
-                <NumberInput
-                  label="K-Fold (n_splits)"
-                  min={minNSplits}
-                  max={maxNSplits}
-                  step={1}
-                  value={effectiveNSplits}
-                  onChange={onNSplitsChange}
-                />
-              )}
-
-              <Group grow>
-                <Checkbox
-                  label="Stratified"
-                  checked={Boolean(effectiveStratified)}
-                  onChange={(e) =>
-                    onStratifiedChange?.(e.currentTarget.checked)
-                  }
-                />
-                <Checkbox
-                  label="Shuffle split"
-                  checked={Boolean(effectiveShuffle)}
-                  onChange={(e) => onShuffleChange?.(e.currentTarget.checked)}
-                />
-              </Group>
-
-              <NumberInput
-                label="Seed (used if shuffle split)"
-                value={seed}
-                onChange={onSeedChange}
-                allowDecimal={false}
-                disabled={!Boolean(effectiveShuffle)}
-              />
-            </Stack>
-          </Box>
-
-          {/* Block B: short intro help text + toggle button */}
-          <Box
-            style={{
-              flex: 1,
-              minWidth: 220,
-            }}
-          >
-            <Stack gap="xs">
-              <SplitIntroText />
-              <Button
-                size="xs"
-                variant="subtle"
-                onClick={() => setShowDetails((prev) => !prev)}
-              >
-                {showDetails ? 'Show less' : 'Show more'}
-              </Button>
-            </Stack>
-          </Box>
-        </Group>
-
-        {/* Block C: full-width detailed help text, toggled */}
-        {showDetails && (
-          <Box mt="md">
-            <SplitHelpText
-              selectedMode={effectiveMode}
-              allowStratified={allowStratified}
+    <ConfigCardShell
+      title={title}
+      left={(
+        <Stack gap="sm">
+          {showModeSelect && (
+            <Select
+              label="Split strategy"
+              data={[
+                { value: 'holdout', label: 'Hold-out' },
+                { value: 'kfold', label: 'K-fold cross-validation' },
+              ]}
+              value={showModeSelect ? (mode ?? effectiveMode) : effectiveMode}
+              onChange={(v) => onModeChange?.(v || undefined)}
             />
-          </Box>
-        )}
-      </Stack>
-    </Card>
+          )}
+
+          {effectiveMode === 'holdout' && hasHoldout && (
+            <NumberInput
+              label="Train fraction"
+              min={minTrainFrac}
+              max={maxTrainFrac}
+              step={0.05}
+              value={effectiveTrainFrac}
+              onChange={onTrainFracChange}
+            />
+          )}
+
+          {effectiveMode === 'kfold' && hasKFold && (
+            <NumberInput
+              label="K-Fold (n_splits)"
+              min={minNSplits}
+              max={maxNSplits}
+              step={1}
+              value={effectiveNSplits}
+              onChange={onNSplitsChange}
+            />
+          )}
+
+          <Group grow>
+            <Checkbox
+              label="Stratified"
+              checked={Boolean(effectiveStratified)}
+              onChange={(e) => onStratifiedChange?.(e.currentTarget.checked)}
+            />
+            <Checkbox
+              label="Shuffle split"
+              checked={Boolean(effectiveShuffle)}
+              onChange={(e) => onShuffleChange?.(e.currentTarget.checked)}
+            />
+          </Group>
+
+          <NumberInput
+            label="Seed (used if shuffle split)"
+            value={seed}
+            onChange={onSeedChange}
+            allowDecimal={false}
+            disabled={!Boolean(effectiveShuffle)}
+          />
+        </Stack>
+      )}
+      right={(
+        <Stack gap="xs">
+          <SplitIntroText />
+          <Button
+            size="xs"
+            variant="subtle"
+            onClick={() => setShowDetails((prev) => !prev)}
+          >
+            {showDetails ? 'Show less' : 'Show more'}
+          </Button>
+        </Stack>
+      )}
+      helpVisible={showDetails}
+      help={(
+        <SplitHelpText selectedMode={effectiveMode} allowStratified={allowStratified} />
+      )}
+    />
   );
 }
