@@ -1,20 +1,15 @@
-import api from '../../../shared/api/client.js';
+import { postFormData, postJson } from '../../../shared/api/http.js';
 
 // existing inspect endpoint (reuse)
 export async function inspectData(payload) {
-  const { data } = await api.post('/data/inspect', payload);
-  return data;
+  return postJson('/data/inspect', payload);
 }
 
 export async function inspectProductionData(payload) {
-  const { data } = await api.post('/data/inspect_production', payload);
-  return data;
+  return postJson('/data/inspect_production', payload);
 }
 
 // new upload endpoint (multipart form)
 export async function uploadData(formData) {
-  const { data } = await api.post('/data/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return data;
+  return postFormData('/data/upload', formData);
 }

@@ -1,34 +1,30 @@
-import api from '../../../shared/api/client.js'; // baseURL '/api/v1'
+import { getJson, postFormData } from '../../../shared/api/http.js'; // baseURL '/api/v1'
 
 export async function uploadFile(file) {
   const fd = new FormData();
   fd.append('file', file);
-  const { data } = await api.post('/files/upload', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+
   // Backend returns:
   // {
   //   path: "/uploads/<sha256>.<ext>",        // canonical stored path
   //   original_name: "data_mean.mat",        // user-friendly name (for UI)
   //   saved_name: "<sha256>.<ext>"           // stable content-addressed identifier
   // }
-  return data;
+  return postFormData('/files/upload', fd);
 }
 
 export async function listUploads() {
-  const { data } = await api.get('/files/list');
   // Returns: Array<{ path, original_name, saved_name }>
   // Note: original_name is a display name derived from the JSON index when available.
-  return data;
+  return getJson('/files/list');
 }
 
 export async function getFilesConstraints() {
-  const { data } = await api.get('/files/constraints');
   // Returns:
   // {
   //   upload_dir: string,
   //   allowed_exts: string[],
   //   data_default_keys: { x_key: string, y_key: string }
   // }
-  return data;
+  return getJson('/files/constraints');
 }
