@@ -16,6 +16,18 @@ export function makeReset(initialState, set) {
 }
 
 /**
+ * Simple setter for a single key.
+ *
+ * Keeps stores consistent and avoids repeating `(value) => set({ key: value })`.
+ *
+ * @param {string} key
+ * @param {(updater: any) => void} set
+ */
+export function makeKeySetter(key, set) {
+  return (value) => set({ [key]: value });
+}
+
+/**
  * Shallow-merge update for a nested slice.
  *
  * @param {string} key

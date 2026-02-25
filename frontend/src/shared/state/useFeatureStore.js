@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { makeKeySetter, makeReset } from './storeFactories.js';
+
 /**
  * Feature config overrides only.
  *
@@ -40,23 +42,23 @@ export const useFeatureStore = create((set) => ({
   ...emptyState,
 
   // --- setters --------------------------------------------------------------
-  setMethod: (method) => set({ method }),
+  setMethod: makeKeySetter('method', set),
 
-  setPcaN:       (pca_n)       => set({ pca_n }),
-  setPcaVar:     (pca_var)     => set({ pca_var }),
-  setPcaWhiten:  (pca_whiten)  => set({ pca_whiten }),
+  setPcaN: makeKeySetter('pca_n', set),
+  setPcaVar: makeKeySetter('pca_var', set),
+  setPcaWhiten: makeKeySetter('pca_whiten', set),
 
-  setLdaN:         (lda_n)         => set({ lda_n }),
-  setLdaSolver:    (lda_solver)    => set({ lda_solver }),
-  setLdaShrinkage: (lda_shrinkage) => set({ lda_shrinkage }),
-  setLdaTol:       (lda_tol)       => set({ lda_tol }),
+  setLdaN: makeKeySetter('lda_n', set),
+  setLdaSolver: makeKeySetter('lda_solver', set),
+  setLdaShrinkage: makeKeySetter('lda_shrinkage', set),
+  setLdaTol: makeKeySetter('lda_tol', set),
 
-  setSfsK:        (sfs_k)        => set({ sfs_k }),
-  setSfsDirection:(sfs_direction)=> set({ sfs_direction }),
-  setSfsCv:       (sfs_cv)       => set({ sfs_cv }),
-  setSfsNJobs:    (sfs_n_jobs)   => set({ sfs_n_jobs }),
+  setSfsK: makeKeySetter('sfs_k', set),
+  setSfsDirection: makeKeySetter('sfs_direction', set),
+  setSfsCv: makeKeySetter('sfs_cv', set),
+  setSfsNJobs: makeKeySetter('sfs_n_jobs', set),
 
-  reset: () => set({ ...emptyState }),
+  reset: makeReset(emptyState, set),
 
   // --- one-shot hydration from artifact.features ---------------------------
   // NOTE: do not apply fallbacks here; preserve artifact values only.
