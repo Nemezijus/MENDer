@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { makeReset } from '../../../shared/state/storeFactories.js';
+
 const initialState = {
   // modelling
   algo: null,
@@ -23,16 +25,19 @@ export const useUnsupervisedStore = create((set) => ({
       algo,
       model: s.model ? { ...s.model, algo } : s.model,
     })),
+
   setModel: (model) =>
     set({
       model,
       algo: model?.algo ?? null,
     }),
+
   hydrateModel: (baseDefaults, prev) =>
     set(() => ({
       model: { ...(baseDefaults || {}), ...(prev || {}) },
       algo: (prev?.algo ?? baseDefaults?.algo ?? null) || null,
     })),
+
   setFitScope: (fitScope) => set({ fitScope }),
 
   setMetrics: (metrics) => set({ metrics }),
@@ -42,5 +47,5 @@ export const useUnsupervisedStore = create((set) => ({
   setEmbeddingMethod: (embeddingMethod) => set({ embeddingMethod }),
   setEmbeddingMaxPoints: (embeddingMaxPoints) => set({ embeddingMaxPoints }),
 
-  reset: () => set({ ...initialState }),
+  reset: makeReset(initialState, set),
 }));

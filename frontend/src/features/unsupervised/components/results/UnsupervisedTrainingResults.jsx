@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Divider, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
 import Plot from 'react-plotly.js';
 
+import PlotHeader from '../common/PlotHeader.jsx';
+
 const PLOT_MARGIN = { l: 55, r: 20, t: 12, b: 55 };
 
 const AXIS_TITLE = (text) => ({ text, font: { size: 13, weight: 'bold' } });
@@ -234,41 +236,6 @@ function ellipsePoints(mean, cov, n = 100, scale = 2) {
     ys.push(y);
   }
   return { x: xs, y: ys };
-}
-
-function PlotHeader({ title, help }) {
-  const titleNode = (
-    <div
-      style={{
-        minHeight: 28,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text fw={600} size="md" ta="center">{title}</Text>
-    </div>
-  );
-
-  return help ? (
-    <Tooltip label={help} withArrow position="top">
-      {titleNode}
-    </Tooltip>
-  ) : (
-    titleNode
-  );
-}
-
-
-function SectionDivider({ title, help }) {
-  const divider = <Divider label={title} labelPosition="center" />;
-  return help ? (
-    <Tooltip label={help} withArrow position="top">
-      <div>{divider}</div>
-    </Tooltip>
-  ) : (
-    divider
-  );
 }
 
 const LEGEND_TOP = {
