@@ -31,6 +31,8 @@ import { requestValidationCurve } from '../api/tuningApi.js';
 import ValidationCurveResultsPanel from './results/ValidationCurveResultsPanel.jsx';
 import HyperparameterSelector from './helpers/HyperparameterSelector.jsx';
 
+const EMPTY_PARAM = { paramName: '', values: [] };
+
 export default function ValidationCurvePanel() {
   const xPath = useDataStore((s) => s.xPath);
   const yPath = useDataStore((s) => s.yPath);
@@ -39,12 +41,25 @@ export default function ValidationCurvePanel() {
   const yKey = useDataStore((s) => s.yKey);
   const inspectReport = useDataStore((s) => s.inspectReport);
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
 
   const {
-    data: tuningDefaults,
-    isLoading: tuningLoading,
-  } = useTuningDefaultsQuery();
+    method,
+    pca_n,
+    pca_var,
+    pca_whiten,
+    lda_n,
+    lda_solver,
+    lda_shrinkage,
+    lda_tol,
+    sfs_k,
+    sfs_direction,
+    sfs_cv,
+    sfs_n_jobs,
+  } = useFeatureStore();
+
+  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+
+  const { data: tuningDefaults, isLoading: tuningLoading } = useTuningDefaultsQuery();
 
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
@@ -53,9 +68,21 @@ export default function ValidationCurvePanel() {
   const vcState = useTuningStore((s) => s.validationCurve);
   const setVcState = useTuningStore((s) => s.setValidationCurve);
 
+  const {
+    nSplits,
+    stratified,
+    shuffle,
+    seed,
+    nJobs,
+    result: validationResult,
+  } = vcState;
+
   // Persisted hyperparameter selection (in tuning store)
-  const hyperParam = vcState.hyperParam ?? { paramName: '', values: [] };
+  const hyperParam = vcState.hyperParam ?? EMPTY_PARAM;
   const handleHyperParamChange = (next) => setVcState({ hyperParam: next });
+
+  const defaultNJobs = tuningDefaults?.validation_curve?.n_jobs;
+  const effectiveNJobs = nJobs ?? defaultNJobs;
 
   // Per-panel model config (validation curve slice)
   const vcModel = useModelConfigStore((s) => s.validationCurve);
@@ -75,12 +102,11 @@ export default function ValidationCurvePanel() {
   // Initialize VC model once
   useEffect(() => {
     if (!defsLoading && !vcModel) {
-      const init = getModelDefaults('logreg') || { algo: 'logreg' };
+      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
+      const init = getModelDefaults(defaultAlgo) || { algo: defaultAlgo };
       setVcModel(init);
     }
-  }, [defsLoading, getModelDefaults, vcModel, setVcModel]);
-
-  // (we no longer need paramOptions / parseParamRange here)
+  }, [defsLoading, getModelDefaults, taskInferred, vcModel, setVcModel]);
 
   async function handleCompute() {
     if (!dataReady) {
@@ -89,7 +115,7 @@ export default function ValidationCurvePanel() {
     }
     if (!vcModel) return;
 
-    const name = hyperParam.paramName?.trim();
+    const name = (hyperParam.paramName || '').trim();
     const paramRange = Array.isArray(hyperParam.values) ? hyperParam.values : [];
 
     if (!name) {
@@ -132,6 +158,7 @@ export default function ValidationCurvePanel() {
         ...basePayload,
         param_name: name,
         param_range: paramRange,
+        // overrides-only; omit when unset so backend request defaults apply
         n_jobs: nJobs,
       });
 
@@ -165,22 +192,12 @@ export default function ValidationCurvePanel() {
         <Stack gap="md">
           <Group justify="space-between" wrap="nowrap">
             <Text fw={500}>Configuration</Text>
-            <Button
-              size="xs"
-              onClick={handleCompute}
-              loading={loading}
-              disabled={!dataReady}
-            >
+            <Button size="xs" onClick={handleCompute} loading={loading} disabled={!dataReady}>
               {loading ? 'Computing…' : 'Compute'}
             </Button>
           </Group>
 
-          <Box
-            style={{
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
+          <Box style={{ margin: '0 auto', width: '100%' }}>
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['kfold']}
@@ -203,9 +220,7 @@ export default function ValidationCurvePanel() {
                     const d = getModelDefaults(next.algo) || { algo: next.algo };
                     setVcModel({ ...d, ...next });
                     // Reset hyperparameter selection when algo changes
-                    setVcState({
-                      hyperParam: { paramName: '', values: [] },
-                    });
+                    setVcState({ hyperParam: EMPTY_PARAM });
                   } else {
                     setVcModel(next);
                   }
@@ -214,6 +229,8 @@ export default function ValidationCurvePanel() {
                 enums={enums}
                 models={models}
               />
+
+              <Divider my="xs" />
 
               <HyperparameterSelector
                 schema={models?.schema}
@@ -249,12 +266,7 @@ export default function ValidationCurvePanel() {
         </Stack>
       </Card>
 
-      
-        <ValidationCurveResultsPanel
-          result={validationResult}
-          nSplits={nSplits}
-        />
-      
+      <ValidationCurveResultsPanel result={validationResult} nSplits={nSplits} />
     </Stack>
   );
 }

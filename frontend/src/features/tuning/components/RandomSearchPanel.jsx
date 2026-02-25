@@ -33,6 +33,13 @@ import HyperparameterSelector from './helpers/HyperparameterSelector.jsx';
 
 const EMPTY_PARAM = { paramName: '', values: [] };
 
+function parseSeedForSearch({ shuffle, seed } = {}) {
+  if (shuffle === false) return undefined;
+  if (seed === '' || seed == null) return undefined;
+  const n = parseInt(seed, 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export default function RandomSearchPanel() {
   const xPath = useDataStore((s) => s.xPath);
   const yPath = useDataStore((s) => s.yPath);
@@ -150,6 +157,7 @@ export default function RandomSearchPanel() {
     setLoading(true);
 
     try {
+      const parsedSeed = parseSeedForSearch({ shuffle, seed });
       const paramDistributions = {
         [p1]: v1,
         [p2]: v2,
@@ -187,6 +195,9 @@ export default function RandomSearchPanel() {
             ? undefined
             : nIter,
         n_jobs: defaultNJobs != null && nJobs === defaultNJobs ? undefined : nJobs,
+        // Make RandomizedSearchCV sampling reproducible when the user provides a seed.
+        // This does not affect CV splitting; it only controls the parameter sampling.
+        random_state: parsedSeed,
       });
 
       const data = await requestRandomSearch(payload);
