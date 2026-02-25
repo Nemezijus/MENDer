@@ -28,16 +28,9 @@ import { useEnsembleTrainRunner } from '../hooks/useEnsembleTrainRunner.js';
 import { buildCommonEnsemblePayload, buildEnsembleTrainPayload } from '../utils/payload.js';
 import { getAllowedMetrics, resolveMetricForPayload } from '../utils/metric.js';
 import { intOrUndef, numOrUndef } from '../utils/coerce.js';
+import { titleCase } from '../utils/resultsFormat.js';
 import { dedupeWarning, normalizeWeight } from '../utils/voting.js';
 
-function titleCase(s) {
-  return String(s || '')
-    .replace(/_/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
 
 function algoLabelWithFallback(key) {
   const k = String(key || '');
