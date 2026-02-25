@@ -7,6 +7,7 @@ import { uploadFile } from '../../api/filesApi.js';
 import { compactPayload } from '../../../../shared/utils/compactPayload.js';
 import { toErrorText } from '../../../../shared/utils/errors.js';
 import { formatDisplayNameFromUpload } from '../../utils/fileDisplay.js';
+import { optString } from '../../utils/optionalFields.js';
 
 import { TrainingCompoundFileText } from '../../../../shared/content/help/DataFilesHelpTexts.jsx';
 
@@ -66,12 +67,12 @@ export default function TrainingCompoundFileTab({
         setNpzDisplayGlobal(npzPathDisplay?.trim() || '');
       }
 
+      const npz_path = optString(resolvedNpzPath);
+
       const payload = compactPayload({
-        x_path: null,
-        y_path: null,
-        npz_path: resolvedNpzPath,
-        x_key: xKey?.trim() || undefined,
-        y_key: yKey?.trim() || undefined,
+        ...(npz_path ? { npz_path } : {}),
+        x_key: optString(xKey),
+        y_key: optString(yKey),
       });
 
       const report = await inspectMutation.mutateAsync(payload);

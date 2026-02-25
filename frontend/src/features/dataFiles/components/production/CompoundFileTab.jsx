@@ -8,6 +8,7 @@ import { uploadFile } from '../../api/filesApi.js';
 import { compactPayload } from '../../../../shared/utils/compactPayload.js';
 import { toErrorText } from '../../../../shared/utils/errors.js';
 import { formatDisplayNameFromUpload } from '../../utils/fileDisplay.js';
+import { optNumber, optString } from '../../utils/optionalFields.js';
 
 import { ProductionCompoundFileText } from '../../../../shared/content/help/DataFilesHelpTexts.jsx';
 
@@ -70,13 +71,14 @@ export default function ProductionCompoundFileTab({
         setNpzDisplayGlobal(npzPathDisplay?.trim() || '');
       }
 
+      const npz_path = optString(resolvedNpzPath);
+      const expected_n_features = optNumber(modelArtifact?.n_features_in);
+
       const payload = compactPayload({
-        x_path: null,
-        y_path: null,
-        npz_path: resolvedNpzPath,
-        x_key: xKey?.trim() || undefined,
-        y_key: yKey?.trim() || undefined,
-        expected_n_features: modelArtifact?.n_features_in ?? null,
+        ...(npz_path ? { npz_path } : {}),
+        x_key: optString(xKey),
+        y_key: optString(yKey),
+        expected_n_features,
       });
 
       const report = await inspectMutation.mutateAsync(payload);

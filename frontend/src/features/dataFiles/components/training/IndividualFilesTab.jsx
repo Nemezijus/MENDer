@@ -7,6 +7,7 @@ import { uploadFile } from '../../api/filesApi.js';
 import { compactPayload } from '../../../../shared/utils/compactPayload.js';
 import { toErrorText } from '../../../../shared/utils/errors.js';
 import { formatDisplayNameFromUpload } from '../../utils/fileDisplay.js';
+import { optString } from '../../utils/optionalFields.js';
 
 import { TrainingIndividualFilesText } from '../../../../shared/content/help/DataFilesHelpTexts.jsx';
 
@@ -103,12 +104,14 @@ export default function TrainingIndividualFilesTab({
         setYDisplayGlobal(yPathDisplay?.trim() || '');
       }
 
+      const x_path = optString(resolvedXPath);
+      const y_path = optString(resolvedYPath);
+
       const payload = compactPayload({
-        x_path: resolvedXPath,
-        y_path: resolvedYPath,
-        npz_path: null,
-        x_key: xKeyGlobal?.trim() || undefined,
-        y_key: yKeyGlobal?.trim() || undefined,
+        ...(x_path ? { x_path } : {}),
+        ...(y_path ? { y_path } : {}),
+        x_key: optString(xKeyGlobal),
+        y_key: optString(yKeyGlobal),
       });
 
       const report = await inspectMutation.mutateAsync(payload);

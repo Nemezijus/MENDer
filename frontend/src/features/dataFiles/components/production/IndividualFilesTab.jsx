@@ -8,6 +8,7 @@ import { uploadFile } from '../../api/filesApi.js';
 import { compactPayload } from '../../../../shared/utils/compactPayload.js';
 import { toErrorText } from '../../../../shared/utils/errors.js';
 import { formatDisplayNameFromUpload } from '../../utils/fileDisplay.js';
+import { optNumber, optString } from '../../utils/optionalFields.js';
 
 import { ProductionIndividualFilesText } from '../../../../shared/content/help/DataFilesHelpTexts.jsx';
 
@@ -100,13 +101,16 @@ export default function ProductionIndividualFilesTab({
         setYDisplayGlobal(yPathDisplay?.trim() || '');
       }
 
+      const x_path = optString(resolvedXPath);
+      const y_path = optString(resolvedYPath);
+      const expected_n_features = optNumber(modelArtifact?.n_features_in);
+
       const payload = compactPayload({
-        x_path: resolvedXPath,
-        y_path: resolvedYPath,
-        npz_path: null,
-        x_key: xKey?.trim() || undefined,
-        y_key: yKey?.trim() || undefined,
-        expected_n_features: modelArtifact?.n_features_in ?? null,
+        ...(x_path ? { x_path } : {}),
+        ...(y_path ? { y_path } : {}),
+        x_key: optString(xKey),
+        y_key: optString(yKey),
+        expected_n_features,
       });
 
       const report = await inspectMutation.mutateAsync(payload);
