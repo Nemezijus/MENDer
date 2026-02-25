@@ -57,7 +57,15 @@ export default function ValidationCurvePanel() {
     sfs_n_jobs,
   } = useFeatureStore();
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+  const {
+    loading: defsLoading,
+    models,
+    enums,
+    getModelDefaults,
+    scale: schemaScale,
+    features: schemaFeatures,
+    split: schemaSplit,
+  } = useSchemaDefaults();
 
   const { data: tuningDefaults, isLoading: tuningLoading } = useTuningDefaultsQuery();
 
@@ -152,6 +160,11 @@ export default function ValidationCurvePanel() {
         model: vcModel,
         split: { nSplits, stratified, shuffle, seed },
         evalMetric: effectiveMetric,
+        schemaDefaults: {
+          scale: schemaScale,
+          features: schemaFeatures,
+          split: schemaSplit,
+        },
       });
 
       const payload = compactPayload({

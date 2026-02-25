@@ -57,7 +57,15 @@ export default function GridSearchPanel() {
     sfs_n_jobs,
   } = useFeatureStore();
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+  const {
+    loading: defsLoading,
+    models,
+    enums,
+    getModelDefaults,
+    scale: schemaScale,
+    features: schemaFeatures,
+    split: schemaSplit,
+  } = useSchemaDefaults();
 
   const {
     data: tuningDefaults,
@@ -168,6 +176,11 @@ export default function GridSearchPanel() {
         model: gsModel,
         split: { nSplits, stratified, shuffle, seed },
         evalMetric: effectiveMetric,
+        schemaDefaults: {
+          scale: schemaScale,
+          features: schemaFeatures,
+          split: schemaSplit,
+        },
       });
 
       const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;

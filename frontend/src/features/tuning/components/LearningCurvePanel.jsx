@@ -51,7 +51,15 @@ export default function LearningCurvePanel() {
   const lcState = useTuningStore((s) => s.learningCurve);
   const setLcState = useTuningStore((s) => s.setLearningCurve);
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+  const {
+    loading: defsLoading,
+    models,
+    enums,
+    getModelDefaults,
+    scale: schemaScale,
+    features: schemaFeatures,
+    split: schemaSplit,
+  } = useSchemaDefaults();
 
   const {
     data: tuningDefaults,
@@ -168,6 +176,11 @@ export default function LearningCurvePanel() {
           seed,
         },
         evalMetric: effectiveMetric,
+        schemaDefaults: {
+          scale: schemaScale,
+          features: schemaFeatures,
+          split: schemaSplit,
+        },
       });
 
       const payload = compactPayload({

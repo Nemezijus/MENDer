@@ -33,13 +33,6 @@ import HyperparameterSelector from './helpers/HyperparameterSelector.jsx';
 
 const EMPTY_PARAM = { paramName: '', values: [] };
 
-function parseSeedForSearch({ shuffle, seed } = {}) {
-  if (shuffle === false) return undefined;
-  if (seed === '' || seed == null) return undefined;
-  const n = parseInt(seed, 10);
-  return Number.isFinite(n) ? n : undefined;
-}
-
 export default function RandomSearchPanel() {
   const xPath = useDataStore((s) => s.xPath);
   const yPath = useDataStore((s) => s.yPath);
@@ -64,7 +57,15 @@ export default function RandomSearchPanel() {
     sfs_n_jobs,
   } = useFeatureStore();
 
-  const { loading: defsLoading, models, enums, getModelDefaults } = useSchemaDefaults();
+  const {
+    loading: defsLoading,
+    models,
+    enums,
+    getModelDefaults,
+    scale: schemaScale,
+    features: schemaFeatures,
+    split: schemaSplit,
+  } = useSchemaDefaults();
 
   const {
     data: tuningDefaults,
@@ -157,7 +158,6 @@ export default function RandomSearchPanel() {
     setLoading(true);
 
     try {
-      const parsedSeed = parseSeedForSearch({ shuffle, seed });
       const paramDistributions = {
         [p1]: v1,
         [p2]: v2,
@@ -182,7 +182,16 @@ export default function RandomSearchPanel() {
         model: rsModel,
         split: { nSplits, stratified, shuffle, seed },
         evalMetric: effectiveMetric,
+        schemaDefaults: {
+          scale: schemaScale,
+          features: schemaFeatures,
+          split: schemaSplit,
+        },
       });
+
+      // Make RandomizedSearchCV sampling reproducible when the user provides a seed.
+      // We reuse the same seed logic as eval.seed (only active when shuffle is enabled).
+      const randomState = basePayload?.eval?.seed;
 
       const defaultNJobs = tuningDefaults?.random_search?.n_jobs;
       const payload = compactPayload({
@@ -195,9 +204,8 @@ export default function RandomSearchPanel() {
             ? undefined
             : nIter,
         n_jobs: defaultNJobs != null && nJobs === defaultNJobs ? undefined : nJobs,
-        // Make RandomizedSearchCV sampling reproducible when the user provides a seed.
         // This does not affect CV splitting; it only controls the parameter sampling.
-        random_state: parsedSeed,
+        random_state: randomState,
       });
 
       const data = await requestRandomSearch(payload);

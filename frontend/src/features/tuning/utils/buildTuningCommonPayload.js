@@ -14,11 +14,22 @@ function parseSeed({ shuffle, seed } = {}) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function getKfoldDefaults(schemaDefaults) {
+  return schemaDefaults?.split?.kfold?.defaults ?? null;
+}
+
 /**
  * Build the common payload skeleton for tuning endpoints.
  *
+ * Variant A (overrides-only) still applies at the store level, but for tuning we
+ * intentionally send *effective* defaults for split/scale/features so the backend
+ * receives the same configuration the UI is displaying.
+ *
+ * Sources of defaults:
+ * - split/scale/features defaults come from /schema/defaults (engine-owned)
+ * - user overrides come from stores (may be undefined)
+ *
  * Convention:
- * - overrides-only (unset values omitted)
  * - split mode is k-fold for tuning panels
  * - seed is carried in eval (mirrors current tuning payloads)
  */
@@ -29,20 +40,41 @@ export function buildTuningCommonPayload({
   model,
   split,
   evalMetric,
+  schemaDefaults,
 } = {}) {
-  const parsedSeed = parseSeed({ shuffle: split?.shuffle, seed: split?.seed });
+  const kfoldDefaults = getKfoldDefaults(schemaDefaults);
+
+  const effectiveNSplits = split?.nSplits ?? kfoldDefaults?.n_splits ?? undefined;
+  const effectiveStratified =
+    split?.stratified ?? kfoldDefaults?.stratified ?? undefined;
+  const effectiveShuffle = split?.shuffle ?? kfoldDefaults?.shuffle ?? undefined;
+
+  const parsedSeed = parseSeed({ shuffle: effectiveShuffle, seed: split?.seed });
+
+  const scaleDefaultMethod = schemaDefaults?.scale?.defaults?.method ?? undefined;
+  const effectiveScaleMethod = scaleMethod ?? scaleDefaultMethod;
+
+  const featureDefaultMethod =
+    schemaDefaults?.features?.defaults?.method ?? undefined;
+
+  const hasEffectiveMethod =
+    (features?.method ?? featureDefaultMethod) != null;
+
+  const effectiveFeatures = hasEffectiveMethod
+    ? { ...(features ?? {}), method: features?.method ?? featureDefaultMethod }
+    : features;
 
   return compactPayload({
     data: buildDataPayload(data),
     split: buildSplitPayload({
       mode: 'kfold',
-      nSplits: split?.nSplits,
-      stratified: split?.stratified,
-      shuffle: split?.shuffle,
+      nSplits: effectiveNSplits,
+      stratified: effectiveStratified,
+      shuffle: effectiveShuffle,
       // NOTE: do not pass seed here; tuning uses eval.seed.
     }),
-    scale: buildScalePayload({ method: scaleMethod }),
-    features: buildFeaturesPayload(features),
+    scale: buildScalePayload({ method: effectiveScaleMethod }),
+    features: buildFeaturesPayload(effectiveFeatures),
     model,
     eval: buildEvalPayload({
       metric: evalMetric,
