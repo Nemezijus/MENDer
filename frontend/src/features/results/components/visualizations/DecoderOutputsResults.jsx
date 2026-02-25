@@ -1,9 +1,4 @@
-import { useMemo, useState } from 'react';
 import { Card, Stack, Text, Divider } from '@mantine/core';
-
-import { exportDecoderOutputs } from '../../../modelArtifacts/api/modelsApi.js';
-import { downloadBlob } from '../../../../shared/utils/download.js';
-import { toErrorText } from '../../../../shared/utils/errors.js';
 
 import DecoderHeader from '../decoder/DecoderHeader.jsx';
 import DecoderSummary from '../decoder/DecoderSummary.jsx';
@@ -12,310 +7,60 @@ import DecoderExportActions from '../decoder/DecoderExportActions.jsx';
 import DecoderPreviewTable from '../decoder/DecoderPreviewTable.jsx';
 import DecoderNotes from '../decoder/DecoderNotes.jsx';
 
-import { pickColumns, buildCsv } from '../../utils/tables.js';
-import { parseNumber, rangeText } from '../../utils/formatNumbers.js';
-import { mean, median } from '../../utils/stats.js';
-import { detectSplitType, firstKey, getSummary } from '../../utils/decoderOutputs.js';
+import { useDecoderOutputsResultsModel } from '../../hooks/useDecoderOutputsResultsModel.js';
 
 export default function DecoderOutputsResults({ trainResult }) {
   if (!trainResult) return null;
 
-  const decoder = trainResult.decoder_outputs || trainResult.decoderOutputs || null;
-  const preview = decoder?.preview_rows || decoder?.previewRows || [];
-
-  if (!decoder || !Array.isArray(preview) || preview.length === 0) return null;
-
-  const evalKind =
-    trainResult?.artifact?.kind || (trainResult.regression ? 'regression' : 'classification');
-  const isRegression = evalKind === 'regression';
-
-  const classes = decoder.classes || [];
-  const hasDecisionScores = Boolean(decoder.has_decision_scores ?? decoder.hasDecisionScores);
-  const hasProbabilities = Boolean(
-    decoder.has_proba ??
-      decoder.hasProbabilities ??
-      decoder.has_probabilities ??
-      decoder.hasProba,
-  );
-
-  const probaSource = decoder.proba_source ?? decoder.probaSource ?? null;
-  const isVoteShare = String(probaSource || '').toLowerCase() === 'vote_share';
-
-  const summary = useMemo(() => getSummary(decoder), [decoder]);
-
-  const splitType = useMemo(() => detectSplitType(trainResult), [trainResult]);
-  const isKfold = splitType === 'kfold';
-  const isHoldout = splitType === 'holdout';
-  const nSplits =
-    (typeof trainResult?.n_splits === 'number' ? trainResult.n_splits : null) ??
-    (typeof trainResult?.artifact?.n_splits === 'number' ? trainResult.artifact.n_splits : null) ??
-    null;
-
-  const decoderNotes = useMemo(() => {
-    const dnRaw = Array.isArray(decoder.notes) ? decoder.notes : [];
-    const tn = Array.isArray(trainResult.notes) ? trainResult.notes : [];
-
-    const dn = dnRaw.filter((n) => !tn.includes(n) && !tn.includes(`Decoder outputs: ${n}`));
-
-    const hasStructuredSummary = summary && typeof summary === 'object';
-    const filtered = hasStructuredSummary
-      ? dn.filter((n) => !String(n).toLowerCase().startsWith('decoder summary:'))
-      : dn;
-
-    return filtered.filter((n) => String(n).trim().length > 0);
-  }, [decoder.notes, trainResult.notes, summary]);
-
-  const classOptions = useMemo(() => {
-    if (!Array.isArray(classes)) return [];
-    return classes.map((c) => ({ value: String(c), label: String(c) }));
-  }, [classes]);
-
-  const defaultSelected =
-    decoder.positive_class_label != null
-      ? String(decoder.positive_class_label)
-      : classOptions.length
-        ? classOptions[0].value
-        : null;
-
-  const [selectedClass, setSelectedClass] = useState(defaultSelected);
-  const selectedProbKey = selectedClass ? `p_${selectedClass}` : null;
-
-  const probStats = useMemo(() => {
-    if (!hasProbabilities || !selectedProbKey) return { mean: null, median: null, n: 0 };
-    const vals = preview
-      .map((r) => parseNumber(r?.[selectedProbKey]))
-      .filter((v) => v !== null);
-    return { mean: mean(vals), median: median(vals), n: vals.length };
-  }, [hasProbabilities, preview, selectedProbKey]);
-
-  const columns = useMemo(() => pickColumns(preview), [preview]);
-
-  const handleExportPreview = () => {
-    const csv = buildCsv(preview, columns);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    downloadBlob(blob, 'decoder_outputs_preview.csv');
-  };
-
-  const [isExportingFull, setIsExportingFull] = useState(false);
-
-  const handleExportFull = async () => {
-    const artifactUid = trainResult?.artifact?.uid;
-    if (!artifactUid) return;
-
-    try {
-      setIsExportingFull(true);
-      const { blob, filename } = await exportDecoderOutputs({
-        artifactUid,
-        filename: 'decoder_outputs.csv',
-      });
-      downloadBlob(blob, filename || 'decoder_outputs.csv');
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-      window.alert(`Export failed: ${toErrorText(e) || 'Could not export decoder outputs.'}`);
-    } finally {
-      setIsExportingFull(false);
-    }
-  };
-
-  const previewN = Array.isArray(preview) ? preview.length : 0;
-  const totalN =
-    typeof decoder.n_rows_total === 'number' && Number.isFinite(decoder.n_rows_total)
-      ? decoder.n_rows_total
-      : null;
-
-  // Summary keys (robust to older keys)
-  const marginFracKey = summary ? firstKey(summary, ['margin_frac_lt_0_1', 'margin_frac_lt_0_05']) : null;
-  const maxProbaFracKey = summary ? firstKey(summary, ['max_proba_frac_ge_0_9', 'max_proba_frac_ge_0_8']) : null;
-
-  const eceBins = summary && Array.isArray(summary.reliability_bins) ? summary.reliability_bins : null;
-  const nonEmptyBins = useMemo(() => {
-    if (!eceBins) return [];
-    return eceBins.filter((b) => b && typeof b.count === 'number' && b.count > 0);
-  }, [eceBins]);
-
-  const showCalibrationBins = !isRegression && nonEmptyBins.length > 0;
-  const showClassSummary = !isRegression && hasProbabilities && classOptions.length > 0;
-
-  // ---------- Summary items ----------
-  const evalSamplesTooltip = isKfold
-    ? `Number of evaluation samples pooled (concatenated) across ${nSplits || 'multiple'} folds using out-of-fold (OOF) predictions.`
-    : isHoldout
-      ? 'Number of samples in the held-out test split.'
-      : 'Number of evaluation samples for this run.';
-
-  const datasetTitleTip =
-    'Quick context about the evaluation set used for decoder outputs. In k-fold CV this is typically pooled out-of-fold (OOF) predictions; in hold-out it is the held-out test split.';
-  const regTitleTip =
-    'Regression summary computed from the full evaluation set (not just the preview).';
-  const lossTitleTip =
-    'Loss and calibration describe probability quality. Log loss and Brier measure probability error (smaller is better). ECE/MCE describe how well confidence matches accuracy (smaller is better; 0 is ideal).';
-  const confTitleTip =
-    'Confidence describes how decisive predictions are. Margin reflects top-1 vs runner-up separation (larger is typically more confident). Max probability is a confidence proxy (higher means more confident, not necessarily more accurate).';
-
-  const dataParamsItems = [
-    {
-      key: 'Evaluation samples',
-      value: summary?.n_samples ?? totalN ?? null,
-      tooltip: evalSamplesTooltip,
-    },
-    {
-      key: 'Number of classes',
-      value: summary?.n_classes ?? (Array.isArray(classes) ? classes.length : null),
-      tooltip: 'Number of unique class labels.',
-    },
-    {
-      key: 'Calibration bins',
-      value: summary?.ece_n_bins ?? null,
-      tooltip:
-        'Number of confidence bins used to compute calibration (ECE/MCE). More bins = finer detail, but fewer samples per bin.',
-    },
-  ];
-
-  const lossCalItems = [
-    {
-      key: 'Log loss',
-      value: summary?.log_loss ?? null,
-      tooltip: 'Cross-entropy loss. Smaller is better. Minimum is 0; there is no fixed upper bound.',
-    },
-    {
-      key: 'Brier score',
-      value: summary?.brier ?? null,
-      tooltip:
-        'Probability error (mean squared error vs one-hot truth). Smaller is better. Typical range is 0 to 1.',
-    },
-    {
-      key: 'Expected calibration error (ECE)',
-      value: summary?.ece ?? null,
-      tooltip:
-        'Calibration error using top-1 confidence. Smaller is better. Typical range is 0 to 1 (0 means perfectly calibrated).',
-    },
-    {
-      key: 'Maximum calibration error (MCE)',
-      value: summary?.mce ?? null,
-      tooltip: 'Worst-bin calibration gap |accuracy − confidence|. Smaller is better. Typical range is 0 to 1.',
-    },
-  ];
-
-  const confidenceItems = [
-    {
-      key: 'Margin (mean)',
-      value: summary?.margin_mean ?? null,
-      tooltip:
-        'Average top1−top2 separation (score or probability). Larger usually means more confident predictions.',
-    },
-    {
-      key: 'Margin (median)',
-      value: summary?.margin_median ?? null,
-      tooltip:
-        'Median top1−top2 separation (score or probability). Larger usually means more confident predictions.',
-    },
-    marginFracKey
-      ? {
-          key: 'Low margin (fraction)',
-          value: summary?.[marginFracKey] ?? null,
-          format: 'pct',
-          tooltip:
-            'Fraction of samples with small top1−top2 separation. Smaller is better (fewer uncertain predictions).',
-        }
-      : null,
-    {
-      key: 'Max probability (mean)',
-      value: summary?.max_proba_mean ?? null,
-      tooltip:
-        'Average of max predicted probability per sample. Higher means the model is more confident (not necessarily more accurate). Range 0–1.',
-    },
-    maxProbaFracKey
-      ? {
-          key: 'High confidence (fraction)',
-          value: summary?.[maxProbaFracKey] ?? null,
-          format: 'pct',
-          tooltip:
-            'Fraction of samples with high max probability. Higher means more confident predictions (not necessarily more accurate).',
-        }
-      : null,
-  ].filter(Boolean);
-
-  const regPerfItems = [
-    { key: 'RMSE', value: summary?.rmse ?? null, tooltip: 'Root mean squared error. Smaller is better.' },
-    { key: 'MAE', value: summary?.mae ?? null, tooltip: 'Mean absolute error. Smaller is better.' },
-    {
-      key: 'Median AE',
-      value: summary?.median_ae ?? summary?.median_abs_error ?? null,
-      tooltip: 'Median absolute error (robust). Smaller is better.',
-    },
-    { key: 'R²', value: summary?.r2 ?? null, tooltip: 'Coefficient of determination. Larger is better (1 is perfect).' },
-    { key: 'Bias', value: summary?.bias ?? null, tooltip: 'Mean(pred − true). >0 indicates overestimation on average.' },
-    {
-      key: 'Residual std',
-      value: summary?.residual_std ?? null,
-      tooltip: 'Standard deviation of residuals (pred − true). Smaller is better.',
-    },
-    { key: 'Pearson r', value: summary?.pearson_r ?? null, tooltip: 'Linear correlation between predictions and targets.' },
-    { key: 'Spearman ρ', value: summary?.spearman_r ?? null, tooltip: 'Rank correlation between predictions and targets.' },
-    { key: 'NRMSE', value: summary?.nrmse ?? null, tooltip: 'Normalized RMSE (e.g., divided by std(y_true)). Smaller is better.' },
-  ];
-
-  const regDataItems = [
-    { key: 'Evaluation samples', value: summary?.n ?? totalN ?? null, tooltip: evalSamplesTooltip },
-    {
-      key: 'True range',
-      value: rangeText(summary?.y_true_min, summary?.y_true_max),
-      tooltip: 'Range of ground-truth values in the evaluation set.',
-    },
-    {
-      key: 'Pred range',
-      value: rangeText(summary?.y_pred_min, summary?.y_pred_max),
-      tooltip: 'Range of predicted values in the evaluation set.',
-    },
-  ];
+  const vm = useDecoderOutputsResultsModel(trainResult);
+  if (!vm.ready) return null;
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
       <Stack gap="sm">
-        <Text fw={500} size="xl" align="center">
+        <Text fw={500} size="xl" ta="center">
           Decoder outputs
         </Text>
 
         <DecoderHeader
-          isKfold={isKfold}
-          isHoldout={isHoldout}
-          nSplits={nSplits}
-          isRegression={isRegression}
-          hasDecisionScores={hasDecisionScores}
-          hasProbabilities={hasProbabilities}
-          isVoteShare={isVoteShare}
-          previewN={previewN}
-          totalN={totalN}
+          isKfold={vm.isKfold}
+          isHoldout={vm.isHoldout}
+          nSplits={vm.nSplits}
+          isRegression={vm.isRegression}
+          hasDecisionScores={vm.hasDecisionScores}
+          hasProbabilities={vm.hasProbabilities}
+          isVoteShare={vm.isVoteShare}
+          previewN={vm.previewN}
+          totalN={vm.totalN}
         />
 
         <Divider />
 
         <DecoderSummary
-          isRegression={isRegression}
-          summary={summary}
-          regPerfItems={regPerfItems}
-          regDataItems={regDataItems}
-          dataParamsItems={dataParamsItems}
-          lossCalItems={lossCalItems}
-          confidenceItems={confidenceItems}
-          datasetTitleTip={datasetTitleTip}
-          regTitleTip={regTitleTip}
-          lossTitleTip={lossTitleTip}
-          confTitleTip={confTitleTip}
-          showCalibrationBins={showCalibrationBins}
-          nonEmptyBins={nonEmptyBins}
+          isRegression={vm.isRegression}
+          summary={vm.summary}
+          regPerfItems={vm.regPerfItems}
+          regDataItems={vm.regDataItems}
+          dataParamsItems={vm.dataParamsItems}
+          lossCalItems={vm.lossCalItems}
+          confidenceItems={vm.confidenceItems}
+          datasetTitleTip={vm.datasetTitleTip}
+          regTitleTip={vm.regTitleTip}
+          lossTitleTip={vm.lossTitleTip}
+          confTitleTip={vm.confTitleTip}
+          showCalibrationBins={vm.showCalibrationBins}
+          nonEmptyBins={vm.nonEmptyBins}
         />
 
-        {showClassSummary ? (
+        {vm.showClassSummary ? (
           <>
             <Divider />
             <DecoderClassProbabilitySummary
-              show={showClassSummary}
-              classOptions={classOptions}
-              selectedClass={selectedClass}
-              setSelectedClass={setSelectedClass}
-              probStats={probStats}
+              show={vm.showClassSummary}
+              classOptions={vm.classOptions}
+              selectedClass={vm.selectedClass}
+              setSelectedClass={vm.setSelectedClass}
+              probStats={vm.probStats}
             />
             <Divider />
           </>
@@ -324,15 +69,15 @@ export default function DecoderOutputsResults({ trainResult }) {
         )}
 
         <DecoderExportActions
-          onExportPreview={handleExportPreview}
-          onExportFull={handleExportFull}
-          isExportingFull={isExportingFull}
+          onExportPreview={vm.handleExportPreview}
+          onExportFull={vm.handleExportFull}
+          isExportingFull={vm.isExportingFull}
           canExportFull={Boolean(trainResult?.artifact?.uid)}
         />
 
-        <DecoderPreviewTable preview={preview} columns={columns} />
+        <DecoderPreviewTable preview={vm.preview} columns={vm.columns} />
 
-        <DecoderNotes notes={decoderNotes} />
+        <DecoderNotes notes={vm.decoderNotes} />
       </Stack>
     </Card>
   );

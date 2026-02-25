@@ -1,15 +1,12 @@
-import { Stack, Text, Table, Tooltip } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 
-import {
-  safeMean,
-  safeWeightedMean,
-  computeImbalanceInfo,
-} from '../../utils/classificationMath.js';
+import { safeMean, safeWeightedMean, computeImbalanceInfo } from '../../utils/classificationMath.js';
 
-export default function ClassificationMetricResults({
-  confusion,
-  metricName,
-}) {
+import ClassificationMetricHeader from './classificationMetric/ClassificationMetricHeader.jsx';
+import ClassificationMetricTable from './classificationMetric/ClassificationMetricTable.jsx';
+import { getClassificationMetricTooltips } from './classificationMetric/tooltips.js';
+
+export default function ClassificationMetricResults({ confusion, metricName }) {
   if (!confusion) return null;
 
   const { overall, macro_avg, weighted_avg, per_class } = confusion;
@@ -18,11 +15,9 @@ export default function ClassificationMetricResults({
     return null;
   }
 
-  const fmt = (v) =>
-    typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3) : '—';
+  const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(3) : '—');
 
-  const fmtRatio = (v) =>
-    typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : '—';
+  const fmtRatio = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : '—');
 
   const supports = per_class.map((c) => c.support ?? 0);
   const totalSupport = supports.reduce((acc, s) => acc + s, 0);
@@ -33,391 +28,75 @@ export default function ClassificationMetricResults({
   const { ratio: imbalanceRatio, desc: imbalanceDesc } = computeImbalanceInfo(supports);
 
   // Macro values (precision/recall/f1 from backend if present; otherwise from per_class)
-  const macroPrecision =
-    macro_avg?.precision ??
-    safeMean(per_class.map((c) => c.precision));
-  const macroRecall =
-    macro_avg?.recall ??
-    safeMean(per_class.map((c) => c.recall ?? c.tpr));
-  const macroF1 =
-    macro_avg?.f1 ??
-    safeMean(per_class.map((c) => c.f1));
+  const macroPrecision = macro_avg?.precision ?? safeMean(per_class.map((c) => c.precision));
+  const macroRecall = macro_avg?.recall ?? safeMean(per_class.map((c) => c.recall ?? c.tpr));
+  const macroF1 = macro_avg?.f1 ?? safeMean(per_class.map((c) => c.f1));
 
   const macroTPR = safeMean(per_class.map((c) => c.tpr));
   const macroFPR = safeMean(per_class.map((c) => c.fpr));
   const macroTNR = safeMean(per_class.map((c) => c.tnr));
   const macroFNR = safeMean(per_class.map((c) => c.fnr));
-  const macroMCC =
-    macro_avg?.mcc ??
-    safeMean(per_class.map((c) => c.mcc));
+  const macroMCC = macro_avg?.mcc ?? safeMean(per_class.map((c) => c.mcc));
 
   // Weighted values (precision/recall/f1 from backend if present; otherwise weighted by support)
   const weightedPrecision =
     weighted_avg?.precision ??
-    (totalSupport
-      ? safeWeightedMean(per_class.map((c) => c.precision), supports)
-      : null);
+    (totalSupport ? safeWeightedMean(per_class.map((c) => c.precision), supports) : null);
+
   const weightedRecall =
     weighted_avg?.recall ??
-    (totalSupport
-      ? safeWeightedMean(
-          per_class.map((c) => c.recall ?? c.tpr),
-          supports,
-        )
-      : null);
+    (totalSupport ? safeWeightedMean(per_class.map((c) => c.recall ?? c.tpr), supports) : null);
+
   const weightedF1 =
-    weighted_avg?.f1 ??
-    (totalSupport
-      ? safeWeightedMean(per_class.map((c) => c.f1), supports)
-      : null);
+    weighted_avg?.f1 ?? (totalSupport ? safeWeightedMean(per_class.map((c) => c.f1), supports) : null);
 
-  const weightedTPR = totalSupport
-    ? safeWeightedMean(per_class.map((c) => c.tpr), supports)
-    : null;
-  const weightedFPR = totalSupport
-    ? safeWeightedMean(per_class.map((c) => c.fpr), supports)
-    : null;
-  const weightedTNR = totalSupport
-    ? safeWeightedMean(per_class.map((c) => c.tnr), supports)
-    : null;
-  const weightedFNR = totalSupport
-    ? safeWeightedMean(per_class.map((c) => c.fnr), supports)
-    : null;
+  const weightedTPR = totalSupport ? safeWeightedMean(per_class.map((c) => c.tpr), supports) : null;
+  const weightedFPR = totalSupport ? safeWeightedMean(per_class.map((c) => c.fpr), supports) : null;
+  const weightedTNR = totalSupport ? safeWeightedMean(per_class.map((c) => c.tnr), supports) : null;
+  const weightedFNR = totalSupport ? safeWeightedMean(per_class.map((c) => c.fnr), supports) : null;
+
   const weightedMCC =
-    weighted_avg?.mcc ??
-    (totalSupport
-      ? safeWeightedMean(per_class.map((c) => c.mcc), supports)
-      : null);
+    weighted_avg?.mcc ?? (totalSupport ? safeWeightedMean(per_class.map((c) => c.mcc), supports) : null);
 
-  // ---- Tooltip texts (binary vs multiclass aware) ----
-  const precisionTooltip = isMulticlass
-    ? 'For a given class, precision answers: “Of all samples the model predicted as this class, what fraction really belong to it?” High precision means the model rarely assigns this label incorrectly.'
-    : 'Precision answers: “Of all samples predicted as positive, what fraction really are positive?” High precision means the model rarely raises false alarms.';
-
-  const recallTooltip = isMulticlass
-    ? 'For a given class, recall (TPR) answers: “Of all true samples of this class, what fraction did the model correctly label as this class?” High recall means the model rarely misses this class.'
-    : 'Recall (TPR) answers: “Of all true positive samples, what fraction did the model correctly detect?” High recall means the model rarely misses positive cases.';
-
-  const fprTooltip = isMulticlass
-    ? 'For a given class, FPR is the fraction of samples from other classes that were incorrectly given this label. Lower FPR means fewer impostors being mistaken for this class.'
-    : 'FPR is the fraction of true negative samples that were incorrectly predicted as positive. Lower FPR means fewer false alarms.';
-
-  const tnrTooltip = isMulticlass
-    ? 'For a given class, TNR (specificity) is the fraction of samples from other classes that correctly do not receive this label. Higher TNR means the model usually avoids assigning this class when it should not.'
-    : 'TNR (specificity) is the fraction of true negative samples that the model correctly keeps as negative. Higher TNR means fewer false positives.';
-
-  const fnrTooltip = isMulticlass
-    ? 'For a given class, FNR is the fraction of true samples of this class that the model failed to label as such. Lower FNR means fewer missed examples of this class.'
-    : 'FNR is the fraction of true positive samples that the model missed. Lower FNR means fewer missed positive cases.';
+  const tooltips = getClassificationMetricTooltips({ isMulticlass });
 
   return (
     <Stack gap="xs" mt={2}>
-      <Text fw={500} size="xl" align="center">
+      <Text fw={500} size="xl" ta="center">
         Summary of metrics
       </Text>
 
-      {overall && (
-        <Stack gap={0}>
-          <Text size="sm">
-            <Text span fw={500}>
-              Accuracy:{' '}
-            </Text>
-            <Text span fw={700}>
-              {fmt(overall.accuracy)}
-            </Text>
-          </Text>
+      <ClassificationMetricHeader
+        overall={overall}
+        imbalanceRatio={imbalanceRatio}
+        imbalanceDesc={imbalanceDesc}
+        fmt={fmt}
+        fmtRatio={fmtRatio}
+      />
 
-          <Text size="sm">
-            <Text span fw={500}>
-              Balanced accuracy:{' '}
-            </Text>
-            <Text span fw={700}>
-              {fmt(overall.balanced_accuracy)}
-            </Text>
-          </Text>
-
-          <Text size="sm">
-            <Text span fw={500}>
-              Class imbalance (max / min support):{' '}
-            </Text>
-            <Text span fw={700}>
-              {fmtRatio(imbalanceRatio)}
-            </Text>
-            {imbalanceDesc && (
-              <>
-                {' '}
-                <Text span size="xs" c="dimmed">
-                  {imbalanceDesc}
-                </Text>
-              </>
-            )}
-          </Text>
-        </Stack>
-      )}
-
-      <Table
-        withTableBorder={false}
-        withColumnBorders={false}
-        horizontalSpacing="xs"
-        verticalSpacing="xs"
-      >
-        <Table.Thead>
-          <Table.Tr
-            style={{
-              backgroundColor: 'var(--mantine-color-gray-8)',
-            }}
-          >
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Text size="xs" fw={600} c="white">
-                Class / aggregate
-              </Text>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label={precisionTooltip}
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  Precision
-                </Text>
-              </Tooltip>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label={recallTooltip}
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  Recall (TPR)
-                </Text>
-              </Tooltip>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label={fprTooltip}
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  FPR
-                </Text>
-              </Tooltip>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label={tnrTooltip}
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  TNR
-                </Text>
-              </Tooltip>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label={fnrTooltip}
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  FNR
-                </Text>
-              </Tooltip>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label="F1 score is the harmonic mean of precision and recall. It is high only when both precision and recall are high."
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  F1
-                </Text>
-              </Tooltip>
-            </Table.Th>
-
-            <Table.Th style={{ textAlign: 'center' }}>
-              <Tooltip
-                label="Matthews Correlation Coefficient (MCC) is a balanced measure of classification quality. It ranges from -1 (total disagreement) through 0 (random) to 1 (perfect prediction)."
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="xs" fw={600} c="white">
-                  MCC
-                </Text>
-              </Tooltip>
-            </Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-
-        <Table.Tbody>
-          {/* Per-class rows (zebra striping) */}
-          {per_class.map((c, idx) => {
-            const isStriped = idx % 2 === 1;
-            return (
-              <Table.Tr
-                key={idx}
-                style={{
-                  backgroundColor: isStriped
-                    ? 'var(--mantine-color-gray-1)'
-                    : 'white',
-                }}
-              >
-                <Table.Td style={{ textAlign: 'center' }}>
-                  <Text size="sm" fw={600}>
-                    {String(c.label)}
-                  </Text>
-                </Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.precision)}</Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.tpr)}</Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.fpr)}</Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.tnr)}</Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.fnr)}</Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.f1)}</Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>{fmt(c.mcc)}</Table.Td>
-              </Table.Tr>
-            );
-          })}
-
-          {/* Spacer / separator before aggregates */}
-          <Table.Tr
-            style={{
-              borderTop: '2px solid var(--mantine-color-gray-4)',
-              height: 4,
-            }}
-          >
-            <Table.Td colSpan={8} style={{ padding: 0 }} />
-          </Table.Tr>
-
-          {/* Macro avg row */}
-          <Table.Tr
-            style={{
-              backgroundColor: 'var(--mantine-color-gray-2)',
-              borderTop: '1px solid var(--mantine-color-gray-4)',
-            }}
-          >
-            <Table.Td style={{ textAlign: 'left' }}>
-              <Tooltip
-                label="Macro average treats each class equally, regardless of how many samples each class has. Good for seeing performance on rare classes."
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="sm" fw={600}>
-                  Macro avg
-                </Text>
-              </Tooltip>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroPrecision)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroTPR ?? macroRecall)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroFPR)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroTNR)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroFNR)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroF1)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(macroMCC)}
-              </Text>
-            </Table.Td>
-          </Table.Tr>
-
-          {/* Weighted avg row */}
-          <Table.Tr
-            style={{
-              backgroundColor: 'var(--mantine-color-gray-3)',
-              borderTop: '1px solid var(--mantine-color-gray-4)',
-            }}
-          >
-            <Table.Td style={{ textAlign: 'left' }}>
-              <Tooltip
-                label="Weighted average takes into account how many samples each class has. Large classes influence this more than small ones."
-                multiline
-                maw={260}
-                withArrow
-              >
-                <Text size="sm" fw={600}>
-                  Weighted avg
-                </Text>
-              </Tooltip>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedPrecision)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedTPR ?? weightedRecall)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedFPR)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedTNR)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedFNR)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedF1)}
-              </Text>
-            </Table.Td>
-            <Table.Td style={{ textAlign: 'center' }}>
-              <Text size="sm" fw={600}>
-                {fmt(weightedMCC)}
-              </Text>
-            </Table.Td>
-          </Table.Tr>
-        </Table.Tbody>
-      </Table>
+      <ClassificationMetricTable
+        perClass={per_class}
+        macro={{
+          precision: macroPrecision,
+          tpr: macroTPR ?? macroRecall,
+          fpr: macroFPR,
+          tnr: macroTNR,
+          fnr: macroFNR,
+          f1: macroF1,
+          mcc: macroMCC,
+        }}
+        weighted={{
+          precision: weightedPrecision,
+          tpr: weightedTPR ?? weightedRecall,
+          fpr: weightedFPR,
+          tnr: weightedTNR,
+          fnr: weightedFNR,
+          f1: weightedF1,
+          mcc: weightedMCC,
+        }}
+        fmt={fmt}
+        tooltips={tooltips}
+      />
     </Stack>
   );
 }
