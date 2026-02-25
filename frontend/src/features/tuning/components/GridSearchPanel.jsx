@@ -1,15 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
-  Card,
-  Button,
-  Text,
   Stack,
-  Group,
-  Divider,
-  Alert,
   Title,
-  Box,
-  NumberInput,
 } from '@mantine/core';
 
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
@@ -25,11 +17,12 @@ import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
-import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
-import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
 import { requestGridSearch } from '../api/tuningApi.js';
 import GridSearchResultsPanel from './results/GridSearchResultsPanel.jsx';
-import HyperparameterSelector from './helpers/HyperparameterSelector.jsx';
+import GridSearchConfigPane from './gridSearch/GridSearchConfigPane.jsx';
+import TuningConfigCard from './common/TuningConfigCard.jsx';
+import TuningErrorAlert from './common/TuningErrorAlert.jsx';
+import { useTuningRunner } from '../hooks/useTuningRunner.js';
 
 const EMPTY_PARAM = { paramName: '', values: [] };
 
@@ -102,8 +95,7 @@ export default function GridSearchPanel() {
   const gsModel = useModelConfigStore((s) => s.gridSearch);
   const setGsModel = useModelConfigStore((s) => s.setGridSearchModel);
 
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
+  const { loading, error, run } = useTuningRunner();
   const taskInferred = inspectReport?.task_inferred || null;
   const { effectiveMetric } = useEffectiveMetricForTask({
     enums,
@@ -121,84 +113,68 @@ export default function GridSearchPanel() {
     }
   }, [defsLoading, getModelDefaults, gsModel, setGsModel]);
 
-  async function handleCompute() {
-    if (!dataReady) {
-      setErr('Load & inspect data first in the Data & files section.');
-      return;
-    }
-    if (!gsModel) return;
-
+  function handleCompute() {
     const p1 = (hyperParam1.paramName || '').trim();
     const p2 = (hyperParam2.paramName || '').trim();
     const v1 = Array.isArray(hyperParam1.values) ? hyperParam1.values : [];
     const v2 = Array.isArray(hyperParam2.values) ? hyperParam2.values : [];
 
-    if (!p1 || !p2) {
-      setErr('Please select exactly two hyperparameters to vary.');
-      return;
-    }
-    if (p1 === p2) {
-      setErr('The two hyperparameters must be different.');
-      return;
-    }
-    if (v1.length < 2 || v2.length < 2) {
-      setErr('Each hyperparameter must have at least two values.');
-      return;
-    }
+    return run({
+      preflight: () => {
+        if (!dataReady) return 'Load & inspect data first in the Data & files section.';
+        if (!gsModel) return 'Select a model first.';
+        if (!p1 || !p2) return 'Please select exactly two hyperparameters to vary.';
+        if (p1 === p2) return 'The two hyperparameters must be different.';
+        if (v1.length < 2 || v2.length < 2) {
+          return 'Each hyperparameter must have at least two values.';
+        }
+        return null;
+      },
+      onStart: () => setGsState({ result: null }),
+      request: async () => {
+        const paramGrid = {
+          [p1]: v1,
+          [p2]: v2,
+        };
 
-    setErr(null);
-    setGsState({ result: null });
-    setLoading(true);
+        const basePayload = buildTuningCommonPayload({
+          data: { xPath, yPath, npzPath, xKey, yKey },
+          features: {
+            method,
+            pca_n,
+            pca_var,
+            pca_whiten,
+            lda_n,
+            lda_solver,
+            lda_shrinkage,
+            lda_tol,
+            sfs_k,
+            sfs_direction,
+            sfs_cv,
+            sfs_n_jobs,
+          },
+          scaleMethod,
+          model: gsModel,
+          split: { nSplits, stratified, shuffle, seed },
+          evalMetric: effectiveMetric,
+          schemaDefaults: {
+            scale: schemaScale,
+            features: schemaFeatures,
+            split: schemaSplit,
+          },
+        });
 
-    try {
-      // param_grid shaped for the backend; adjust if your service expects a different structure
-      const paramGrid = {
-        [p1]: v1,
-        [p2]: v2,
-      };
-      const basePayload = buildTuningCommonPayload({
-        data: { xPath, yPath, npzPath, xKey, yKey },
-        features: {
-          method,
-          pca_n,
-          pca_var,
-          pca_whiten,
-          lda_n,
-          lda_solver,
-          lda_shrinkage,
-          lda_tol,
-          sfs_k,
-          sfs_direction,
-          sfs_cv,
-          sfs_n_jobs,
-        },
-        scaleMethod,
-        model: gsModel,
-        split: { nSplits, stratified, shuffle, seed },
-        evalMetric: effectiveMetric,
-        schemaDefaults: {
-          scale: schemaScale,
-          features: schemaFeatures,
-          split: schemaSplit,
-        },
-      });
+        const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;
+        const payload = compactPayload({
+          ...basePayload,
+          param_grid: paramGrid,
+          n_jobs: defaultNJobs != null && nJobs === defaultNJobs ? undefined : nJobs,
+        });
 
-      const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;
-      const payload = compactPayload({
-        ...basePayload,
-        param_grid: paramGrid,
-        // Send override only; omit if equal to backend default.
-        n_jobs: defaultNJobs != null && nJobs === defaultNJobs ? undefined : nJobs,
-      });
-
-      const data = await requestGridSearch(payload);
-      // expect backend to include metric_used & 2D grid info; we store metric here as well
-      setGsState({ result: { ...data, metric_used: effectiveMetric } });
-    } catch (e) {
-      setErr(e?.message ?? String(e));
-    } finally {
-      setLoading(false);
-    }
+        return requestGridSearch(payload);
+      },
+      onSuccess: (data) => setGsState({ result: { ...data, metric_used: effectiveMetric } }),
+    });
   }
 
   if (defsLoading || tuningLoading || !models || !gsModel) {
@@ -209,125 +185,50 @@ export default function GridSearchPanel() {
     <Stack gap="md">
       <Title order={3}>Grid search</Title>
 
-      {err && (
-        <Alert color="red" variant="light">
-          <Text fw={500}>Error</Text>
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-            {err}
-          </Text>
-        </Alert>
-      )}
+      <TuningErrorAlert error={error} />
 
-      <Card withBorder shadow="sm" radius="md" padding="lg">
-        <Stack gap="md">
-          <Group justify="space-between" wrap="nowrap">
-            <Text fw={500}>Configuration</Text>
-            <Button
-              size="xs"
-              onClick={handleCompute}
-              loading={loading}
-              disabled={!dataReady}
-            >
-              {loading ? 'Searching…' : 'Run grid search'}
-            </Button>
-          </Group>
+      <TuningConfigCard
+        actionLabel="Run grid search"
+        actionLabelLoading="Searching…"
+        onAction={handleCompute}
+        loading={loading}
+        disabled={!dataReady}
+        loadingHint="Results will appear once the grid search finishes."
+      >
+        <GridSearchConfigPane
+          nSplits={nSplits}
+          onNSplitsChange={(value) => setGsState({ nSplits: value })}
+          stratified={stratified}
+          onStratifiedChange={(value) => setGsState({ stratified: value })}
+          shuffle={shuffle}
+          onShuffleChange={(value) => setGsState({ shuffle: value })}
+          seed={seed}
+          onSeedChange={(value) => setGsState({ seed: value })}
 
-          <Box
-            style={{
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
-            <Stack gap="sm">
-              <SplitOptionsCard
-                allowedModes={['kfold']}
-                nSplits={nSplits}
-                onNSplitsChange={(value) => setGsState({ nSplits: value })}
-                stratified={stratified}
-                onStratifiedChange={(value) => setGsState({ stratified: value })}
-                shuffle={shuffle}
-                onShuffleChange={(value) => setGsState({ shuffle: value })}
-                seed={seed}
-                onSeedChange={(value) => setGsState({ seed: value })}
-              />
+          model={gsModel}
+          onModelChange={(next) => {
+            if (next?.algo && gsModel && next.algo !== gsModel.algo) {
+              const d = getModelDefaults(next.algo) || { algo: next.algo };
+              setGsModel({ ...d, ...next });
+              setGsState({ hyperParam1: EMPTY_PARAM, hyperParam2: EMPTY_PARAM });
+            } else {
+              setGsModel(next);
+            }
+          }}
+          schema={models?.schema}
+          enums={enums}
+          models={models}
 
-              <Divider my="xs" />
+          hyperParam1={hyperParam1}
+          onHyperParam1Change={handleHyperParam1Change}
+          hyperParam2={hyperParam2}
+          onHyperParam2Change={handleHyperParam2Change}
 
-              <ModelSelectionCard
-                model={gsModel}
-                onChange={(next) => {
-                  if (next?.algo && gsModel && next.algo !== gsModel.algo) {
-                    const d = getModelDefaults(next.algo) || { algo: next.algo };
-                    setGsModel({ ...d, ...next });
-                    // reset hyperparameters on algo change
-                    setGsState({
-                      hyperParam1: EMPTY_PARAM,
-                      hyperParam2: EMPTY_PARAM,
-                    });
-                  } else {
-                    setGsModel(next);
-                  }
-                }}
-                schema={models?.schema}
-                enums={enums}
-                models={models}
-              />
-
-              <Divider my="xs" />
-
-              <Stack gap="sm">
-                <Text size="sm" fw={500}>
-                  Select the 1st parameter to vary:
-                </Text>
-                <HyperparameterSelector
-                  schema={models?.schema}
-                  model={gsModel}
-                  value={hyperParam1}
-                  onChange={handleHyperParam1Change}
-                  label="1st hyperparameter"
-                />
-              </Stack>
-
-              <Stack gap="sm">
-                <Text size="sm" fw={500}>
-                  Select the 2nd parameter to vary:
-                </Text>
-                <HyperparameterSelector
-                  schema={models?.schema}
-                  model={gsModel}
-                  value={hyperParam2}
-                  onChange={handleHyperParam2Change}
-                  label="2nd hyperparameter"
-                />
-              </Stack>
-
-              <Box style={{ maxWidth: 180 }}>
-                <NumberInput
-                  label="n_jobs"
-                  min={1}
-                  step={1}
-                  value={nJobs ?? tuningDefaults?.grid_search?.n_jobs}
-                  onChange={(value) => {
-                    const v = value === '' || value == null ? undefined : value;
-                    const d = tuningDefaults?.grid_search?.n_jobs;
-                    if (d != null && v === d) {
-                      setGsState({ nJobs: undefined });
-                      return;
-                    }
-                    setGsState({ nJobs: v });
-                  }}
-                />
-              </Box>
-            </Stack>
-          </Box>
-
-          {loading && (
-            <Text size="xs" c="dimmed">
-              Results will appear once the grid search finishes.
-            </Text>
-          )}
-        </Stack>
-      </Card>
+          nJobsOverride={nJobs}
+          defaultNJobs={tuningDefaults?.grid_search?.n_jobs}
+          onNJobsChangeOverride={(v) => setGsState({ nJobs: v })}
+        />
+      </TuningConfigCard>
 
       <GridSearchResultsPanel result={gridResult} />
     </Stack>
