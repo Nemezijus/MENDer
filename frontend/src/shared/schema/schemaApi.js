@@ -2,17 +2,19 @@ import { getJson } from '../api/http.js';
 
 export async function getModelSchema() {
   // returns: { schema, defaults }
-  return getJson('/api/v1/schema/model');
+  // NOTE: shared/api/client.js already sets baseURL = '/api/v1'
+  // so all paths here should be relative to that base.
+  return getJson('/schema/model');
 }
 
 export async function getEnums() {
-  return getJson('/api/v1/schema/enums');
+  return getJson('/schema/enums');
 }
 
 export async function getAllDefaults() {
-  return getJson('/api/v1/schema/defaults');
+  return getJson('/schema/defaults');
 }
 
 export async function getTuningDefaults() {
-  return getJson('/api/v1/schema/tuning-defaults');
+  return getJson('/schema/tuning-defaults');
 }
