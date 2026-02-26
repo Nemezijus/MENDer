@@ -203,6 +203,13 @@ def build_ui_schema_bundle(*, schema_version: int = 1) -> Dict[str, Any]:
 
     eval_defaults = EvalModel().model_dump()
     eval_defaults["metric_by_task"] = dict(DEFAULT_METRIC_BY_TASK)
+    # UI-only defaults for the label-shuffle baseline control.
+    # The Engine runtime default for n_shuffles remains 0 (disabled) unless the
+    # UI explicitly enables it.
+    eval_defaults["shuffle_baseline"] = {
+        "enabled": False,
+        "n_shuffles": 100,
+    }
 
     payload: Dict[str, Any] = {
         "models": {

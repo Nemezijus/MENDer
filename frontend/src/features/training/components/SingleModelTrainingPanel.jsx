@@ -22,7 +22,14 @@ import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 /** ---------- component ---------- **/
 
 export default function SingleModelTrainingPanel() {
-  const { loading: defsLoading, models, enums, split, getCompatibleAlgos } = useSchemaDefaults();
+  const {
+    loading: defsLoading,
+    models,
+    enums,
+    split,
+    eval: evalCfg,
+    getCompatibleAlgos,
+  } = useSchemaDefaults();
 
   // SPLIT (override-only; persists across navigation)
   const splitMode = useTrainingStore((s) => s.splitMode);
@@ -88,6 +95,19 @@ export default function SingleModelTrainingPanel() {
   const defaultShuffle =
     effectiveMode === 'kfold' ? kfoldDefaults?.shuffle : holdoutDefaults?.shuffle;
   // NOTE: effective shuffle (for payload seed rules) is handled inside the trainer hook.
+
+  // ---------------------------------------------------------------------
+  // Shuffle-baseline defaults (schema-owned)
+  // ---------------------------------------------------------------------
+  const evalDefaults = evalCfg?.defaults ?? null;
+  const shuffleBaselineDefaults = evalDefaults?.shuffle_baseline ?? null;
+  const defaultShuffleBaselineEnabled =
+    shuffleBaselineDefaults?.enabled ?? (Number(evalDefaults?.n_shuffles ?? 0) > 0);
+  const defaultNShuffles = shuffleBaselineDefaults?.n_shuffles ?? null;
+
+  const effectiveShuffleBaselineEnabled =
+    useShuffleBaseline ?? Boolean(defaultShuffleBaselineEnabled);
+  const effectiveNShuffles = nShuffles ?? defaultNShuffles;
 
 
   // Initialize train model once defaults arrive
@@ -226,7 +246,7 @@ export default function SingleModelTrainingPanel() {
             </Button>
           </Group>
 
-          {isRunning && useShuffleBaseline && Number(nShuffles) > 0 && (
+          {isRunning && effectiveShuffleBaselineEnabled && Number(effectiveNShuffles) > 0 && (
             <Stack gap={4}>
               <Group justify="space-between">
                 <Text size="xs" c="dimmed">{progressLabel || 'Running…'}</Text>
@@ -309,10 +329,28 @@ export default function SingleModelTrainingPanel() {
               <Divider my="xs" />
 
               <ShuffleLabelsCard
-                checked={useShuffleBaseline}
-                onCheckedChange={setUseShuffleBaseline}
+                checked={effectiveShuffleBaselineEnabled}
+                onCheckedChange={(checked) => {
+                  const d = Boolean(defaultShuffleBaselineEnabled);
+                  if (checked === d) setUseShuffleBaseline(undefined);
+                  else setUseShuffleBaseline(Boolean(checked));
+                }}
                 nShuffles={nShuffles}
-                onNShufflesChange={setNShuffles}
+                nShufflesPlaceholder={
+                  defaultNShuffles != null ? `Default: ${defaultNShuffles}` : undefined
+                }
+                nShufflesDescription={
+                  defaultNShuffles == null
+                    ? 'Schema did not provide a default number of shuffles.'
+                    : undefined
+                }
+                onNShufflesChange={(v) => {
+                  const vv = v === '' || v == null ? undefined : Number(v);
+                  const d = defaultNShuffles;
+                  if (vv == null) setNShuffles(undefined);
+                  else if (d != null && vv === Number(d)) setNShuffles(undefined);
+                  else setNShuffles(vv);
+                }}
               />
             </Stack>
           </Box>

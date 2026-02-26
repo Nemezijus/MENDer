@@ -12,7 +12,7 @@ import { makeReset } from '../../../shared/state/storeFactories.js';
 
 const INITIAL_STATE = {
   // --- split overrides ----------------------------------------------------
-  splitMode: undefined, // undefined => schema default (holdout)
+  splitMode: undefined, // undefined => schema default
   trainFrac: undefined,
   nSplits: undefined,
   stratified: undefined,
@@ -20,8 +20,10 @@ const INITIAL_STATE = {
   seed: '',
 
   // --- shuffle-baseline (UI / eval override) ------------------------------
-  useShuffleBaseline: false,
-  nShuffles: 100,
+  // Override-only. Defaults are owned by the Engine and surfaced through
+  // /schema/defaults (eval.defaults.shuffle_baseline).
+  useShuffleBaseline: undefined,
+  nShuffles: undefined,
 };
 
 export const useTrainingStore = create((set) => ({
@@ -41,7 +43,14 @@ export const useTrainingStore = create((set) => ({
   },
 
   // shuffle baseline
-  setUseShuffleBaseline: (useShuffleBaseline) =>
-    set({ useShuffleBaseline: !!useShuffleBaseline }),
-  setNShuffles: (nShuffles) => set({ nShuffles: Number(nShuffles) || 0 }),
+  setUseShuffleBaseline: (useShuffleBaseline) => {
+    if (useShuffleBaseline == null) return set({ useShuffleBaseline: undefined });
+    return set({ useShuffleBaseline: Boolean(useShuffleBaseline) });
+  },
+  setNShuffles: (nShuffles) => {
+    if (nShuffles === '' || nShuffles == null) return set({ nShuffles: undefined });
+    const n = Number(nShuffles);
+    if (!Number.isFinite(n)) return set({ nShuffles: undefined });
+    return set({ nShuffles: n });
+  },
 }));

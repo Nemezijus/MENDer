@@ -6,6 +6,8 @@ export default function ShuffleLabelsCard({
   onCheckedChange,
   nShuffles,
   onNShufflesChange,
+  nShufflesPlaceholder,
+  nShufflesDescription,
 }) {
   return (
     <Card withBorder shadow="sm" radius="md" padding="lg">
@@ -27,6 +29,8 @@ export default function ShuffleLabelsCard({
             max={5000}
             step={10}
             value={nShuffles}
+            placeholder={nShufflesPlaceholder}
+            description={nShufflesDescription}
             onChange={onNShufflesChange}
           />
         )}

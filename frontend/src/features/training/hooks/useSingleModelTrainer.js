@@ -46,9 +46,16 @@ export function useSingleModelTrainer() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
 
   // --- schema defaults (for effective shuffle) ----------------------------
-  const { split } = useSchemaDefaults();
+  const { split, eval: evalCfg } = useSchemaDefaults();
   const holdoutDefaults = split?.holdout?.defaults ?? null;
   const kfoldDefaults = split?.kfold?.defaults ?? null;
+
+  // Shuffle-baseline defaults (schema-owned)
+  const evalDefaults = evalCfg?.defaults ?? null;
+  const shuffleBaselineDefaults = evalDefaults?.shuffle_baseline ?? null;
+  const defaultShuffleBaselineEnabled =
+    shuffleBaselineDefaults?.enabled ?? (Number(evalDefaults?.n_shuffles ?? 0) > 0);
+  const defaultNShuffles = shuffleBaselineDefaults?.n_shuffles ?? null;
 
   // --- config stores ------------------------------------------------------
   const featureCtx = useFeatureStore();
@@ -125,11 +132,15 @@ export function useSingleModelTrainer() {
     clearArtifact();
     setIsRunning(true);
 
-    const wantProgress = useShuffleBaseline && Number(nShuffles) > 0;
+    const effectiveShuffleBaselineEnabled =
+      useShuffleBaseline ?? Boolean(defaultShuffleBaselineEnabled);
+    const effectiveNShuffles = nShuffles ?? defaultNShuffles;
+    const wantProgress =
+      Boolean(effectiveShuffleBaselineEnabled) && Number(effectiveNShuffles) > 0;
     const progressId = wantProgress ? makeProgressId() : null;
     if (wantProgress) {
       setProgress(0);
-      setProgressLabel(`Shuffling 0/${nShuffles}…`);
+      setProgressLabel(`Shuffling 0/${Number(effectiveNShuffles)}…`);
       startProgressPolling(progressId);
     } else {
       stopProgressPolling();
@@ -152,7 +163,7 @@ export function useSingleModelTrainer() {
       const evalCfg = buildEvalPayload({
         metric,
         seed: Boolean(effectiveShuffle) && Number.isFinite(seedInt) ? seedInt : undefined,
-        nShuffles: wantProgress ? Number(nShuffles) : undefined,
+        nShuffles: wantProgress ? Number(effectiveNShuffles) : undefined,
         progressId: wantProgress ? progressId : undefined,
       });
 
@@ -212,6 +223,9 @@ export function useSingleModelTrainer() {
     split,
     holdoutDefaults?.shuffle,
     kfoldDefaults?.shuffle,
+    evalCfg?.defaults?.shuffle_baseline?.enabled,
+    evalCfg?.defaults?.shuffle_baseline?.n_shuffles,
+    evalCfg?.defaults?.n_shuffles,
     setTrainResult,
     setActiveResultKind,
     setArtifact,
