@@ -57,6 +57,7 @@ export default function RandomSearchPanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
 
   const {
@@ -102,6 +103,7 @@ export default function RandomSearchPanel() {
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
 
   // Initialize RS model once
@@ -162,12 +164,7 @@ export default function RandomSearchPanel() {
           scaleMethod,
           model: rsModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
+          evalMetric: metric,
         });
 
         const randomState = basePayload?.eval?.seed;

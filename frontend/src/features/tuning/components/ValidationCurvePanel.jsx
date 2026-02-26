@@ -57,6 +57,7 @@ export default function ValidationCurvePanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
 
   const { data: tuningDefaults, isLoading: tuningLoading } = useTuningDefaultsQuery();
@@ -95,6 +96,7 @@ export default function ValidationCurvePanel() {
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
 
   // Initialize VC model once
@@ -140,12 +142,7 @@ export default function ValidationCurvePanel() {
           scaleMethod,
           model: vcModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
+          evalMetric: metric,
         });
 
         const payload = compactPayload({

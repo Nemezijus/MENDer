@@ -52,6 +52,7 @@ export default function LearningCurvePanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
 
   const {
@@ -73,6 +74,7 @@ export default function LearningCurvePanel() {
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
 
   const {
@@ -156,12 +158,7 @@ export default function LearningCurvePanel() {
             shuffle,
             seed,
           },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
+          evalMetric: metric,
         });
 
         const payload = compactPayload({

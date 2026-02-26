@@ -57,6 +57,7 @@ export default function GridSearchPanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
 
   const {
@@ -101,6 +102,7 @@ export default function GridSearchPanel() {
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
 
   // Initialize GS model once
@@ -154,12 +156,7 @@ export default function GridSearchPanel() {
           scaleMethod,
           model: gsModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
+          evalMetric: metric,
         });
 
         const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;
