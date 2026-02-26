@@ -52,7 +52,6 @@ export default function BaggingEnsemblePanel() {
     models,
     enums,
     split,
-    getModelDefaults,
     getCompatibleAlgos,
     getEnsembleDefaults,
   } = useSchemaDefaults();
@@ -120,8 +119,8 @@ export default function BaggingEnsemblePanel() {
 
   const defaultBaseEstimator = useMemo(() => {
     if (!defaultBaseAlgo) return undefined;
-    return getModelDefaults?.(defaultBaseAlgo) || { algo: defaultBaseAlgo };
-  }, [defaultBaseAlgo, getModelDefaults]);
+    return { algo: defaultBaseAlgo };
+  }, [defaultBaseAlgo]);
 
   const effectiveBaseEstimator = bagging.base_estimator ?? defaultBaseEstimator;
 
@@ -248,7 +247,6 @@ export default function BaggingEnsemblePanel() {
             enums={enums}
             effectiveTask={effectiveTask}
             effectiveBaseEstimator={effectiveBaseEstimator}
-            getModelDefaults={getModelDefaults}
             onBaseEstimatorChange={setBaggingBaseEstimator}
             onBaseEstimatorConfigChange={(next) => setBaggingBaseEstimator(next)}
             bagging={bagging}

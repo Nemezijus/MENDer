@@ -49,7 +49,6 @@ export default function LearningCurvePanel() {
     loading: defsLoading,
     models,
     enums,
-    getModelDefaults,
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
@@ -112,18 +111,9 @@ export default function LearningCurvePanel() {
   useEffect(() => {
     if (!defsLoading && !lcModel) {
       const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
-      const init = getModelDefaults(defaultAlgo) || { algo: defaultAlgo };
-      setLcModel(init);
+      setLcModel({ algo: defaultAlgo });
     }
-  }, [defsLoading, getModelDefaults, lcModel, setLcModel]);
-
-  // When algo changes, rehydrate from backend defaults while preserving overrides
-  useEffect(() => {
-    if (!lcModel) return;
-    const base = getModelDefaults(lcModel.algo) || { algo: lcModel.algo };
-    const merged = { ...base, ...lcModel };
-    setLcModel(merged);
-  }, [getModelDefaults, lcModel?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [defsLoading, lcModel, setLcModel, taskInferred]);
 
   function handleCompute() {
     return run({
@@ -218,8 +208,7 @@ export default function LearningCurvePanel() {
           model={lcModel}
           onModelChange={(next) => {
             if (next?.algo && lcModel && next.algo !== lcModel.algo) {
-              const d = getModelDefaults(next.algo) || { algo: next.algo };
-              setLcModel({ ...d, ...next });
+              setLcModel({ algo: next.algo });
             } else {
               setLcModel(next);
             }

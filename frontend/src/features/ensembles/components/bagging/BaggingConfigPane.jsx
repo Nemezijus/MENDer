@@ -18,7 +18,6 @@ export default function BaggingConfigPane({
   enums,
   effectiveTask,
   effectiveBaseEstimator,
-  getModelDefaults,
   onBaseEstimatorChange,
   onBaseEstimatorConfigChange,
   bagging,
@@ -50,8 +49,7 @@ export default function BaggingConfigPane({
         value={effectiveBaseEstimator?.algo ?? null}
         onChange={(v) => {
           if (!v) return;
-          const base = getModelDefaults?.(v) || { algo: v };
-          onBaseEstimatorChange(base);
+          onBaseEstimatorChange({ algo: v });
         }}
         disabled={algoOptions.length === 0}
       />

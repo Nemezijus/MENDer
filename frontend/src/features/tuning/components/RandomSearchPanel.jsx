@@ -54,7 +54,6 @@ export default function RandomSearchPanel() {
     loading: defsLoading,
     models,
     enums,
-    getModelDefaults,
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
@@ -109,10 +108,9 @@ export default function RandomSearchPanel() {
   useEffect(() => {
     if (!defsLoading && !rsModel) {
       const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
-      const init = getModelDefaults(defaultAlgo) || { algo: defaultAlgo };
-      setRsModel(init);
+      setRsModel({ algo: defaultAlgo });
     }
-  }, [defsLoading, getModelDefaults, rsModel, setRsModel]);
+  }, [defsLoading, rsModel, setRsModel, taskInferred]);
 
   function handleCompute() {
     const p1 = (hyperParam1.paramName || '').trim();
@@ -223,8 +221,7 @@ export default function RandomSearchPanel() {
           model={rsModel}
           onModelChange={(next) => {
             if (next?.algo && rsModel && next.algo !== rsModel.algo) {
-              const d = getModelDefaults(next.algo) || { algo: next.algo };
-              setRsModel({ ...d, ...next });
+              setRsModel({ algo: next.algo });
               setRsState({ hyperParam1: EMPTY_PARAM, hyperParam2: EMPTY_PARAM });
             } else {
               setRsModel(next);

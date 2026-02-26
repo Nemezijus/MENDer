@@ -21,7 +21,7 @@ import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 /** ---------- component ---------- **/
 
 export default function SingleModelTrainingPanel() {
-  const { loading: defsLoading, models, enums, split, getModelDefaults, getCompatibleAlgos } = useSchemaDefaults();
+  const { loading: defsLoading, models, enums, split, getCompatibleAlgos } = useSchemaDefaults();
 
   // SPLIT (override-only; persists across navigation)
   const splitMode = useTrainingStore((s) => s.splitMode);
@@ -77,10 +77,9 @@ export default function SingleModelTrainingPanel() {
   // Initialize train model once defaults arrive
   useEffect(() => {
     if (!defsLoading && !trainModel) {
-      const init = getModelDefaults('logreg') || { algo: 'logreg' };
-      setTrainModel(init);
+      setTrainModel({ algo: 'logreg' });
     }
-  }, [defsLoading, getModelDefaults, trainModel, setTrainModel]);
+  }, [defsLoading, trainModel, setTrainModel]);
 
   useEffect(() => {
     if (!trainModel) return;
@@ -101,14 +100,12 @@ export default function SingleModelTrainingPanel() {
 
     // Otherwise, pick the first compatible algo and reset to its defaults
     const nextAlgo = compat[0];
-    const defaults = getModelDefaults(nextAlgo) || { algo: nextAlgo };
-    setTrainModel(defaults);
+    setTrainModel({ algo: nextAlgo });
   }, [
     effectiveTask,
     trainModel,
     models,
     getCompatibleAlgos,
-    getModelDefaults,
     setTrainModel,
   ]);
 
@@ -151,14 +148,6 @@ export default function SingleModelTrainingPanel() {
     trainResult,
     clearTrainResult,
   ]);
-
-  // When algo changes, rehydrate from backend defaults and preserve user edits
-  useEffect(() => {
-    if (!trainModel) return;
-    const base = getModelDefaults(trainModel.algo) || { algo: trainModel.algo };
-    const merged = { ...base, ...trainModel };
-    setTrainModel(merged);
-  }, [getModelDefaults, trainModel?.algo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sanitize overrides: if user has an override that is no longer valid for this task, clear it.
   // IMPORTANT: we never auto-assign defaults here; schema/engine owns defaults.
@@ -293,14 +282,7 @@ export default function SingleModelTrainingPanel() {
 
               <ModelSelectionCard
                 model={trainModel}
-                onChange={(next) => {
-                  if (next?.algo && trainModel && next.algo !== trainModel.algo) {
-                    const d = getModelDefaults(next.algo) || { algo: next.algo };
-                    setTrainModel({ ...d, ...next });
-                  } else {
-                    setTrainModel(next);
-                  }
-                }}
+                onChange={setTrainModel}
                 schema={models?.schema}
                 enums={enums}
                 models={models}

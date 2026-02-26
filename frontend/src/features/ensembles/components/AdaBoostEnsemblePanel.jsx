@@ -52,7 +52,6 @@ export default function AdaBoostEnsemblePanel() {
     models,
     enums,
     split,
-    getModelDefaults,
     getModelMeta,
     getCompatibleAlgos,
     getEnsembleDefaults,
@@ -107,8 +106,8 @@ export default function AdaBoostEnsemblePanel() {
 
   const defaultBaseEstimator = useMemo(() => {
     if (!defaultBaseAlgo) return undefined;
-    return getModelDefaults?.(defaultBaseAlgo) || { algo: defaultBaseAlgo };
-  }, [defaultBaseAlgo, getModelDefaults]);
+    return { algo: defaultBaseAlgo };
+  }, [defaultBaseAlgo]);
 
   const effectiveBaseEstimator = adaboost.base_estimator ?? defaultBaseEstimator;
   const baseAlgo = effectiveBaseEstimator?.algo || null;
@@ -251,7 +250,6 @@ export default function AdaBoostEnsemblePanel() {
             enums={enums}
             effectiveTask={effectiveTask}
             effectiveBaseEstimator={effectiveBaseEstimator}
-            getModelDefaults={getModelDefaults}
             onBaseEstimatorChange={setAdaBoostBaseEstimator}
             onBaseEstimatorConfigChange={(next) => setAdaBoostBaseEstimator(next)}
             showSampleWeightWarning={showSampleWeightWarning}

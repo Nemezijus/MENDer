@@ -40,7 +40,6 @@ export function useVotingEnsembleController() {
     models,
     enums,
     split,
-    getModelDefaults,
     getCompatibleAlgos,
     getEnsembleDefaults,
   } = useSchemaDefaults();
@@ -112,7 +111,7 @@ export function useVotingEnsembleController() {
     const defaultsFromSchema = ensembleDefaults?.estimators || null;
 
     const firstAlgo = Array.isArray(compatibleAlgos) ? compatibleAlgos[0] : null;
-    const fallbackModel = firstAlgo ? getModelDefaults?.(firstAlgo) || { algo: firstAlgo } : null;
+    const fallbackModel = firstAlgo ? { algo: firstAlgo } : null;
 
     if (Array.isArray(defaultsFromSchema) && defaultsFromSchema.length >= 2) {
       setVotingEstimators(
@@ -132,7 +131,7 @@ export function useVotingEnsembleController() {
       const init = base.slice(0, 3).map((algo) => ({
         name: '',
         weight: '',
-        model: getModelDefaults?.(algo) || { algo },
+        model: { algo },
       }));
       if (init.length >= 2) {
         setVotingEstimators(init);
@@ -143,7 +142,7 @@ export function useVotingEnsembleController() {
 
     initializedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defsLoading, compatibleAlgos, getModelDefaults, getEnsembleDefaults]);
+  }, [defsLoading, compatibleAlgos, getEnsembleDefaults]);
 
   // ----------------- actions -----------------
 
@@ -172,7 +171,7 @@ export function useVotingEnsembleController() {
       extras.push({
         name: '',
         weight: '',
-        model: getModelDefaults?.(algo) || { algo },
+        model: { algo },
       });
     }
     if (extras.length) setVotingEstimators([...cur, ...extras]);
@@ -192,15 +191,14 @@ export function useVotingEnsembleController() {
       {
         name: '',
         weight: '',
-        model: getModelDefaults?.(algo) || { algo },
+        model: { algo },
       },
     ]);
   };
 
   const updateEstimatorAlgoSimple = (idx, algo) => {
     if (!algo) return;
-    const base = getModelDefaults?.(algo) || { algo };
-    updateVotingEstimatorAt(idx, { model: base });
+    updateVotingEstimatorAt(idx, { model: { algo } });
   };
 
   const buildPayload = () => {

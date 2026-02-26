@@ -38,19 +38,11 @@ export default function ModelSelectionCard({
   const set = (patch) => onChange?.({ ...m, ...patch });
   const replace = (next) => onChange?.({ ...(next || {}) });
 
-  const cloneDefaults = (obj) => {
-    if (!obj) return obj;
-    if (typeof structuredClone === 'function') return structuredClone(obj);
-    return JSON.parse(JSON.stringify(obj));
-  };
-
+  // IMPORTANT (Patch 1A3):
+  // The frontend must never clone engine defaults into state.
+  // State stores overrides only; defaults are displayed from schema.
   const applyAlgo = (algo) => {
-    const def = models?.defaults?.[algo];
-    if (def && typeof def === 'object') {
-      replace(cloneDefaults(def));
-    } else {
-      replace({ algo });
-    }
+    replace({ algo });
   };
 
   const inferredTask = useDataStore(

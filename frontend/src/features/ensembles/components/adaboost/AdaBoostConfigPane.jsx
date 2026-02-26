@@ -13,7 +13,6 @@ export default function AdaBoostConfigPane({
   enums,
   effectiveTask,
   effectiveBaseEstimator,
-  getModelDefaults,
   onBaseEstimatorChange,
   onBaseEstimatorConfigChange,
   showSampleWeightWarning,
@@ -39,8 +38,7 @@ export default function AdaBoostConfigPane({
         value={effectiveBaseEstimator?.algo ?? null}
         onChange={(v) => {
           if (!v) return;
-          const base = getModelDefaults?.(v) || { algo: v };
-          onBaseEstimatorChange(base);
+          onBaseEstimatorChange({ algo: v });
         }}
         disabled={algoOptions.length === 0}
       />

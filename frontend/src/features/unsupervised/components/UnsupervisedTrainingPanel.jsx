@@ -8,8 +8,6 @@ import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
 import { useUnsupervisedStore } from '../state/useUnsupervisedStore.js';
 
 import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
-import { cloneDefaults } from '../utils/cloneDefaults.js';
-import { shallowEqual } from '../utils/shallowEqual.js';
 import { useUnsupervisedTrainer } from '../hooks/useUnsupervisedTrainer.js';
 
 export default function UnsupervisedTrainingPanel() {
@@ -31,12 +29,11 @@ export default function UnsupervisedTrainingPanel() {
     })),
   );
 
-  const { model, algo, setModel, hydrateModel } = useUnsupervisedStore(
+  const { model, algo, setModel } = useUnsupervisedStore(
     useShallow((s) => ({
       model: s.model,
       algo: s.algo,
       setModel: s.setModel,
-      hydrateModel: s.hydrateModel,
     })),
   );
 
@@ -49,27 +46,14 @@ export default function UnsupervisedTrainingPanel() {
     return schema.getCompatibleAlgos?.('unsupervised') || [];
   }, [schema]);
 
-  // Initialize model defaults once (and keep selections across navigation).
+  // Initialize model once (and keep selections across navigation).
   useEffect(() => {
     if (model?.algo) return;
     if (!unsupAlgos || unsupAlgos.length === 0) return;
 
     const preferredAlgo = algo || unsupAlgos[0];
-    const def = schema.getModelDefaults?.(preferredAlgo);
-    const base = def ? cloneDefaults(def) : { algo: preferredAlgo };
-    hydrateModel(base, model);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unsupAlgos, schema, algo]);
-
-  // Keep model hydrated with backend defaults for current algo (without resetting user tweaks).
-  useEffect(() => {
-    if (!model?.algo) return;
-
-    const base = schema.getModelDefaults?.(model.algo) || { algo: model.algo };
-    const merged = { ...cloneDefaults(base), ...(model || {}) };
-    if (!shallowEqual(merged, model)) setModel(merged);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema, model?.algo]);
+    setModel({ algo: preferredAlgo });
+  }, [algo, model?.algo, setModel, unsupAlgos]);
 
   const hasX = !!(xPath || npzPath);
   const canRun = hasX && !!model?.algo && !schema.loading && !isRunning;
