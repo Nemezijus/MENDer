@@ -28,6 +28,7 @@ export default function ShuffleLabelsCard({
             min={10}
             max={5000}
             step={10}
+            clampBehavior="none"
             value={nShuffles}
             placeholder={nShufflesPlaceholder}
             description={nShufflesDescription}
