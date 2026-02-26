@@ -13,6 +13,7 @@ import { runTrainRequest } from '../api/trainApi.js';
 import { fetchProgress } from '../api/progressApi.js';
 
 import { toErrorText } from '../../../shared/utils/errors.js';
+import { getDefaultSplitMode } from '../../../shared/utils/splitMode.js';
 import {
   buildDataPayload,
   buildEvalPayload,
@@ -141,7 +142,8 @@ export function useSingleModelTrainer() {
       const scale = buildScalePayload({ method: scaleMethod });
       const features = buildFeaturesPayload(featureCtx);
 
-      const effectiveMode = splitMode ?? 'holdout';
+      const defaultMode = getDefaultSplitMode({ split, allowedModes: ['holdout', 'kfold'] });
+      const effectiveMode = splitMode ?? defaultMode;
       const defaultShuffle =
         effectiveMode === 'kfold' ? kfoldDefaults?.shuffle : holdoutDefaults?.shuffle;
       const effectiveShuffle = shuffle ?? defaultShuffle;
@@ -207,6 +209,7 @@ export function useSingleModelTrainer() {
     shuffle,
     seed,
     metric,
+    split,
     holdoutDefaults?.shuffle,
     kfoldDefaults?.shuffle,
     setTrainResult,

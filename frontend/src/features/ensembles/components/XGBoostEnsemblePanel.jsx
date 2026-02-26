@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
 import { useFeatureStore } from '../../../shared/state/useFeatureStore.js';
 import { useResultsStore } from '../../results/state/useResultsStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
+import { getDefaultSplitMode } from '../../../shared/utils/splitMode.js';
 import { useEnsembleStore } from '../state/useEnsembleStore.js';
 
 import XGBoostEnsembleResults from './XGBoostEnsembleResults.jsx';
@@ -59,7 +60,7 @@ export default function XGBoostEnsemblePanel() {
   // Split defaults (schema-owned)
   const holdoutDefaults = split?.holdout?.defaults ?? null;
   const kfoldDefaults = split?.kfold?.defaults ?? null;
-  const defaultSplitMode = holdoutDefaults?.mode ?? kfoldDefaults?.mode ?? 'holdout';
+  const defaultSplitMode = getDefaultSplitMode({ split, allowedModes: ['holdout', 'kfold'] });
   const effectiveSplitMode = xgb.splitMode ?? defaultSplitMode;
 
   const defaultTrainFrac = holdoutDefaults?.train_frac ?? undefined;
@@ -175,8 +176,11 @@ export default function XGBoostEnsemblePanel() {
       <SplitOptionsCard
         title="Data split"
         allowedModes={['holdout', 'kfold']}
-        mode={effectiveSplitMode}
-        onModeChange={(m) => setXGBoost({ splitMode: m })}
+        mode={xgb.splitMode}
+        onModeChange={(m) => {
+          const next = m || undefined;
+          setXGBoost({ splitMode: next && next === defaultSplitMode ? undefined : next });
+        }}
         trainFrac={xgb.trainFrac}
         onTrainFracChange={(v) => setXGBoost({ trainFrac: v })}
         nSplits={xgb.nSplits}

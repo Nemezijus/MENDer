@@ -11,6 +11,7 @@ import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.
 import { useSettingsStore } from '../../settings/state/useSettingsStore.js';
 import { useModelConfigStore } from '../state/useModelConfigStore.js';
 import { useTrainingStore } from '../state/useTrainingStore.js';
+import { getDefaultSplitMode } from '../../../shared/utils/splitMode.js';
 
 import { useSingleModelTrainer } from '../hooks/useSingleModelTrainer.js';
 
@@ -121,17 +122,18 @@ export default function SingleModelTrainingPanel() {
       setTrainModel(artifact.model);
     }
 
-    const split = artifact?.split || {};
-    const mode = split?.mode || ('n_splits' in split ? 'kfold' : 'holdout');
-    setSplitMode(mode === 'kfold' ? 'kfold' : 'holdout');
+    const artSplit = artifact?.split || {};
+    const inferredMode = artSplit?.mode || ('n_splits' in artSplit ? 'kfold' : undefined);
+    const resolvedMode = inferredMode ?? defaultSplitMode;
+    setSplitMode(resolvedMode === defaultSplitMode ? undefined : resolvedMode);
 
-    if (mode === 'kfold' || 'n_splits' in split) {
-      if (split?.n_splits != null) setNSplits(Number(split.n_splits));
+    if (resolvedMode === 'kfold' || 'n_splits' in artSplit) {
+      if (artSplit?.n_splits != null) setNSplits(Number(artSplit.n_splits));
     } else {
-      if (split?.train_frac != null) setTrainFrac(Number(split.train_frac));
+      if (artSplit?.train_frac != null) setTrainFrac(Number(artSplit.train_frac));
     }
-    if (split?.stratified != null) setStratified(!!split.stratified);
-    if (split?.shuffle != null) setShuffle(!!split.shuffle);
+    if (artSplit?.stratified != null) setStratified(!!artSplit.stratified);
+    if (artSplit?.shuffle != null) setShuffle(!!artSplit.shuffle);
 
     const ev = artifact?.eval || {};
     if ('seed' in ev) {
@@ -147,6 +149,14 @@ export default function SingleModelTrainingPanel() {
     trainModel,
     trainResult,
     clearTrainResult,
+    defaultSplitMode,
+    setTrainModel,
+    setSplitMode,
+    setNSplits,
+    setTrainFrac,
+    setStratified,
+    setShuffle,
+    setSeed,
   ]);
 
   // Sanitize overrides: if user has an override that is no longer valid for this task, clear it.
@@ -172,7 +182,8 @@ export default function SingleModelTrainingPanel() {
   // Split defaults (for clearing overrides when user selects defaults)
   const holdoutDefaults = split?.holdout?.defaults ?? null;
   const kfoldDefaults = split?.kfold?.defaults ?? null;
-  const effectiveMode = splitMode ?? 'holdout';
+  const defaultSplitMode = getDefaultSplitMode({ split, allowedModes: ['holdout', 'kfold'] });
+  const effectiveMode = splitMode ?? defaultSplitMode;
   const defaultStratified =
     effectiveMode === 'kfold' ? kfoldDefaults?.stratified : holdoutDefaults?.stratified;
   const defaultShuffle =
@@ -233,8 +244,9 @@ export default function SingleModelTrainingPanel() {
                 allowedModes={['holdout', 'kfold']}
                 mode={splitMode}
                 onModeChange={(v) => {
-                  // Default mode is holdout; keep override-only by clearing when selecting default.
-                  setSplitMode(v === 'holdout' ? undefined : v);
+                  // Keep override-only by clearing when selecting the schema default mode.
+                  const next = v || undefined;
+                  setSplitMode(next && next === defaultSplitMode ? undefined : next);
                   // Also clear per-mode overrides when switching modes.
                   setTrainFrac(undefined);
                   setNSplits(undefined);

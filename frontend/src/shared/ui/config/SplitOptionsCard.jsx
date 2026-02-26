@@ -9,6 +9,7 @@ import {
 } from '@mantine/core';
 import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
+import { getDefaultSplitMode } from '../../utils/splitMode.js';
 import SplitHelpText, {
   SplitIntroText,
 } from '../../content/help/SplitHelpText.jsx';
@@ -52,16 +53,20 @@ export default function SplitOptionsCard({
   const holdoutDefaults = split?.holdout?.defaults ?? null;
   const kfoldDefaults = split?.kfold?.defaults ?? null;
 
-  const hasHoldout = allowedModes.includes('holdout');
-  const hasKFold = allowedModes.includes('kfold');
+  const normalizedAllowedModes = Array.isArray(allowedModes) && allowedModes.length > 0
+    ? allowedModes
+    : ['holdout', 'kfold'];
+
+  const hasHoldout = normalizedAllowedModes.includes('holdout');
+  const hasKFold = normalizedAllowedModes.includes('kfold');
   const showModeSelect = hasHoldout && hasKFold;
+
+  const defaultMode = getDefaultSplitMode({ split, allowedModes: normalizedAllowedModes });
 
   // If consumer passes only one mode, we respect their state; mode select is hidden.
   const effectiveMode = showModeSelect
-    ? mode || (hasHoldout ? 'holdout' : 'kfold')
-    : hasKFold
-    ? 'kfold'
-    : 'holdout';
+    ? (mode ?? defaultMode)
+    : (normalizedAllowedModes[0] ?? defaultMode);
 
   // NOTE: we do not enforce task rules here; backend/engine owns the contract.
   // We only use this for help text.
@@ -100,7 +105,7 @@ export default function SplitOptionsCard({
                 { value: 'holdout', label: 'Hold-out' },
                 { value: 'kfold', label: 'K-fold cross-validation' },
               ]}
-              value={showModeSelect ? (mode ?? effectiveMode) : effectiveMode}
+              value={effectiveMode}
               onChange={(v) => onModeChange?.(v || undefined)}
             />
           )}
