@@ -12,7 +12,7 @@ import { useFeatureStore } from '../../state/useFeatureStore.js';
 import FeatureHelpText, {
   FeatureIntroText,
 } from '../../content/help/FeatureHelpText.jsx';
-import { getVariantSchema, enumFromSubSchema, toSelectData } from '../../utils/schema/jsonSchema.js';
+import { getVariantSchema, enumFromSubSchema, toSelectData, listDiscriminatorValues } from '../../utils/schema/jsonSchema.js';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 /** -------- helpers to read enums from the Features schema -------- **/
@@ -87,14 +87,19 @@ export default function FeatureCard({ title = 'Features' }) {
     return String(next) === String(def);
   };
 
-  const methods = toSelectData(enums?.FeatureName ?? ['none', 'pca', 'lda', 'sfs']);
+  const methodEnum =
+    (Array.isArray(enums?.FeatureName) && enums.FeatureName.length
+      ? enums.FeatureName
+      : null) ??
+    listDiscriminatorValues(features?.schema, 'method') ??
+    [];
+  const methods = toSelectData(methodEnum);
+  const methodsUnavailable = methods.length === 0;
 
-  const ldaSolverData = toSelectData(
-    enumFromSubSchema(sub, 'lda_solver', ['svd', 'lsqr', 'eigen']),
-  );
-  const sfsDirectionData = toSelectData(
-    enumFromSubSchema(sub, 'sfs_direction', ['forward', 'backward']),
-  );
+  const ldaSolverData = toSelectData(enumFromSubSchema(sub, 'lda_solver') ?? []);
+  const ldaSolverUnavailable = ldaSolverData.length === 0;
+  const sfsDirectionData = toSelectData(enumFromSubSchema(sub, 'sfs_direction') ?? []);
+  const sfsDirectionUnavailable = sfsDirectionData.length === 0;
 
   // Effective (displayed) values
   const effectivePcaN = numOrUndef(pca_n ?? propDefault('pca_n'));
@@ -139,6 +144,9 @@ export default function FeatureCard({ title = 'Features' }) {
             data={methods}
             value={effectiveMethod}
             onChange={handleMethodChange}
+            disabled={methodsUnavailable}
+            placeholder={methodsUnavailable ? 'Schema enums unavailable' : undefined}
+            description={methodsUnavailable ? 'Schema did not provide feature method options.' : undefined}
             styles={{
               input: {
                 borderWidth: 2,
@@ -216,6 +224,9 @@ export default function FeatureCard({ title = 'Features' }) {
               label="lda_solver"
               data={ldaSolverData}
               value={effectiveLdaSolver || null}
+              disabled={ldaSolverUnavailable}
+              placeholder={ldaSolverUnavailable ? 'Schema enums unavailable' : undefined}
+              description={ldaSolverUnavailable ? 'Schema did not provide lda_solver options.' : undefined}
               onChange={(v) => {
                 const next = v || undefined;
                 if (clearIfDefault(next, propDefault('lda_solver'))) setLdaSolver(undefined);
@@ -284,6 +295,11 @@ export default function FeatureCard({ title = 'Features' }) {
               label="sfs_direction"
               data={sfsDirectionData}
               value={effectiveSfsDirection || null}
+              disabled={sfsDirectionUnavailable}
+              placeholder={sfsDirectionUnavailable ? 'Schema enums unavailable' : undefined}
+              description={
+                sfsDirectionUnavailable ? 'Schema did not provide sfs_direction options.' : undefined
+              }
               onChange={(v) => {
                 const next = v || undefined;
                 if (clearIfDefault(next, propDefault('sfs_direction'))) setSfsDirection(undefined);

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Stack, Text, Select, MultiSelect } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
+import { enumFromSubSchema } from '../../utils/schema/jsonSchema.js';
 import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
 import MetricHelpText, { MetricIntroText } from '../../content/help/MetricHelpText.jsx';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
@@ -25,6 +26,25 @@ export default function MetricCard({
   const metricByTask = enums?.MetricByTask || null;
   const isUnsupervised = effectiveTask === 'unsupervised';
 
+  const enumFromArrayItems = (schema, key) => {
+    try {
+      const items = schema?.properties?.[key]?.items;
+      if (!items) return null;
+
+      if (Array.isArray(items.enum)) return items.enum;
+
+      const list = (items.anyOf ?? items.oneOf ?? []).flatMap((x) => {
+        if (Array.isArray(x.enum)) return x.enum;
+        if (x.const != null) return [x.const];
+        return [];
+      });
+
+      return list.length ? list : null;
+    } catch {
+      return null;
+    }
+  };
+
   // Schema defaults
   const metricByTaskDefaults = evalCfg?.defaults?.metric_by_task ?? null;
   const defaultSupervisedMetric =
@@ -36,21 +56,37 @@ export default function MetricCard({
 
   const rawList = useMemo(() => {
     if (isUnsupervised) {
-      if (Array.isArray(enums?.UnsupervisedMetricName)) return enums.UnsupervisedMetricName;
-      return ['silhouette', 'davies_bouldin', 'calinski_harabasz'];
+      if (Array.isArray(enums?.UnsupervisedMetricName) && enums.UnsupervisedMetricName.length) {
+        return enums.UnsupervisedMetricName;
+      }
+
+      const fromSchema = enumFromArrayItems(unsupervised?.eval?.schema, 'metrics');
+      if (Array.isArray(fromSchema) && fromSchema.length) return fromSchema;
+
+      return [];
     }
 
-    if (metricByTask && effectiveTask && Array.isArray(metricByTask[effectiveTask])) {
-      // Prefer backend-provided task-specific list
+    if (
+      metricByTask &&
+      effectiveTask &&
+      Array.isArray(metricByTask[effectiveTask]) &&
+      metricByTask[effectiveTask].length
+    ) {
       return metricByTask[effectiveTask];
     }
-    if (Array.isArray(enums?.MetricName)) {
-      // Fallback: all supervised metrics
+
+    if (Array.isArray(enums?.MetricName) && enums.MetricName.length) {
       return enums.MetricName;
     }
-    // Legacy fallback
-    return ['accuracy', 'balanced_accuracy', 'f1_macro'];
-  }, [enums, metricByTask, effectiveTask, isUnsupervised]);
+
+    const fromSchema = enumFromSubSchema(evalCfg?.schema, 'metric');
+    if (Array.isArray(fromSchema) && fromSchema.length) {
+      return fromSchema.filter((v) => v != null);
+    }
+
+    return [];
+  }, [enums, metricByTask, effectiveTask, isUnsupervised, unsupervised, evalCfg]);
+
 
   // Store is overrides-only:
   // - Never auto-write defaults into state.
@@ -102,6 +138,8 @@ export default function MetricCard({
     value: String(v),
     label: String(v),
   }));
+
+  const optionsUnavailable = metricOptions.length === 0;
 
   // Small helper describing range + direction for each metric
   const metricMeta = {
@@ -217,10 +255,12 @@ export default function MetricCard({
           {isUnsupervised ? (
             <MultiSelect
               label="Metrics"
-              description="Optional. If empty, the backend will compute a default set."
+              description={optionsUnavailable ? 'Metric options unavailable (schema missing).' : 'Optional. If empty, the backend will compute a default set.'}
               data={metricOptions}
               value={unsupervisedDisplay}
               onChange={handleUnsupervisedChange}
+              disabled={optionsUnavailable}
+              placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
               searchable
               clearable
               styles={{
@@ -236,6 +276,9 @@ export default function MetricCard({
               data={metricOptions}
               value={supervisedDisplay}
               onChange={handleSupervisedChange}
+              disabled={optionsUnavailable}
+              placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
+              description={optionsUnavailable ? 'Metric options unavailable (schema missing).' : undefined}
               styles={{
                 input: {
                   borderWidth: 2,

@@ -1,34 +1,43 @@
 import { Stack, Select } from '@mantine/core';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
+import { enumFromSubSchema } from '../../utils/schema/jsonSchema.js';
 import ScalingHelpText, {
   ScalingIntroText,
 } from '../../content/help/ScalingHelpText.jsx';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
-  const { enums } = useSchemaDefaults();
+  const { enums, scale } = useSchemaDefaults();
 
-  const scaleOptions = (
-    enums?.ScaleName ?? ['none', 'standard', 'robust', 'minmax', 'maxabs', 'quantile']
-  ).map((v) => {
-    const labelBase =
-      v === 'none'
-        ? 'None'
-        : String(v).charAt(0).toUpperCase() + String(v).slice(1);
-    const suffix =
-      v === 'none'
-        ? ''
-        : String(v).toLowerCase().endsWith('abs')
-        ? ' Scaler'
-        : v === 'quantile'
-        ? ' Transformer'
-        : ' Scaler';
+  const rawScaleNames =
+    (Array.isArray(enums?.ScaleName) && enums.ScaleName.length
+      ? enums.ScaleName
+      : null) ??
+    (enumFromSubSchema(scale?.schema, 'method') ?? []);
 
-    return {
-      value: String(v),
-      label: `${labelBase}${suffix}`,
-    };
-  });
+  const scaleOptions = (rawScaleNames ?? [])
+    .filter((v) => v != null)
+    .map((v) => {
+      const labelBase =
+        v === 'none'
+          ? 'None'
+          : String(v).charAt(0).toUpperCase() + String(v).slice(1);
+      const suffix =
+        v === 'none'
+          ? ''
+          : String(v).toLowerCase().endsWith('abs')
+          ? ' Scaler'
+          : v === 'quantile'
+          ? ' Transformer'
+          : ' Scaler';
+
+      return {
+        value: String(v),
+        label: `${labelBase}${suffix}`,
+      };
+    });
+
+  const optionsUnavailable = scaleOptions.length === 0;
 
   return (
     <ConfigCardShell
@@ -40,6 +49,9 @@ export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
             data={scaleOptions}
             value={value}
             onChange={onChange}
+            disabled={optionsUnavailable}
+            placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
+            description={optionsUnavailable ? 'Schema did not provide scaling options.' : undefined}
             styles={{
               input: {
                 borderWidth: 2,
