@@ -77,6 +77,7 @@ def update_voting_report(
                     estimator_algos=est_algos,
                     metric_name=str(cfg.eval.metric),
                     weights=getattr(final_est, "weights", None),
+                    voting=str(getattr(cfg.ensemble, "voting", "hard")),
                 )
 
             base_preds, base_scores = collect_voting_base_preds_and_scores(

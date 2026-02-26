@@ -19,6 +19,7 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
     estimator_algos: List[str]
     metric_name: str
     weights: Optional[List[float]]
+    voting: str
 
     _y_true_parts: List[np.ndarray]
     _y_ens_pred_parts: List[np.ndarray]
@@ -32,6 +33,7 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
         estimator_algos: Sequence[str],
         metric_name: str,
         weights: Optional[Sequence[float]],
+        voting: str,
     ) -> "VotingEnsembleRegressorReportAccumulator":
         names = list(estimator_names)
         algos = list(estimator_algos)
@@ -41,6 +43,7 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
             estimator_algos=algos,
             metric_name=str(metric_name),
             weights=w,
+            voting=str(voting),
             _y_true_parts=[],
             _y_ens_pred_parts=[],
             _y_base_pred_parts={n: [] for n in names},
@@ -76,8 +79,8 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
             return 0.0
 
     def finalize(self) -> Dict[str, Any]:
-        # existing summaries
-        per_est = self._finalize_estimator_summaries()
+        per_est, best_by_score = self._finalize_estimator_summaries()
+        best_by_score_name = (best_by_score or {}).get("name")
 
         y_true = concat_parts(self._y_true_parts)
         y_ens = concat_parts(self._y_ens_pred_parts)
@@ -97,11 +100,11 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
         best_med = None
 
         # build pooled base prediction matrix for similarity + best-base
-        names = list(self._y_base_parts.keys())
+        names = list(self._y_base_pred_parts.keys())
         names_used: List[str] = []
         P_cols = []
         for name in names:
-            yb = concat_parts(self._y_base_parts.get(name, []))
+            yb = concat_parts(self._y_base_pred_parts.get(name, []))
             if yb is None or yb.shape[0] != n_total:
                 continue
             P_cols.append(np.asarray(yb, dtype=float))
@@ -153,18 +156,6 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
                 similarity["pairwise_corr"] = C.tolist()
                 similarity["pairwise_absdiff"] = D.tolist()
 
-        # best base score (by metric)
-        best = select_best_estimator(list(per_est.values()))
-        best_summary = (
-            {
-                "name": best["name"],
-                "score": _safe_float(best["score_mean"]),
-                "score_std": _safe_float(best["score_std"]),
-            }
-            if best
-            else None
-        )
-
         # gain vs best (using RMSE/MAE/median AE)
         gain = {
             "rmse_reduction": _safe_float(float(best_rmse - ens_rmse)) if (best_rmse is not None and ens_rmse is not None) else None,
@@ -177,16 +168,22 @@ class VotingEnsembleRegressorReportAccumulator(PerEstimatorFoldAccumulatorBase):
             "kind": "voting",
             "task": "regression",
             "metric_name": self.metric_name,
-            "estimators": list(per_est.values()),
-            "ensemble": {
-                "score": _safe_float(self._ensemble_sum / max(1, self._n_folds)) if self._n_folds > 0 else None,
-                "score_std": None,
-            },
-            "best_base": best_summary,
+            "voting": self.voting,
+            "n_estimators": len(self.estimator_names),
+            "weights": self.weights,
+            "estimators": per_est,
+            "best_estimator": best_by_score,
             "similarity": similarity,
             "errors": {
                 "ensemble": {"rmse": _safe_float(ens_rmse), "mae": _safe_float(ens_mae), "median_ae": _safe_float(ens_med), "r2": None},
-                "best_base": {"rmse": _safe_float(best_rmse), "mae": _safe_float(best_mae), "median_ae": _safe_float(best_med), "r2": None, "name": best_name},
+                "best_base": {
+                    "rmse": _safe_float(best_rmse),
+                    "mae": _safe_float(best_mae),
+                    "median_ae": _safe_float(best_med),
+                    "r2": None,
+                    "name": best_name,
+                    "name_by_score": best_by_score_name,
+                },
                 "gain_vs_best": gain,
                 "n_total": _safe_int(n_total),
             },
