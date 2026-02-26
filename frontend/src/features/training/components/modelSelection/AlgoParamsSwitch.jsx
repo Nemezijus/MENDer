@@ -32,71 +32,71 @@ import TreeSection from './sections/tree.jsx';
 import TreeregSection from './sections/treereg.jsx';
 
 
-export default function AlgoParamsSwitch({ algo, m, set, sub, enums }) {
+export default function AlgoParamsSwitch({ algo, m, set, sub, enums, d }) {
   if (!algo) return null;
   switch (algo) {
     case 'agglo':
-      return <AggloSection m={m} set={set} sub={sub} enums={enums} />;
+      return <AggloSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'bayridge':
-      return <BayridgeSection m={m} set={set} sub={sub} enums={enums} />;
+      return <BayridgeSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'bgmm':
-      return <BgmmSection m={m} set={set} sub={sub} enums={enums} />;
+      return <BgmmSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'birch':
-      return <BirchSection m={m} set={set} sub={sub} enums={enums} />;
+      return <BirchSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'dbscan':
-      return <DbscanSection m={m} set={set} sub={sub} enums={enums} />;
+      return <DbscanSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'enet':
-      return <EnetSection m={m} set={set} sub={sub} enums={enums} />;
+      return <EnetSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'enetcv':
-      return <EnetcvSection m={m} set={set} sub={sub} enums={enums} />;
+      return <EnetcvSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'extratrees':
-      return <ExtratreesSection m={m} set={set} sub={sub} enums={enums} />;
+      return <ExtratreesSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'forest':
-      return <ForestSection m={m} set={set} sub={sub} enums={enums} />;
+      return <ForestSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'gmm':
-      return <GmmSection m={m} set={set} sub={sub} enums={enums} />;
+      return <GmmSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'gnb':
-      return <GnbSection m={m} set={set} sub={sub} enums={enums} />;
+      return <GnbSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'hgb':
-      return <HgbSection m={m} set={set} sub={sub} enums={enums} />;
+      return <HgbSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'kmeans':
-      return <KmeansSection m={m} set={set} sub={sub} enums={enums} />;
+      return <KmeansSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'knn':
-      return <KnnSection m={m} set={set} sub={sub} enums={enums} />;
+      return <KnnSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'knnreg':
-      return <KnnregSection m={m} set={set} sub={sub} enums={enums} />;
+      return <KnnregSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'lasso':
-      return <LassoSection m={m} set={set} sub={sub} enums={enums} />;
+      return <LassoSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'lassocv':
-      return <LassocvSection m={m} set={set} sub={sub} enums={enums} />;
+      return <LassocvSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'linreg':
-      return <LinregSection m={m} set={set} sub={sub} enums={enums} />;
+      return <LinregSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'linsvr':
-      return <LinsvrSection m={m} set={set} sub={sub} enums={enums} />;
+      return <LinsvrSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'logreg':
-      return <LogregSection m={m} set={set} sub={sub} enums={enums} />;
+      return <LogregSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'meanshift':
-      return <MeanshiftSection m={m} set={set} sub={sub} enums={enums} />;
+      return <MeanshiftSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'rfreg':
-      return <RfregSection m={m} set={set} sub={sub} enums={enums} />;
+      return <RfregSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'ridge':
-      return <RidgeSection m={m} set={set} sub={sub} enums={enums} />;
+      return <RidgeSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'ridgecv':
-      return <RidgecvSection m={m} set={set} sub={sub} enums={enums} />;
+      return <RidgecvSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'ridgereg':
-      return <RidgeregSection m={m} set={set} sub={sub} enums={enums} />;
+      return <RidgeregSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'sgd':
-      return <SgdSection m={m} set={set} sub={sub} enums={enums} />;
+      return <SgdSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'spectral':
-      return <SpectralSection m={m} set={set} sub={sub} enums={enums} />;
+      return <SpectralSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'svm':
-      return <SvmSection m={m} set={set} sub={sub} enums={enums} />;
+      return <SvmSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'svr':
-      return <SvrSection m={m} set={set} sub={sub} enums={enums} />;
+      return <SvrSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'tree':
-      return <TreeSection m={m} set={set} sub={sub} enums={enums} />;
+      return <TreeSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     case 'treereg':
-      return <TreeregSection m={m} set={set} sub={sub} enums={enums} />;
+      return <TreeregSection m={m} set={set} sub={sub} enums={enums} d={d} />;
     default:
       return null;
   }

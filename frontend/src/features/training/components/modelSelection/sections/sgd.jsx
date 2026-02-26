@@ -4,8 +4,9 @@ import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
+import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
 
-export default function SgdSection({ m, set, sub, enums }) {
+export default function SgdSection({ m, set, sub, enums, d }) {
   const sgdLoss = makeSelectData(sub, 'loss', enums?.SGDLoss);
   const sgdPenalty = makeSelectData(sub, 'penalty', enums?.SGDPenalty);
   const sgdLR = makeSelectData(sub, 'learning_rate', enums?.SGDLearningRate);
@@ -17,19 +18,25 @@ export default function SgdSection({ m, set, sub, enums }) {
         <ParamSelect
           label="Loss"
           data={sgdLoss}
-          value={m.loss ?? 'hinge'}
-          onChange={(v) => set({ loss: v })}
+          value={m.loss}
+
+          placeholder={defaultPlaceholder(d?.loss)}
+          onChange={(v) => set({ loss: overrideOrUndef(v, d?.loss) })}
         />
         <ParamSelect
           label="Penalty"
           data={sgdPenalty}
-          value={m.penalty ?? 'l2'}
-          onChange={(v) => set({ penalty: v })}
+          value={m.penalty}
+
+          placeholder={defaultPlaceholder(d?.penalty)}
+          onChange={(v) => set({ penalty: overrideOrUndef(v, d?.penalty) })}
         />
         <ParamNumber
           label="Alpha"
-          value={m.alpha ?? 0.0001}
-          onChange={(v) => set({ alpha: v })}
+          value={m.alpha}
+
+          placeholder={defaultPlaceholder(d?.alpha)}
+          onChange={(v) => set({ alpha: overrideOrUndef(v, d?.alpha) })}
           min={0}
           step={0.0001}
         />
@@ -43,64 +50,78 @@ export default function SgdSection({ m, set, sub, enums }) {
         />
         <ParamCheckbox
           label="Fit intercept"
-          checked={m.fit_intercept ?? true}
-          onChange={(checked) => set({ fit_intercept: checked })}
+          checked={effectiveValue(m.fit_intercept, d?.fit_intercept)}
+          onChange={(checked) => set({ fit_intercept: overrideOrUndef(checked, d?.fit_intercept) })}
         />
         <ParamNumber
           label="Max iterations"
-          value={m.max_iter ?? 1000}
-          onChange={(v) => set({ max_iter: v })}
+          value={m.max_iter}
+
+          placeholder={defaultPlaceholder(d?.max_iter)}
+          onChange={(v) => set({ max_iter: overrideOrUndef(v, d?.max_iter) })}
           allowDecimal={false}
           min={1}
         />
         <ParamNumber
           label="Tolerance (tol)"
-          value={m.tol ?? 1e-3}
-          onChange={(v) => set({ tol: v })}
+          value={m.tol}
+
+          placeholder={defaultPlaceholder(d?.tol)}
+          onChange={(v) => set({ tol: overrideOrUndef(v, d?.tol) })}
           step={0.0001}
           min={0}
         />
         <ParamCheckbox
           label="Shuffle"
-          checked={m.shuffle ?? true}
-          onChange={(checked) => set({ shuffle: checked })}
+          checked={effectiveValue(m.shuffle, d?.shuffle)}
+          onChange={(checked) => set({ shuffle: overrideOrUndef(checked, d?.shuffle) })}
         />
         <ParamSelect
           label="Learning rate"
           data={sgdLR}
-          value={m.learning_rate ?? 'optimal'}
-          onChange={(v) => set({ learning_rate: v })}
+          value={m.learning_rate}
+
+          placeholder={defaultPlaceholder(d?.learning_rate)}
+          onChange={(v) => set({ learning_rate: overrideOrUndef(v, d?.learning_rate) })}
         />
         <ParamNumber
           label="Eta0"
-          value={m.eta0 ?? 0.0}
-          onChange={(v) => set({ eta0: v })}
+          value={m.eta0}
+
+          placeholder={defaultPlaceholder(d?.eta0)}
+          onChange={(v) => set({ eta0: overrideOrUndef(v, d?.eta0) })}
           min={0}
           step={0.01}
         />
         <ParamNumber
           label="Power t"
-          value={m.power_t ?? 0.5}
-          onChange={(v) => set({ power_t: v })}
+          value={m.power_t}
+
+          placeholder={defaultPlaceholder(d?.power_t)}
+          onChange={(v) => set({ power_t: overrideOrUndef(v, d?.power_t) })}
           step={0.01}
         />
         <ParamCheckbox
           label="Early stopping"
-          checked={!!m.early_stopping}
-          onChange={(checked) => set({ early_stopping: checked })}
+          checked={effectiveValue(m.early_stopping, d?.early_stopping)}
+          onChange={(checked) => set({ early_stopping: overrideOrUndef(checked, d?.early_stopping) })}
         />
         <ParamNumber
           label="Validation fraction"
-          value={m.validation_fraction ?? 0.1}
-          onChange={(v) => set({ validation_fraction: v })}
+          value={m.validation_fraction}
+
+          placeholder={defaultPlaceholder(d?.validation_fraction)}
+          onChange={(v) => set({ validation_fraction: overrideOrUndef(v, d?.validation_fraction) })}
           min={0}
           max={1}
           step={0.01}
         />
         <ParamNumber
           label="No-change rounds"
-          value={m.n_iter_no_change ?? 5}
-          onChange={(v) => set({ n_iter_no_change: v })}
+          value={m.n_iter_no_change}
+
+          placeholder={defaultPlaceholder(d?.n_iter_no_change)}
+          onChange={(v) => set({ n_iter_no_change: overrideOrUndef(v, d?.n_iter_no_change) })}
           allowDecimal={false}
           min={1}
         />
@@ -128,15 +149,17 @@ export default function SgdSection({ m, set, sub, enums }) {
           <ParamNumber
             label="Average window"
             value={sgdAvgValue}
-            onChange={(v) => set({ average: v })}
+            onChange={(v) => set({ average: overrideOrUndef(v, d?.average) })}
             allowDecimal={false}
             min={1}
           />
         )}
         <ParamNumber
           label="Jobs (n_jobs)"
-          value={m.n_jobs ?? null}
-          onChange={(v) => set({ n_jobs: v })}
+          value={m.n_jobs}
+
+          placeholder={defaultPlaceholder(d?.n_jobs)}
+          onChange={(v) => set({ n_jobs: overrideOrUndef(v, d?.n_jobs) })}
           allowDecimal={false}
         />
       </ParamGrid>

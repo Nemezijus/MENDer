@@ -5,8 +5,9 @@ import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { parseCsvFloats, formatCsvFloats, makeSelectData } from '../../../utils/modelSelectionUtils.js';
+import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
 
-export default function RidgecvSection({ m, set, sub, enums }) {
+export default function RidgecvSection({ m, set, sub, enums, d }) {
   const ridgecvGcvMode = makeSelectData(sub, 'gcv_mode', ['auto', 'svd', 'eigen', null], { includeNoneLabel: true });
   return (
     <ParamGrid>
@@ -18,13 +19,15 @@ export default function RidgecvSection({ m, set, sub, enums }) {
         />
         <ParamCheckbox
           label="Fit intercept"
-          checked={m.fit_intercept ?? true}
-          onChange={(checked) => set({ fit_intercept: checked })}
+          checked={effectiveValue(m.fit_intercept, d?.fit_intercept)}
+          onChange={(checked) => set({ fit_intercept: overrideOrUndef(checked, d?.fit_intercept) })}
         />
         <TextInput
           label="Scoring"
           placeholder="(optional)"
-          value={m.scoring ?? ''}
+          value={m.scoring}
+
+          placeholder={defaultPlaceholder(d?.scoring)}
           onChange={(e) => {
             const t = e.currentTarget.value;
             set({ scoring: t === '' ? null : t });
@@ -32,8 +35,10 @@ export default function RidgecvSection({ m, set, sub, enums }) {
         />
         <ParamNumber
           label="CV folds"
-          value={m.cv ?? null}
-          onChange={(v) => set({ cv: v })}
+          value={m.cv}
+
+          placeholder={defaultPlaceholder(d?.cv)}
+          onChange={(v) => set({ cv: overrideOrUndef(v, d?.cv) })}
           allowDecimal={false}
           min={2}
         />
@@ -45,8 +50,8 @@ export default function RidgecvSection({ m, set, sub, enums }) {
         />
         <ParamCheckbox
           label="Alpha per target"
-          checked={!!m.alpha_per_target}
-          onChange={(checked) => set({ alpha_per_target: checked })}
+          checked={effectiveValue(m.alpha_per_target, d?.alpha_per_target)}
+          onChange={(checked) => set({ alpha_per_target: overrideOrUndef(checked, d?.alpha_per_target) })}
         />
       </ParamGrid>
   );

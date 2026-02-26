@@ -3,8 +3,9 @@ import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
+import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
 
-export default function LogregSection({ m, set, sub, enums }) {
+export default function LogregSection({ m, set, sub, enums, d }) {
   const lrPenalty = makeSelectData(sub, 'penalty', enums?.PenaltyName);
   const lrSolver = makeSelectData(sub, 'solver', enums?.LogRegSolver);
   const lrClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
@@ -12,27 +13,35 @@ export default function LogregSection({ m, set, sub, enums }) {
     <ParamGrid>
         <ParamNumber
           label="C (strength)"
-          value={m.C ?? 1.0}
-          onChange={(v) => set({ C: v })}
+          value={m.C}
+
+          placeholder={defaultPlaceholder(d?.C)}
+          onChange={(v) => set({ C: overrideOrUndef(v, d?.C) })}
           min={0}
           step={0.1}
         />
         <ParamSelect
           label="Penalty"
           data={lrPenalty}
-          value={m.penalty ?? 'l2'}
-          onChange={(v) => set({ penalty: v })}
+          value={m.penalty}
+
+          placeholder={defaultPlaceholder(d?.penalty)}
+          onChange={(v) => set({ penalty: overrideOrUndef(v, d?.penalty) })}
         />
         <ParamSelect
           label="Solver"
           data={lrSolver}
-          value={m.solver ?? 'lbfgs'}
-          onChange={(v) => set({ solver: v })}
+          value={m.solver}
+
+          placeholder={defaultPlaceholder(d?.solver)}
+          onChange={(v) => set({ solver: overrideOrUndef(v, d?.solver) })}
         />
         <ParamNumber
           label="Max iterations"
-          value={m.max_iter ?? 1000}
-          onChange={(v) => set({ max_iter: v })}
+          value={m.max_iter}
+
+          placeholder={defaultPlaceholder(d?.max_iter)}
+          onChange={(v) => set({ max_iter: overrideOrUndef(v, d?.max_iter) })}
           allowDecimal={false}
           min={1}
         />

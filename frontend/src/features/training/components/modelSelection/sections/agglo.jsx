@@ -4,31 +4,40 @@ import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
 import { enumFromSubSchema, toSelectData } from '../../../../../shared/utils/schema/jsonSchema.js';
+import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
 
-export default function AggloSection({ m, set, sub, enums }) {  return (
+export default function AggloSection({ m, set, sub, enums, d }) {  return (
     <ParamGrid>
         <ParamNumber
           label="Clusters (n_clusters)"
-          value={m.n_clusters ?? 2}
-          onChange={(v) => set({ n_clusters: v })}
+          value={m.n_clusters}
+
+          placeholder={defaultPlaceholder(d?.n_clusters)}
+          onChange={(v) => set({ n_clusters: overrideOrUndef(v, d?.n_clusters) })}
           allowDecimal={false}
           min={2}
         />
         <ParamSelect
           label="Linkage"
           data={toSelectData(enumFromSubSchema(sub, 'linkage', ['ward', 'complete', 'average', 'single']))}
-          value={m.linkage ?? 'ward'}
-          onChange={(v) => set({ linkage: v })}
+          value={m.linkage}
+
+          placeholder={defaultPlaceholder(d?.linkage)}
+          onChange={(v) => set({ linkage: overrideOrUndef(v, d?.linkage) })}
         />
         <TextInput
           label="Distance metric (metric)"
-          value={m.metric ?? 'euclidean'}
+          value={m.metric}
+
+          placeholder={defaultPlaceholder(d?.metric)}
           onChange={(e) => set({ metric: e.currentTarget.value })}
         />
         <ParamNumber
           label="Distance threshold"
-          value={m.distance_threshold ?? null}
-          onChange={(v) => set({ distance_threshold: v })}
+          value={m.distance_threshold}
+
+          placeholder={defaultPlaceholder(d?.distance_threshold)}
+          onChange={(v) => set({ distance_threshold: overrideOrUndef(v, d?.distance_threshold) })}
           min={0}
         />
         <ParamSelect
@@ -53,8 +62,8 @@ export default function AggloSection({ m, set, sub, enums }) {  return (
         />
         <ParamCheckbox
           label="Compute distances"
-          checked={!!m.compute_distances}
-          onChange={(checked) => set({ compute_distances: checked })}
+          checked={effectiveValue(m.compute_distances, d?.compute_distances)}
+          onChange={(checked) => set({ compute_distances: overrideOrUndef(checked, d?.compute_distances) })}
         />
       </ParamGrid>
   );

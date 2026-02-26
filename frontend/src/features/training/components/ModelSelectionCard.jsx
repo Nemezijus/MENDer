@@ -160,7 +160,7 @@ export default function ModelSelectionCard({
         onChange={applyAlgo}
       />
 
-      <AlgoParamsSwitch algo={m.algo} m={m} set={set} sub={sub} enums={enums} />
+      <AlgoParamsSwitch algo={m.algo} m={m} set={set} sub={sub} enums={enums} d={models?.defaults?.[m.algo]} />
 
       <Divider my="xs" />
       <Text size="xs" c="dimmed">

@@ -3,8 +3,9 @@ import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { maxFeatToModeVal, modeValToMaxFeat, makeSelectData } from '../../../utils/modelSelectionUtils.js';
+import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
 
-export default function TreeSection({ m, set, sub, enums }) {
+export default function TreeSection({ m, set, sub, enums, d }) {
   const treeCriterion = makeSelectData(sub, 'criterion', enums?.TreeCriterion);
   const treeSplitter = makeSelectData(sub, 'splitter', enums?.TreeSplitter);
   const treeClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
@@ -14,36 +15,46 @@ export default function TreeSection({ m, set, sub, enums }) {
         <ParamSelect
           label="Criterion"
           data={treeCriterion}
-          value={m.criterion ?? 'gini'}
-          onChange={(v) => set({ criterion: v })}
+          value={m.criterion}
+
+          placeholder={defaultPlaceholder(d?.criterion)}
+          onChange={(v) => set({ criterion: overrideOrUndef(v, d?.criterion) })}
         />
         <ParamSelect
           label="Splitter"
           data={treeSplitter}
-          value={m.splitter ?? 'best'}
-          onChange={(v) => set({ splitter: v })}
+          value={m.splitter}
+
+          placeholder={defaultPlaceholder(d?.splitter)}
+          onChange={(v) => set({ splitter: overrideOrUndef(v, d?.splitter) })}
         />
         <ParamNumber
           label="Max depth"
-          value={m.max_depth ?? null}
-          onChange={(v) => set({ max_depth: v })}
+          value={m.max_depth}
+
+          placeholder={defaultPlaceholder(d?.max_depth)}
+          onChange={(v) => set({ max_depth: overrideOrUndef(v, d?.max_depth) })}
         />
         <ParamNumber
           label="Min samples split"
-          value={m.min_samples_split ?? 2}
-          onChange={(v) => set({ min_samples_split: v })}
+          value={m.min_samples_split}
+
+          placeholder={defaultPlaceholder(d?.min_samples_split)}
+          onChange={(v) => set({ min_samples_split: overrideOrUndef(v, d?.min_samples_split) })}
         />
         <ParamNumber
           label="Min samples leaf"
-          value={m.min_samples_leaf ?? 1}
-          onChange={(v) => set({ min_samples_leaf: v })}
+          value={m.min_samples_leaf}
+
+          placeholder={defaultPlaceholder(d?.min_samples_leaf)}
+          onChange={(v) => set({ min_samples_leaf: overrideOrUndef(v, d?.min_samples_leaf) })}
         />
         <ParamNumber
           label="Min weight fraction"
-          value={m.min_weight_fraction_leaf ?? 0.0}
-          onChange={(v) =>
-            set({ min_weight_fraction_leaf: v })
-          }
+          value={m.min_weight_fraction_leaf}
+
+          placeholder={defaultPlaceholder(d?.min_weight_fraction_leaf)}
+          onChange={(v) => set({ min_weight_fraction_leaf: overrideOrUndef(v, d?.min_weight_fraction_leaf) })}
           step={0.01}
           min={0}
           max={1}
@@ -77,16 +88,18 @@ export default function TreeSection({ m, set, sub, enums }) {
         )}
         <ParamNumber
           label="Max leaf nodes"
-          value={m.max_leaf_nodes ?? null}
-          onChange={(v) => set({ max_leaf_nodes: v })}
+          value={m.max_leaf_nodes}
+
+          placeholder={defaultPlaceholder(d?.max_leaf_nodes)}
+          onChange={(v) => set({ max_leaf_nodes: overrideOrUndef(v, d?.max_leaf_nodes) })}
           allowDecimal={false}
         />
         <ParamNumber
           label="Min impurity decrease"
-          value={m.min_impurity_decrease ?? 0.0}
-          onChange={(v) =>
-            set({ min_impurity_decrease: v })
-          }
+          value={m.min_impurity_decrease}
+
+          placeholder={defaultPlaceholder(d?.min_impurity_decrease)}
+          onChange={(v) => set({ min_impurity_decrease: overrideOrUndef(v, d?.min_impurity_decrease) })}
           step={0.0001}
         />
         <ParamSelect
@@ -97,8 +110,10 @@ export default function TreeSection({ m, set, sub, enums }) {
         />
         <ParamNumber
           label="CCP alpha"
-          value={m.ccp_alpha ?? 0.0}
-          onChange={(v) => set({ ccp_alpha: v })}
+          value={m.ccp_alpha}
+
+          placeholder={defaultPlaceholder(d?.ccp_alpha)}
+          onChange={(v) => set({ ccp_alpha: overrideOrUndef(v, d?.ccp_alpha) })}
           step={0.0001}
         />
       </ParamGrid>
