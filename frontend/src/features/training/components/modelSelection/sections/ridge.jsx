@@ -13,7 +13,8 @@ import {
 
 export default function RidgeSection({ m, set, sub, enums, d }) {
   const ridgeSolver = makeSelectData(sub, 'solver', enums?.RidgeSolver);
-  const ridgeClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
+  const ridgeClassWeight = makeSelectData(sub, 'class_weight', enums?.ClassWeightBalanced, { includeNoneLabel: true });
+  const ridgeClassWeightUnavailable = ridgeClassWeight.length === 0;
   return (
     <ParamGrid>
         <ParamNumber
@@ -42,7 +43,9 @@ export default function RidgeSection({ m, set, sub, enums, d }) {
           label="Class weight"
           data={ridgeClassWeight}
           value={toNullableSelectValue(m.class_weight)}
-          placeholder={defaultPlaceholder(d?.class_weight)}
+          disabled={ridgeClassWeightUnavailable}
+          placeholder={ridgeClassWeightUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.class_weight)}
+          description={ridgeClassWeightUnavailable ? 'Schema did not provide class_weight options.' : undefined}
           onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamNumber

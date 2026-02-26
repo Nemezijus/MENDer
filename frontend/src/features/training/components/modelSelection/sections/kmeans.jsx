@@ -16,6 +16,11 @@ export default function KmeansSection({ m, set, sub, enums, d }) {
   const nInitNumPlaceholder = typeof effNInit === 'number' ? defaultPlaceholder(effNInit) : undefined;
 
   const defNInitMode = typeof defNInit === 'number' ? 'int' : defNInit;
+  const initData = toSelectData(enumFromSubSchema(sub, 'init'));
+  const initUnavailable = initData.length === 0;
+  const algorithmData = toSelectData(enumFromSubSchema(sub, 'algorithm'));
+  const algorithmUnavailable = algorithmData.length === 0;
+
 
   return (
     <ParamGrid>
@@ -30,9 +35,11 @@ export default function KmeansSection({ m, set, sub, enums, d }) {
 
       <ParamSelect
         label="Init"
-        data={toSelectData(enumFromSubSchema(sub, 'init', ['k-means++', 'random']))}
+        data={initData}
         value={m.init}
-        placeholder={defaultPlaceholder(d?.init)}
+        disabled={initUnavailable}
+        placeholder={initUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.init)}
+        description={initUnavailable ? 'Schema did not provide init options.' : undefined}
         onChange={(v) => set({ init: overrideOrUndef(v, d?.init) })}
       />
 
@@ -112,9 +119,11 @@ export default function KmeansSection({ m, set, sub, enums, d }) {
 
       <ParamSelect
         label="Algorithm"
-        data={toSelectData(enumFromSubSchema(sub, 'algorithm', ['lloyd', 'elkan', 'auto']))}
+        data={algorithmData}
         value={m.algorithm}
-        placeholder={defaultPlaceholder(d?.algorithm)}
+        disabled={algorithmUnavailable}
+        placeholder={algorithmUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.algorithm)}
+        description={algorithmUnavailable ? 'Schema did not provide algorithm options.' : undefined}
         onChange={(v) => set({ algorithm: overrideOrUndef(v, d?.algorithm) })}
       />
 

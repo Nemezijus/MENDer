@@ -6,6 +6,9 @@ import { enumFromSubSchema, toSelectData } from '../../../../../shared/utils/sch
 import { defaultPlaceholder, overrideOrUndef } from '../utils/paramDefaults.js';
 
 export default function DbscanSection({ m, set, sub, enums, d }) {
+  const algorithmData = toSelectData(enumFromSubSchema(sub, 'algorithm'));
+  const algorithmUnavailable = algorithmData.length === 0;
+
   return (
     <ParamGrid>
       <ParamNumber
@@ -38,9 +41,11 @@ export default function DbscanSection({ m, set, sub, enums, d }) {
 
       <ParamSelect
         label="Search algorithm (algorithm)"
-        data={toSelectData(enumFromSubSchema(sub, 'algorithm', ['auto', 'ball_tree', 'kd_tree', 'brute']))}
+        data={algorithmData}
         value={m.algorithm}
-        placeholder={defaultPlaceholder(d?.algorithm)}
+        disabled={algorithmUnavailable}
+        placeholder={algorithmUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.algorithm)}
+        description={algorithmUnavailable ? 'Schema did not provide algorithm options.' : undefined}
         onChange={(v) => set({ algorithm: overrideOrUndef(v, d?.algorithm) })}
       />
 

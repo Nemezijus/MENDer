@@ -14,7 +14,8 @@ import {
 export default function TreeSection({ m, set, sub, enums, d }) {
   const treeCriterion = makeSelectData(sub, 'criterion', enums?.TreeCriterion);
   const treeSplitter = makeSelectData(sub, 'splitter', enums?.TreeSplitter);
-  const treeClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
+  const treeClassWeight = makeSelectData(sub, 'class_weight', enums?.ClassWeightBalanced, { includeNoneLabel: true });
+  const treeClassWeightUnavailable = treeClassWeight.length === 0;
   const [mfModeDraft, setMfModeDraft] = useState(null);
   const defMaxFeatures = d?.max_features;
   const effMaxFeatures = effectiveValue(m.max_features, defMaxFeatures);
@@ -163,7 +164,9 @@ export default function TreeSection({ m, set, sub, enums, d }) {
           label="Class weight"
           data={treeClassWeight}
           value={toNullableSelectValue(m.class_weight)}
-          placeholder={defaultPlaceholder(d?.class_weight)}
+          disabled={treeClassWeightUnavailable}
+          placeholder={treeClassWeightUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.class_weight)}
+          description={treeClassWeightUnavailable ? 'Schema did not provide class_weight options.' : undefined}
           onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamNumber

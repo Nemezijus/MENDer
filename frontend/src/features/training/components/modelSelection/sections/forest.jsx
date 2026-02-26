@@ -13,7 +13,8 @@ import {
 
 export default function ForestSection({ m, set, sub, enums, d }) {
   const forestCriterion = makeSelectData(sub, 'criterion', enums?.TreeCriterion);
-  const forestClassWeight = makeSelectData(sub, 'class_weight', (enums?.ForestClassWeight ?? ['balanced', 'balanced_subsample', null]), { includeNoneLabel: true });
+  const forestClassWeight = makeSelectData(sub, 'class_weight', enums?.ForestClassWeight, { includeNoneLabel: true });
+  const forestClassWeightUnavailable = forestClassWeight.length === 0;
   const defMaxFeat = d?.max_features;
   const effMaxFeat = effectiveValue(m.max_features, defMaxFeat);
   const hasMFOverride = m.max_features !== undefined;
@@ -137,7 +138,13 @@ export default function ForestSection({ m, set, sub, enums, d }) {
           label="Class weight"
           data={forestClassWeight}
           value={toNullableSelectValue(m.class_weight)}
-          placeholder={defaultPlaceholder(d?.class_weight)}
+          disabled={forestClassWeightUnavailable}
+          placeholder={
+            forestClassWeightUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.class_weight)
+          }
+          description={
+            forestClassWeightUnavailable ? 'Schema did not provide class_weight options.' : undefined
+          }
           onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamCheckbox

@@ -13,7 +13,8 @@ import {
 } from '../utils/paramDefaults.js';
 
 export default function RidgecvSection({ m, set, sub, enums, d }) {
-  const ridgecvGcvMode = makeSelectData(sub, 'gcv_mode', ['auto', 'svd', 'eigen', null], { includeNoneLabel: true });
+  const ridgecvGcvMode = makeSelectData(sub, 'gcv_mode', undefined, { includeNoneLabel: true });
+  const ridgecvGcvModeUnavailable = ridgecvGcvMode.length === 0;
   const alphasPlaceholder = defaultPlaceholder(d?.alphas) ?? 'e.g. 0.1, 1.0, 10.0';
   return (
     <ParamGrid>
@@ -53,7 +54,9 @@ export default function RidgecvSection({ m, set, sub, enums, d }) {
           label="GCV mode"
           data={ridgecvGcvMode}
           value={toNullableSelectValue(m.gcv_mode)}
-          placeholder={defaultPlaceholder(d?.gcv_mode)}
+          disabled={ridgecvGcvModeUnavailable}
+          placeholder={ridgecvGcvModeUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.gcv_mode)}
+          description={ridgecvGcvModeUnavailable ? 'Schema did not provide gcv_mode options.' : undefined}
           onChange={(v) => set({ gcv_mode: overrideFromNullableSelect(v, d?.gcv_mode) })}
         />
         <ParamCheckbox

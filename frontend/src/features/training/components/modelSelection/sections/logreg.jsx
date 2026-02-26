@@ -13,7 +13,8 @@ import {
 export default function LogregSection({ m, set, sub, enums, d }) {
   const lrPenalty = makeSelectData(sub, 'penalty', enums?.PenaltyName);
   const lrSolver = makeSelectData(sub, 'solver', enums?.LogRegSolver);
-  const lrClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
+  const lrClassWeight = makeSelectData(sub, 'class_weight', enums?.ClassWeightBalanced, { includeNoneLabel: true });
+  const lrClassWeightUnavailable = lrClassWeight.length === 0;
   const effPenalty = effectiveValue(m.penalty, d?.penalty);
   return (
     <ParamGrid>
@@ -55,7 +56,9 @@ export default function LogregSection({ m, set, sub, enums, d }) {
           label="Class weight"
           data={lrClassWeight}
           value={toNullableSelectValue(m.class_weight)}
-          placeholder={defaultPlaceholder(d?.class_weight)}
+          disabled={lrClassWeightUnavailable}
+          placeholder={lrClassWeightUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.class_weight)}
+          description={lrClassWeightUnavailable ? 'Schema did not provide class_weight options.' : undefined}
           onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         {effPenalty === 'elasticnet' && (

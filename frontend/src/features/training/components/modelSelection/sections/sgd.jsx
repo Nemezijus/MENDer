@@ -15,7 +15,8 @@ export default function SgdSection({ m, set, sub, enums, d }) {
   const sgdLoss = makeSelectData(sub, 'loss', enums?.SGDLoss);
   const sgdPenalty = makeSelectData(sub, 'penalty', enums?.SGDPenalty);
   const sgdLR = makeSelectData(sub, 'learning_rate', enums?.SGDLearningRate);
-  const sgdClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
+  const sgdClassWeight = makeSelectData(sub, 'class_weight', enums?.ClassWeightBalanced, { includeNoneLabel: true });
+  const sgdClassWeightUnavailable = sgdClassWeight.length === 0;
   const defAvg = d?.average;
   const effAvg = effectiveValue(m.average, defAvg);
   const effAvgMode = typeof effAvg === 'number' ? 'int' : (effAvg ? 'true' : 'false');
@@ -143,7 +144,9 @@ export default function SgdSection({ m, set, sub, enums, d }) {
           label="Class weight"
           data={sgdClassWeight}
           value={toNullableSelectValue(m.class_weight)}
-          placeholder={defaultPlaceholder(d?.class_weight)}
+          disabled={sgdClassWeightUnavailable}
+          placeholder={sgdClassWeightUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.class_weight)}
+          description={sgdClassWeightUnavailable ? 'Schema did not provide class_weight options.' : undefined}
           onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamSelect

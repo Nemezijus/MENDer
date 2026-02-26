@@ -14,7 +14,8 @@ import {
 export default function SvmSection({ m, set, sub, enums, d }) {
   const svmKernel = makeSelectData(sub, 'kernel', enums?.SVMKernel);
   const svmDecisionShape = makeSelectData(sub, 'decision_function_shape', enums?.SVMDecisionShape);
-  const svmClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
+  const svmClassWeight = makeSelectData(sub, 'class_weight', enums?.ClassWeightBalanced, { includeNoneLabel: true });
+  const svmClassWeightUnavailable = svmClassWeight.length === 0;
   const defGamma = d?.gamma;
   const effGamma = effectiveValue(m.gamma, defGamma);
   const effGammaMode = typeof effGamma === 'number' ? 'numeric' : (effGamma ?? 'scale');
@@ -122,7 +123,9 @@ export default function SvmSection({ m, set, sub, enums, d }) {
           label="Class weight"
           data={svmClassWeight}
           value={toNullableSelectValue(m.class_weight)}
-          placeholder={defaultPlaceholder(d?.class_weight)}
+          disabled={svmClassWeightUnavailable}
+          placeholder={svmClassWeightUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.class_weight)}
+          description={svmClassWeightUnavailable ? 'Schema did not provide class_weight options.' : undefined}
           onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamNumber

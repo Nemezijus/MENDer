@@ -19,6 +19,9 @@ export default function AggloSection({ m, set, sub, enums, d }) {
       : m.compute_full_tree === false
       ? 'false'
       : 'auto';
+  const linkageData = toSelectData(enumFromSubSchema(sub, 'linkage'));
+  const linkageUnavailable = linkageData.length === 0;
+
 
   return (
     <ParamGrid>
@@ -33,9 +36,11 @@ export default function AggloSection({ m, set, sub, enums, d }) {
 
       <ParamSelect
         label="Linkage"
-        data={toSelectData(enumFromSubSchema(sub, 'linkage', ['ward', 'complete', 'average', 'single']))}
+        data={linkageData}
         value={m.linkage}
-        placeholder={defaultPlaceholder(d?.linkage)}
+        disabled={linkageUnavailable}
+        placeholder={linkageUnavailable ? 'Schema enums unavailable' : defaultPlaceholder(d?.linkage)}
+        description={linkageUnavailable ? 'Schema did not provide linkage options.' : undefined}
         onChange={(v) => set({ linkage: overrideOrUndef(v, d?.linkage) })}
       />
 
