@@ -206,11 +206,6 @@ export default function BaggingEnsemblePanel() {
       return;
     }
 
-    if (effectiveTask === 'regression' && !metricForPayload) {
-      setErr('No metric selected. Please choose a regression metric in Settings → Metric.');
-      return;
-    }
-
     await runTrain({ buildPayload });
   };
 
@@ -252,7 +247,6 @@ export default function BaggingEnsemblePanel() {
             bagging={bagging}
             baggingDefaults={baggingDefaults}
             samplingStrategyOptions={samplingStrategyOptions}
-            metricForPayload={metricForPayload}
             setBagging={setBagging}
           />
 

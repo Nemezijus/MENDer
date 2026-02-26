@@ -26,7 +26,11 @@ export default function MetricCard({
   const isUnsupervised = effectiveTask === 'unsupervised';
 
   // Schema defaults
-  const defaultSupervisedMetric = evalCfg?.defaults?.metric ?? null;
+  const metricByTaskDefaults = evalCfg?.defaults?.metric_by_task ?? null;
+  const defaultSupervisedMetric =
+    (!isUnsupervised && metricByTaskDefaults && effectiveTask && metricByTaskDefaults[effectiveTask]
+      ? String(metricByTaskDefaults[effectiveTask])
+      : (evalCfg?.defaults?.metric != null ? String(evalCfg.defaults.metric) : null));
   const defaultUnsupervisedMetrics =
     (unsupervised?.eval?.defaults?.metrics ?? []).map(String);
 

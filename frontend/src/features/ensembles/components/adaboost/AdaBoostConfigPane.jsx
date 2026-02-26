@@ -1,4 +1,4 @@
-import { Stack, Divider, Group, Alert } from '@mantine/core';
+import { Stack, Divider, Group } from '@mantine/core';
 
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
 
@@ -19,7 +19,6 @@ export default function AdaBoostConfigPane({
   algorithmOptions,
   adaboost,
   adaboostDefaults,
-  metricForPayload,
   setAdaBoost,
 }) {
   const dispNEstimators = adaboost.n_estimators ?? adaboostDefaults?.n_estimators;
@@ -92,12 +91,6 @@ export default function AdaBoostConfigPane({
           value={dispAlgorithm ?? '__default__'}
           onChange={(v) => setAdaBoost({ algorithm: v })}
         />
-      )}
-
-      {effectiveTask === 'regression' && !metricForPayload && (
-        <Alert color="yellow" title="Metric">
-          No regression metric is selected. Choose a metric in Settings → Metric.
-        </Alert>
       )}
     </Stack>
   );

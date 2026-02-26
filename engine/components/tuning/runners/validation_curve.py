@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import validation_curve as sk_validation_curve
 
 from engine.contracts.model_configs import get_model_task
+from engine.contracts.eval_defaults import resolve_metric
 from engine.contracts.run_config import RunConfig
 from engine.contracts.tuning_configs import ValidationCurveConfig
 from engine.contracts.unsupervised_configs import UnsupervisedRunConfig, UnsupervisedEvalModel
@@ -32,6 +33,8 @@ class ValidationCurveRunner(TuningStrategy):
         cfg = self.cfg
 
         task = get_model_task(cfg.model)
+        # Ensure task-appropriate metric when omitted (Engine-owned default).
+        cfg.eval.metric = resolve_metric(getattr(cfg.eval, "metric", None), task=task)
         if task == "unsupervised":
             return ValidationCurveResult.model_validate(self._run_unsupervised())
 

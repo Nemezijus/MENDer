@@ -1,8 +1,8 @@
 /**
  * Metric helpers.
  *
- * The backend provides allowed metrics per task via schema enums.
- * For regression, we must avoid silently falling back to "accuracy".
+ * The Engine owns metric defaults. The frontend must not invent "safe" defaults.
+ * Convention: store + payload are overrides-only.
  */
 
 /**
@@ -27,12 +27,11 @@ export function getAllowedMetrics(enums, effectiveTask) {
 }
 
 /**
- * Resolve the metric to send in the payload.
+ * Resolve the metric override to send in the payload.
  *
- * Convention:
- * - For classification: omit when unset/invalid (engine defaults apply).
- * - For regression: if unset/invalid and schema provides allowed metrics,
- *   use the schema's first metric as a safe default.
+ * Rule: overrides only.
+ * - If unset: omit (engine defaults apply).
+ * - If set but not in the allowed list: omit (engine defaults apply).
  *
  * @param {object} args
  * @param {string|null|undefined} args.metric
@@ -43,21 +42,13 @@ export function getAllowedMetrics(enums, effectiveTask) {
 export function resolveMetricForPayload({ metric, effectiveTask, allowedMetrics }) {
   const metricOverride = metric ? String(metric) : undefined;
 
-  const isAllowed =
-    !metricOverride ||
-    !Array.isArray(allowedMetrics) ||
-    allowedMetrics.length === 0 ||
-    allowedMetrics.includes(metricOverride);
+  if (!metricOverride) return undefined;
 
-  const defaultMetricFromSchema =
-    Array.isArray(allowedMetrics) && allowedMetrics.length
-      ? allowedMetrics[0]
-      : undefined;
-
-  if (effectiveTask === 'regression') {
-    return isAllowed ? metricOverride ?? defaultMetricFromSchema : defaultMetricFromSchema;
+  // If schema provides an allowed list, enforce it.
+  if (Array.isArray(allowedMetrics) && allowedMetrics.length > 0) {
+    return allowedMetrics.includes(metricOverride) ? metricOverride : undefined;
   }
 
-  // classification / unknown task: keep override if allowed, otherwise omit
-  return isAllowed ? metricOverride : undefined;
+  // No allowed list (schema not loaded) -> keep override if present.
+  return metricOverride;
 }

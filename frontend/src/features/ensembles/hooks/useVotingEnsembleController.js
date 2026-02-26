@@ -273,10 +273,6 @@ export function useVotingEnsembleController() {
     }
 
     // Regression needs a regression metric; do not fall back to EvalModel.metric='accuracy'.
-    if (effectiveTask === 'regression' && !metricForPayload) {
-      setErr('No metric selected. Please choose a regression metric in Settings → Metric.');
-      return;
-    }
 
     for (let i = 0; i < cur.length; i++) {
       if (!cur[i]?.model?.algo) {

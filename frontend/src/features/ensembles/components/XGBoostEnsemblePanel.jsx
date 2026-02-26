@@ -136,11 +136,6 @@ export default function XGBoostEnsemblePanel() {
       return;
     }
 
-    if (effectiveTask === 'regression' && !metricForPayload) {
-      setErr('No metric selected. Please choose a regression metric in Settings → Metric.');
-      return;
-    }
-
     await runTrain({ buildPayload });
   };
 

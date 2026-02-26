@@ -209,11 +209,6 @@ export default function AdaBoostEnsemblePanel() {
       return;
     }
 
-    if (effectiveTask === 'regression' && !metricForPayload) {
-      setErr('No metric selected. Please choose a regression metric in Settings → Metric.');
-      return;
-    }
-
     await runTrain({ buildPayload, clearPrevious: true });
   };
 
@@ -256,7 +251,6 @@ export default function AdaBoostEnsemblePanel() {
             algorithmOptions={algorithmOptions}
             adaboost={adaboost}
             adaboostDefaults={adaboostDefaults}
-            metricForPayload={metricForPayload}
             setAdaBoost={setAdaBoost}
           />
 

@@ -18,6 +18,7 @@ import numpy as np
 
 from engine.contracts.ensemble_run_config import EnsembleRunConfig
 from engine.contracts.results.ensemble import EnsembleResult
+from engine.contracts.eval_defaults import resolve_metric
 from engine.io.artifacts.store import ArtifactStore
 from engine.factories.data_loading_factory import make_data_loader
 from engine.factories.sanity_factory import make_sanity_checker
@@ -68,6 +69,9 @@ def train_ensemble(
     # Decide evaluation kind based on ensemble strategy (authoritative)
     ensemble_strategy = make_ensemble_strategy(cfg)
     eval_kind = ensemble_strategy.expected_kind()
+
+    # Ensure task-appropriate metric when omitted (Engine-owned default).
+    cfg.eval.metric = resolve_metric(getattr(cfg.eval, "metric", None), task=eval_kind)
 
     metrics_computer = make_metrics_computer(kind=eval_kind)
 

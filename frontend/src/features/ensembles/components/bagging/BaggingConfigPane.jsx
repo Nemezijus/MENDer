@@ -1,4 +1,4 @@
-import { Stack, Divider, Group, Alert } from '@mantine/core';
+import { Stack, Divider, Group } from '@mantine/core';
 
 import ModelSelectionCard from '../../../training/components/ModelSelectionCard.jsx';
 
@@ -23,7 +23,6 @@ export default function BaggingConfigPane({
   bagging,
   baggingDefaults,
   samplingStrategyOptions,
-  metricForPayload,
   setBagging,
 }) {
   const dispNEstimators = bagging.n_estimators ?? baggingDefaults?.n_estimators;
@@ -153,12 +152,6 @@ export default function BaggingConfigPane({
         onChange={(v) => setBagging({ sampling_strategy: v })}
         disabled={!Boolean(dispBalanced)}
       />
-
-      {effectiveTask === 'regression' && !metricForPayload && (
-        <Alert color="yellow" title="Metric">
-          No regression metric is selected. Choose a metric in Settings → Metric.
-        </Alert>
-      )}
     </Stack>
   );
 }

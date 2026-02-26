@@ -23,6 +23,7 @@ import numpy as np
 
 from engine.contracts.results.training import TrainResult
 from engine.contracts.run_config import RunConfig
+from engine.contracts.eval_defaults import resolve_metric
 
 from engine.reporting.training.shuffle_baseline_payloads import (
     build_label_shuffle_baseline_section,
@@ -77,6 +78,9 @@ def train_supervised(
     # --- Eval kind ---------------------------------------------------------
     model_task = getattr(cfg.model, "task", None)
     eval_kind = "regression" if model_task == "regression" else "classification"
+
+    # Ensure task-appropriate metric when omitted (Engine-owned default).
+    cfg.eval.metric = resolve_metric(getattr(cfg.eval, "metric", None), task=eval_kind)
 
     if eval_kind == "regression" and hasattr(cfg.split, "stratified"):
         # historical behavior

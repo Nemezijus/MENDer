@@ -18,6 +18,7 @@ from pydantic import TypeAdapter
 from engine.contracts import types as T
 from engine.contracts.ensemble_configs import EnsembleConfig
 from engine.contracts.eval_configs import EvalModel
+from engine.contracts.eval_defaults import DEFAULT_METRIC_BY_TASK
 from engine.contracts.feature_configs import FeaturesModel
 from engine.contracts.model_configs import ModelConfig
 from engine.contracts.run_config import DataModel
@@ -200,6 +201,9 @@ def build_ui_schema_bundle(*, schema_version: int = 1) -> Dict[str, Any]:
     model_defaults, model_meta = _model_defaults_and_meta()
     ensemble_defaults = _defaults_for_union(EnsembleConfig, key_field="kind")
 
+    eval_defaults = EvalModel().model_dump()
+    eval_defaults["metric_by_task"] = dict(DEFAULT_METRIC_BY_TASK)
+
     payload: Dict[str, Any] = {
         "models": {
             "schema": TypeAdapter(ModelConfig).json_schema(),
@@ -230,7 +234,7 @@ def build_ui_schema_bundle(*, schema_version: int = 1) -> Dict[str, Any]:
         },
         "eval": {
             "schema": TypeAdapter(EvalModel).json_schema(),
-            "defaults": EvalModel().model_dump(),
+            "defaults": eval_defaults,
         },
         "unsupervised": {
             "run": {
