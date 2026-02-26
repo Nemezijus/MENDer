@@ -2,16 +2,26 @@ import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
-import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
-import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
+import {
+  defaultPlaceholder,
+  effectiveValue,
+  overrideFromNullableSelect,
+  overrideOrUndef,
+  toNullableSelectValue,
+} from '../utils/paramDefaults.js';
 
 export default function SvmSection({ m, set, sub, enums, d }) {
   const svmKernel = makeSelectData(sub, 'kernel', enums?.SVMKernel);
   const svmDecisionShape = makeSelectData(sub, 'decision_function_shape', enums?.SVMDecisionShape);
   const svmClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
-  const gammaMode = typeof m.gamma === 'number' ? 'numeric' : (m.gamma ?? 'scale');
-  const gammaValue = typeof m.gamma === 'number' ? m.gamma : 0.1;
+  const defGamma = d?.gamma;
+  const effGamma = effectiveValue(m.gamma, defGamma);
+  const effGammaMode = typeof effGamma === 'number' ? 'numeric' : (effGamma ?? 'scale');
+  const defGammaMode = typeof defGamma === 'number' ? 'numeric' : defGamma;
+  const gammaModeValue = typeof m.gamma === 'number' ? 'numeric' : (typeof m.gamma === 'string' ? m.gamma : undefined);
+  const gammaNumValue = typeof m.gamma === 'number' ? m.gamma : undefined;
+  const gammaNumPlaceholder = typeof effGamma === 'number' ? defaultPlaceholder(effGamma) : undefined;
   return (
     <ParamGrid>
         <ParamSelect
@@ -47,23 +57,32 @@ export default function SvmSection({ m, set, sub, enums, d }) {
             { value: 'auto', label: 'auto' },
             { value: 'numeric', label: 'numeric' },
           ]}
-          value={gammaMode}
+          value={gammaModeValue}
+          placeholder={defaultPlaceholder(defGammaMode)}
           onChange={(mode) => {
-            if (mode === 'numeric') {
-              set({
-                gamma:
-                  typeof gammaValue === 'number' ? gammaValue : 0.1,
-              });
-            } else {
-              set({ gamma: mode });
+            if (mode === undefined) {
+              set({ gamma: undefined });
+              return;
             }
+
+            if (mode === 'numeric') {
+              const init = gammaNumValue ?? (typeof effGamma === 'number' ? effGamma : 0.1);
+              set({ gamma: overrideOrUndef(init, defGamma) });
+              return;
+            }
+
+            set({ gamma: overrideOrUndef(mode, defGamma) });
           }}
         />
-        {gammaMode === 'numeric' && (
+        {effGammaMode === 'numeric' && (
           <ParamNumber
             label="Gamma value"
-            value={gammaValue}
-            onChange={(v) => set({ gamma: v })}
+            value={gammaNumValue}
+            placeholder={gammaNumPlaceholder}
+            onChange={(v) => {
+              const defForCompare = typeof defGamma === 'number' ? defGamma : undefined;
+              set({ gamma: overrideOrUndef(v, defForCompare) });
+            }}
             min={0}
             step={0.001}
           />
@@ -102,8 +121,9 @@ export default function SvmSection({ m, set, sub, enums, d }) {
         <ParamSelect
           label="Class weight"
           data={svmClassWeight}
-          value={m.class_weight == null ? 'none' : String(m.class_weight)}
-          onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+          value={toNullableSelectValue(m.class_weight)}
+          placeholder={defaultPlaceholder(d?.class_weight)}
+          onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamNumber
           label="Max iterations"

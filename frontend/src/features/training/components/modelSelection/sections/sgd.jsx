@@ -2,17 +2,29 @@ import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
-import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
-import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
+import {
+  defaultPlaceholder,
+  effectiveValue,
+  overrideFromNullableSelect,
+  overrideOrUndef,
+  toNullableSelectValue,
+} from '../utils/paramDefaults.js';
 
 export default function SgdSection({ m, set, sub, enums, d }) {
   const sgdLoss = makeSelectData(sub, 'loss', enums?.SGDLoss);
   const sgdPenalty = makeSelectData(sub, 'penalty', enums?.SGDPenalty);
   const sgdLR = makeSelectData(sub, 'learning_rate', enums?.SGDLearningRate);
   const sgdClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
-  const sgdAvgMode = typeof m.average === 'number' ? 'int' : (m.average ? 'true' : 'false');
-  const sgdAvgValue = typeof m.average === 'number' ? m.average : 10;
+  const defAvg = d?.average;
+  const effAvg = effectiveValue(m.average, defAvg);
+  const effAvgMode = typeof effAvg === 'number' ? 'int' : (effAvg ? 'true' : 'false');
+  const hasAvgOverride = m.average !== undefined;
+  const avgModeValue = hasAvgOverride
+    ? (typeof m.average === 'number' ? 'int' : (m.average ? 'true' : 'false'))
+    : (typeof defAvg === 'number' ? 'int' : undefined);
+  const avgNumValue = typeof m.average === 'number' ? m.average : undefined;
+  const avgNumPlaceholder = typeof effAvg === 'number' ? defaultPlaceholder(effAvg) : undefined;
   return (
     <ParamGrid>
         <ParamSelect
@@ -42,8 +54,10 @@ export default function SgdSection({ m, set, sub, enums, d }) {
         />
         <ParamNumber
           label="L1 ratio"
-          value={m.l1_ratio ?? 0.15}
-          onChange={(v) => set({ l1_ratio: v })}
+          value={m.l1_ratio}
+
+          placeholder={defaultPlaceholder(d?.l1_ratio)}
+          onChange={(v) => set({ l1_ratio: overrideOrUndef(v, d?.l1_ratio) })}
           min={0}
           max={1}
           step={0.01}
@@ -128,8 +142,9 @@ export default function SgdSection({ m, set, sub, enums, d }) {
         <ParamSelect
           label="Class weight"
           data={sgdClassWeight}
-          value={m.class_weight == null ? 'none' : String(m.class_weight)}
-          onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+          value={toNullableSelectValue(m.class_weight)}
+          placeholder={defaultPlaceholder(d?.class_weight)}
+          onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamSelect
           label="Average"
@@ -138,18 +153,45 @@ export default function SgdSection({ m, set, sub, enums, d }) {
             { value: 'true', label: 'true' },
             { value: 'int', label: 'int' },
           ]}
-          value={sgdAvgMode}
+          value={avgModeValue}
+          placeholder={defaultPlaceholder(defAvg)}
           onChange={(mode) => {
-            if (mode === 'int') set({ average: sgdAvgValue });
-            else if (mode === 'true') set({ average: true });
-            else set({ average: false });
+            if (mode === undefined) {
+              set({ average: undefined });
+              return;
+            }
+
+            if (mode === 'int') {
+              const init = typeof m.average === 'number'
+                ? m.average
+                : (typeof defAvg === 'number' ? defAvg : 10);
+              set({ average: overrideOrUndef(Math.trunc(init), defAvg) });
+              return;
+            }
+
+            if (mode === 'true') {
+              set({ average: overrideOrUndef(true, defAvg) });
+              return;
+            }
+
+            set({ average: overrideOrUndef(false, defAvg) });
           }}
         />
-        {sgdAvgMode === 'int' && (
+        {effAvgMode === 'int' && (
           <ParamNumber
             label="Average window"
-            value={sgdAvgValue}
-            onChange={(v) => set({ average: overrideOrUndef(v, d?.average) })}
+            value={avgNumValue}
+            placeholder={avgNumPlaceholder}
+            onChange={(v) => {
+              if (v === undefined) {
+                set({ average: undefined });
+                return;
+              }
+
+              const next = Math.trunc(v);
+              const defForCompare = typeof defAvg === 'number' ? defAvg : undefined;
+              set({ average: overrideOrUndef(next, defForCompare) });
+            }}
             allowDecimal={false}
             min={1}
           />

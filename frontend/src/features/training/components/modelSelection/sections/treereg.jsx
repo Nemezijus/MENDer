@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
@@ -7,7 +8,23 @@ import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/pa
 export default function TreeregSection({ m, set, sub, enums, d }) {
   const treeSplitter = makeSelectData(sub, 'splitter', enums?.TreeSplitter);
   const regTreeCriterion = makeSelectData(sub, 'criterion', enums?.RegTreeCriterion);
-  const tMF = maxFeatToModeVal(m.max_features);
+  const [mfModeDraft, setMfModeDraft] = useState(null);
+  const defMaxFeatures = d?.max_features;
+  const effMaxFeatures = effectiveValue(m.max_features, defMaxFeatures);
+  const effMF = maxFeatToModeVal(effMaxFeatures);
+  const hasOverrideMF = m.max_features !== undefined;
+  const mfFromOverride = hasOverrideMF ? maxFeatToModeVal(m.max_features) : null;
+
+  const mfModeValue = hasOverrideMF
+    ? mfFromOverride.mode
+    : (mfModeDraft ?? ((effMF.mode === 'int' || effMF.mode === 'float') ? effMF.mode : undefined));
+
+  const mfValueMode = mfModeDraft ?? (hasOverrideMF ? mfFromOverride.mode : effMF.mode);
+  const showMfValue = mfValueMode === 'int' || mfValueMode === 'float';
+  const mfNumValue = typeof m.max_features === 'number' ? m.max_features : undefined;
+  const mfNumPlaceholder = (effMF.mode === 'int' || effMF.mode === 'float')
+    ? defaultPlaceholder(effMF.value)
+    : undefined;
   return (
     <ParamGrid>
         <ParamSelect
@@ -66,16 +83,57 @@ export default function TreeregSection({ m, set, sub, enums, d }) {
             { value: 'float', label: 'float' },
             { value: 'none', label: 'none' },
           ]}
-          value={tMF.mode}
-          onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, tMF.value) })}
+          value={mfModeValue}
+          placeholder={defaultPlaceholder(defMaxFeatures)}
+          onChange={(mode) => {
+            if (mode === undefined) {
+              setMfModeDraft(null);
+              set({ max_features: undefined });
+              return;
+            }
+
+            if (mode === 'sqrt' || mode === 'log2') {
+              setMfModeDraft(null);
+              set({ max_features: overrideOrUndef(mode, defMaxFeatures) });
+              return;
+            }
+
+            if (mode === 'none') {
+              setMfModeDraft(null);
+              set({ max_features: overrideOrUndef(null, defMaxFeatures) });
+              return;
+            }
+
+            if (mode === 'int' || mode === 'float') {
+              setMfModeDraft(mode);
+              if (typeof m.max_features !== 'number') set({ max_features: undefined });
+              return;
+            }
+
+            setMfModeDraft(null);
+            set({ max_features: overrideOrUndef(modeValToMaxFeat(mode, effMF.value), defMaxFeatures) });
+          }}
         />
-        {(tMF.mode === 'int' || tMF.mode === 'float') && (
+        {showMfValue && (
           <ParamNumber
             label="Max features value"
-            value={tMF.value ?? null}
-            onChange={(v) => set({ max_features: modeValToMaxFeat(tMF.mode, v) })}
-            step={tMF.mode === 'int' ? 1 : 0.01}
-            allowDecimal={tMF.mode === 'float'}
+            value={mfNumValue}
+            placeholder={mfNumPlaceholder}
+            onChange={(v) => {
+              if (v === undefined) {
+                set({ max_features: undefined });
+                if (mfModeDraft && typeof defMaxFeatures !== 'number') setMfModeDraft(null);
+                return;
+              }
+
+              const mode = mfModeDraft ?? (effMF.mode === 'int' || effMF.mode === 'float' ? effMF.mode : 'float');
+              const next = mode === 'int' ? Math.trunc(v) : v;
+              setMfModeDraft(null);
+              const defForCompare = typeof defMaxFeatures === 'number' ? defMaxFeatures : undefined;
+              set({ max_features: overrideOrUndef(next, defForCompare) });
+            }}
+            step={mfValueMode === 'int' ? 1 : 0.01}
+            allowDecimal={mfValueMode === 'float'}
           />
         )}
         <ParamNumber

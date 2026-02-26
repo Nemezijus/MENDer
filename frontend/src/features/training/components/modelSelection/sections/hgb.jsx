@@ -7,8 +7,9 @@ import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/pa
 
 export default function HgbSection({ m, set, sub, enums, d }) {
   const hgbLoss = makeSelectData(sub, 'loss', enums?.HGBLoss);
-  const hgbES = m.early_stopping === 'auto' ? 'auto' : (m.early_stopping ? 'true' : 'false');
-  const hgbMaxFeaturesValue = typeof m.max_features === 'number' ? m.max_features : 1.0;
+  const defES = d?.early_stopping;
+  const effES = effectiveValue(m.early_stopping, defES);
+  const hgbES = effES === 'auto' ? 'auto' : (effES ? 'true' : 'false');
   return (
     <ParamGrid>
         <ParamSelect
@@ -74,12 +75,10 @@ export default function HgbSection({ m, set, sub, enums, d }) {
         />
         <ParamNumber
           label="Max features (fraction)"
-          value={hgbMaxFeaturesValue}
-          onChange={(v) => {
-            // Mantine ParamNumber may provide a string; backend expects a number.
-            if (v == null || v === '') set({ max_features: null });
-            else set({ max_features: typeof v === 'number' ? v : Number(v) });
-          }}
+          value={m.max_features}
+
+          placeholder={defaultPlaceholder(d?.max_features)}
+          onChange={(v) => set({ max_features: overrideOrUndef(v, d?.max_features) })}
           min={0}
           max={1}
           step={0.01}
@@ -102,20 +101,18 @@ export default function HgbSection({ m, set, sub, enums, d }) {
           ]}
           value={hgbES}
           onChange={(v) => {
-            if (v === 'auto') set({ early_stopping: 'auto' });
-            else if (v === 'true') set({ early_stopping: true });
-            else set({ early_stopping: false });
+            if (v === 'auto') set({ early_stopping: overrideOrUndef('auto', defES) });
+            else if (v === 'true') set({ early_stopping: overrideOrUndef(true, defES) });
+            else set({ early_stopping: overrideOrUndef(false, defES) });
           }}
         />
         <TextInput
           label="Scoring"
-          placeholder="loss"
-          value={m.scoring}
-
-          placeholder={defaultPlaceholder(d?.scoring)}
+          value={m.scoring ?? ''}
+          placeholder={defaultPlaceholder(d?.scoring) ?? 'loss'}
           onChange={(e) => {
             const t = e.currentTarget.value;
-            set({ scoring: t === '' ? null : t });
+            set({ scoring: overrideOrUndef(t === '' ? undefined : t, d?.scoring) });
           }}
         />
         <ParamNumber

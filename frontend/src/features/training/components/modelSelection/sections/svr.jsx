@@ -7,8 +7,13 @@ import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/pa
 
 export default function SvrSection({ m, set, sub, enums, d }) {
   const svmKernel = makeSelectData(sub, 'kernel', enums?.SVMKernel);
-  const gammaMode = typeof m.gamma === 'number' ? 'numeric' : (m.gamma ?? 'scale');
-  const gammaValue = typeof m.gamma === 'number' ? m.gamma : 0.1;
+  const defGamma = d?.gamma;
+  const effGamma = effectiveValue(m.gamma, defGamma);
+  const effGammaMode = typeof effGamma === 'number' ? 'numeric' : (effGamma ?? 'scale');
+  const defGammaMode = typeof defGamma === 'number' ? 'numeric' : defGamma;
+  const gammaModeValue = typeof m.gamma === 'number' ? 'numeric' : (typeof m.gamma === 'string' ? m.gamma : undefined);
+  const gammaNumValue = typeof m.gamma === 'number' ? m.gamma : undefined;
+  const gammaNumPlaceholder = typeof effGamma === 'number' ? defaultPlaceholder(effGamma) : undefined;
   return (
     <ParamGrid>
         <ParamNumber
@@ -44,17 +49,32 @@ export default function SvrSection({ m, set, sub, enums, d }) {
             { value: 'auto', label: 'auto' },
             { value: 'numeric', label: 'numeric' },
           ]}
-          value={gammaMode}
+          value={gammaModeValue}
+          placeholder={defaultPlaceholder(defGammaMode)}
           onChange={(mode) => {
-            if (mode === 'numeric') set({ gamma: gammaValue });
-            else set({ gamma: mode });
+            if (mode === undefined) {
+              set({ gamma: undefined });
+              return;
+            }
+
+            if (mode === 'numeric') {
+              const init = gammaNumValue ?? (typeof effGamma === 'number' ? effGamma : 0.1);
+              set({ gamma: overrideOrUndef(init, defGamma) });
+              return;
+            }
+
+            set({ gamma: overrideOrUndef(mode, defGamma) });
           }}
         />
-        {gammaMode === 'numeric' && (
+        {effGammaMode === 'numeric' && (
           <ParamNumber
             label="Gamma value"
-            value={gammaValue}
-            onChange={(v) => set({ gamma: v })}
+            value={gammaNumValue}
+            placeholder={gammaNumPlaceholder}
+            onChange={(v) => {
+              const defForCompare = typeof defGamma === 'number' ? defGamma : undefined;
+              set({ gamma: overrideOrUndef(v, defForCompare) });
+            }}
             min={0}
             step={0.01}
           />

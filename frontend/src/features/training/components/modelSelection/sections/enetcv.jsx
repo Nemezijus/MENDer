@@ -8,15 +8,16 @@ import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/pa
 
 export default function EnetcvSection({ m, set, sub, enums, d }) {
   const cdSelection = makeSelectData(sub, 'selection', enums?.CoordinateDescentSelection);
+  const l1RatioPlaceholder = defaultPlaceholder(d?.l1_ratio) ?? 'e.g. 0.1, 0.5, 0.9';
   return (
     <ParamGrid>
         <TextInput
           label="L1 ratio list (comma-separated)"
-          placeholder="e.g. 0.1, 0.5, 0.9"
+          placeholder={l1RatioPlaceholder}
           value={formatCsvFloats(m.l1_ratio)}
           onChange={(e) => {
             const vals = parseCsvFloats(e.currentTarget.value);
-            set({ l1_ratio: vals || [0.1, 0.5, 0.9] });
+            set({ l1_ratio: overrideOrUndef(vals ?? undefined, d?.l1_ratio) });
           }}
         />
         <ParamNumber

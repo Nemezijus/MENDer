@@ -3,19 +3,28 @@ import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
-import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { parseCsvFloats, formatCsvFloats, makeSelectData } from '../../../utils/modelSelectionUtils.js';
-import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
+import {
+  defaultPlaceholder,
+  effectiveValue,
+  overrideFromNullableSelect,
+  overrideOrUndef,
+  toNullableSelectValue,
+} from '../utils/paramDefaults.js';
 
 export default function RidgecvSection({ m, set, sub, enums, d }) {
   const ridgecvGcvMode = makeSelectData(sub, 'gcv_mode', ['auto', 'svd', 'eigen', null], { includeNoneLabel: true });
+  const alphasPlaceholder = defaultPlaceholder(d?.alphas) ?? 'e.g. 0.1, 1.0, 10.0';
   return (
     <ParamGrid>
         <TextInput
           label="Alphas (comma-separated)"
-          placeholder="e.g. 0.1, 1.0, 10.0"
+          placeholder={alphasPlaceholder}
           value={formatCsvFloats(m.alphas)}
-          onChange={(e) => set({ alphas: parseCsvFloats(e.currentTarget.value) || [0.1, 1.0, 10.0] })}
+          onChange={(e) => {
+            const vals = parseCsvFloats(e.currentTarget.value);
+            set({ alphas: overrideOrUndef(vals ?? undefined, d?.alphas) });
+          }}
         />
         <ParamCheckbox
           label="Fit intercept"
@@ -24,13 +33,11 @@ export default function RidgecvSection({ m, set, sub, enums, d }) {
         />
         <TextInput
           label="Scoring"
-          placeholder="(optional)"
-          value={m.scoring}
-
-          placeholder={defaultPlaceholder(d?.scoring)}
+          value={m.scoring ?? ''}
+          placeholder={defaultPlaceholder(d?.scoring) ?? '(optional)'}
           onChange={(e) => {
             const t = e.currentTarget.value;
-            set({ scoring: t === '' ? null : t });
+            set({ scoring: overrideOrUndef(t === '' ? undefined : t, d?.scoring) });
           }}
         />
         <ParamNumber
@@ -45,8 +52,9 @@ export default function RidgecvSection({ m, set, sub, enums, d }) {
         <ParamSelect
           label="GCV mode"
           data={ridgecvGcvMode}
-          value={m.gcv_mode == null ? 'none' : String(m.gcv_mode)}
-          onChange={(v) => set({ gcv_mode: fromSelectNullable(v) })}
+          value={toNullableSelectValue(m.gcv_mode)}
+          placeholder={defaultPlaceholder(d?.gcv_mode)}
+          onChange={(v) => set({ gcv_mode: overrideFromNullableSelect(v, d?.gcv_mode) })}
         />
         <ParamCheckbox
           label="Alpha per target"

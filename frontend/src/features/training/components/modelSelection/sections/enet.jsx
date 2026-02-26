@@ -20,8 +20,10 @@ export default function EnetSection({ m, set, sub, enums, d }) {
         />
         <ParamNumber
           label="L1 ratio"
-          value={m.l1_ratio ?? 0.5}
-          onChange={(v) => set({ l1_ratio: v })}
+          value={m.l1_ratio}
+
+          placeholder={defaultPlaceholder(d?.l1_ratio)}
+          onChange={(v) => set({ l1_ratio: overrideOrUndef(v, d?.l1_ratio) })}
           min={0}
           max={1}
           step={0.05}
