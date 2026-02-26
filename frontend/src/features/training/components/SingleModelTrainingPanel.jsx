@@ -75,6 +75,21 @@ export default function SingleModelTrainingPanel() {
     (s) => s.taskSelected || s.inspectReport?.task_inferred || null,
   );
 
+  // ---------------------------------------------------------------------
+  // Split defaults (schema-owned) — computed early so they can be referenced
+  // safely from effects declared below.
+  // ---------------------------------------------------------------------
+  const holdoutDefaults = split?.holdout?.defaults ?? null;
+  const kfoldDefaults = split?.kfold?.defaults ?? null;
+  const defaultSplitMode = getDefaultSplitMode({ split, allowedModes: ['holdout', 'kfold'] });
+  const effectiveMode = splitMode ?? defaultSplitMode;
+  const defaultStratified =
+    effectiveMode === 'kfold' ? kfoldDefaults?.stratified : holdoutDefaults?.stratified;
+  const defaultShuffle =
+    effectiveMode === 'kfold' ? kfoldDefaults?.shuffle : holdoutDefaults?.shuffle;
+  // NOTE: effective shuffle (for payload seed rules) is handled inside the trainer hook.
+
+
   // Initialize train model once defaults arrive
   useEffect(() => {
     if (!defsLoading && !trainModel) {
@@ -179,16 +194,6 @@ export default function SingleModelTrainingPanel() {
     }
   }, [allowedMetrics, metric, setMetric]);
 
-  // Split defaults (for clearing overrides when user selects defaults)
-  const holdoutDefaults = split?.holdout?.defaults ?? null;
-  const kfoldDefaults = split?.kfold?.defaults ?? null;
-  const defaultSplitMode = getDefaultSplitMode({ split, allowedModes: ['holdout', 'kfold'] });
-  const effectiveMode = splitMode ?? defaultSplitMode;
-  const defaultStratified =
-    effectiveMode === 'kfold' ? kfoldDefaults?.stratified : holdoutDefaults?.stratified;
-  const defaultShuffle =
-    effectiveMode === 'kfold' ? kfoldDefaults?.shuffle : holdoutDefaults?.shuffle;
-  // NOTE: effective shuffle is handled inside the trainer hook for payload building.
 
   if (defsLoading || !models || !trainModel) {
     return null; // optionally render a skeleton
