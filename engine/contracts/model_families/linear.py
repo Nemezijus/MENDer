@@ -225,7 +225,11 @@ class LinearSVRRegressorConfig(BaseModel):
     loss: LinearSVRLoss = "epsilon_insensitive"
     fit_intercept: bool = True
     intercept_scaling: float = 1.0
-    dual: Union[bool, str] = "auto"
+    # NOTE: scikit-learn versions differ on whether LinearSVR accepts dual="auto".
+    # We keep "auto" as a backwards-compatible value (e.g. older saved configs),
+    # but default to a boolean to avoid runtime failures when the installed
+    # scikit-learn expects a strict bool.
+    dual: Union[bool, Literal["auto"]] = True
     verbose: int = 0
     random_state: Optional[int] = None
     max_iter: int = 1000

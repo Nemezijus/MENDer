@@ -156,6 +156,13 @@ class LinearSVRRegressorBuilder(ModelBuilder):
 
     def make_estimator(self) -> SkRegressor:
         kw = _filtered_kwargs(LinearSVR, self.cfg)
+        # Some scikit-learn versions require dual to be a strict bool.
+        # If a legacy config provides dual="auto", coerce to a safe bool.
+        if isinstance(kw.get("dual"), str):
+            if kw["dual"] == "auto":
+                kw["dual"] = True
+            else:
+                raise ValueError(f"LinearSVR.dual must be bool (or 'auto'), got: {kw['dual']!r}")
         _maybe_set_random_state(LinearSVR, kw, self.seed)
         return LinearSVR(**kw)
 
