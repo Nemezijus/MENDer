@@ -14,6 +14,7 @@ import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaults
 
 import { useEffectiveMetricForTask } from '../hooks/useEffectiveMetricForTask.js';
 import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
+import { getDefaultAlgoForTask } from '../utils/getDefaultAlgoForTask.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
@@ -57,7 +58,6 @@ export default function GridSearchPanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
-    eval: schemaEval,
   } = useSchemaDefaults();
 
   const {
@@ -102,16 +102,18 @@ export default function GridSearchPanel() {
     taskInferred,
     metric,
     setMetric,
-    evalDefaults: schemaEval?.defaults,
   });
 
   // Initialize GS model once
   useEffect(() => {
-    if (!defsLoading && !gsModel) {
-      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
-      setGsModel({ algo: defaultAlgo });
+    if (!defsLoading && !gsModel && models) {
+      const defaultAlgo = getDefaultAlgoForTask({
+        models,
+        task: taskInferred,
+      });
+      if (defaultAlgo) setGsModel({ algo: defaultAlgo });
     }
-  }, [defsLoading, gsModel, setGsModel, taskInferred]);
+  }, [defsLoading, gsModel, setGsModel, taskInferred, models]);
 
   function handleCompute() {
     const p1 = (hyperParam1.paramName || '').trim();
@@ -156,7 +158,12 @@ export default function GridSearchPanel() {
           scaleMethod,
           model: gsModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: metric,
+          evalMetric: effectiveMetric,
+          schemaDefaults: {
+            scale: schemaScale,
+            features: schemaFeatures,
+            split: schemaSplit,
+          },
         });
 
         const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;

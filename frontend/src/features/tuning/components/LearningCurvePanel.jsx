@@ -15,6 +15,7 @@ import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaults
 
 import { useEffectiveMetricForTask } from '../hooks/useEffectiveMetricForTask.js';
 import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
+import { getDefaultAlgoForTask } from '../utils/getDefaultAlgoForTask.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
@@ -52,7 +53,6 @@ export default function LearningCurvePanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
-    eval: schemaEval,
   } = useSchemaDefaults();
 
   const {
@@ -74,7 +74,6 @@ export default function LearningCurvePanel() {
     taskInferred,
     metric,
     setMetric,
-    evalDefaults: schemaEval?.defaults,
   });
 
   const {
@@ -111,11 +110,14 @@ export default function LearningCurvePanel() {
 
   // Initialize LC model once
   useEffect(() => {
-    if (!defsLoading && !lcModel) {
-      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
-      setLcModel({ algo: defaultAlgo });
+    if (!defsLoading && !lcModel && models) {
+      const defaultAlgo = getDefaultAlgoForTask({
+        models,
+        task: taskInferred,
+      });
+      if (defaultAlgo) setLcModel({ algo: defaultAlgo });
     }
-  }, [defsLoading, lcModel, setLcModel, taskInferred]);
+  }, [defsLoading, lcModel, setLcModel, taskInferred, models]);
 
   function handleCompute() {
     return run({
@@ -158,7 +160,12 @@ export default function LearningCurvePanel() {
             shuffle,
             seed,
           },
-          evalMetric: metric,
+          evalMetric: effectiveMetric,
+          schemaDefaults: {
+            scale: schemaScale,
+            features: schemaFeatures,
+            split: schemaSplit,
+          },
         });
 
         const payload = compactPayload({

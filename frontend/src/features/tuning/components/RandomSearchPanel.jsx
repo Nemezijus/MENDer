@@ -14,6 +14,7 @@ import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaults
 
 import { useEffectiveMetricForTask } from '../hooks/useEffectiveMetricForTask.js';
 import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
+import { getDefaultAlgoForTask } from '../utils/getDefaultAlgoForTask.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
@@ -57,7 +58,6 @@ export default function RandomSearchPanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
-    eval: schemaEval,
   } = useSchemaDefaults();
 
   const {
@@ -103,16 +103,18 @@ export default function RandomSearchPanel() {
     taskInferred,
     metric,
     setMetric,
-    evalDefaults: schemaEval?.defaults,
   });
 
   // Initialize RS model once
   useEffect(() => {
-    if (!defsLoading && !rsModel) {
-      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
-      setRsModel({ algo: defaultAlgo });
+    if (!defsLoading && !rsModel && models) {
+      const defaultAlgo = getDefaultAlgoForTask({
+        models,
+        task: taskInferred,
+      });
+      if (defaultAlgo) setRsModel({ algo: defaultAlgo });
     }
-  }, [defsLoading, rsModel, setRsModel, taskInferred]);
+  }, [defsLoading, rsModel, setRsModel, taskInferred, models]);
 
   function handleCompute() {
     const p1 = (hyperParam1.paramName || '').trim();
@@ -164,7 +166,12 @@ export default function RandomSearchPanel() {
           scaleMethod,
           model: rsModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: metric,
+          evalMetric: effectiveMetric,
+          schemaDefaults: {
+            scale: schemaScale,
+            features: schemaFeatures,
+            split: schemaSplit,
+          },
         });
 
         const randomState = basePayload?.eval?.seed;

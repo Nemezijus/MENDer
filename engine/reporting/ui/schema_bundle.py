@@ -199,6 +199,37 @@ def build_ui_schema_bundle(*, schema_version: int = 1) -> Dict[str, Any]:
     """Build the consolidated UI schema/defaults/enums payload."""
 
     model_defaults, model_meta = _model_defaults_and_meta()
+
+    # Default model choices by task.
+    # The frontend should not hardcode "logreg" / "linreg" policies.
+    def _algo_supports_task(algo: str, task: str) -> bool:
+        m = model_meta.get(algo) or {}
+        t = m.get("task")
+        if not t:
+            return False
+        # Backwards compatibility: older metadata might call this "clustering".
+        if t == "clustering" and task == "unsupervised":
+            return True
+        if isinstance(t, list):
+            return task in t
+        return t == task
+
+    preferred_by_task: Dict[str, str] = {
+        "classification": "logreg",
+        "regression": "linreg",
+        "unsupervised": "kmeans",
+    }
+
+    default_algo_by_task: Dict[str, str] = {}
+    for task, pref in preferred_by_task.items():
+        if pref in model_defaults and _algo_supports_task(pref, task):
+            default_algo_by_task[task] = pref
+            continue
+        # Fall back to the first algo that advertises compatibility for this task.
+        for a in model_defaults.keys():
+            if _algo_supports_task(a, task):
+                default_algo_by_task[task] = a
+                break
     ensemble_defaults = _defaults_for_union(EnsembleConfig, key_field="kind")
 
     eval_defaults = EvalModel().model_dump()
@@ -216,6 +247,7 @@ def build_ui_schema_bundle(*, schema_version: int = 1) -> Dict[str, Any]:
             "schema": TypeAdapter(ModelConfig).json_schema(),
             "defaults": model_defaults,
             "meta": model_meta,
+            "default_algo_by_task": default_algo_by_task,
         },
         "ensembles": {
             "schema": TypeAdapter(EnsembleConfig).json_schema(),

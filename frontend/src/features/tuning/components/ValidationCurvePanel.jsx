@@ -14,6 +14,7 @@ import { useTuningDefaultsQuery } from '../../../shared/schema/useTuningDefaults
 
 import { useEffectiveMetricForTask } from '../hooks/useEffectiveMetricForTask.js';
 import { buildTuningCommonPayload } from '../utils/buildTuningCommonPayload.js';
+import { getDefaultAlgoForTask } from '../utils/getDefaultAlgoForTask.js';
 
 import { compactPayload } from '../../../shared/utils/compactPayload.js';
 
@@ -57,7 +58,6 @@ export default function ValidationCurvePanel() {
     scale: schemaScale,
     features: schemaFeatures,
     split: schemaSplit,
-    eval: schemaEval,
   } = useSchemaDefaults();
 
   const { data: tuningDefaults, isLoading: tuningLoading } = useTuningDefaultsQuery();
@@ -96,16 +96,18 @@ export default function ValidationCurvePanel() {
     taskInferred,
     metric,
     setMetric,
-    evalDefaults: schemaEval?.defaults,
   });
 
   // Initialize VC model once
   useEffect(() => {
-    if (!defsLoading && !vcModel) {
-      const defaultAlgo = taskInferred === 'regression' ? 'linreg' : 'logreg';
-      setVcModel({ algo: defaultAlgo });
+    if (!defsLoading && !vcModel && models) {
+      const defaultAlgo = getDefaultAlgoForTask({
+        models,
+        task: taskInferred,
+      });
+      if (defaultAlgo) setVcModel({ algo: defaultAlgo });
     }
-  }, [defsLoading, taskInferred, vcModel, setVcModel]);
+  }, [defsLoading, taskInferred, vcModel, setVcModel, models]);
 
   function handleCompute() {
     const name = (hyperParam.paramName || '').trim();
@@ -142,7 +144,12 @@ export default function ValidationCurvePanel() {
           scaleMethod,
           model: vcModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: metric,
+          evalMetric: effectiveMetric,
+          schemaDefaults: {
+            scale: schemaScale,
+            features: schemaFeatures,
+            split: schemaSplit,
+          },
         });
 
         const payload = compactPayload({
