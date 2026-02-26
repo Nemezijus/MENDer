@@ -1,14 +1,20 @@
 import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
-import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
-import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
+import {
+  defaultPlaceholder,
+  effectiveValue,
+  overrideFromNullableSelect,
+  overrideOrUndef,
+  toNullableSelectValue,
+} from '../utils/paramDefaults.js';
 
 export default function LogregSection({ m, set, sub, enums, d }) {
   const lrPenalty = makeSelectData(sub, 'penalty', enums?.PenaltyName);
   const lrSolver = makeSelectData(sub, 'solver', enums?.LogRegSolver);
   const lrClassWeight = makeSelectData(sub, 'class_weight', (enums?.ClassWeightBalanced ?? ['balanced', null]), { includeNoneLabel: true });
+  const effPenalty = effectiveValue(m.penalty, d?.penalty);
   return (
     <ParamGrid>
         <ParamNumber
@@ -48,14 +54,16 @@ export default function LogregSection({ m, set, sub, enums, d }) {
         <ParamSelect
           label="Class weight"
           data={lrClassWeight}
-          value={m.class_weight == null ? 'none' : String(m.class_weight)}
-          onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+          value={toNullableSelectValue(m.class_weight)}
+          placeholder={defaultPlaceholder(d?.class_weight)}
+          onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
-        {m.penalty === 'elasticnet' && (
+        {effPenalty === 'elasticnet' && (
           <ParamNumber
             label="L1 ratio"
-            value={m.l1_ratio ?? 0.5}
-            onChange={(v) => set({ l1_ratio: v })}
+            value={m.l1_ratio}
+            placeholder={defaultPlaceholder(d?.l1_ratio)}
+            onChange={(v) => set({ l1_ratio: overrideOrUndef(v, d?.l1_ratio) })}
             min={0}
             max={1}
             step={0.01}

@@ -109,7 +109,7 @@ export default function HgbSection({ m, set, sub, enums, d }) {
         <TextInput
           label="Scoring"
           value={m.scoring ?? ''}
-          placeholder={defaultPlaceholder(d?.scoring) ?? 'loss'}
+          placeholder={defaultPlaceholder(d?.scoring)}
           onChange={(e) => {
             const t = e.currentTarget.value;
             set({ scoring: overrideOrUndef(t === '' ? undefined : t, d?.scoring) });

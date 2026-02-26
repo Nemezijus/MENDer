@@ -42,8 +42,9 @@ export default function SpectralSection({ m, set, sub, enums, d }) {  return (
         />
         <ParamNumber
           label="Gamma"
-          value={m.gamma ?? 1.0}
-          onChange={(v) => set({ gamma: v })}
+          value={m.gamma}
+          placeholder={defaultPlaceholder(d?.gamma)}
+          onChange={(v) => set({ gamma: overrideOrUndef(v, d?.gamma) })}
           step={0.1}
           min={0}
         />

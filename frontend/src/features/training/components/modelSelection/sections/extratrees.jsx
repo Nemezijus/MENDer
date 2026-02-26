@@ -2,14 +2,25 @@ import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
-import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
-import { maxFeatToModeVal, modeValToMaxFeat, makeSelectData } from '../../../utils/modelSelectionUtils.js';
-import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
+import { maxFeatToModeVal, makeSelectData } from '../../../utils/modelSelectionUtils.js';
+import {
+  defaultPlaceholder,
+  effectiveValue,
+  overrideFromNullableSelect,
+  overrideOrUndef,
+  toNullableSelectValue,
+} from '../utils/paramDefaults.js';
 
 export default function ExtratreesSection({ m, set, sub, enums, d }) {
   const forestCriterion = makeSelectData(sub, 'criterion', enums?.TreeCriterion);
   const forestClassWeight = makeSelectData(sub, 'class_weight', (enums?.ForestClassWeight ?? ['balanced', 'balanced_subsample', null]), { includeNoneLabel: true });
-  const fMF = maxFeatToModeVal(m.max_features);
+  const defMaxFeat = d?.max_features;
+  const effMaxFeat = effectiveValue(m.max_features, defMaxFeat);
+  const hasMFOverride = m.max_features !== undefined;
+  const curMF = hasMFOverride ? maxFeatToModeVal(m.max_features) : { mode: undefined, value: null };
+  const effMF = effMaxFeat === undefined ? { mode: undefined, value: null } : maxFeatToModeVal(effMaxFeat);
+  const mfNumValue = typeof m.max_features === 'number' ? m.max_features : undefined;
+  const mfNumPlaceholder = typeof effMaxFeat === 'number' ? defaultPlaceholder(effMaxFeat) : undefined;
   return (
     <ParamGrid>
         <ParamNumber
@@ -59,16 +70,41 @@ export default function ExtratreesSection({ m, set, sub, enums, d }) {
             { value: 'float', label: 'float' },
             { value: 'none', label: 'none' },
           ]}
-          value={fMF.mode}
-          onChange={(mode) => set({ max_features: modeValToMaxFeat(mode, fMF.value) })}
+          value={hasMFOverride ? curMF.mode : undefined}
+          placeholder={defaultPlaceholder(defMaxFeat)}
+          onChange={(mode) => {
+            if (mode === undefined) {
+              set({ max_features: undefined });
+              return;
+            }
+
+            if (mode === 'none') {
+              set({ max_features: overrideOrUndef(null, defMaxFeat) });
+              return;
+            }
+
+            if (mode === 'sqrt' || mode === 'log2') {
+              set({ max_features: overrideOrUndef(mode, defMaxFeat) });
+              return;
+            }
+
+            // numeric
+            const init = mfNumValue ?? (typeof effMaxFeat === 'number' ? effMaxFeat : (mode === 'int' ? 1 : 0.5));
+            const defForCompare = typeof defMaxFeat === 'number' ? defMaxFeat : undefined;
+            set({ max_features: overrideOrUndef(init, defForCompare) });
+          }}
         />
-        {(fMF.mode === 'int' || fMF.mode === 'float') && (
+        {(effMF.mode === 'int' || effMF.mode === 'float') && (
           <ParamNumber
             label="Max features value"
-            value={fMF.value ?? null}
-            onChange={(v) => set({ max_features: modeValToMaxFeat(fMF.mode, v) })}
-            step={fMF.mode === 'int' ? 1 : 0.01}
-            allowDecimal={fMF.mode === 'float'}
+            value={mfNumValue}
+            placeholder={mfNumPlaceholder}
+            onChange={(v) => {
+              const defForCompare = typeof defMaxFeat === 'number' ? defMaxFeat : undefined;
+              set({ max_features: overrideOrUndef(v, defForCompare) });
+            }}
+            step={effMF.mode === 'int' ? 1 : 0.01}
+            allowDecimal={effMF.mode === 'float'}
           />
         )}
         <ParamNumber
@@ -82,8 +118,9 @@ export default function ExtratreesSection({ m, set, sub, enums, d }) {
         <ParamSelect
           label="Class weight"
           data={forestClassWeight}
-          value={m.class_weight == null ? 'none' : String(m.class_weight)}
-          onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+          value={toNullableSelectValue(m.class_weight)}
+          placeholder={defaultPlaceholder(d?.class_weight)}
+          onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamCheckbox
           label="Use bootstrap"

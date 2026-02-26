@@ -2,9 +2,14 @@ import ParamGrid from '../inputs/ParamGrid.jsx';
 import ParamNumber from '../inputs/ParamNumber.jsx';
 import ParamSelect from '../inputs/ParamSelect.jsx';
 import ParamCheckbox from '../inputs/ParamCheckbox.jsx';
-import { fromSelectNullable } from '../../../../../shared/utils/schema/jsonSchema.js';
 import { makeSelectData } from '../../../utils/modelSelectionUtils.js';
-import { defaultPlaceholder, effectiveValue, overrideOrUndef } from '../utils/paramDefaults.js';
+import {
+  defaultPlaceholder,
+  effectiveValue,
+  overrideFromNullableSelect,
+  overrideOrUndef,
+  toNullableSelectValue,
+} from '../utils/paramDefaults.js';
 
 export default function RidgeSection({ m, set, sub, enums, d }) {
   const ridgeSolver = makeSelectData(sub, 'solver', enums?.RidgeSolver);
@@ -36,8 +41,9 @@ export default function RidgeSection({ m, set, sub, enums, d }) {
         <ParamSelect
           label="Class weight"
           data={ridgeClassWeight}
-          value={m.class_weight == null ? 'none' : String(m.class_weight)}
-          onChange={(v) => set({ class_weight: fromSelectNullable(v) })}
+          value={toNullableSelectValue(m.class_weight)}
+          placeholder={defaultPlaceholder(d?.class_weight)}
+          onChange={(v) => set({ class_weight: overrideFromNullableSelect(v, d?.class_weight) })}
         />
         <ParamNumber
           label="Max iterations"

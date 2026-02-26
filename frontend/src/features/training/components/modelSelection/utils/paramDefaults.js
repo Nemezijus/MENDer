@@ -76,3 +76,18 @@ export function overrideOrUndef(next, defVal) {
   if (defVal === undefined) return next;
   return deepEqual(next, defVal) ? undefined : next;
 }
+
+// Nullable-select helpers
+// - undefined => unset (use engine default)
+// - null => explicit "none"
+// - string => explicit value
+export function toNullableSelectValue(v) {
+  if (v === undefined) return undefined;
+  if (v === null) return 'none';
+  return String(v);
+}
+
+export function overrideFromNullableSelect(selectValue, defVal) {
+  const next = selectValue === undefined ? undefined : (selectValue === 'none' ? null : selectValue);
+  return overrideOrUndef(next, defVal);
+}
