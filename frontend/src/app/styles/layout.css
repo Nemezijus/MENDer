@@ -1,0 +1,11 @@
+@reference "tailwindcss";
+
+@layer components {
+	.sectionShell {
+		@apply flex flex-col gap-4;
+	}
+
+	.sectionShellTitle {
+		@apply text-center text-lg font-semibold text-neutral-900;
+	}
+}

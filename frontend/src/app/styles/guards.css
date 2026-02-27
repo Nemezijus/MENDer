@@ -1,0 +1,15 @@
+@reference "tailwindcss";
+
+@layer components {
+	.dataGuardAlert {
+		@apply rounded-md border border-yellow-200 bg-yellow-50 p-4;
+	}
+
+	.dataGuardTitle {
+		@apply text-sm font-semibold text-yellow-900;
+	}
+
+	.dataGuardText {
+		@apply mt-1 text-sm text-yellow-900;
+	}
+}

@@ -1,31 +1,34 @@
-import { Stack, Text, NavLink, Divider } from '@mantine/core';
+import '../styles/navigation.css';
 
 import { SECTION_GROUPS } from './sections.js';
 
 export default function SidebarNav({ active, onChange }) {
   return (
-    <Stack gap="xs">
+    <nav className="sidebarNavRoot" aria-label="App navigation">
       {SECTION_GROUPS.map((group, groupIdx) => (
-        <Stack gap={4} key={group.groupLabel}>
-          <Text size="xs" fw={700} c="dimmed" tt="uppercase" pl="xs">
-            {group.groupLabel}
-          </Text>
+        <div className="sidebarNavGroup" key={group.groupLabel}>
+          <div className="sidebarNavGroupLabel">{group.groupLabel}</div>
 
           {group.items.map((item) => (
-            <NavLink
+            <button
               key={item.id}
-              label={item.navLabel}
-              description={item.description}
-              active={active === item.id}
+              type="button"
+              className={`sidebarNavItem ${active === item.id ? 'sidebarNavItemActive' : ''}`}
               onClick={() => onChange(item.id)}
-              variant="light"
-              radius="sm"
-            />
+              aria-current={active === item.id ? 'page' : undefined}
+            >
+              <div className="sidebarNavItemLabel">{item.navLabel}</div>
+              {item.description ? (
+                <div className="sidebarNavItemDescription">{item.description}</div>
+              ) : null}
+            </button>
           ))}
 
-          {groupIdx < SECTION_GROUPS.length - 1 && <Divider my="xs" />}
-        </Stack>
+          {groupIdx < SECTION_GROUPS.length - 1 ? (
+            <hr className="sidebarNavDivider" />
+          ) : null}
+        </div>
       ))}
-    </Stack>
+    </nav>
   );
 }

@@ -1,12 +1,10 @@
-import { Stack, Title } from '@mantine/core';
+import '../styles/layout.css';
 
 export default function SectionShell({ title, children }) {
   return (
-    <Stack gap="md">
-      <Title order={3} align="center">
-        {title}
-      </Title>
+    <div className="sectionShell">
+      <h3 className="sectionShellTitle">{title}</h3>
       {children}
-    </Stack>
+    </div>
   );
 }
