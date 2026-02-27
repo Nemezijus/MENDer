@@ -1,4 +1,4 @@
-import '../styles/guards.css';
+import { Alert, Text } from '@mantine/core';
 
 import { useDataStore } from '../../features/dataFiles/state/useDataStore.js';
 
@@ -9,13 +9,13 @@ export default function DataGuard({ children }) {
 
   if (!dataReady) {
     return (
-      <div className="dataGuardAlert" role="alert">
-        <div className="dataGuardTitle">No inspected training data yet.</div>
-        <div className="dataGuardText">
+      <Alert color="yellow" variant="light">
+        <Text fw={500}>No inspected training data yet.</Text>
+        <Text size="sm">
           Please upload and inspect your training data in the{' '}
           <strong>Data &amp; files</strong> section before using this panel.
-        </div>
-      </div>
+        </Text>
+      </Alert>
     );
   }
 

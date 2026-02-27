@@ -1,9 +1,5 @@
 @reference "tailwindcss";
 @layer components {
-	.appContainer {
-		@apply px-4 pt-8 pb-4;
-	}
-
 	.appFrame {
 		@apply mx-auto w-[80vw];
 	}
