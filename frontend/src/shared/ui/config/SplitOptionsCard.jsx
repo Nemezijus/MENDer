@@ -10,6 +10,7 @@ import {
 import { useDataStore } from '../../../features/dataFiles/state/useDataStore.js';
 import { useSchemaDefaults } from '../../schema/SchemaDefaultsContext.jsx';
 import { getDefaultSplitMode } from '../../utils/splitMode.js';
+import { SPLIT_MODE_OPTIONS } from '../../constants/split.js';
 import SplitHelpText, {
   SplitIntroText,
 } from '../../content/help/SplitHelpText.jsx';
@@ -101,10 +102,7 @@ export default function SplitOptionsCard({
           {showModeSelect && (
             <Select
               label="Split strategy"
-              data={[
-                { value: 'holdout', label: 'Hold-out' },
-                { value: 'kfold', label: 'K-fold cross-validation' },
-              ]}
+              data={SPLIT_MODE_OPTIONS}
               value={effectiveMode}
               onChange={(v) => onModeChange?.(v || undefined)}
             />

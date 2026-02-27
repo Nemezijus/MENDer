@@ -4,6 +4,7 @@ import { enumFromSubSchema } from '../../utils/schema/jsonSchema.js';
 import ScalingHelpText, {
   ScalingIntroText,
 } from '../../content/help/ScalingHelpText.jsx';
+import { makeScaleOptionLabel } from '../../constants/scaling.js';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
@@ -14,28 +15,12 @@ export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
       ? enums.ScaleName
       : null) ??
     (enumFromSubSchema(scale?.schema, 'method') ?? []);
-
   const scaleOptions = (rawScaleNames ?? [])
     .filter((v) => v != null)
-    .map((v) => {
-      const labelBase =
-        v === 'none'
-          ? 'None'
-          : String(v).charAt(0).toUpperCase() + String(v).slice(1);
-      const suffix =
-        v === 'none'
-          ? ''
-          : String(v).toLowerCase().endsWith('abs')
-          ? ' Scaler'
-          : v === 'quantile'
-          ? ' Transformer'
-          : ' Scaler';
-
-      return {
-        value: String(v),
-        label: `${labelBase}${suffix}`,
-      };
-    });
+    .map((v) => ({
+      value: String(v),
+      label: makeScaleOptionLabel(v),
+    }));
 
   const optionsUnavailable = scaleOptions.length === 0;
 
