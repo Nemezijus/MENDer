@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Container, Box } from '@mantine/core';
 
+import './styles/App.css';
+
 import SidebarNav from './navigation/SidebarNav.jsx';
 
 import { DEFAULT_SECTION_ID, SECTION_META_BY_ID } from './navigation/sections.js';
@@ -19,8 +21,6 @@ import GridSearchPanel from '../features/tuning/components/GridSearchPanel.jsx';
 import RandomSearchPanel from '../features/tuning/components/RandomSearchPanel.jsx';
 import EnsembleTrainingPanel from '../features/ensembles/components/EnsembleTrainingPanel.jsx';
 import UnsupervisedTrainingPanel from '../features/unsupervised/components/UnsupervisedTrainingPanel.jsx';
-
-const COLUMN_GAP = 'var(--mantine-spacing-lg)';
 
 const SECTION_COMPONENTS = {
   data: DataFilesPanel,
@@ -56,26 +56,20 @@ export default function App() {
 
   return (
     <Container fluid pt="xl" pb="md">
-      <Box mx="auto" style={{ width: '80vw' }}>
-        <Box
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: COLUMN_GAP,
-          }}
-        >
+      <Box className="appFrame">
+        <Box className="appColumns">
           {/* Left: sidebar */}
-          <Box style={{ flex: 2, minWidth: 0 }}>
+          <Box className="appSidebar">
             <SidebarNav active={activeSection} onChange={setActiveSection} />
           </Box>
 
           {/* Center: main content */}
-          <Box style={{ flex: 5, minWidth: 0 }}>
+          <Box className="appMain">
             {renderMain()}
           </Box>
 
           {/* Right: persistent model card */}
-          <Box style={{ flex: 3, minWidth: 0 }}>
+          <Box className="appArtifact">
             <ModelArtifactCard />
           </Box>
         </Box>

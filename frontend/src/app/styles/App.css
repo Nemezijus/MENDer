@@ -1,0 +1,21 @@
+@layer components {
+	.appFrame {
+		@apply mx-auto w-[80vw];
+	}
+
+	.appColumns {
+		@apply flex items-start gap-[var(--mantine-spacing-lg)];
+	}
+
+	.appSidebar {
+		@apply min-w-0 flex-[2];
+	}
+
+	.appMain {
+		@apply min-w-0 flex-[5];
+	}
+
+	.appArtifact {
+		@apply min-w-0 flex-[3];
+	}
+}
