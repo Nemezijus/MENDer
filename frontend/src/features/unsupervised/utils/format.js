@@ -1,17 +1,10 @@
-function parseNumber(v) {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string' && v.trim() !== '') {
-    const x = Number(v);
-    if (Number.isFinite(x)) return x;
-  }
-  return null;
-}
+import { fmtNumber as sharedFmtNumber } from '../../../shared/utils/numberFormat.js';
 
 export function fmtNumber(v, { digits = 3, empty = '—' } = {}) {
-  const num = parseNumber(v);
-  if (num === null) return v == null ? empty : String(v);
-  if (Number.isInteger(num)) return String(num);
-  return num.toFixed(digits);
+  // Preserve prior unsupervised-table behavior:
+  // - null/undefined -> empty placeholder
+  // - non-numeric non-null -> stringify
+  return sharedFmtNumber(v, { digits, empty, passthroughNonNumber: true });
 }
 
 export function fmt3(v) {

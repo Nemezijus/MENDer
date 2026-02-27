@@ -1,9 +1,12 @@
 import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
+import { fmtNumber as sharedFmtNumber } from '../../../shared/utils/numberFormat.js';
 
 export function fmtNumber(val, digits = 4) {
-  if (val == null || Number.isNaN(Number(val))) return '—';
+  // Preserve prior model-artifacts behavior (Number() coercion, including booleans/empty strings).
+  if (val == null) return '—';
   const n = Number(val);
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
+  if (Number.isNaN(n)) return '—';
+  return sharedFmtNumber(n, digits);
 }
 
 export function niceUnsupervisedMetricName(name) {

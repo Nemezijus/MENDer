@@ -1,20 +1,8 @@
 // Small formatting helpers for results panels.
 
-export function parseNumber(v) {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string' && v.trim() !== '') {
-    const x = Number(v);
-    if (Number.isFinite(x)) return x;
-  }
-  return null;
-}
+import { parseNumber, fmt3 } from '../../../shared/utils/numberFormat.js';
 
-export function fmt3(v) {
-  const num = parseNumber(v);
-  if (num === null) return '—';
-  if (Number.isInteger(num)) return String(num);
-  return num.toFixed(3);
-}
+export { parseNumber, fmt3 };
 
 export function fmtMaybe3(v) {
   if (v === null || v === undefined) return '—';
