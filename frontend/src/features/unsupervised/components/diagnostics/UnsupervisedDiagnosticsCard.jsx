@@ -4,8 +4,6 @@ import {
   Stack,
   Text,
   Alert,
-  Table,
-  ScrollArea,
   Tooltip,
   Divider,
   SimpleGrid,
@@ -21,6 +19,9 @@ import {
   buildModelDiagnosticsPairs,
   parseClusterSizes,
 } from '../../utils/clusterSummary.js';
+
+import KeyValuePairsTableSection from './KeyValuePairsTableSection.jsx';
+import ClusterSizesTable from './ClusterSizesTable.jsx';
 
 export default function UnsupervisedDiagnosticsCard({ trainResult }) {
   if (!trainResult) return null;
@@ -49,17 +50,6 @@ export default function UnsupervisedDiagnosticsCard({ trainResult }) {
     const rows = parseClusterSizes(clusterSummary?.cluster_sizes);
     return rows.sort((a, b) => Number(a.cluster_id) - Number(b.cluster_id));
   }, [clusterSummary]);
-
-  const stickyThStyle = {
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    backgroundColor: 'var(--mantine-color-gray-8)',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-  };
-
-  const headerTextStyle = { whiteSpace: 'nowrap', lineHeight: 1.1 };
 
   return (
     <Card withBorder radius="md" shadow="sm" padding="md">
@@ -139,180 +129,23 @@ export default function UnsupervisedDiagnosticsCard({ trainResult }) {
           </Text>
 
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-            <Stack gap="xs">
-              <Text size="sm" fw={600}>
-                Cluster summary
-              </Text>
-              <Table
-                withTableBorder={false}
-                withColumnBorders={false}
-                horizontalSpacing="xs"
-                verticalSpacing="xs"
-                style={{ tableLayout: 'fixed' }}
-              >
-                <Table.Tbody>
-                  {clusterPairs.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={2}>
-                        <Text size="sm" c="dimmed">
-                          No cluster summary returned.
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    clusterPairs.map(([k, val]) => {
-                      const label = titleCaseFromKey(k);
-                      const tip = tooltipForKey(k);
-                      return (
-                        <Table.Tr key={`cluster-${k}`}>
-                          <Table.Td style={{ width: '45%', paddingLeft: 0 }}>
-                            {tip ? (
-                              <Tooltip label={tip} multiline maw={360} withArrow>
-                                <Text size="sm" c="dimmed" style={{ width: 'fit-content' }}>
-                                  {label}
-                                </Text>
-                              </Tooltip>
-                            ) : (
-                              <Text size="sm" c="dimmed">
-                                {label}
-                              </Text>
-                            )}
-                          </Table.Td>
-                          <Table.Td style={{ width: '55%', paddingRight: 0 }}>
-                            <Text
-                              size="sm"
-                              fw={700}
-                              style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
-                            >
-                              {fmtCell(val)}
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      );
-                    })
-                  )}
-                </Table.Tbody>
-              </Table>
-            </Stack>
+            <KeyValuePairsTableSection
+              title="Cluster summary"
+              pairs={clusterPairs}
+              emptyText="No cluster summary returned."
+              rowKeyPrefix="cluster"
+              renderValue={(v) => fmtCell(v)}
+            />
 
-            <Stack gap="xs">
-              <Text size="sm" fw={600}>
-                Model diagnostics
-              </Text>
-              <Table
-                withTableBorder={false}
-                withColumnBorders={false}
-                horizontalSpacing="xs"
-                verticalSpacing="xs"
-                style={{ tableLayout: 'fixed' }}
-              >
-                <Table.Tbody>
-                  {modelDiagPairs.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={2}>
-                        <Text size="sm" c="dimmed">
-                          No model diagnostics returned.
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    modelDiagPairs.map(([k, val]) => {
-                      const label = titleCaseFromKey(k);
-                      const tip = tooltipForKey(k);
-                      return (
-                        <Table.Tr key={`diag-${k}`}>
-                          <Table.Td style={{ width: '45%', paddingLeft: 0 }}>
-                            {tip ? (
-                              <Tooltip label={tip} multiline maw={360} withArrow>
-                                <Text size="sm" c="dimmed" style={{ width: 'fit-content' }}>
-                                  {label}
-                                </Text>
-                              </Tooltip>
-                            ) : (
-                              <Text size="sm" c="dimmed">
-                                {label}
-                              </Text>
-                            )}
-                          </Table.Td>
-                          <Table.Td style={{ width: '55%', paddingRight: 0 }}>
-                            <Text
-                              size="sm"
-                              fw={700}
-                              style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
-                            >
-                              {fmtCell(val)}
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      );
-                    })
-                  )}
-                </Table.Tbody>
-              </Table>
-            </Stack>
+            <KeyValuePairsTableSection
+              title="Model diagnostics"
+              pairs={modelDiagPairs}
+              emptyText="No model diagnostics returned."
+              rowKeyPrefix="diag"
+              renderValue={(v) => fmtCell(v)}
+            />
 
-            <Stack gap="xs">
-              <Text size="sm" fw={600}>
-                Cluster sizes
-              </Text>
-
-              <ScrollArea h={220} type="auto" offsetScrollbars>
-                <Table
-                  withTableBorder={false}
-                  withColumnBorders={false}
-                  horizontalSpacing="xs"
-                  verticalSpacing="xs"
-                >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th style={stickyThStyle}>
-                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
-                          Cluster id
-                        </Text>
-                      </Table.Th>
-                      <Table.Th style={stickyThStyle}>
-                        <Text size="xs" fw={600} c="white" style={headerTextStyle}>
-                          Size
-                        </Text>
-                      </Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-
-                  <Table.Tbody>
-                    {clusterSizesRows.length === 0 ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={2}>
-                          <Text size="sm" c="dimmed">
-                            —
-                          </Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    ) : (
-                      clusterSizesRows.map((r, i) => {
-                        const isStriped = i % 2 === 1;
-                        return (
-                          <Table.Tr
-                            key={i}
-                            style={{
-                              backgroundColor: isStriped
-                                ? 'var(--mantine-color-gray-1)'
-                                : 'white',
-                            }}
-                          >
-                            <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              {fmtCell(r.cluster_id)}
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              {fmtCell(r.size)}
-                            </Table.Td>
-                          </Table.Tr>
-                        );
-                      })
-                    )}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
-            </Stack>
+            <ClusterSizesTable rows={clusterSizesRows} />
           </SimpleGrid>
 
           <Divider my="sm" />
