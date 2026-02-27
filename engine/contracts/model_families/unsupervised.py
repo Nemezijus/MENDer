@@ -45,16 +45,21 @@ class SpectralClusteringConfig(BaseModel):
     family: ClassVar[str] = "unsupervised"
 
     n_clusters: int = 2
-    eigen_solver: Optional[str] = None
+    eigen_solver: Optional[Literal["arpack", "lobpcg", "amg"]] = None
     # sklearn defaults to n_clusters when None; keep pre-refactor behavior.
     n_components: Optional[int] = None
     random_state: Optional[int] = None
     n_init: int = 10
     gamma: float = 1.0
-    affinity: str = "rbf"
+    affinity: Literal[
+        "nearest_neighbors",
+        "rbf",
+        "precomputed",
+        "precomputed_nearest_neighbors",
+    ] = "rbf"
     n_neighbors: int = 10
     eigen_tol: float = 0.0
-    assign_labels: str = "kmeans"
+    assign_labels: Literal["kmeans", "discretize", "cluster_qr"] = "kmeans"
     # sklearn requires `degree` to be an int (polynomial kernel degree).
     # Keep the historical default of 3, but ensure the correct type.
     degree: int = 3
@@ -71,7 +76,7 @@ class AgglomerativeClusteringConfig(BaseModel):
 
     n_clusters: Optional[int] = 2
     metric: str = "euclidean"
-    linkage: str = "ward"
+    linkage: Literal["ward", "complete", "average", "single"] = "ward"
     distance_threshold: Optional[float] = None
     compute_full_tree: Union[bool, Literal["auto"]] = "auto"
     # Required for dendrogram rendering (children_ + distances_).
@@ -86,12 +91,12 @@ class GaussianMixtureConfig(BaseModel):
     family: ClassVar[str] = "unsupervised"
 
     n_components: int = 2
-    covariance_type: str = "full"
+    covariance_type: Literal["full", "tied", "diag", "spherical"] = "full"
     tol: float = 1e-3
     reg_covar: float = 1e-6
     max_iter: int = 100
     n_init: int = 1
-    init_params: str = "kmeans"
+    init_params: Literal["kmeans", "k-means++", "random", "random_from_data"] = "kmeans"
     weights_init: Optional[list[float]] = None
     means_init: Optional[list[float]] = None
     precisions_init: Optional[list[float]] = None
@@ -106,13 +111,16 @@ class BayesianGaussianMixtureConfig(BaseModel):
     family: ClassVar[str] = "unsupervised"
 
     n_components: int = 2
-    covariance_type: str = "full"
+    covariance_type: Literal["full", "tied", "diag", "spherical"] = "full"
     tol: float = 1e-3
     reg_covar: float = 1e-6
     max_iter: int = 100
     n_init: int = 1
-    init_params: str = "kmeans"
-    weight_concentration_prior_type: str = "dirichlet_process"
+    init_params: Literal["kmeans", "k-means++", "random", "random_from_data"] = "kmeans"
+    weight_concentration_prior_type: Literal[
+        "dirichlet_process",
+        "dirichlet_distribution",
+    ] = "dirichlet_process"
     weight_concentration_prior: Optional[float] = None
     mean_precision_prior: Optional[float] = None
     mean_prior: Optional[list[float]] = None
