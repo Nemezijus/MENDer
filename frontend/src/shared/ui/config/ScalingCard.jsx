@@ -7,6 +7,8 @@ import ScalingHelpText, {
 import { makeScaleOptionLabel } from '../../constants/scaling.js';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 
+import '../styles/forms.css';
+
 export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
   const { enums, scale } = useSchemaDefaults();
 
@@ -37,11 +39,8 @@ export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
             disabled={optionsUnavailable}
             placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
             description={optionsUnavailable ? 'Schema did not provide scaling options.' : undefined}
-            styles={{
-              input: {
-                borderWidth: 2,
-                borderColor: '#5c94ccff',
-              },
+            classNames={{
+              input: 'configSelectInput',
             }}
           />
         </Stack>

@@ -1,0 +1,11 @@
+@reference "tailwindcss";
+
+/*
+  Shared UI: input styling helpers.
+  Used via Mantine `classNames` on inputs.
+*/
+
+.configSelectInput {
+  @apply border-2;
+  border-color: #5c94ccff;
+}

@@ -19,6 +19,8 @@ import { numOrUndef } from '../../utils/coerce.js';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 import { PcaControls, LdaControls, SfsControls } from './FeatureMethodControls.jsx';
 
+import '../styles/forms.css';
+
 /** ---------------- component ---------------- **/
 
 export default function FeatureCard({ title = 'Features' }) {
@@ -134,11 +136,8 @@ export default function FeatureCard({ title = 'Features' }) {
             disabled={methodsUnavailable}
             placeholder={methodsUnavailable ? 'Schema enums unavailable' : undefined}
             description={methodsUnavailable ? 'Schema did not provide feature method options.' : undefined}
-            styles={{
-              input: {
-                borderWidth: 2,
-                borderColor: '#5c94ccff',
-              },
+            classNames={{
+              input: 'configSelectInput',
             }}
           />
         </Stack>

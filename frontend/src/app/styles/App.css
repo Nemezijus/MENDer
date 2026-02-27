@@ -1,3 +1,4 @@
+@reference "tailwindcss";
 @layer components {
 	.appFrame {
 		@apply mx-auto w-[80vw];

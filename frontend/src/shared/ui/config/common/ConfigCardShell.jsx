@@ -1,5 +1,7 @@
 import { Card, Stack, Text, Group, Box } from '@mantine/core';
 
+import '../../styles/cards.css';
+
 /**
  * Shared layout shell for the config cards in shared/ui/config.
  *
@@ -18,18 +20,16 @@ export default function ConfigCardShell({
   children,
 }) {
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
-      <Stack gap="md">
-        <Text fw={700} size="lg" align="center">
-          {title}
-        </Text>
+    <Card className="configCardShell">
+      <Stack className="configCardStack">
+        <Text className="configCardTitle">{title}</Text>
 
-        <Group align="flex-start" gap="xl" grow wrap="nowrap">
-          <Box style={{ flex: 1, minWidth: 0 }}>{left}</Box>
-          <Box style={{ flex: 1, minWidth: 220 }}>{right}</Box>
+        <Group className="configCardColumns">
+          <Box className="configCardColumnLeft">{left}</Box>
+          <Box className="configCardColumnRight">{right}</Box>
         </Group>
 
-        {helpVisible && help ? <Box mt="md">{help}</Box> : null}
+        {helpVisible && help ? <Box className="configCardHelp">{help}</Box> : null}
 
         {children}
       </Stack>

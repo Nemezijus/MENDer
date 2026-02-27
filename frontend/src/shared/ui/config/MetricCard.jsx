@@ -7,6 +7,8 @@ import MetricHelpText, { MetricIntroText } from '../../content/help/MetricHelpTe
 import { getMetricMeta } from '../../constants/metrics.js';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 
+import '../styles/forms.css';
+
 function normalizeTaskName(t) {
   if (!t) return null;
   return t === 'clustering' ? 'unsupervised' : t;
@@ -164,11 +166,8 @@ export default function MetricCard({
               placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
               searchable
               clearable
-              styles={{
-                input: {
-                  borderWidth: 2,
-                  borderColor: '#5c94ccff',
-                },
+              classNames={{
+                input: 'configSelectInput',
               }}
             />
           ) : (
@@ -180,11 +179,8 @@ export default function MetricCard({
               disabled={optionsUnavailable}
               placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
               description={optionsUnavailable ? 'Metric options unavailable (schema missing).' : undefined}
-              styles={{
-                input: {
-                  borderWidth: 2,
-                  borderColor: '#5c94ccff',
-                },
+              classNames={{
+                input: 'configSelectInput',
               }}
             />
           )}

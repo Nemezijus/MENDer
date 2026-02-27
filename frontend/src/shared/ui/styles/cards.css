@@ -1,0 +1,38 @@
+@reference "tailwindcss";
+
+/*
+  Shared UI: config card layout primitives.
+  Keep these selectors broad and reusable across shared/ui/config.
+*/
+
+.configCardShell {
+  @apply border border-slate-200 rounded-md shadow-sm p-6;
+}
+
+.configCardStack {
+  @apply flex flex-col gap-4;
+}
+
+.configCardTitle {
+  @apply font-bold text-lg text-center;
+}
+
+.configCardColumns {
+  @apply flex items-start gap-6 flex-nowrap;
+}
+
+.configCardColumnLeft {
+  @apply flex-1;
+  /* Allow the left column to shrink without forcing overflow */
+  min-width: 0;
+}
+
+.configCardColumnRight {
+  @apply flex-1;
+  /* Mirrors previous inline minWidth: 220 */
+  min-width: 220px;
+}
+
+.configCardHelp {
+  @apply mt-4;
+}
