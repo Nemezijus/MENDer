@@ -55,7 +55,7 @@ export default function App() {
   }
 
   return (
-    <Container fluid pt="xl" pb="md">
+    <Container fluid className="appContainer">
       <Box className="appFrame">
         <Box className="appColumns">
           {/* Left: sidebar */}

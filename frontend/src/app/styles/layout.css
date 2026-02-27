@@ -1,11 +1,14 @@
 @reference "tailwindcss";
 
-@layer components {
-	.sectionShell {
-		@apply flex flex-col gap-4;
-	}
+/*
+ * Layout helpers for src/app/ components.
+ *
+ * Mantine components remain in place; this file only replaces Mantine
+ * system style-props (e.g., Title align=...) with className hooks.
+ */
 
+@layer components {
 	.sectionShellTitle {
-		@apply text-center text-lg font-semibold text-neutral-900;
+		text-align: center;
 	}
 }

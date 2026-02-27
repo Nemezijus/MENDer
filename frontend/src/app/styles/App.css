@@ -1,5 +1,10 @@
 @reference "tailwindcss";
 @layer components {
+	.appContainer {
+		padding-top: var(--mantine-spacing-xl);
+		padding-bottom: var(--mantine-spacing-md);
+	}
+
 	.appFrame {
 		@apply mx-auto w-[80vw];
 	}
