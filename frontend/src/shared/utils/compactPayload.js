@@ -6,13 +6,7 @@
  * engine/backend and the frontend should omit unset fields.
  */
 
-function isPlainObject(v) {
-  return (
-    v !== null &&
-    typeof v === 'object' &&
-    (v.constructor === Object || Object.getPrototypeOf(v) === null)
-  );
-}
+import { isPlainObject } from './object.js';
 
 /**
  * @param {any} value

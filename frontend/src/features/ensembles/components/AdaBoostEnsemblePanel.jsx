@@ -19,20 +19,12 @@ import EnsembleErrorAlert from './common/EnsembleErrorAlert.jsx';
 import AdaBoostConfigPane from './adaboost/AdaBoostConfigPane.jsx';
 import AdaBoostHelpPane from './adaboost/AdaBoostHelpPane.jsx';
 
-import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
-
 import { useEnsembleTrainRunner } from '../hooks/useEnsembleTrainRunner.js';
 import { buildCommonEnsemblePayload, buildEnsembleTrainPayload } from '../utils/payload.js';
 import { getAllowedMetrics, resolveMetricForPayload } from '../utils/metric.js';
 import { intOrUndef, numOrUndef } from '../utils/coerce.js';
 
-import { titleCase } from '../utils/resultsFormat.js';
-
-function algoLabelWithFallback(key) {
-  const k = String(key || '');
-  const lbl = getAlgoLabel(k);
-  return lbl === k ? titleCase(k) : lbl;
-}
+import { algoLabelWithFallback } from '../utils/algoLabel.js';
 
 export default function AdaBoostEnsemblePanel() {
   const xPath = useDataStore((s) => s.xPath);

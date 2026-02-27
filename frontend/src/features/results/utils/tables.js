@@ -1,5 +1,10 @@
 // Small table + CSV helpers for results previews.
 
+import {
+  isEmptyCell,
+  pickColumns as pickColumnsBase,
+} from '../../../shared/utils/previewTable.js';
+
 function toCsvValue(v) {
   if (v === null || v === undefined) return '';
   const s = String(v);
@@ -15,11 +20,7 @@ export function buildCsv(rows, columns) {
   return [header, ...lines].join('\n');
 }
 
-export function isEmptyCell(v) {
-  if (v === null || v === undefined) return true;
-  if (typeof v === 'string') return v.trim() === '';
-  return false;
-}
+export { isEmptyCell };
 
 /**
  * Pick stable, human-friendly columns for a preview table.
@@ -28,15 +29,6 @@ export function isEmptyCell(v) {
  * - drops columns that are entirely empty in the preview
  */
 export function pickColumns(rows) {
-  if (!rows || rows.length === 0) return [];
-
-  const keys = new Set();
-  rows.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
-
-  const nonEmptyKeys = new Set(
-    [...keys].filter((k) => k === 'index' || rows.some((r) => !isEmptyCell(r?.[k]))),
-  );
-
   const preferred = [
     'index',
     'fold_id',
@@ -50,14 +42,9 @@ export function pickColumns(rows) {
     'decoder_score',
   ];
 
-  const pCols = [...nonEmptyKeys].filter((k) => k.startsWith('p_')).sort();
-  const scoreCols = [...nonEmptyKeys].filter((k) => k.startsWith('score_')).sort();
-  const rest = [...nonEmptyKeys]
-    .filter((k) => !preferred.includes(k) && !k.startsWith('p_') && !k.startsWith('score_'))
-    .sort();
-
-  const out = [];
-  preferred.forEach((k) => nonEmptyKeys.has(k) && out.push(k));
-  out.push(...pCols, ...scoreCols, ...rest);
-  return out;
+  return pickColumnsBase(rows, {
+    preferred,
+    groupPrefixes: ['p_', 'score_'],
+    alwaysInclude: ['index'],
+  });
 }

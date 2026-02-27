@@ -1,4 +1,7 @@
 import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
+import { safeNum, fmt, fmtPct } from '../../../shared/utils/valueFormat.js';
+
+export { safeNum, fmt, fmtPct };
 
 // Confusion-matrix-inspired blue ramp (same idea as ConfusionMatrixResults.jsx)
 export function cmBlue(t) {
@@ -15,23 +18,8 @@ export const HEATMAP_COLORSCALE = [
   [1.0, cmBlue(1.0)],
 ];
 
-export function safeNum(x) {
-  if (x === null || x === undefined || x === '') return null;
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
 
-export function fmtPct(x, digits = 1, placeholder = '—') {
-  const n = safeNum(x);
-  if (n == null) return placeholder;
-  return `${(n * 100).toFixed(digits)}%`;
-}
 
-export function fmt(x, digits = 3, placeholder = '—') {
-  const n = safeNum(x);
-  if (n == null) return placeholder;
-  return Number.isInteger(n) ? String(n) : n.toFixed(digits);
-}
 
 export function titleCase(s) {
   return String(s || '')

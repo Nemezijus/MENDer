@@ -3,11 +3,11 @@ import Plot from 'react-plotly.js';
 
 import SectionTitle from '../common/SectionTitle.jsx';
 
+import { inferSquareLabels, safeNum } from '../../../utils/resultsFormat.js';
 import {
-  HEATMAP_COLORSCALE,
-  inferSquareLabels,
-  safeNum,
-} from '../../../utils/resultsFormat.js';
+  buildAbsDiffHeatmapTrace,
+  buildCorrHeatmapTrace,
+} from '../../../utils/resultHelpers.js';
 
 export default function BaggingRegMatricesSection({ report }) {
   if (!report || report.kind !== 'bagging') return null;
@@ -46,93 +46,18 @@ export default function BaggingRegMatricesSection({ report }) {
   const labels = labelsRaw || inferSquareLabels(sizeFromMatrix || nEstimators || 0);
   const showMatrixText = Array.isArray(labels) ? labels.length < 10 : true;
 
-  const corrTrace = (() => {
-    if (!corrRaw || !labels?.length) return null;
+  const corrTrace = buildCorrHeatmapTrace({
+    matrix: corrRaw,
+    labels,
+    showText: showMatrixText,
+    hoverValueSource: 'customdata',
+  });
 
-    const corrVals = corrRaw;
-
-    const zColor = corrRaw.map((row) =>
-      row.map((v) => {
-        const n = safeNum(v);
-        if (n == null) return null;
-        return (n + 1) / 2;
-      }),
-    );
-
-    const text = showMatrixText
-      ? corrRaw.map((row) =>
-          row.map((v) => {
-            const n = safeNum(v);
-            return n == null ? '' : n.toFixed(2);
-          }),
-        )
-      : undefined;
-
-    return {
-      type: 'heatmap',
-      x: labels,
-      y: labels,
-      z: zColor,
-      zmin: 0,
-      zmax: 1,
-      colorscale: HEATMAP_COLORSCALE,
-      showscale: true,
-      customdata: corrVals,
-      colorbar: {
-        x: 1.02,
-        xanchor: 'left',
-        xpad: 0,
-        thickness: 12,
-        len: 0.92,
-        outlinewidth: 0,
-        tickvals: [0, 0.5, 1],
-        ticktext: ['-1', '0', '1'],
-      },
-      text: showMatrixText ? text : undefined,
-      texttemplate: showMatrixText ? '%{text}' : undefined,
-      hovertemplate: '<b>%{y}</b> vs <b>%{x}</b><br>corr: %{customdata:.2f}<extra></extra>',
-    };
-  })();
-
-  const absTrace = (() => {
-    if (!absRaw || !labels?.length) return null;
-    const flat = absRaw
-      .flat()
-      .map((v) => safeNum(v))
-      .filter((v) => v != null);
-    const zmax = flat.length ? Math.max(...flat) : 1;
-
-    const text = showMatrixText
-      ? absRaw.map((row) =>
-          row.map((v) => {
-            const n = safeNum(v);
-            return n == null ? '' : n.toFixed(2);
-          }),
-        )
-      : undefined;
-
-    return {
-      type: 'heatmap',
-      x: labels,
-      y: labels,
-      z: absRaw,
-      zmin: 0,
-      zmax: zmax || 1,
-      colorscale: HEATMAP_COLORSCALE,
-      showscale: true,
-      colorbar: {
-        x: 1.02,
-        xanchor: 'left',
-        xpad: 0,
-        thickness: 12,
-        len: 0.92,
-        outlinewidth: 0,
-      },
-      text,
-      texttemplate: showMatrixText ? '%{text}' : undefined,
-      hovertemplate: '<b>%{y}</b> vs <b>%{x}</b><br>|Δ|: %{z:.4f}<extra></extra>',
-    };
-  })();
+  const absTrace = buildAbsDiffHeatmapTrace({
+    matrix: absRaw,
+    labels,
+    showText: showMatrixText,
+  });
 
   return (
     <Box>

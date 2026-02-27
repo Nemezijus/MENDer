@@ -7,20 +7,12 @@ import { useResultsStore } from '../../results/state/useResultsStore.js';
 import { useSchemaDefaults } from '../../../shared/schema/SchemaDefaultsContext.jsx';
 import { useEnsembleStore } from '../state/useEnsembleStore.js';
 
-import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
-
 import { useEnsembleTrainRunner } from './useEnsembleTrainRunner.js';
 import { buildCommonEnsemblePayload, buildEnsembleTrainPayload } from '../utils/payload.js';
 import { getAllowedMetrics, resolveMetricForPayload } from '../utils/metric.js';
 import { intOrUndef, numOrUndef } from '../utils/coerce.js';
-import { titleCase } from '../utils/resultsFormat.js';
+import { algoLabelWithFallback } from '../utils/algoLabel.js';
 import { dedupeWarning, normalizeWeight } from '../utils/voting.js';
-
-function algoLabelWithFallback(key) {
-  const k = String(key || '');
-  const lbl = getAlgoLabel(k);
-  return lbl === k ? titleCase(k) : lbl;
-}
 
 export function useVotingEnsembleController() {
   const xPath = useDataStore((s) => s.xPath);

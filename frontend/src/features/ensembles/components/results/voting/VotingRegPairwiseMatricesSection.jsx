@@ -4,13 +4,14 @@ import Plot from 'react-plotly.js';
 import SectionTitle from '../common/SectionTitle.jsx';
 
 import {
-  HEATMAP_COLORSCALE,
-  fmt,
   makeUniqueLabels,
   niceEstimatorLabel,
   prettyEstimatorName,
-  safeNum,
 } from '../../../utils/resultsFormat.js';
+import {
+  buildAbsDiffHeatmapTrace,
+  buildCorrHeatmapTrace,
+} from '../../../utils/resultHelpers.js';
 
 function algoKeyToAbbrev(algoKey) {
   if (!algoKey) return 'UNK';
@@ -50,85 +51,18 @@ export default function VotingRegPairwiseMatricesSection({ report }) {
 
   const legendEntries = buildLegendLines(estimators);
 
-  const corrTrace = (() => {
-    if (!corrRaw) return null;
-    const zColor = corrRaw.map((row) =>
-      row.map((v) => {
-        const n = safeNum(v);
-        if (n == null) return null;
-        return (n + 1) / 2;
-      }),
-    );
+  const corrTrace = buildCorrHeatmapTrace({
+    matrix: corrRaw,
+    labels: labelsPretty,
+    showText: true,
+    hoverValueSource: 'text',
+  });
 
-    const text = corrRaw.map((row) =>
-      row.map((v) => {
-        const n = safeNum(v);
-        return n == null ? '' : n.toFixed(2);
-      }),
-    );
-
-    return {
-      type: 'heatmap',
-      x: labelsPretty,
-      y: labelsPretty,
-      z: zColor,
-      zmin: 0,
-      zmax: 1,
-      colorscale: HEATMAP_COLORSCALE,
-      showscale: true,
-      colorbar: {
-        x: 1.02,
-        xanchor: 'left',
-        xpad: 0,
-        thickness: 12,
-        len: 0.92,
-        outlinewidth: 0,
-        tickvals: [0, 0.5, 1],
-        ticktext: ['-1', '0', '1'],
-      },
-      text,
-      texttemplate: '%{text}',
-      hovertemplate: '<b>%{y}</b> vs <b>%{x}</b><br>corr: %{text}<extra></extra>',
-    };
-  })();
-
-  const absTrace = (() => {
-    if (!absRaw) return null;
-    const flat = absRaw
-      .flat()
-      .map((v) => safeNum(v))
-      .filter((v) => v != null);
-    const zmax = flat.length ? Math.max(...flat) : 1;
-
-    const text = absRaw.map((row) =>
-      row.map((v) => {
-        const n = safeNum(v);
-        return n == null ? '' : n.toFixed(2);
-      }),
-    );
-
-    return {
-      type: 'heatmap',
-      x: labelsPretty,
-      y: labelsPretty,
-      z: absRaw,
-      zmin: 0,
-      zmax: zmax || 1,
-      colorscale: HEATMAP_COLORSCALE,
-      showscale: true,
-      colorbar: {
-        x: 1.02,
-        xanchor: 'left',
-        xpad: 0,
-        thickness: 12,
-        len: 0.92,
-        outlinewidth: 0,
-      },
-      text,
-      texttemplate: '%{text}',
-      hovertemplate: '<b>%{y}</b> vs <b>%{x}</b><br>|Δ|: %{z:.4f}<extra></extra>',
-    };
-  })();
+  const absTrace = buildAbsDiffHeatmapTrace({
+    matrix: absRaw,
+    labels: labelsPretty,
+    showText: true,
+  });
 
   return (
     <Box>

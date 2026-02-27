@@ -13,6 +13,7 @@ import FeatureHelpText, {
   FeatureIntroText,
 } from '../../content/help/FeatureHelpText.jsx';
 import { getVariantSchema, enumFromSubSchema, toSelectData, listDiscriminatorValues } from '../../utils/schema/jsonSchema.js';
+import { numOrUndef, intOrUndef } from '../../utils/coerce.js';
 import ConfigCardShell from './common/ConfigCardShell.jsx';
 
 /** -------- helpers to read enums from the Features schema -------- **/
@@ -63,20 +64,6 @@ export default function FeatureCard({ title = 'Features' }) {
     const d = sub?.properties?.[key]?.default;
     if (d !== undefined) return d;
     return baseDefaults?.[key];
-  };
-
-  const numOrUndef = (v) => (v === null || v === '' || v === undefined ? undefined : v);
-  const toIntOrUndef = (v) => {
-    if (v === null || v === '' || v === undefined) return undefined;
-    const n = Number(v);
-    if (!Number.isFinite(n)) return undefined;
-    return Math.trunc(n);
-  };
-  const toFloatOrUndef = (v) => {
-    if (v === null || v === '' || v === undefined) return undefined;
-    const n = Number(v);
-    if (!Number.isFinite(n)) return undefined;
-    return n;
   };
 
   const clearIfDefault = (next, def) => {
@@ -169,7 +156,7 @@ export default function FeatureCard({ title = 'Features' }) {
                 label="pca_n"
                 value={effectivePcaN}
                 onChange={(v) => {
-                  const next = toIntOrUndef(v);
+                  const next = intOrUndef(v);
                   if (clearIfDefault(next, propDefault('pca_n'))) setPcaN(undefined);
                   else setPcaN(next);
                 }}
@@ -183,7 +170,7 @@ export default function FeatureCard({ title = 'Features' }) {
                 label="pca_var"
                 value={effectivePcaVar}
                 onChange={(v) => {
-                  const next = toFloatOrUndef(v);
+                  const next = numOrUndef(v);
                   if (clearIfDefault(next, propDefault('pca_var'))) setPcaVar(undefined);
                   else setPcaVar(next);
                 }}
@@ -212,7 +199,7 @@ export default function FeatureCard({ title = 'Features' }) {
                 label="lda_n"
                 value={effectiveLdaN}
                 onChange={(v) => {
-                  const next = toIntOrUndef(v);
+                  const next = intOrUndef(v);
                   if (clearIfDefault(next, propDefault('lda_n'))) setLdaN(undefined);
                   else setLdaN(next);
                 }}
@@ -238,7 +225,7 @@ export default function FeatureCard({ title = 'Features' }) {
                 label="lda_shrinkage"
                 value={effectiveLdaShrinkage}
                 onChange={(v) => {
-                  const next = toFloatOrUndef(v);
+                  const next = numOrUndef(v);
                   if (clearIfDefault(next, propDefault('lda_shrinkage'))) setLdaShrinkage(undefined);
                   else setLdaShrinkage(next);
                 }}
@@ -250,7 +237,7 @@ export default function FeatureCard({ title = 'Features' }) {
               label="lda_tol"
               value={effectiveLdaTol}
               onChange={(v) => {
-                const next = toFloatOrUndef(v);
+                const next = numOrUndef(v);
                 if (clearIfDefault(next, propDefault('lda_tol'))) setLdaTol(undefined);
                 else setLdaTol(next);
               }}
@@ -310,7 +297,7 @@ export default function FeatureCard({ title = 'Features' }) {
               label="sfs_cv"
               value={effectiveSfsCv}
               onChange={(v) => {
-                const next = toIntOrUndef(v);
+                const next = intOrUndef(v);
                 if (clearIfDefault(next, propDefault('sfs_cv'))) setSfsCv(undefined);
                 else setSfsCv(next);
               }}
@@ -323,7 +310,7 @@ export default function FeatureCard({ title = 'Features' }) {
                 label="sfs_n_jobs"
                 value={effectiveSfsNJobs}
                 onChange={(v) => {
-                  const next = toIntOrUndef(v);
+                  const next = intOrUndef(v);
                   if (clearIfDefault(next, propDefault('sfs_n_jobs'))) setSfsNJobs(undefined);
                   else setSfsNJobs(next);
                 }}

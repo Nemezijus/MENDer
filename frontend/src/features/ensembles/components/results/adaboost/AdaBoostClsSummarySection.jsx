@@ -4,12 +4,8 @@ import MetricPairsTable from '../common/MetricPairsTable.jsx';
 import SectionTitle from '../common/SectionTitle.jsx';
 
 import { fmt, fmtPct, safeNum, titleCase } from '../../../utils/resultsFormat.js';
+import { fmtIntish } from '../../../utils/resultHelpers.js';
 
-function fmtIntish(x) {
-  const n = safeNum(x);
-  if (n == null) return '—';
-  return String(Math.round(n));
-}
 
 export default function AdaBoostClsSummarySection({ report }) {
   if (!report || report.kind !== 'adaboost') return null;

@@ -1,11 +1,7 @@
 // frontend/src/components/visualizations/RandomSearchAnalyticsResults.jsx
 import { Box, Text } from '@mantine/core';
 
-function fmt(x) {
-  if (x == null || Number.isNaN(x)) return String(x);
-  if (typeof x === 'number') return x.toFixed(3);
-  return String(x);
-}
+import { fmtAny as fmt } from '../../../../shared/utils/valueFormat.js';
 
 export default function RandomSearchAnalyticsResults({
   result,

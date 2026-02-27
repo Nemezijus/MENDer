@@ -5,11 +5,6 @@ import SectionTitle from '../common/SectionTitle.jsx';
 
 import { fmt as fmtBase, safeNum } from '../../../utils/resultsFormat.js';
 
-// Preserve legacy placeholder for this summary card.
-function fmt(x, digits = 3) {
-  return fmtBase(x, digits, 'N/A');
-}
-
 export default function XGBSummaryMetricsSection({ report }) {
   if (!report || report.kind !== 'xgboost') return null;
 
@@ -27,24 +22,24 @@ export default function XGBSummaryMetricsSection({ report }) {
   const summaryItems = [
     {
       label: 'Best iteration (mean)',
-      value: bestIterMean == null ? 'N/A' : fmt(bestIterMean, 1),
+      value: bestIterMean == null ? 'N/A' : fmtBase(bestIterMean, 1, 'N/A'),
       tooltip:
         'Average best boosting round (only available when early stopping / eval sets are used).',
     },
     {
       label: 'Best iteration (std)',
-      value: bestIterStd == null ? 'N/A' : fmt(bestIterStd, 1),
+      value: bestIterStd == null ? 'N/A' : fmtBase(bestIterStd, 1, 'N/A'),
       tooltip: 'Standard deviation of best iteration across folds.',
     },
     {
       label: 'Best score (mean)',
-      value: bestScoreMean == null ? 'N/A' : fmt(bestScoreMean, 5),
+      value: bestScoreMean == null ? 'N/A' : fmtBase(bestScoreMean, 5, 'N/A'),
       tooltip:
         'Average best evaluation score reported by XGBoost during training (depends on eval metric).',
     },
     {
       label: 'Best score (std)',
-      value: bestScoreStd == null ? 'N/A' : fmt(bestScoreStd, 5),
+      value: bestScoreStd == null ? 'N/A' : fmtBase(bestScoreStd, 5, 'N/A'),
       tooltip: 'Standard deviation of best score across folds.',
     },
   ];
