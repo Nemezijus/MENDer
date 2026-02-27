@@ -75,6 +75,7 @@ export default function SingleModelTrainingPanel() {
 
   // Model artifact store (Zustand)
   const artifact = useModelArtifactStore((s) => s.artifact);
+  const artifactSource = useModelArtifactStore((s) => s.source);
 
   const lastHydratedUid = useRef(null);
 
@@ -145,16 +146,58 @@ export default function SingleModelTrainingPanel() {
     setTrainModel,
   ]);
 
-  // Hydrate from artifact into train model + split/eval settings
+  // Hydrate from artifact into train model + split/eval settings.
+  // IMPORTANT:
+  // - The training run itself will set artifactSource='trained'. We must NOT copy
+  //   engine-resolved defaults into override state (that would bloat payloads and
+  //   turn "Default: …" placeholders into explicit overrides).
+  // - Only hydrate when the user explicitly loaded an artifact (artifactSource='loaded').
+  // - Even when loaded, store overrides only: strip keys that match schema defaults.
   useEffect(() => {
     const uid = artifact?.uid;
     if (!uid || !trainModel) return;
     if (lastHydratedUid.current === uid) return;
+
+    if (artifactSource !== 'loaded') return;
     lastHydratedUid.current = uid;
 
     if (artifact?.model && typeof artifact.model === 'object') {
-      // union payload straight in
-      setTrainModel(artifact.model);
+      const am = artifact.model;
+      const algo = am?.algo;
+      const d = (algo && models?.defaults && models.defaults[algo]) ? models.defaults[algo] : null;
+
+      const same = (a, b) => {
+        if (a === b) return true;
+        if (a == null || b == null) return a == null && b == null;
+        if (Array.isArray(a) && Array.isArray(b)) {
+          if (a.length !== b.length) return false;
+          for (let i = 0; i < a.length; i += 1) if (!same(a[i], b[i])) return false;
+          return true;
+        }
+        if (typeof a === 'object' && typeof b === 'object') {
+          const ka = Object.keys(a);
+          const kb = Object.keys(b);
+          if (ka.length !== kb.length) return false;
+          for (const k of ka) {
+            if (!Object.prototype.hasOwnProperty.call(b, k)) return false;
+            if (!same(a[k], b[k])) return false;
+          }
+          return true;
+        }
+        return false;
+      };
+
+      // Keep algo always; keep only keys that differ from defaults.
+      const stripped = { algo };
+      for (const [k, v] of Object.entries(am)) {
+        if (k === 'algo') continue;
+        if (!d || !Object.prototype.hasOwnProperty.call(d, k)) {
+          stripped[k] = v;
+          continue;
+        }
+        if (!same(v, d[k])) stripped[k] = v;
+      }
+      setTrainModel(stripped);
     }
 
     const artSplit = artifact?.split || {};
@@ -163,17 +206,36 @@ export default function SingleModelTrainingPanel() {
     setSplitMode(resolvedMode === defaultSplitMode ? undefined : resolvedMode);
 
     if (resolvedMode === 'kfold' || 'n_splits' in artSplit) {
-      if (artSplit?.n_splits != null) setNSplits(Number(artSplit.n_splits));
+      if (artSplit?.n_splits != null) {
+        const vv = Number(artSplit.n_splits);
+        const d = kfoldDefaults?.n_splits;
+        if (d != null && vv === Number(d)) setNSplits(undefined);
+        else setNSplits(vv);
+      }
     } else {
-      if (artSplit?.train_frac != null) setTrainFrac(Number(artSplit.train_frac));
+      if (artSplit?.train_frac != null) {
+        const vv = Number(artSplit.train_frac);
+        const d = holdoutDefaults?.train_frac;
+        if (d != null && Math.abs(vv - Number(d)) < 1e-12) setTrainFrac(undefined);
+        else setTrainFrac(vv);
+      }
     }
-    if (artSplit?.stratified != null) setStratified(!!artSplit.stratified);
-    if (artSplit?.shuffle != null) setShuffle(!!artSplit.shuffle);
+    if (artSplit?.stratified != null) {
+      const vv = Boolean(artSplit.stratified);
+      const d =
+        resolvedMode === 'kfold' ? kfoldDefaults?.stratified : holdoutDefaults?.stratified;
+      if (d != null && vv === Boolean(d)) setStratified(undefined);
+      else setStratified(vv);
+    }
+    if (artSplit?.shuffle != null) {
+      const vv = Boolean(artSplit.shuffle);
+      const d = resolvedMode === 'kfold' ? kfoldDefaults?.shuffle : holdoutDefaults?.shuffle;
+      if (d != null && vv === Boolean(d)) setShuffle(undefined);
+      else setShuffle(vv);
+    }
 
     const ev = artifact?.eval || {};
-    if ('seed' in ev) {
-      setSeed(ev.seed == null ? '' : String(ev.seed));
-    }
+    if ('seed' in ev) setSeed(ev.seed == null ? '' : String(ev.seed));
 
     const resultUid = trainResult?.artifact?.uid;
     if (!resultUid || resultUid !== uid) {
@@ -181,10 +243,18 @@ export default function SingleModelTrainingPanel() {
     }
   }, [
     artifact,
+    artifactSource,
     trainModel,
     trainResult,
     clearTrainResult,
     defaultSplitMode,
+    holdoutDefaults?.train_frac,
+    holdoutDefaults?.shuffle,
+    holdoutDefaults?.stratified,
+    kfoldDefaults?.n_splits,
+    kfoldDefaults?.shuffle,
+    kfoldDefaults?.stratified,
+    models?.defaults,
     setTrainModel,
     setSplitMode,
     setNSplits,
