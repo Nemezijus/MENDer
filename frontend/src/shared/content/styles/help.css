@@ -1,5 +1,106 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/* ------------------------------------------------------------
+   Shared help content styling
+
+   Conventions:
+   - Help components should use semantic className hooks (no inline style objects)
+   - Prefer Tailwind @apply here so help content stays consistent across panels
+------------------------------------------------------------- */
+
+.helpStack {
+	@apply flex flex-col;
+}
+
+.helpStackTight {
+	@apply gap-1.5;
+}
+
+.helpStackGap4 {
+	@apply gap-1;
+}
+
+.helpStackXs {
+	@apply gap-2;
+}
+
+.helpStackSm {
+	@apply gap-3;
+}
+
+.helpTitle {
+	@apply text-sm font-medium;
+}
+
+.helpTitleStrong {
+	@apply text-sm font-semibold;
+}
+
+.helpTextXs {
+	@apply text-xs leading-snug;
+}
+
+.helpTextSm {
+	@apply text-sm leading-snug;
+}
+
+.helpTextDim {
+	@apply text-slate-600;
+}
+
+.helpTextBodyXs {
+	@apply text-xs leading-snug text-slate-600;
+}
+
+.helpTextBodySm {
+	@apply text-sm leading-snug text-slate-600;
+}
+
+.helpList {
+	@apply list-disc pl-5;
+}
+
+.helpListXs {
+	@apply text-xs leading-snug;
+}
+
+.helpListTight {
+	@apply space-y-1;
+}
+
+.helpListLoose {
+	@apply space-y-2;
+}
+
+.helpListMt {
+	@apply mt-2;
+}
+
+.helpInlineLabel {
+	@apply font-semibold text-slate-900;
+}
+
+.helpInlineStrong {
+	@apply font-semibold;
+}
+
+.helpInlineCode {
+	@apply font-mono text-[0.75rem] px-1 py-0.5 rounded bg-slate-100 text-slate-800;
+}
+
+.helpAlgoLabel {
+	@apply font-semibold text-slate-900;
+}
+
+.helpAlgoLabelSelected {
+	@apply font-bold text-blue-600;
+}
+
+.helpDetailBlock {
+	@apply mt-1.5 flex flex-col gap-1;
+}
+
+/* Convenience: make inline <code> inside help blocks look consistent */
+.helpCodeInline {
+	@apply font-mono text-[0.75rem] px-1 py-0.5 rounded bg-slate-100 text-slate-800;
+}

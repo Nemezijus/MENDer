@@ -1,4 +1,4 @@
-import { Stack, Text } from '@mantine/core';
+import '../styles/help.css';
 
 // NOTE:
 // This file intentionally contains only the short "preview" intro components.
@@ -9,23 +9,21 @@ export function VotingIntroText({ effectiveTask, votingType }) {
   const isReg = effectiveTask === 'regression';
 
   return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        Voting ensemble
-      </Text>
+    <div className="helpStack helpStackTight">
+      <div className="helpTitleStrong">Voting ensemble</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         Trains multiple base models on the same split and combines their predictions.
-      </Text>
+      </p>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         {isReg
           ? 'Regression: averages predictions (VotingRegressor).'
           : votingType === 'soft'
           ? 'Soft voting averages predicted probabilities.'
           : 'Hard voting chooses the majority class.'}
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -33,21 +31,19 @@ export function BaggingIntroText({ effectiveTask }) {
   const isReg = effectiveTask === 'regression';
 
   return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        Bagging ensemble
-      </Text>
+    <div className="helpStack helpStackTight">
+      <div className="helpTitleStrong">Bagging ensemble</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         Trains many copies of the same estimator on resampled data and averages/votes.
-      </Text>
+      </p>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         {isReg
           ? 'Regression: averages predictions (BaggingRegressor).'
           : 'Classification: majority vote across estimators (BaggingClassifier).'}
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -55,21 +51,19 @@ export function AdaBoostIntroText({ effectiveTask }) {
   const isReg = effectiveTask === 'regression';
 
   return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        AdaBoost ensemble
-      </Text>
+    <div className="helpStack helpStackTight">
+      <div className="helpTitleStrong">AdaBoost ensemble</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         Adds weak learners sequentially, focusing more on the samples it previously got wrong.
-      </Text>
+      </p>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         {isReg
           ? 'Regression: weighted ensemble of weak regressors (AdaBoostRegressor).'
           : 'Classification: boosts weak classifiers (AdaBoostClassifier).'}
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -77,18 +71,16 @@ export function XGBoostIntroText({ effectiveTask }) {
   const isReg = effectiveTask === 'regression';
 
   return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        XGBoost
-      </Text>
+    <div className="helpStack helpStackTight">
+      <div className="helpTitleStrong">XGBoost</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         Gradient boosted decision trees (high-performance for tabular data).
-      </Text>
+      </p>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         {isReg ? 'Regression: XGBRegressor.' : 'Classification: XGBClassifier.'}
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }

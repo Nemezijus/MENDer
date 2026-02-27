@@ -1,497 +1,391 @@
-import { Stack, Text, List } from '@mantine/core';
+import '../styles/help.css';
 
 /* ---------- short previews ---------- */
 
 export function VotingIntroText({ effectiveTask, votingType }) {
-  const isReg = effectiveTask === 'regression';
+	const isReg = effectiveTask === 'regression';
 
-  return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        Voting ensemble
-      </Text>
+	return (
+		<div className="helpStack helpStackTight">
+			<div className="helpTitleStrong">Voting ensemble</div>
 
-      <Text size="xs" c="dimmed">
-        Trains multiple base models on the same split and combines their predictions.
-      </Text>
+			<p className="helpTextBodyXs">
+				Trains multiple base models on the same split and combines their predictions.
+			</p>
 
-      <Text size="xs" c="dimmed">
-        {isReg
-          ? 'Regression: averages predictions (VotingRegressor).'
-          : votingType === 'soft'
-          ? 'Soft voting averages predicted probabilities.'
-          : 'Hard voting chooses the majority class.'}
-      </Text>
-    </Stack>
-  );
+			<p className="helpTextBodyXs">
+				{isReg
+					? 'Regression: averages predictions (VotingRegressor).'
+					: votingType === 'soft'
+					? 'Soft voting averages predicted probabilities.'
+					: 'Hard voting chooses the majority class.'}
+			</p>
+		</div>
+	);
 }
 
 export function BaggingIntroText({ effectiveTask }) {
-  const isReg = effectiveTask === 'regression';
+	const isReg = effectiveTask === 'regression';
 
-  return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        Bagging ensemble
-      </Text>
+	return (
+		<div className="helpStack helpStackTight">
+			<div className="helpTitleStrong">Bagging ensemble</div>
 
-      <Text size="xs" c="dimmed">
-        Trains many copies of the same estimator on resampled data and averages/votes.
-      </Text>
+			<p className="helpTextBodyXs">
+				Trains many copies of the same estimator on resampled data and averages/votes.
+			</p>
 
-      <Text size="xs" c="dimmed">
-        {isReg
-          ? 'Regression: averages predictions (BaggingRegressor).'
-          : 'Classification: majority vote across estimators (BaggingClassifier).'}
-      </Text>
-    </Stack>
-  );
+			<p className="helpTextBodyXs">
+				{isReg
+					? 'Regression: averages predictions (BaggingRegressor).'
+					: 'Classification: majority vote across estimators (BaggingClassifier).'}
+			</p>
+		</div>
+	);
 }
 
 export function AdaBoostIntroText({ effectiveTask }) {
-  const isReg = effectiveTask === 'regression';
+	const isReg = effectiveTask === 'regression';
 
-  return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        AdaBoost ensemble
-      </Text>
+	return (
+		<div className="helpStack helpStackTight">
+			<div className="helpTitleStrong">AdaBoost ensemble</div>
 
-      <Text size="xs" c="dimmed">
-        Adds weak learners sequentially, focusing more on the samples it previously got wrong.
-      </Text>
+			<p className="helpTextBodyXs">
+				Adds weak learners sequentially, focusing more on the samples it previously got wrong.
+			</p>
 
-      <Text size="xs" c="dimmed">
-        {isReg
-          ? 'Regression: weighted ensemble of weak regressors (AdaBoostRegressor).'
-          : 'Classification: boosts weak classifiers (AdaBoostClassifier).'}
-      </Text>
-    </Stack>
-  );
+			<p className="helpTextBodyXs">
+				{isReg
+					? 'Regression: weighted ensemble of weak regressors (AdaBoostRegressor).'
+					: 'Classification: boosts weak classifiers (AdaBoostClassifier).'}
+			</p>
+		</div>
+	);
 }
 
 export function XGBoostIntroText({ effectiveTask }) {
-  const isReg = effectiveTask === 'regression';
+	const isReg = effectiveTask === 'regression';
 
-  return (
-    <Stack gap={6}>
-      <Text fw={600} size="sm">
-        XGBoost
-      </Text>
+	return (
+		<div className="helpStack helpStackTight">
+			<div className="helpTitleStrong">XGBoost</div>
 
-      <Text size="xs" c="dimmed">
-        Gradient boosted decision trees (high-performance for tabular data).
-      </Text>
+			<p className="helpTextBodyXs">
+				Gradient boosted decision trees (high-performance for tabular data).
+			</p>
 
-      <Text size="xs" c="dimmed">
-        {isReg ? 'Regression: XGBRegressor.' : 'Classification: XGBClassifier.'}
-      </Text>
-    </Stack>
-  );
+			<p className="helpTextBodyXs">
+				{isReg ? 'Regression: XGBRegressor.' : 'Classification: XGBClassifier.'}
+			</p>
+		</div>
+	);
 }
 
 /* ---------- expanded help ---------- */
 
 function VotingDetailsText({ effectiveTask, votingType }) {
-  const isReg = effectiveTask === 'regression';
+	const isReg = effectiveTask === 'regression';
 
-  return (
-    <Stack gap="xs">
-      <Text fw={600} size="sm">
-        How to choose settings
-      </Text>
+	return (
+		<div className="helpStack helpStackXs">
+			<div className="helpTitleStrong">How to choose settings</div>
 
-      <List spacing={4} size="xs">
-        <List.Item>
-          <Text span fw={600}>
-            Simple vs Advanced
-          </Text>{' '}
-          – Simple uses default hyperparameters. Advanced lets you tune estimators and optionally set weights.
-        </List.Item>
+			<ul className="helpList helpListXs helpListTight">
+				<li>
+					<span className="helpInlineLabel">Simple vs Advanced</span> – Simple uses default hyperparameters.
+					Advanced lets you tune estimators and optionally set weights.
+				</li>
 
-        {!isReg && (
-          <List.Item>
-            <Text span fw={600}>
-              Hard vs Soft
-            </Text>{' '}
-            – Hard voting combines labels. Soft voting averages probabilities.
-          </List.Item>
-        )}
+				{!isReg && (
+					<li>
+						<span className="helpInlineLabel">Hard vs Soft</span> – Hard voting combines labels. Soft voting
+						averages probabilities.
+					</li>
+				)}
 
-        {!isReg && votingType === 'soft' && (
-          <List.Item>
-            <Text span fw={600}>
-              Soft voting requirement
-            </Text>{' '}
-            – all estimators must support <Text span fw={600}>predict_proba</Text>.
-          </List.Item>
-        )}
+				{!isReg && votingType === 'soft' && (
+					<li>
+						<span className="helpInlineLabel">Soft voting requirement</span> – all estimators must support{' '}
+						<code className="helpInlineCode">predict_proba</code>.
+					</li>
+				)}
 
-        <List.Item>
-          <Text span fw={600}>
-            Prefer diversity
-          </Text>{' '}
-          – mixing model families often improves results.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Prefer diversity</span> – mixing model families often improves results.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Duplicates
-          </Text>{' '}
-          – identical estimators act like implicit weighting; prefer explicit weights.
-        </List.Item>
-      </List>
-    </Stack>
-  );
+				<li>
+					<span className="helpInlineLabel">Duplicates</span> – identical estimators act like implicit weighting;
+					prefer explicit weights.
+				</li>
+			</ul>
+		</div>
+	);
 }
 
 function BaggingDetailsText() {
-  return (
-    <Stack gap="xs">
-      <Text fw={600} size="sm">
-        How to choose settings
-      </Text>
+	return (
+		<div className="helpStack helpStackXs">
+			<div className="helpTitleStrong">How to choose settings</div>
 
-      <List spacing={6} size="xs">
-        <List.Item>
-          <Text span fw={600}>
-            Number of estimators
-          </Text>{' '}
-          – how many base models you train. More estimators usually reduce variance and make results more stable, but
-          increase training time. Typical range: <Text span fw={600}>25–200</Text>. If results look noisy, increase this.
-        </List.Item>
+			<ul className="helpList helpListXs helpListLoose">
+				<li>
+					<span className="helpInlineLabel">Number of estimators</span> – how many base models you train. More
+					estimators usually reduce variance and make results more stable, but increase training time. Typical
+					range: <span className="helpInlineStrong">25–200</span>. If results look noisy, increase this.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Max samples (fraction)
-          </Text>{' '}
-          – fraction of the training fold used to train each estimator.{' '}
-          <Text span fw={600}>1.0</Text> means “same size as the training fold” (with replacement if Bootstrap is on).
-          Smaller values (e.g. <Text span fw={600}>0.5–0.9</Text>) increase diversity between estimators and can reduce
-          overfitting, but each estimator learns from less data.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Max samples (fraction)</span> – fraction of the training fold used to
+					train each estimator. <span className="helpInlineStrong">1.0</span> means “same size as the training
+					fold” (with replacement if Bootstrap is on). Smaller values (e.g.{' '}
+					<span className="helpInlineStrong">0.5–0.9</span>) increase diversity between estimators and can reduce
+					overfitting, but each estimator learns from less data.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Max features (fraction)
-          </Text>{' '}
-          – fraction of input features used per estimator (feature subsampling / random subspace). Lower values increase
-          estimator diversity and can improve generalization in high-dimensional problems, but may reduce accuracy if too
-          low. Common starting points: <Text span fw={600}>0.5–1.0</Text>.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Max features (fraction)</span> – fraction of input features used per
+					estimator (feature subsampling / random subspace). Lower values increase estimator diversity and can
+					improve generalization in high-dimensional problems, but may reduce accuracy if too low. Common starting
+					points: <span className="helpInlineStrong">0.5–1.0</span>.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Bootstrap
-          </Text>{' '}
-          – when enabled, each estimator trains on a bootstrap sample (sampling <Text span fw={600}>with replacement</Text>
-          ). This is classic bagging and adds randomness. If disabled, sampling is{' '}
-          <Text span fw={600}>without replacement</Text>. With Bootstrap off and Max samples = 1.0, every estimator sees
-          the same rows (so only Max features adds randomness).
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Bootstrap</span> – when enabled, each estimator trains on a bootstrap sample
+					(sampling <span className="helpInlineStrong">with replacement</span>). This is classic bagging and adds
+					randomness. If disabled, sampling is <span className="helpInlineStrong">without replacement</span>. With
+					Bootstrap off and Max samples = 1.0, every estimator sees the same rows (so only Max features adds
+					randomness).
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Bootstrap features
-          </Text>{' '}
-          – when enabled, each estimator also trains on a resampled subset of features. This can further increase
-          diversity, especially when you have many correlated features. If you already use Max features &lt; 1.0, this may
-          be redundant.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Bootstrap features</span> – when enabled, each estimator also trains on a
+					resampled subset of features. This can further increase diversity, especially when you have many
+					correlated features. If you already use Max features &lt; 1.0, this may be redundant.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Out-of-bag score
-          </Text>{' '}
-          – only meaningful when <Text span fw={600}>Bootstrap</Text> is enabled. For each estimator, some training samples
-          are not selected into its bootstrap sample (“out-of-bag” samples). The out-of-bag score evaluates predictions on
-          those left-out samples and gives a built-in generalization estimate without creating a separate validation set.
-          This is most useful for quick feedback and sanity checks; for reporting, prefer your chosen holdout / k-fold
-          split.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Out-of-bag score</span> – only meaningful when{' '}
+					<span className="helpInlineStrong">Bootstrap</span> is enabled. For each estimator, some training samples
+					are not selected into its bootstrap sample (“out-of-bag” samples). The out-of-bag score evaluates
+					predictions on those left-out samples and gives a built-in generalization estimate without creating a
+					separate validation set. This is most useful for quick feedback and sanity checks; for reporting, prefer
+					your chosen holdout / k-fold split.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Balanced bagging
-          </Text>{' '}
-          – uses an imbalanced-learn variant that tries to reduce class imbalance inside each estimator’s training sample.
-          Recommended when classes are noticeably imbalanced or when you see bagging failures due to class sparsity. If
-          your dataset is only mildly imbalanced, you usually don’t need it.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Balanced bagging</span> – uses an imbalanced-learn variant that tries to
+					reduce class imbalance inside each estimator’s training sample. Recommended when classes are noticeably
+					imbalanced or when you see bagging failures due to class sparsity. If your dataset is only mildly
+					imbalanced, you usually don’t need it.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Sampling strategy (Balanced bagging)
-          </Text>{' '}
-          – controls how classes are balanced inside each bag.{' '}
-          <Text span fw={600}>Auto</Text> is the safe default. Options like “majority”, “not minority”, etc. decide which
-          classes are down-sampled. If you’re unsure, keep <Text span fw={600}>Auto</Text>.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Sampling strategy (Balanced bagging)</span> – controls how classes are
+					balanced inside each bag. <span className="helpInlineStrong">Auto</span> is the safe default. Options like
+					“majority”, “not minority”, etc. decide which classes are down-sampled. If you’re unsure, keep{' '}
+					<span className="helpInlineStrong">Auto</span>.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Replacement (Balanced bagging)
-          </Text>{' '}
-          – whether the class-balancing sampler is allowed to sample with replacement. Turning this on can help when some
-          classes have few samples, but may increase duplicate rows inside a bag.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Replacement (Balanced bagging)</span> – whether the class-balancing sampler
+					is allowed to sample with replacement. Turning this on can help when some classes have few samples, but
+					may increase duplicate rows inside a bag.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Number of jobs
-          </Text>{' '}
-          – parallelism. Higher values use more CPU cores to train estimators faster. If supported,{' '}
-          <Text span fw={600}>-1</Text> means “use all cores”. If your machine becomes unresponsive, reduce this.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Number of jobs</span> – parallelism. Higher values use more CPU cores to
+					train estimators faster. If supported, <span className="helpInlineStrong">-1</span> means “use all cores”.
+					If your machine becomes unresponsive, reduce this.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Random state
-          </Text>{' '}
-          – seed for reproducibility. Set it to a fixed value (e.g. 42) to make results repeatable across runs.
-        </List.Item>
-      </List>
-    </Stack>
-  );
+				<li>
+					<span className="helpInlineLabel">Random state</span> – seed for reproducibility. Set it to a fixed value
+					(e.g. 42) to make results repeatable across runs.
+				</li>
+			</ul>
+		</div>
+	);
 }
 
 function AdaBoostDetailsText({ effectiveTask }) {
-  const isReg = effectiveTask === 'regression';
+	const isReg = effectiveTask === 'regression';
 
-  return (
-    <Stack gap="xs">
-      <Text fw={600} size="sm">
-        How to choose settings
-      </Text>
+	return (
+		<div className="helpStack helpStackXs">
+			<div className="helpTitleStrong">How to choose settings</div>
 
-      <List spacing={6} size="xs">
-        <List.Item>
-          <Text span fw={600}>
-            Base estimator
-          </Text>{' '}
-          – AdaBoost works best with <Text span fw={600}>weak learners</Text>. The classic choice is a decision stump
-          (a very shallow tree). If you use a strong learner (deep trees, complex models), AdaBoost can overfit quickly
-          and become unstable.
-          {!isReg && (
-            <Text size="xs" c="dimmed">
-              Tip: for classification, start with a shallow tree-like base learner.
-            </Text>
-          )}
-        </List.Item>
+			<ul className="helpList helpListXs helpListLoose">
+				<li>
+					<span className="helpInlineLabel">Base estimator</span> – AdaBoost works best with{' '}
+					<span className="helpInlineStrong">weak learners</span>. The classic choice is a decision stump (a very
+					shallow tree). If you use a strong learner (deep trees, complex models), AdaBoost can overfit quickly
+					and become unstable.
+					{!isReg && <p className="helpTextBodyXs">Tip: for classification, start with a shallow tree-like base learner.</p>}
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Number of estimators
-          </Text>{' '}
-          – number of boosting rounds (how many weak learners are added sequentially). Higher values can improve
-          performance, but also increase training time and overfitting risk. Typical range:{' '}
-          <Text span fw={600}>50–500</Text>. If you reduce the learning rate, you usually need more estimators.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Number of estimators</span> – number of boosting rounds (how many weak
+					learners are added sequentially). Higher values can improve performance, but also increase training time
+					and overfitting risk. Typical range: <span className="helpInlineStrong">50–500</span>. If you reduce the
+					learning rate, you usually need more estimators.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Learning rate
-          </Text>{' '}
-          – scales how much each new learner contributes. Smaller values make boosting more conservative and often
-          improve generalization, but you typically need more estimators. Good starting points:{' '}
-          <Text span fw={600}>0.05–0.5</Text>. If results are unstable, try lowering it.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Learning rate</span> – scales how much each new learner contributes.
+					Smaller values make boosting more conservative and often improve generalization, but you typically need
+					more estimators. Good starting points: <span className="helpInlineStrong">0.05–0.5</span>. If results are
+					unstable, try lowering it.
+				</li>
 
-        {!isReg && (
-          <List.Item>
-            <Text span fw={600}>
-              Algorithm
-            </Text>{' '}
-            – controls the boosting variant. If you’re unsure, keep the default. Older sklearn versions used
-            SAMME/SAMME.R; newer versions have changed defaults and may deprecate some options. Only change this if you
-            know you need it.
-          </List.Item>
-        )}
+				{!isReg && (
+					<li>
+						<span className="helpInlineLabel">Algorithm</span> – controls the boosting variant. If you’re unsure, keep
+						the default. Older sklearn versions used SAMME/SAMME.R; newer versions have changed defaults and may
+						deprecate some options. Only change this if you know you need it.
+					</li>
+				)}
 
-        <List.Item>
-          <Text span fw={600}>
-            Random state
-          </Text>{' '}
-          – seed for reproducibility. Set to a fixed value (e.g. 42) to make results repeatable across runs (especially
-          with stochastic base estimators).
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Random state</span> – seed for reproducibility. Set to a fixed value
+					(e.g. 42) to make results repeatable across runs (especially with stochastic base estimators).
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Practical tuning recipe
-          </Text>{' '}
-          – if you see overfitting: reduce the learning rate, reduce base estimator complexity, and/or add more data.
-          If you see underfitting: increase estimators and/or allow slightly stronger base learners.
-        </List.Item>
-      </List>
-    </Stack>
-  );
+				<li>
+					<span className="helpInlineLabel">Practical tuning recipe</span> – if you see overfitting: reduce the
+					learning rate, reduce base estimator complexity, and/or add more data. If you see underfitting: increase
+					estimators and/or allow slightly stronger base learners.
+				</li>
+			</ul>
+		</div>
+	);
 }
 
 function XGBoostDetailsText() {
-  return (
-    <Stack gap="xs">
-      <Text fw={600} size="sm">
-        How to choose settings
-      </Text>
+	return (
+		<div className="helpStack helpStackXs">
+			<div className="helpTitleStrong">How to choose settings</div>
 
-      <List spacing={6} size="xs">
-        <List.Item>
-          <Text span fw={600}>
-            Number of estimators
-          </Text>{' '}
-          – number of boosted trees. More trees can improve performance, but increase training time and overfitting risk.
-          Typical range: <Text span fw={600}>200–2000</Text> (depends heavily on learning rate and dataset size).
-        </List.Item>
+			<ul className="helpList helpListXs helpListLoose">
+				<li>
+					<span className="helpInlineLabel">Number of estimators</span> – number of boosted trees. More trees can
+					improve performance, but increase training time and overfitting risk. Typical range:{' '}
+					<span className="helpInlineStrong">200–2000</span> (depends heavily on learning rate and dataset size).
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Learning rate
-          </Text>{' '}
-          – how aggressively each tree updates the model. Smaller values are safer and often generalize better, but need
-          more trees. Common starting points: <Text span fw={600}>0.03–0.2</Text>.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Learning rate</span> – how aggressively each tree updates the model.
+					Smaller values are safer and often generalize better, but need more trees. Common starting points:{' '}
+					<span className="helpInlineStrong">0.03–0.2</span>.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Max depth
-          </Text>{' '}
-          – maximum depth of each tree. Deeper trees can capture more complex patterns but overfit more easily. Typical
-          range: <Text span fw={600}>3–10</Text>. If you see overfitting, reduce this.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Max depth</span> – maximum depth of each tree. Deeper trees can capture more
+					complex patterns but overfit more easily. Typical range: <span className="helpInlineStrong">3–10</span>.
+					If you see overfitting, reduce this.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Subsample
-          </Text>{' '}
-          – fraction of rows used to grow each tree. Values &lt; 1.0 add randomness and often improve generalization
-          (especially on noisy data). Try <Text span fw={600}>0.6–0.9</Text> as a starting range.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Subsample</span> – fraction of rows used to grow each tree. Values &lt; 1.0
+					add randomness and often improve generalization (especially on noisy data). Try{' '}
+					<span className="helpInlineStrong">0.6–0.9</span> as a starting range.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Column sample by tree
-          </Text>{' '}
-          – fraction of features considered per tree. Reducing this (e.g. <Text span fw={600}>0.5–0.9</Text>) can reduce
-          overfitting and help with high-dimensional inputs.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Column sample by tree</span> – fraction of features considered per tree.
+					Reducing this (e.g. <span className="helpInlineStrong">0.5–0.9</span>) can reduce overfitting and help
+					with high-dimensional inputs.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            L2 regularization (lambda)
-          </Text>{' '}
-          – larger values penalize large weights and can reduce overfitting. If your model overfits, try increasing it.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">L2 regularization (lambda)</span> – larger values penalize large weights
+					and can reduce overfitting. If your model overfits, try increasing it.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            L1 regularization (alpha)
-          </Text>{' '}
-          – encourages sparsity in leaf weights. Can help when many features are noisy or redundant.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">L1 regularization (alpha)</span> – encourages sparsity in leaf weights.
+					Can help when many features are noisy or redundant.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Min child weight
-          </Text>{' '}
-          – minimum “amount of information” needed in a leaf. Higher values make the algorithm more conservative (fewer,
-          simpler splits), which can help reduce overfitting.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Min child weight</span> – minimum “amount of information” needed in a leaf.
+					Higher values make the algorithm more conservative (fewer, simpler splits), which can help reduce
+					overfitting.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Gamma
-          </Text>{' '}
-          – minimum loss reduction required to make a split. Higher values make splitting more conservative (often helps
-          with overfitting).
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Gamma</span> – minimum loss reduction required to make a split. Higher values
+					make splitting more conservative (often helps with overfitting).
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Use early stopping (Advanced)
-          </Text>{' '}
-          – enables an <Text span fw={600}>internal validation split</Text> from the training data, and stops adding trees
-          once the validation metric stops improving. This is also what allows MENDer to show{' '}
-          <Text span fw={600}>learning curves</Text> (training vs validation over boosting rounds). Turning this off is
-          fine if you only care about the final held-out / k-fold metric, but then “best iteration/score” and learning
-          curves may be unavailable.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Use early stopping (Advanced)</span> – enables an{' '}
+					<span className="helpInlineStrong">internal validation split</span> from the training data, and stops adding
+					trees once the validation metric stops improving. This is also what allows MENDer to show{' '}
+					<span className="helpInlineStrong">learning curves</span> (training vs validation over boosting rounds).
+					Turning this off is fine if you only care about the final held-out / k-fold metric, but then “best
+					iteration/score” and learning curves may be unavailable.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Early stopping rounds (patience)
-          </Text>{' '}
-          – how many rounds XGBoost will wait without improvement before stopping. Smaller values stop sooner (faster,
-          less overfitting risk); larger values are more permissive. If left blank, MENDer chooses a reasonable default.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Early stopping rounds (patience)</span> – how many rounds XGBoost will wait
+					without improvement before stopping. Smaller values stop sooner (faster, less overfitting risk);
+					larger values are more permissive. If left blank, MENDer chooses a reasonable default.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Eval set fraction (Advanced)
-          </Text>{' '}
-          – fraction of the training fold reserved for internal early-stopping evaluation (typical range:{' '}
-          <Text span fw={600}>0.1–0.3</Text>). Higher values give a more stable validation signal but leave fewer samples
-          to fit the trees. This does <Text span fw={600}>not</Text> change your main train/test split (holdout/k-fold).
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Eval set fraction (Advanced)</span> – fraction of the training fold
+					reserved for internal early-stopping evaluation (typical range: <span className="helpInlineStrong">0.1–0.3</span>).
+					Higher values give a more stable validation signal but leave fewer samples to fit the trees. This does{' '}
+					<span className="helpInlineStrong">not</span> change your main train/test split (holdout/k-fold).
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Internal eval metric vs final metric
-          </Text>{' '}
-          – learning curves and “best score” are based on an internal training metric (e.g. logloss/mlogloss/rmse),
-          chosen for stability. Your model card and confusion/ROC use your selected final metric (e.g. accuracy).
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Internal eval metric vs final metric</span> – learning curves and “best
+					score” are based on an internal training metric (e.g. logloss/mlogloss/rmse), chosen for stability.
+					Your model card and confusion/ROC use your selected final metric (e.g. accuracy).
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Number of jobs
-          </Text>{' '}
-          – parallelism. Higher values use more CPU cores. If supported, <Text span fw={600}>-1</Text> means “use all
-          cores”.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Number of jobs</span> – parallelism. Higher values use more CPU cores. If
+					supported, <span className="helpInlineStrong">-1</span> means “use all cores”.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Random state
-          </Text>{' '}
-          – seed for reproducibility. Set to a fixed value (e.g. 42) for repeatable runs.
-        </List.Item>
+				<li>
+					<span className="helpInlineLabel">Random state</span> – seed for reproducibility. Set to a fixed value
+					(e.g. 42) for repeatable runs.
+				</li>
 
-        <List.Item>
-          <Text span fw={600}>
-            Practical tuning recipe
-          </Text>{' '}
-          – start with learning_rate 0.1, max_depth 4–6, subsample/colsample 0.8, then tune depth/regularization to
-          control overfitting. If underfitting, add trees or increase depth slightly.
-        </List.Item>
-      </List>
+				<li>
+					<span className="helpInlineLabel">Practical tuning recipe</span> – start with learning_rate 0.1, max_depth
+					4–6, subsample/colsample 0.8, then tune depth/regularization to control overfitting. If underfitting,
+					add trees or increase depth slightly.
+				</li>
+			</ul>
 
-      <Text size="xs" c="dimmed">
-        Note: XGBoost requires the xgboost Python package to be installed in the backend environment.
-      </Text>
-    </Stack>
-  );
+			<p className="helpTextBodyXs">
+				Note: XGBoost requires the xgboost Python package to be installed in the backend environment.
+			</p>
+		</div>
+	);
 }
 
 /* ---------- router ---------- */
 
 export default function EnsembleHelpText({ kind, effectiveTask, votingType }) {
-  if (kind === 'voting') {
-    return <VotingDetailsText effectiveTask={effectiveTask} votingType={votingType} />;
-  }
-  if (kind === 'bagging') {
-    return <BaggingDetailsText />;
-  }
-  if (kind === 'adaboost') {
-    return <AdaBoostDetailsText effectiveTask={effectiveTask} />;
-  }
-  if (kind === 'xgboost') {
-    return <XGBoostDetailsText />;
-  }
+	if (kind === 'voting') {
+		return <VotingDetailsText effectiveTask={effectiveTask} votingType={votingType} />;
+	}
+	if (kind === 'bagging') {
+		return <BaggingDetailsText />;
+	}
+	if (kind === 'adaboost') {
+		return <AdaBoostDetailsText effectiveTask={effectiveTask} />;
+	}
+	if (kind === 'xgboost') {
+		return <XGBoostDetailsText />;
+	}
 
-  return (
-    <Text size="xs" c="dimmed">
-      Help text for this ensemble type is not available yet.
-    </Text>
-  );
+	return <p className="helpTextBodyXs">Help text for this ensemble type is not available yet.</p>;
 }

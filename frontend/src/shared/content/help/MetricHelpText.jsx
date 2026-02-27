@@ -1,19 +1,17 @@
-import { Stack, Text, List } from '@mantine/core';
+import '../styles/help.css';
 
 export function MetricIntroText() {
   return (
-    <Stack gap="xs">
-      <Text fw={500} size="sm">
-        What is a metric?
-      </Text>
+    <div className="helpStack helpStackXs">
+      <div className="helpTitle">What is a metric?</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         A metric is used to judge how well your model performs on validation or
         test data. Different metrics highlight different aspects of performance,
         such as overall accuracy, how well all classes are treated, or how good
         the predicted probabilities are.
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -21,202 +19,152 @@ export function MetricDetailsText({ selectedMetric }) {
   // Helper to check if a given metric is currently selected
   const isSelected = (name) => selectedMetric === name;
 
-  // Small style helpers for the metric name label
-  const labelStyle = (name) => ({
-    fw: isSelected(name) ? 700 : 600,
-    c: isSelected(name) ? 'blue' : undefined,
-  });
+  const labelClassName = (name) =>
+    isSelected(name)
+      ? 'helpAlgoLabel helpAlgoLabelSelected'
+      : 'helpAlgoLabel';
 
   return (
-    <Stack gap="xs">
-      <Text fw={500} size="sm">
-        Classification metrics
-      </Text>
+    <div className="helpStack helpStackXs">
+      <div className="helpTitle">Classification metrics</div>
 
-      <List spacing={4} size="xs">
-        <List.Item>
-          <Text span {...labelStyle('accuracy')}>
-            accuracy
-          </Text>{' '}
-          – fraction of all predictions that are correct. Simple and intuitive,
-          but can be misleading when classes are very imbalanced.
-        </List.Item>
+      <ul className="helpList helpListXs helpListTight">
+        <li>
+          <span className={labelClassName('accuracy')}>accuracy</span> – fraction
+          of all predictions that are correct. Simple and intuitive, but can be
+          misleading when classes are very imbalanced.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('balanced_accuracy')}>
+        <li>
+          <span className={labelClassName('balanced_accuracy')}>
             balanced_accuracy
-          </Text>{' '}
+          </span>{' '}
           – average of recall over classes. Each class contributes equally, so
           it is more informative when some classes are rare.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('f1_macro')}>
-            f1_macro
-          </Text>{' '}
-          – F1 score (harmonic mean of precision and recall) averaged equally
-          over classes. Good when you care about performance on all classes,
-          including minority ones.
-        </List.Item>
+        <li>
+          <span className={labelClassName('f1_macro')}>f1_macro</span> – F1 score
+          (harmonic mean of precision and recall) averaged equally over classes.
+          Good when you care about performance on all classes, including
+          minority ones.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('f1_micro')}>
-            f1_micro
-          </Text>{' '}
-          – F1 computed globally over all samples. Weights classes by how often
-          they appear and behaves similarly to accuracy, but still reflects both
+        <li>
+          <span className={labelClassName('f1_micro')}>f1_micro</span> – F1
+          computed globally over all samples. Weights classes by how often they
+          appear and behaves similarly to accuracy, but still reflects both
           precision and recall.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('f1_weighted')}>
-            f1_weighted
-          </Text>{' '}
-          – F1 averaged over classes, weighted by class support. Large classes
+        <li>
+          <span className={labelClassName('f1_weighted')}>f1_weighted</span> – F1
+          averaged over classes, weighted by class support. Large classes
           influence this more than rare ones.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('precision_macro')}>
+        <li>
+          <span className={labelClassName('precision_macro')}>
             precision_macro
-          </Text>{' '}
+          </span>{' '}
           – average precision over classes. Focuses on how often predicted
           labels are correct and is sensitive to false positives.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('recall_macro')}>
-            recall_macro
-          </Text>{' '}
-          – average recall (TPR) over classes. Focuses on how many true
-          examples are detected and is sensitive to false negatives.
-        </List.Item>
+        <li>
+          <span className={labelClassName('recall_macro')}>recall_macro</span> –
+          average recall (TPR) over classes. Focuses on how many true examples
+          are detected and is sensitive to false negatives.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('log_loss')}>
-            log_loss
-          </Text>{' '}
-          – penalises wrong and overconfident probability predictions. Useful
-          when you care about well-calibrated probabilistic outputs, not just
-          hard labels.
-        </List.Item>
+        <li>
+          <span className={labelClassName('log_loss')}>log_loss</span> – penalises
+          wrong and overconfident probability predictions. Useful when you care
+          about well-calibrated probabilistic outputs, not just hard labels.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('roc_auc_ovr')}>
-            roc_auc_ovr
-          </Text>{' '}
-          – area under the ROC curve in a one-vs-rest setting. Measures how well
+        <li>
+          <span className={labelClassName('roc_auc_ovr')}>roc_auc_ovr</span> –
+          area under the ROC curve in a one-vs-rest setting. Measures how well
           the model ranks true class vs others across thresholds, robust to
           class imbalance.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('roc_auc_ovo')}>
-            roc_auc_ovo
-          </Text>{' '}
-          – area under ROC curves averaged over all one-vs-one class pairs.
+        <li>
+          <span className={labelClassName('roc_auc_ovo')}>roc_auc_ovo</span> –
+          area under ROC curves averaged over all one-vs-one class pairs.
           Highlights how well each pair of classes can be separated.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('avg_precision_macro')}>
+        <li>
+          <span className={labelClassName('avg_precision_macro')}>
             avg_precision_macro
-          </Text>{' '}
+          </span>{' '}
           – macro-averaged area under the precision–recall curve. Emphasises
           performance on positive examples and is useful under heavy class
           imbalance.
-        </List.Item>
-      </List>
+        </li>
+      </ul>
 
-      <Text fw={500} size="sm" mt="xs">
-        Regression metrics
-      </Text>
+      <div className="helpTitle helpListMt">Regression metrics</div>
 
-      <List spacing={4} size="xs">
-        <List.Item>
-          <Text span {...labelStyle('r2')}>
-            r2
-          </Text>{' '}
-          – proportion of variance in the target explained by the model. 1 is
-          perfect, 0 means no better than a constant baseline.
-        </List.Item>
+      <ul className="helpList helpListXs helpListTight">
+        <li>
+          <span className={labelClassName('r2')}>r2</span> – proportion of
+          variance in the target explained by the model. 1 is perfect, 0 means
+          no better than a constant baseline.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('explained_variance')}>
+        <li>
+          <span className={labelClassName('explained_variance')}>
             explained_variance
-          </Text>{' '}
+          </span>{' '}
           – similar to R², focusing on the variance of the prediction error.
-        </List.Item>
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('mse')}>
-            mse
-          </Text>{' '}
-          – mean squared error. Large errors are penalised more strongly, which
-          makes it sensitive to outliers.
-        </List.Item>
+        <li>
+          <span className={labelClassName('mse')}>mse</span> – mean squared error.
+          Large errors are penalised more strongly, which makes it sensitive to
+          outliers.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('rmse')}>
-            rmse
-          </Text>{' '}
-          – square root of MSE. Same units as the target, so it is easier to
-          interpret while still penalising large errors.
-        </List.Item>
+        <li>
+          <span className={labelClassName('rmse')}>rmse</span> – square root of
+          MSE. Same units as the target, so it is easier to interpret while
+          still penalising large errors.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('mae')}>
-            mae
-          </Text>{' '}
-          – mean absolute error. Measures average absolute deviation and is more
-          robust to outliers than MSE.
-        </List.Item>
+        <li>
+          <span className={labelClassName('mae')}>mae</span> – mean absolute
+          error. Measures average absolute deviation and is more robust to
+          outliers than MSE.
+        </li>
 
-        <List.Item>
-          <Text span {...labelStyle('mape')}>
-            mape
-          </Text>{' '}
-          – mean absolute percentage error. Expresses error as a percentage of
-          the true value, but can be unstable when targets are close to zero.
-        </List.Item>
-      </List>
+        <li>
+          <span className={labelClassName('mape')}>mape</span> – mean absolute
+          percentage error. Expresses error as a percentage of the true value,
+          but can be unstable when targets are close to zero.
+        </li>
+      </ul>
 
-      <Text size="xs" c="dimmed" mt="xs">
+      <p className="helpTextBodyXs helpListMt">
         As a rough guideline, for balanced classification you can start with{' '}
-        <Text span fw={600}>
-          accuracy
-        </Text>{' '}
-        or{' '}
-        <Text span fw={600}>
-          f1_macro
-        </Text>
-        . For imbalanced multi-class problems,{' '}
-        <Text span fw={600}>
-          balanced_accuracy
-        </Text>{' '}
-        or{' '}
-        <Text span fw={600}>
-          f1_macro
-        </Text>{' '}
-        are often more informative than plain accuracy. For regression tasks,
-        common choices are{' '}
-        <Text span fw={600}>
-          r2
-        </Text>{' '}
-        or{' '}
-        <Text span fw={600}>
-          rmse
-        </Text>
-        .
-      </Text>
-    </Stack>
+        <span className="helpInlineStrong">accuracy</span> or{' '}
+        <span className="helpInlineStrong">f1_macro</span>. For imbalanced
+        multi-class problems, <span className="helpInlineStrong">balanced_accuracy</span>{' '}
+        or <span className="helpInlineStrong">f1_macro</span> are often more
+        informative than plain accuracy. For regression tasks, common choices
+        are <span className="helpInlineStrong">r2</span> or{' '}
+        <span className="helpInlineStrong">rmse</span>.
+      </p>
+    </div>
   );
 }
 
 export default function MetricHelpText({ selectedMetric }) {
   return (
-    <Stack gap="sm">
+    <div className="helpStack helpStackSm">
       <MetricDetailsText selectedMetric={selectedMetric} />
-    </Stack>
+    </div>
   );
 }

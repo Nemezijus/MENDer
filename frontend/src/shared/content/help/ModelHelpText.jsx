@@ -1,22 +1,20 @@
-import { Stack, Text, List } from '@mantine/core';
+import '../styles/help.css';
 
 import { MODEL_OVERVIEW_ENTRIES } from './model/overviewEntries.js';
 import { MODEL_PARAM_BLOCKS } from './model/params/index.js';
 
 export function ModelIntroText() {
   return (
-    <Stack gap="xs">
-      <Text fw={500} size="sm">
-        What is a model?
-      </Text>
+    <div className="helpStack helpStackXs">
+      <div className="helpTitle">What is a model?</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         A model is the algorithm that learns patterns from your training data
         and makes predictions on new data. Different models make different
         assumptions and trade off accuracy, interpretability, robustness, and
         training speed.
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -28,10 +26,10 @@ export function ModelDetailsText({ selectedAlgo, effectiveTask, visibleAlgos }) 
 
   const isSelected = (name) => algo === name;
 
-  const labelStyle = (name) => ({
-    fw: isSelected(name) ? 700 : 600,
-    c: isSelected(name) ? 'blue' : undefined,
-  });
+  const labelClassName = (name) =>
+    isSelected(name)
+      ? 'helpAlgoLabel helpAlgoLabelSelected'
+      : 'helpAlgoLabel';
 
   const taskNote =
     effectiveTask === 'classification'
@@ -43,44 +41,38 @@ export function ModelDetailsText({ selectedAlgo, effectiveTask, visibleAlgos }) 
       : 'If the task is not set yet, you can still explore models. They will be filtered once the task is known.';
 
   return (
-    <Stack gap="xs">
-      <Text fw={500} size="sm">
-        Choosing a model
-      </Text>
+    <div className="helpStack helpStackXs">
+      <div className="helpTitle">Choosing a model</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         No single model is best for all problems. Simpler models are easier to
         interpret and faster to train, while more flexible models can capture
         complex patterns but may overfit.
-      </Text>
+      </p>
 
-      <Text size="xs" c="dimmed">
-        {taskNote}
-      </Text>
+      <p className="helpTextBodyXs">{taskNote}</p>
 
-      <List spacing={4} size="xs" mt="xs">
+      <ul className="helpList helpListXs helpListTight helpListMt">
         {MODEL_OVERVIEW_ENTRIES.filter((entry) => isVisible(entry.algo)).map(
           (entry) => (
-            <List.Item key={entry.algo}>
-              <Text span {...labelStyle(entry.algo)}>
-                {entry.label}
-              </Text>{' '}
+            <li key={entry.algo}>
+              <span className={labelClassName(entry.algo)}>{entry.label}</span>{' '}
               – {entry.summary}
-            </List.Item>
+            </li>
           )
         )}
-      </List>
-    </Stack>
+      </ul>
+    </div>
   );
 }
 
 export function ModelParamsText({ selectedAlgo }) {
   if (!selectedAlgo) {
     return (
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         Select an algorithm above to see a short description of its key
         parameters.
-      </Text>
+      </p>
     );
   }
 
@@ -91,9 +83,7 @@ export function ModelParamsText({ selectedAlgo }) {
   }
 
   return (
-    <Text size="xs" c="dimmed">
-      No parameter help is defined for this algorithm yet.
-    </Text>
+    <p className="helpTextBodyXs">No parameter help is defined for this algorithm yet.</p>
   );
 }
 
@@ -103,13 +93,13 @@ export default function ModelHelpText({
   visibleAlgos,
 }) {
   return (
-    <Stack gap="sm">
+    <div className="helpStack helpStackSm">
       <ModelDetailsText
         selectedAlgo={selectedAlgo}
         effectiveTask={effectiveTask}
         visibleAlgos={visibleAlgos}
       />
       <ModelParamsText selectedAlgo={selectedAlgo} />
-    </Stack>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Stack, Text } from '@mantine/core';
+import '../styles/help.css';
 
 // NOTE:
 // This component is intentionally split out from ModelHelpText.jsx so that
@@ -7,18 +7,16 @@ import { Stack, Text } from '@mantine/core';
 
 export function ModelIntroText() {
   return (
-    <Stack gap="xs">
-      <Text fw={500} size="sm">
-        What is a model?
-      </Text>
+    <div className="helpStack helpStackXs">
+      <div className="helpTitle">What is a model?</div>
 
-      <Text size="xs" c="dimmed">
+      <p className="helpTextBodyXs">
         A model is the algorithm that learns patterns from your training data
         and makes predictions on new data. Different models make different
         assumptions and trade off accuracy, interpretability, robustness, and
         training speed.
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
