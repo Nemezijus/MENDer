@@ -37,30 +37,12 @@ export default function RandomSearchPanel() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
 
   const {
-    method,
-    pca_n,
-    pca_var,
-    pca_whiten,
-    lda_n,
-    lda_solver,
-    lda_shrinkage,
-    lda_tol,
-    sfs_k,
-    sfs_direction,
-    sfs_cv,
-    sfs_n_jobs,
-  } = useFeatureStore();
-
-  const {
     loading: defsLoading,
     models,
     enums,
-    scale: schemaScale,
-    features: schemaFeatures,
-    split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
-
-  const {
+const {
     data: tuningDefaults,
     isLoading: tuningLoading,
   } = useTuningDefaultsQuery();
@@ -98,14 +80,14 @@ export default function RandomSearchPanel() {
   const { loading, error, run } = useTuningRunner();
 
   const taskInferred = inspectReport?.task_inferred || null;
-  const { effectiveMetric } = useEffectiveMetricForTask({
+  useEffectiveMetricForTask({
     enums,
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
-
-  // Initialize RS model once
+// Initialize RS model once
   useEffect(() => {
     if (!defsLoading && !rsModel && models) {
       const defaultAlgo = getDefaultAlgoForTask({
@@ -166,13 +148,8 @@ export default function RandomSearchPanel() {
           scaleMethod,
           model: rsModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
-        });
+          evalMetric: metric,
+});
 
         const randomState = basePayload?.eval?.seed;
 
@@ -190,7 +167,7 @@ export default function RandomSearchPanel() {
 
         return requestRandomSearch(payload);
       },
-      onSuccess: (data) => setRsState({ result: { ...data, metric_used: effectiveMetric } }),
+      onSuccess: (data) => setRsState({ result: data }),
     });
   }
 

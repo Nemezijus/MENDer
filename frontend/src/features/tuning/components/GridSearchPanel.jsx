@@ -37,30 +37,12 @@ export default function GridSearchPanel() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
 
   const {
-    method,
-    pca_n,
-    pca_var,
-    pca_whiten,
-    lda_n,
-    lda_solver,
-    lda_shrinkage,
-    lda_tol,
-    sfs_k,
-    sfs_direction,
-    sfs_cv,
-    sfs_n_jobs,
-  } = useFeatureStore();
-
-  const {
     loading: defsLoading,
     models,
     enums,
-    scale: schemaScale,
-    features: schemaFeatures,
-    split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
-
-  const {
+const {
     data: tuningDefaults,
     isLoading: tuningLoading,
   } = useTuningDefaultsQuery();
@@ -97,14 +79,14 @@ export default function GridSearchPanel() {
 
   const { loading, error, run } = useTuningRunner();
   const taskInferred = inspectReport?.task_inferred || null;
-  const { effectiveMetric } = useEffectiveMetricForTask({
+  useEffectiveMetricForTask({
     enums,
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
-
-  // Initialize GS model once
+// Initialize GS model once
   useEffect(() => {
     if (!defsLoading && !gsModel && models) {
       const defaultAlgo = getDefaultAlgoForTask({
@@ -158,13 +140,8 @@ export default function GridSearchPanel() {
           scaleMethod,
           model: gsModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
-        });
+          evalMetric: metric,
+});
 
         const defaultNJobs = tuningDefaults?.grid_search?.n_jobs;
         const payload = compactPayload({
@@ -175,7 +152,7 @@ export default function GridSearchPanel() {
 
         return requestGridSearch(payload);
       },
-      onSuccess: (data) => setGsState({ result: { ...data, metric_used: effectiveMetric } }),
+      onSuccess: (data) => setGsState({ result: data }),
     });
   }
 

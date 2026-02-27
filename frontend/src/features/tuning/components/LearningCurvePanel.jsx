@@ -50,12 +50,9 @@ export default function LearningCurvePanel() {
     loading: defsLoading,
     models,
     enums,
-    scale: schemaScale,
-    features: schemaFeatures,
-    split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
-
-  const {
+const {
     data: tuningDefaults,
     isLoading: tuningLoading,
   } = useTuningDefaultsQuery();
@@ -69,14 +66,14 @@ export default function LearningCurvePanel() {
   const setLcModel = useModelConfigStore((s) => s.setLearningCurveModel);
 
   const { loading, error, run } = useTuningRunner();
-  const { effectiveMetric } = useEffectiveMetricForTask({
+  useEffectiveMetricForTask({
     enums,
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
-
-  const {
+const {
     method,
     pca_n,
     pca_var,
@@ -160,13 +157,8 @@ export default function LearningCurvePanel() {
             shuffle,
             seed,
           },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
-        });
+          evalMetric: metric,
+});
 
         const payload = compactPayload({
           ...basePayload,
@@ -177,7 +169,7 @@ export default function LearningCurvePanel() {
 
         return requestLearningCurve(payload);
       },
-      onSuccess: (data) => setLearningCurveResult({ ...data, metric_used: effectiveMetric }),
+      onSuccess: (data) => setLearningCurveResult(data),
     });
   }
 

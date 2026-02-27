@@ -37,30 +37,12 @@ export default function ValidationCurvePanel() {
   const dataReady = !!inspectReport && inspectReport?.n_samples > 0;
 
   const {
-    method,
-    pca_n,
-    pca_var,
-    pca_whiten,
-    lda_n,
-    lda_solver,
-    lda_shrinkage,
-    lda_tol,
-    sfs_k,
-    sfs_direction,
-    sfs_cv,
-    sfs_n_jobs,
-  } = useFeatureStore();
-
-  const {
     loading: defsLoading,
     models,
     enums,
-    scale: schemaScale,
-    features: schemaFeatures,
-    split: schemaSplit,
+    eval: schemaEval,
   } = useSchemaDefaults();
-
-  const { data: tuningDefaults, isLoading: tuningLoading } = useTuningDefaultsQuery();
+const { data: tuningDefaults, isLoading: tuningLoading } = useTuningDefaultsQuery();
 
   const scaleMethod = useSettingsStore((s) => s.scaleMethod);
   const metric = useSettingsStore((s) => s.metric);
@@ -91,14 +73,14 @@ export default function ValidationCurvePanel() {
   const { loading, error, run } = useTuningRunner();
 
   const taskInferred = inspectReport?.task_inferred || null;
-  const { effectiveMetric } = useEffectiveMetricForTask({
+  useEffectiveMetricForTask({
     enums,
     taskInferred,
     metric,
     setMetric,
+    evalDefaults: schemaEval?.defaults,
   });
-
-  // Initialize VC model once
+// Initialize VC model once
   useEffect(() => {
     if (!defsLoading && !vcModel && models) {
       const defaultAlgo = getDefaultAlgoForTask({
@@ -144,13 +126,8 @@ export default function ValidationCurvePanel() {
           scaleMethod,
           model: vcModel,
           split: { nSplits, stratified, shuffle, seed },
-          evalMetric: effectiveMetric,
-          schemaDefaults: {
-            scale: schemaScale,
-            features: schemaFeatures,
-            split: schemaSplit,
-          },
-        });
+          evalMetric: metric,
+});
 
         const payload = compactPayload({
           ...basePayload,
@@ -161,7 +138,7 @@ export default function ValidationCurvePanel() {
 
         return requestValidationCurve(payload);
       },
-      onSuccess: (data) => setVcState({ result: { ...data, metric_used: effectiveMetric } }),
+      onSuccess: (data) => setVcState({ result: data }),
     });
   }
 
