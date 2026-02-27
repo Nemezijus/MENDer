@@ -1,11 +1,27 @@
-import { Box } from '@mantine/core';
+import { Box, Text } from '@mantine/core';
+import { lazy, Suspense } from 'react';
 
-import EnsembleHelpText from '../../../../shared/content/help/EnsembleHelpText.jsx';
+const LazyEnsembleHelpText = lazy(() =>
+  import('../../../../shared/content/help/EnsembleHelpText.jsx')
+);
 
 export default function VotingHelpBlock({ effectiveTask, votingType, mode }) {
   return (
     <Box>
-      <EnsembleHelpText kind="voting" effectiveTask={effectiveTask} votingType={votingType} mode={mode} />
+      <Suspense
+        fallback={
+          <Text size="xs" c="dimmed">
+            Loading help…
+          </Text>
+        }
+      >
+        <LazyEnsembleHelpText
+          kind="voting"
+          effectiveTask={effectiveTask}
+          votingType={votingType}
+          mode={mode}
+        />
+      </Suspense>
     </Box>
   );
 }

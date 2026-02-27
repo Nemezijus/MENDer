@@ -1,6 +1,11 @@
-import { Stack, Button } from '@mantine/core';
+import { Stack, Button, Text } from '@mantine/core';
+import { lazy, Suspense } from 'react';
 
-import EnsembleHelpText, { BaggingIntroText } from '../../../../shared/content/help/EnsembleHelpText.jsx';
+import { BaggingIntroText } from '../../../../shared/content/help/EnsembleIntroText.jsx';
+
+const LazyEnsembleHelpText = lazy(() =>
+  import('../../../../shared/content/help/EnsembleHelpText.jsx')
+);
 
 export default function BaggingHelpPane({ showHelp, onToggleHelp }) {
   return (
@@ -9,7 +14,17 @@ export default function BaggingHelpPane({ showHelp, onToggleHelp }) {
       <Button size="xs" variant="subtle" onClick={onToggleHelp}>
         {showHelp ? 'Show less' : 'Show more'}
       </Button>
-      {showHelp && <EnsembleHelpText kind="bagging" />}
+      {showHelp && (
+        <Suspense
+          fallback={
+            <Text size="xs" c="dimmed">
+              Loading help…
+            </Text>
+          }
+        >
+          <LazyEnsembleHelpText kind="bagging" />
+        </Suspense>
+      )}
     </Stack>
   );
 }

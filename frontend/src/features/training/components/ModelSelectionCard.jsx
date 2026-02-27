@@ -1,9 +1,7 @@
 import { Card, Stack, Group, Text, Divider, Box, Button } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
-import ModelHelpText, {
-  ModelIntroText,
-} from '../../../shared/content/help/ModelHelpText.jsx';
+import { ModelIntroText } from '../../../shared/content/help/ModelIntroText.jsx';
 import { getAlgoLabel } from '../../../shared/constants/algoLabels.js';
 import {
   getVariantSchema,
@@ -11,6 +9,10 @@ import {
 } from '../../../shared/utils/schema/jsonSchema.js';
 import AlgoSelect from './modelSelection/AlgoSelect.jsx';
 import AlgoParamsSwitch from './modelSelection/AlgoParamsSwitch.jsx';
+
+const LazyModelHelpText = lazy(() =>
+  import('../../../shared/content/help/ModelHelpText.jsx')
+);
 
 function algoKeyToLabel(algo) {
   if (!algo) return '';
@@ -206,11 +208,19 @@ export default function ModelSelectionCard({
 
         {showDetails && (
           <Box mt="md">
-            <ModelHelpText
-              selectedAlgo={m.algo}
-              effectiveTask={effectiveTask}
-              visibleAlgos={visibleAlgos}
-            />
+            <Suspense
+              fallback={
+                <Text size="xs" c="dimmed">
+                  Loading help…
+                </Text>
+              }
+            >
+              <LazyModelHelpText
+                selectedAlgo={m.algo}
+                effectiveTask={effectiveTask}
+                visibleAlgos={visibleAlgos}
+              />
+            </Suspense>
           </Box>
         )}
       </Stack>

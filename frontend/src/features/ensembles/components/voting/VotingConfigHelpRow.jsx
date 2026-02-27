@@ -1,7 +1,7 @@
 import { Stack, Group, Button, Box } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 
-import { VotingIntroText } from '../../../../shared/content/help/EnsembleHelpText.jsx';
+import { VotingIntroText } from '../../../../shared/content/help/EnsembleIntroText.jsx';
 
 import ParamNumber from '../common/ParamNumber.jsx';
 import ParamSelect from '../common/ParamSelect.jsx';
