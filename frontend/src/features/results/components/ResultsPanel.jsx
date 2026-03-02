@@ -1,3 +1,7 @@
+import '../../../shared/ui/styles/tables.css';
+
+import '../../styles/resultsCommon.css';
+
 import '../styles/resultTables.css';
 import '../styles/decoderOutputs.css';
 

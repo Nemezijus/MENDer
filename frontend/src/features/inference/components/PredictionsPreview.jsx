@@ -1,5 +1,7 @@
 import { ScrollArea, Stack, Table, Text, Tooltip } from '@mantine/core';
 
+import '../../../shared/ui/styles/tables.css';
+
 import '../styles/predictionsPreview.css';
 
 import {
@@ -73,7 +75,7 @@ export function PredictionsPreview({ applyResult }) {
                   const tip = buildHeaderTooltip(c);
                   const label = prettifyHeader(c);
                   return (
-                    <Table.Th key={c} className="predPreviewStickyTh">
+                    <Table.Th key={c} className="predPreviewStickyTh tableStickyTh">
                       {tip ? (
                         <Tooltip label={tip} multiline maw={260} withArrow>
                           <Text size="xs" fw={600} c="white">

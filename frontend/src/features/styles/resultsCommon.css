@@ -1,5 +1,72 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/*
+ * Cross-feature results helpers.
+ *
+ * These are used by multiple results renderers (tables + Plotly frames).
+ * Keep this file free of Mantine-variable workarounds.
+ */
+
+@layer components {
+	.resultsNotesList {
+		@apply mt-1;
+	}
+
+	.resultsCursorHelp {
+		@apply cursor-help;
+	}
+
+	.resultsNoWrap {
+		@apply whitespace-nowrap;
+	}
+
+	.resultsHeaderTextCompact {
+		@apply whitespace-nowrap;
+		line-height: 1.1;
+	}
+
+	.resultsFitContent {
+		width: fit-content;
+	}
+
+	.resultsTableFixed {
+		table-layout: fixed;
+	}
+
+	/* Plot framing helpers */
+	.resultsPlotOuter {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+	}
+
+	.resultsPlotInner {
+		width: 70%;
+		max-width: 860px;
+	}
+
+	.plotSizeCompact {
+		width: 100%;
+		height: 320px;
+	}
+
+	.plotSizeStandard {
+		width: 100%;
+		height: 360px;
+	}
+
+	.plotSizeStandardPlus {
+		width: 100%;
+		height: 380px;
+	}
+
+	.plotSizeTall {
+		width: 100%;
+		height: 420px;
+	}
+
+	.plotFill {
+		width: 100%;
+		height: 100%;
+	}
+}

@@ -2,18 +2,7 @@
 
 @layer components {
 	.unsupDiagStickyTh {
-		position: sticky;
-		top: 0;
-		z-index: 2;
 		@apply bg-neutral-900 text-center whitespace-nowrap;
-	}
-
-	.unsupDiagHeaderText {
-		@apply whitespace-nowrap leading-tight;
-	}
-
-	.unsupDiagCenterNowrap {
-		@apply text-center whitespace-nowrap;
 	}
 
 	.unsupKvTable {

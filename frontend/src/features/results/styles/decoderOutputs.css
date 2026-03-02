@@ -5,15 +5,7 @@
 		margin-top: 0;
 	}
 
-	.decoderHeaderText {
-		@apply whitespace-nowrap;
-		line-height: 1.1;
-	}
-
 	.decoderStickyTh {
-		position: sticky;
-		top: 0;
-		z-index: 2;
 		text-align: center;
 		white-space: nowrap;
 	}
@@ -25,10 +17,6 @@
 
 	.decoderPreviewScrollbar {
 		z-index: 5;
-	}
-
-	.decoderPreviewTd {
-		@apply text-center whitespace-nowrap;
 	}
 
 	.decoderKvKeyTd {

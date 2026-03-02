@@ -1,5 +1,25 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/*
+ * Shared table helpers (cross-feature).
+ *
+ * Keep these generic and composable: feature styles should focus on colors/spacing,
+ * while these provide common structural behavior.
+ */
+
+@layer components {
+	.tableStickyTh {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+	}
+
+	.tableHeaderTextCompact {
+		@apply whitespace-nowrap leading-tight;
+		line-height: 1.1;
+	}
+
+	.tableCellCenterNowrap {
+		@apply text-center whitespace-nowrap;
+	}
+}

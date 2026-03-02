@@ -26,13 +26,13 @@ export default function ClusterSizesTable({ rows, height = 220 }) {
         >
           <Table.Thead>
             <Table.Tr>
-              <Table.Th className="unsupDiagStickyTh">
-                <Text size="xs" fw={600} c="white" className="unsupDiagHeaderText">
+              <Table.Th className="unsupDiagStickyTh tableStickyTh">
+                <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
                   Cluster id
                 </Text>
               </Table.Th>
-              <Table.Th className="unsupDiagStickyTh">
-                <Text size="xs" fw={600} c="white" className="unsupDiagHeaderText">
+              <Table.Th className="unsupDiagStickyTh tableStickyTh">
+                <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
                   Size
                 </Text>
               </Table.Th>
@@ -51,8 +51,8 @@ export default function ClusterSizesTable({ rows, height = 220 }) {
             ) : (
               safeRows.map((r, i) => (
                 <Table.Tr key={i}>
-                  <Table.Td className="unsupDiagCenterNowrap">{fmtCell(r.cluster_id)}</Table.Td>
-                  <Table.Td className="unsupDiagCenterNowrap">{fmtCell(r.size)}</Table.Td>
+                  <Table.Td className="tableCellCenterNowrap">{fmtCell(r.cluster_id)}</Table.Td>
+                  <Table.Td className="tableCellCenterNowrap">{fmtCell(r.size)}</Table.Td>
                 </Table.Tr>
               ))
             )}

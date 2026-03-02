@@ -65,15 +65,15 @@ export default function DecoderPreviewTable({ preview, columns }) {
               const thStyle = minW ? { ...stickyBg, minWidth: minW } : stickyBg;
 
               return (
-                <Table.Th key={c} style={thStyle} className="decoderStickyTh">
+                <Table.Th key={c} style={thStyle} className="decoderStickyTh tableStickyTh">
                   {tip ? (
                     <Tooltip label={tip} multiline maw={260} withArrow>
-                      <Text size="xs" fw={600} c="white" className="decoderHeaderText">
+                      <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
                         {label}
                       </Text>
                     </Tooltip>
                   ) : (
-                    <Text size="xs" fw={600} c="white" className="decoderHeaderText">
+                    <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
                       {label}
                     </Text>
                   )}
@@ -108,7 +108,7 @@ export default function DecoderPreviewTable({ preview, columns }) {
                   return (
                     <Table.Td
                       key={c}
-                      className="decoderPreviewTd"
+                      className="tableCellCenterNowrap"
                       style={isFalse ? { backgroundColor: 'var(--mantine-color-red-1)' } : undefined}
                     >
                       <Text size="sm" className="resultsNoWrap">

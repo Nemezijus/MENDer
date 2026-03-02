@@ -1,5 +1,7 @@
 import { Stack } from '@mantine/core';
 
+import '../../../shared/ui/styles/tables.css';
+
 import UnsupervisedDiagnosticsCard from './diagnostics/UnsupervisedDiagnosticsCard.jsx';
 import UnsupervisedDecoderOutputsCard from './decoder/UnsupervisedDecoderOutputsCard.jsx';
 

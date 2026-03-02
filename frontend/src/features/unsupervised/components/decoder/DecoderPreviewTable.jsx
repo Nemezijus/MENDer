@@ -22,15 +22,15 @@ export default function DecoderPreviewTable({ rows, columns, height = 360 }) {
               const tip = headerTooltip(c);
               const label = headerLabel(c);
               return (
-                <Table.Th key={c} className="unsupPreviewTh">
+                <Table.Th key={c} className="unsupPreviewTh tableStickyTh">
                   {tip ? (
                     <Tooltip label={tip} multiline maw={360} withArrow>
-                      <Text size="xs" fw={600} c="white" className="unsupPreviewHeaderText">
+                      <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
                         {label}
                       </Text>
                     </Tooltip>
                   ) : (
-                    <Text size="xs" fw={600} c="white" className="unsupPreviewHeaderText">
+                    <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
                       {label}
                     </Text>
                   )}
