@@ -1,7 +1,5 @@
 import { Stack, Text, NavLink, Divider } from '@mantine/core';
 
-import '../styles/navigation.css';
-
 import { SECTION_GROUPS } from './sections.js';
 
 export default function SidebarNav({ active, onChange }) {
@@ -9,7 +7,7 @@ export default function SidebarNav({ active, onChange }) {
     <Stack gap="xs">
       {SECTION_GROUPS.map((group, groupIdx) => (
         <Stack gap={4} key={group.groupLabel}>
-          <Text className="sidebarGroupLabel">
+          <Text size="xs" fw={700} c="dimmed" tt="uppercase" pl="xs">
             {group.groupLabel}
           </Text>
 
@@ -25,9 +23,7 @@ export default function SidebarNav({ active, onChange }) {
             />
           ))}
 
-          {groupIdx < SECTION_GROUPS.length - 1 && (
-            <Divider className="sidebarGroupDivider" />
-          )}
+          {groupIdx < SECTION_GROUPS.length - 1 && <Divider my="xs" />}
         </Stack>
       ))}
     </Stack>

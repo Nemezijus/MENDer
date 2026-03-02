@@ -148,7 +148,7 @@ export default function ProductionCompoundFileTab({
 
       {err && (
         <Alert color="red" variant="light" title="Error">
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+          <Text size="sm" className="dataFilesPreWrap">
             {err}
           </Text>
         </Alert>

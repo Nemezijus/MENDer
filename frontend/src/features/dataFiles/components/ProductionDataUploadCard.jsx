@@ -44,8 +44,8 @@ export default function ProductionDataUploadCard() {
       <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="md">
           <Group justify="space-between" align="center">
-            <Box style={{ width: 90 }} />
-            <Text fw={700} size="lg" align="center" style={{ flex: 1 }}>
+            <Box className="dataFilesHeaderSpacer" />
+            <Text fw={700} size="lg" align="center" className="dataFilesHeaderTitle">
               Production data
             </Text>
             {inspectReport ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}

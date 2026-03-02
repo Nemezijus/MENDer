@@ -50,7 +50,7 @@ function KeyValue({ k, v }) {
       <Text size="sm" c="dimmed">
         {k}
       </Text>
-      <Text size="sm" fw={600} style={{ textAlign: 'right' }}>
+      <Text size="sm" fw={600} className="dataFilesRightValue">
         {v}
       </Text>
     </Group>
@@ -196,11 +196,11 @@ export default function DataSummaryCard({
       <Stack gap="md">
         {/* Centered title */}
         <Group justify="space-between" align="center">
-          <Box style={{ width: 90 }} />
-          <Text fw={700} size="lg" align="center" style={{ flex: 1 }}>
+          <Box className="dataFilesHeaderSpacer" />
+          <Text fw={700} size="lg" align="center" className="dataFilesHeaderTitle">
             Summary
           </Text>
-          <Box style={{ width: 90 }} />
+          <Box className="dataFilesHeaderSpacer" />
         </Group>
 
         {!inspectReport && (
@@ -214,7 +214,7 @@ export default function DataSummaryCard({
             {/* Compatibility warning (production use-case) */}
             {compatWarnings.length > 0 && (
               <Alert color="orange" variant="light" title="Model compatibility warning">
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                <Text size="sm" className="dataFilesPreWrap">
                   {compatWarnings.join('\n')}
                 </Text>
               </Alert>

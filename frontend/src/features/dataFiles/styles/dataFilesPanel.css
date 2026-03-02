@@ -1,0 +1,28 @@
+@reference "tailwindcss";
+
+/*
+ * DataFiles feature styles extracted from inline `style={{...}}` blocks.
+ * Keep Mantine component styling intact; these are layout helpers only.
+ */
+
+@layer components {
+	.dataFilesHeaderSpacer {
+		width: 88px;
+		flex: 0 0 88px;
+	}
+
+	.dataFilesHeaderTitle {
+		flex: 1 1 auto;
+		text-align: center;
+	}
+
+	.dataFilesRightValue {
+		text-align: right;
+	}
+
+	.dataFilesPreWrap {
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+}

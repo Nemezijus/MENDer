@@ -1,5 +1,7 @@
 import { Card, Tabs } from '@mantine/core';
 
+import '../styles/dataFilesPanel.css';
+
 import TrainingDataUploadCard from './TrainingDataUploadCard.jsx';
 import SavedModelUploadCard from '../../modelArtifacts/components/SavedModelUploadCard.jsx';
 import ProductionDataUploadCard from './ProductionDataUploadCard.jsx';
