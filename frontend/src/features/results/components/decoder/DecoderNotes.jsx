@@ -9,7 +9,7 @@ export default function DecoderNotes({ notes }) {
       <Text size="sm" fw={600}>
         Notes
       </Text>
-      <ul style={{ marginTop: 0 }}>
+      <ul className="decoderNotesList">
         {xs.map((n, i) => (
           <li key={i}>
             <Text size="sm">{n}</Text>

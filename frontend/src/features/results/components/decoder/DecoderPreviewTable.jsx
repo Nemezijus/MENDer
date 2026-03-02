@@ -22,29 +22,24 @@ export default function DecoderPreviewTable({ preview, columns }) {
     return String(value);
   };
 
-  const stickyThStyle = {
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    backgroundColor: 'var(--mantine-color-gray-8)',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-  };
-
-  const headerTextStyle = { whiteSpace: 'nowrap', lineHeight: 1.1 };
+  const stickyBg = { backgroundColor: 'var(--mantine-color-gray-8)' };
 
   return (
     <ScrollArea
       h={320}
       type="auto"
       offsetScrollbars
-      styles={{ viewport: { paddingRight: 8, paddingBottom: 6 }, scrollbar: { zIndex: 5 } }}
+      classNames={{
+        viewport: 'decoderPreviewViewport',
+        scrollbar: 'decoderPreviewScrollbar',
+      }}
     >
       <Table
         withTableBorder={false}
         withColumnBorders={false}
         horizontalSpacing="xs"
         verticalSpacing="xs"
+        striped
       >
         <Table.Thead>
           <Table.Tr>
@@ -67,18 +62,18 @@ export default function DecoderPreviewTable({ preview, columns }) {
                             ? 80
                             : undefined;
 
-              const thStyle = minW ? { ...stickyThStyle, minWidth: minW } : stickyThStyle;
+              const thStyle = minW ? { ...stickyBg, minWidth: minW } : stickyBg;
 
               return (
-                <Table.Th key={c} style={thStyle}>
+                <Table.Th key={c} style={thStyle} className="decoderStickyTh">
                   {tip ? (
                     <Tooltip label={tip} multiline maw={260} withArrow>
-                      <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                      <Text size="xs" fw={600} c="white" className="decoderHeaderText">
                         {label}
                       </Text>
                     </Tooltip>
                   ) : (
-                    <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                    <Text size="xs" fw={600} c="white" className="decoderHeaderText">
                       {label}
                     </Text>
                   )}
@@ -90,22 +85,20 @@ export default function DecoderPreviewTable({ preview, columns }) {
 
         <Table.Tbody>
           {rows.map((row, idx) => {
-            const isStriped = idx % 2 === 1;
-
             const curFold = row?.fold_id;
             const prevFold = idx > 0 ? rows[idx - 1]?.fold_id : null;
             const isFoldBoundary =
               curFold != null && prevFold != null && String(curFold) !== String(prevFold);
 
+            const rowStyle =
+              isFoldBoundary
+                ? { borderTop: '3px solid var(--mantine-color-gray-4)' }
+                : undefined;
+
             return (
               <Table.Tr
                 key={row?.index ?? idx}
-                style={{
-                  backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
-                  borderTop: isFoldBoundary
-                    ? '3px solid var(--mantine-color-gray-4)'
-                    : undefined,
-                }}
+                style={rowStyle}
               >
                 {cols.map((c) => {
                   const val = row?.[c];
@@ -115,13 +108,10 @@ export default function DecoderPreviewTable({ preview, columns }) {
                   return (
                     <Table.Td
                       key={c}
-                      style={{
-                        textAlign: 'center',
-                        backgroundColor: isFalse ? 'var(--mantine-color-red-1)' : undefined,
-                        whiteSpace: 'nowrap',
-                      }}
+                      className="decoderPreviewTd"
+                      style={isFalse ? { backgroundColor: 'var(--mantine-color-red-1)' } : undefined}
                     >
-                      <Text size="sm" style={{ whiteSpace: 'nowrap' }}>
+                      <Text size="sm" className="resultsNoWrap">
                         {renderCell(c, val)}
                       </Text>
                     </Table.Td>

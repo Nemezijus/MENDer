@@ -5,8 +5,8 @@ import {
   LEGEND_INSIDE,
   makeBaseLayout,
   PLOT_CONFIG,
-  PLOT_CONTAINER_STYLE,
-  PLOT_INNER_STYLE,
+  PLOT_CONTAINER_CLASS,
+  PLOT_INNER_CLASS,
 } from '../../utils/plotly.js';
 
 export default function ResidualsVsPredPlot({ points }) {
@@ -80,9 +80,9 @@ export default function ResidualsVsPredPlot({ points }) {
         tip="Residuals (predicted − true) plotted against predicted values. Patterns can indicate nonlinearity or heteroscedasticity."
       />
 
-      <div style={PLOT_CONTAINER_STYLE}>
-        <div style={PLOT_INNER_STYLE}>
-          <Plot data={data} layout={layout} config={PLOT_CONFIG} style={{ width: '100%', height: 380 }} />
+      <div className={PLOT_CONTAINER_CLASS}>
+        <div className={PLOT_INNER_CLASS}>
+          <Plot data={data} layout={layout} config={PLOT_CONFIG} className="plotSizeStandardPlus" />
         </div>
       </div>
     </Stack>

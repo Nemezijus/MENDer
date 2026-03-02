@@ -1,3 +1,6 @@
+import '../styles/resultTables.css';
+import '../styles/decoderOutputs.css';
+
 import { Card, Stack, Text } from '@mantine/core';
 import { useResultsStore } from '../state/useResultsStore.js';
 import TrainingResultsPanel from './TrainingResultsPanel.jsx';

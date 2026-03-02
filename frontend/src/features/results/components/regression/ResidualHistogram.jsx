@@ -5,8 +5,8 @@ import {
   LEGEND_INSIDE,
   makeBaseLayout,
   PLOT_CONFIG,
-  PLOT_CONTAINER_STYLE,
-  PLOT_INNER_STYLE,
+  PLOT_CONTAINER_CLASS,
+  PLOT_INNER_CLASS,
 } from '../../utils/plotly.js';
 
 export default function ResidualHistogram({ x, counts, widths }) {
@@ -49,8 +49,8 @@ export default function ResidualHistogram({ x, counts, widths }) {
         tip="Histogram of residuals (predicted − true). Centered near zero suggests low bias; wider spread indicates larger errors."
       />
 
-      <div style={PLOT_CONTAINER_STYLE}>
-        <div style={PLOT_INNER_STYLE}>
+      <div className={PLOT_CONTAINER_CLASS}>
+        <div className={PLOT_INNER_CLASS}>
           <Plot
             data={[
               {
@@ -66,7 +66,7 @@ export default function ResidualHistogram({ x, counts, widths }) {
             ]}
             layout={layout}
             config={PLOT_CONFIG}
-            style={{ width: '100%', height: 360 }}
+            className="plotSizeStandard"
           />
         </div>
       </div>

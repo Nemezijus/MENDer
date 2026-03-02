@@ -1,5 +1,43 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+@layer components {
+	.decoderNotesList {
+		margin-top: 0;
+	}
+
+	.decoderHeaderText {
+		@apply whitespace-nowrap;
+		line-height: 1.1;
+	}
+
+	.decoderStickyTh {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		text-align: center;
+		white-space: nowrap;
+	}
+
+	.decoderPreviewViewport {
+		padding-right: 8px;
+		padding-bottom: 6px;
+	}
+
+	.decoderPreviewScrollbar {
+		z-index: 5;
+	}
+
+	.decoderPreviewTd {
+		@apply text-center whitespace-nowrap;
+	}
+
+	.decoderKvKeyTd {
+		padding-left: 0;
+		width: 70%;
+	}
+
+	.decoderKvValTd {
+		padding-right: 0;
+		text-align: left;
+	}
+}

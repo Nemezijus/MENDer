@@ -18,12 +18,7 @@ export default function BaselineShufflingResults({
     const fmt = (v) => (isNumber(v) ? v.toFixed(digits) : v);
 
     return (
-        <Card
-            withBorder
-            radius="md"
-            padding="sm"
-            style={{ borderStyle: 'solid', borderWidth: 0 }}
-        >
+        <Card withBorder={false} radius="md" padding="sm">
             <Stack gap="xs">
                 <Text fw={500} size="sm">{title}</Text>
                 <Plot
@@ -77,7 +72,7 @@ export default function BaselineShufflingResults({
                         },
                     }}
                     config={{ displayModeBar: false }}
-                    style={{ width: '100%', maxWidth: 520 }}
+                    className="baselinePlot"
                 />
             </Stack>
         </Card>

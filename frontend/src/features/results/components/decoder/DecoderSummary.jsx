@@ -18,7 +18,7 @@ function KeyValueBlock({ title, titleTooltip, items }) {
     <Stack gap={6}>
       {titleTooltip ? (
         <Tooltip label={titleTooltip} multiline maw={360} withArrow>
-          <Text size="sm" fw={600} style={{ width: 'fit-content' }}>
+          <Text size="sm" fw={600} className="resultsFitContent">
             {title}
           </Text>
         </Tooltip>
@@ -33,12 +33,12 @@ function KeyValueBlock({ title, titleTooltip, items }) {
         withColumnBorders={false}
         horizontalSpacing="xs"
         verticalSpacing={4}
-        style={{ tableLayout: 'fixed' }}
+        className="resultsTableFixed"
       >
         <Table.Tbody>
           {visible.map((it) => (
             <Table.Tr key={it.key}>
-              <Table.Td style={{ paddingLeft: 0, width: '70%' }}>
+              <Table.Td className="decoderKvKeyTd">
                 {it.tooltip ? (
                   <Tooltip label={it.tooltip} multiline maw={360} withArrow>
                     <Text size="sm" c="dimmed">
@@ -51,7 +51,7 @@ function KeyValueBlock({ title, titleTooltip, items }) {
                   </Text>
                 )}
               </Table.Td>
-              <Table.Td style={{ paddingRight: 0, textAlign: 'left' }}>
+              <Table.Td className="decoderKvValTd">
                 <Text size="sm" fw={700}>
                   {it.format === 'pct' ? fmtMaybePct(it.value) : fmtMaybe3(it.value)}
                 </Text>
@@ -81,20 +81,11 @@ export default function DecoderSummary({
 }) {
   if (!summary || typeof summary !== 'object') return null;
 
-  const stickyThStyle = {
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    backgroundColor: 'var(--mantine-color-gray-8)',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-  };
-
-  const headerTextStyle = { whiteSpace: 'nowrap', lineHeight: 1.1 };
+  const stickyBg = { backgroundColor: 'var(--mantine-color-gray-8)' };
 
   const calHeaderTip = (label, tip) => (
     <Tooltip label={tip} multiline maw={280} withArrow>
-      <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+      <Text size="xs" fw={600} c="white" className="decoderHeaderText">
         {label}
       </Text>
     </Tooltip>
@@ -145,25 +136,26 @@ export default function DecoderSummary({
               withColumnBorders={false}
               horizontalSpacing="xs"
               verticalSpacing="xs"
+              striped
             >
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th style={{ ...stickyThStyle, minWidth: 50 }}>
+                  <Table.Th style={{ ...stickyBg, minWidth: 50 }} className="decoderStickyTh">
                     {calHeaderTip('Bin', 'Bin index (0..B-1).')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyThStyle, minWidth: 110 }}>
+                  <Table.Th style={{ ...stickyBg, minWidth: 110 }} className="decoderStickyTh">
                     {calHeaderTip('Range', 'Confidence range covered by this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyThStyle, minWidth: 60 }}>
+                  <Table.Th style={{ ...stickyBg, minWidth: 60 }} className="decoderStickyTh">
                     {calHeaderTip('N', 'Number of samples in this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyThStyle, minWidth: 90 }}>
+                  <Table.Th style={{ ...stickyBg, minWidth: 90 }} className="decoderStickyTh">
                     {calHeaderTip('Confidence', 'Mean top-1 confidence in this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyThStyle, minWidth: 90 }}>
+                  <Table.Th style={{ ...stickyBg, minWidth: 90 }} className="decoderStickyTh">
                     {calHeaderTip('Accuracy', 'Fraction correct in this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyThStyle, minWidth: 70 }}>
+                  <Table.Th style={{ ...stickyBg, minWidth: 70 }} className="decoderStickyTh">
                     {calHeaderTip('Gap', '|accuracy − confidence| for this bin.')}
                   </Table.Th>
                 </Table.Tr>
@@ -171,30 +163,25 @@ export default function DecoderSummary({
 
               <Table.Tbody>
                 {nonEmptyBins.map((b, i) => (
-                  <Table.Tr
-                    key={b.bin}
-                    style={{
-                      backgroundColor: i % 2 === 1 ? 'var(--mantine-color-gray-1)' : 'white',
-                    }}
-                  >
-                    <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                  <Table.Tr key={b.bin}>
+                    <Table.Td className="decoderPreviewTd">
                       <Text size="sm">{b.bin}</Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <Table.Td className="decoderPreviewTd">
                       <Text size="sm">
                         {fmtMaybe3(b.bin_lo)}–{fmtMaybe3(b.bin_hi)}
                       </Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <Table.Td className="decoderPreviewTd">
                       <Text size="sm">{b.count}</Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <Table.Td className="decoderPreviewTd">
                       <Text size="sm">{fmtMaybe3(b.avg_confidence)}</Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <Table.Td className="decoderPreviewTd">
                       <Text size="sm">{fmtMaybe3(b.accuracy)}</Text>
                     </Table.Td>
-                    <Table.Td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <Table.Td className="decoderPreviewTd">
                       <Text size="sm">{fmtMaybe3(b.gap)}</Text>
                     </Table.Td>
                   </Table.Tr>

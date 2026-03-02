@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Card, Text, Stack, Divider, Group, Button, Tooltip } from '@mantine/core';
 
+import '../styles/artifactPanel.css';
+
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { useDataStore } from '../../dataFiles/state/useDataStore.js';
 import { saveModel } from '../api/modelsApi.js';
@@ -165,18 +167,18 @@ export default function ModelArtifactCard() {
           Model
         </Text>
 
-        <Text size="xs" c={statusColor} style={{ whiteSpace: 'pre-wrap' }}>
+        <Text size="xs" c={statusColor} className="artifactPreWrap">
           {statusText}
         </Text>
 
         {info && (
-          <Text size="xs" c="teal" style={{ whiteSpace: 'pre-wrap' }}>
+          <Text size="xs" c="teal" className="artifactPreWrap">
             {info}
           </Text>
         )}
 
         {err && (
-          <Text size="xs" c="red" style={{ whiteSpace: 'pre-wrap' }}>
+          <Text size="xs" c="red" className="artifactPreWrap">
             {err}
           </Text>
         )}

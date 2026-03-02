@@ -1,5 +1,105 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+@layer components {
+	.resultsNotesList {
+		@apply mt-1;
+	}
+
+	.resultsCursorHelp {
+		@apply cursor-help;
+	}
+
+	.resultsNoWrap {
+		@apply whitespace-nowrap;
+	}
+
+	.resultsHeaderTextCompact {
+		@apply whitespace-nowrap;
+		line-height: 1.1;
+	}
+
+	.resultsFitContent {
+		width: fit-content;
+	}
+
+	.resultsTableFixed {
+		table-layout: fixed;
+	}
+
+	.resultsSummaryAccentBorder {
+		border-style: solid;
+		border-width: 1px;
+		border-color: #acc7e0ff;
+	}
+
+	/* Plot framing helpers (shared across regression plots) */
+	.resultsPlotOuter {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+	}
+
+	.resultsPlotInner {
+		width: 70%;
+		max-width: 860px;
+	}
+
+	.plotSizeCompact {
+		width: 100%;
+		height: 320px;
+	}
+
+	.plotSizeStandard {
+		width: 100%;
+		height: 360px;
+	}
+
+	.plotSizeStandardPlus {
+		width: 100%;
+		height: 380px;
+	}
+
+	.plotSizeTall {
+		width: 100%;
+		height: 420px;
+	}
+
+	/* K-fold CV section */
+	.kfoldScoresTable {
+		width: 20%;
+		flex-shrink: 0;
+	}
+
+	.kfoldColIndex {
+		width: 35%;
+	}
+
+	.kfoldColScore {
+		width: 65%;
+	}
+
+	.kfoldScoresPlot {
+		width: 80%;
+		max-width: 520px;
+		height: 300px;
+	}
+
+	/* Baseline shuffle plot */
+	.baselinePlot {
+		width: 100%;
+		max-width: 520px;
+	}
+
+	/* ROC plot */
+	.rocPlotFrame {
+		width: 100%;
+		max-width: 520px;
+		aspect-ratio: 1 / 1;
+		margin: 0 auto;
+	}
+
+	.plotFill {
+		width: 100%;
+		height: 100%;
+	}
+}

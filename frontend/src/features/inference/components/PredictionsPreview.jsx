@@ -1,5 +1,7 @@
 import { ScrollArea, Stack, Table, Text, Tooltip } from '@mantine/core';
 
+import '../styles/predictionsPreview.css';
+
 import {
   buildHeaderTooltip,
   pickPreviewColumns,
@@ -40,14 +42,6 @@ export function PredictionsPreview({ applyResult }) {
     });
   });
 
-  const stickyThStyle = {
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    backgroundColor: 'var(--mantine-color-gray-8)',
-    textAlign: 'center',
-  };
-
   return (
     <Stack gap="xs">
       <Text size="sm" fw={500}>
@@ -71,6 +65,7 @@ export function PredictionsPreview({ applyResult }) {
             withColumnBorders={false}
             horizontalSpacing="xs"
             verticalSpacing="xs"
+            striped
           >
             <Table.Thead>
               <Table.Tr>
@@ -78,7 +73,7 @@ export function PredictionsPreview({ applyResult }) {
                   const tip = buildHeaderTooltip(c);
                   const label = prettifyHeader(c);
                   return (
-                    <Table.Th key={c} style={stickyThStyle}>
+                    <Table.Th key={c} className="predPreviewStickyTh">
                       {tip ? (
                         <Tooltip label={tip} multiline maw={260} withArrow>
                           <Text size="xs" fw={600} c="white">
@@ -98,14 +93,8 @@ export function PredictionsPreview({ applyResult }) {
 
             <Table.Tbody>
               {rows.map((row, idx) => {
-                const isStriped = idx % 2 === 1;
                 return (
-                  <Table.Tr
-                    key={row?.index ?? idx}
-                    style={{
-                      backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
-                    }}
-                  >
+                  <Table.Tr key={row?.index ?? idx}>
                     {columns.map((c) => {
                       const val = row?.[c];
                       const isCorrectCol = c === 'correct';
@@ -114,10 +103,11 @@ export function PredictionsPreview({ applyResult }) {
                       return (
                         <Table.Td
                           key={c}
-                          style={{
-                            textAlign: 'center',
-                            backgroundColor: isFalse ? 'var(--mantine-color-red-1)' : undefined,
-                          }}
+                          className={
+                            isFalse
+                              ? 'predPreviewTd predPreviewTdIncorrect'
+                              : 'predPreviewTd'
+                          }
                         >
                           <Text size="sm">{renderPreviewCell(c, val)}</Text>
                         </Table.Td>

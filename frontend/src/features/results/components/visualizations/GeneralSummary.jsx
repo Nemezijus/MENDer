@@ -17,7 +17,7 @@ export default function GeneralSummary({
       withBorder
       radius="md"
       padding="sm"
-      style={{ borderStyle: 'solid', borderWidth: 1, borderColor: '#acc7e0ff' }}
+      className="resultsSummaryAccentBorder"
     >
       <Stack gap="xs">
         <Text size="md">

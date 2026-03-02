@@ -1,5 +1,16 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
+/* Model artifacts feature styles.
+   Keep Mantine component styling in Mantine; use this file only for non-Mantine CSS hooks.
 */
+
+@layer components {
+	.artifactPreWrap {
+		white-space: pre-wrap;
+	}
+
+	.artifactPipelineList {
+		margin: 0;
+		padding-inline-start: 1.125rem; /* ~18px */
+	}
+}

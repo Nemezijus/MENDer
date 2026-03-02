@@ -18,12 +18,7 @@ export default function KFoldResults({
     const fmt = (v) => (isNumber(v) ? v.toFixed(3) : v);
 
     return (
-        <Card
-            withBorder
-            radius="md"
-            padding="sm"
-            style={{ borderStyle: 'solid', borderWidth: 0 }}
-        >
+        <Card withBorder={false} radius="md" padding="sm">
             <Stack gap="xs">
                 <Text fw={500} size="sm">{title}</Text>
                 <Group align="flex-start" grow wrap="nowrap">
@@ -33,12 +28,12 @@ export default function KFoldResults({
                         withColumnBorders
                         striped
                         maw={260}
-                        style={{ width: '20%', flexShrink: 0 }}
+                        className="kfoldScoresTable"
                     >
                         <Table.Thead>
                             <Table.Tr>
-                                <Table.Th style={{ width: '35%' }}>#</Table.Th>
-                                <Table.Th style={{ width: '65%' }}>score</Table.Th>
+                                <Table.Th className="kfoldColIndex">#</Table.Th>
+                                <Table.Th className="kfoldColScore">score</Table.Th>
                             </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
@@ -78,7 +73,7 @@ export default function KFoldResults({
                             },
 
                         }}
-                        style={{ width: '80%', height: 300, maxWidth: 520 }}
+                        className="kfoldScoresPlot"
                         config={{ displayModeBar: false, responsive: true }}
                     />
                 </Group>

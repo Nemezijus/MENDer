@@ -11,7 +11,7 @@ export default function RegressionMetricsTable({ summary }) {
     whiteSpace: 'nowrap',
   };
 
-  const headerTextStyle = { lineHeight: 1.1, whiteSpace: 'nowrap' };
+  const headerTextStyle = 'resultsHeaderTextCompact';
 
   const metricPairs = [
     { k: 'RMSE', v: summary.rmse, tip: 'Root mean squared error. Smaller is better.' },
@@ -76,12 +76,12 @@ export default function RegressionMetricsTable({ summary }) {
           {Array.from({ length: 3 }).map((_, i) => (
             <Fragment key={`hdr-${i}`}>
               <Table.Th style={{ textAlign: 'center' }}>
-                <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                <Text size="xs" fw={600} c="white" className={headerTextStyle}>
                   Metric
                 </Text>
               </Table.Th>
               <Table.Th style={{ textAlign: 'center' }}>
-                <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                <Text size="xs" fw={600} c="white" className={headerTextStyle}>
                   Value
                 </Text>
               </Table.Th>
@@ -102,7 +102,7 @@ export default function RegressionMetricsTable({ summary }) {
               <Fragment key={r.k}>
                 <Table.Td style={{ textAlign: 'left' }}>
                   <Tooltip label={r.tip} multiline maw={320} withArrow>
-                    <Text size="sm" fw={500} style={{ cursor: 'help' }}>
+                    <Text size="sm" fw={500} className="resultsCursorHelp">
                       {r.k}
                     </Text>
                   </Tooltip>

@@ -5,8 +5,8 @@ import {
   LEGEND_INSIDE,
   makeBaseLayout,
   PLOT_CONFIG,
-  PLOT_CONTAINER_STYLE,
-  PLOT_INNER_STYLE,
+  PLOT_CONTAINER_CLASS,
+  PLOT_INNER_CLASS,
 } from '../../utils/plotly.js';
 
 export default function PredVsTruePlot({ points, idealLine }) {
@@ -74,9 +74,9 @@ export default function PredVsTruePlot({ points, idealLine }) {
         tip="Scatter plot of predicted values against true values. Closer to the diagonal means better predictions."
       />
 
-      <div style={PLOT_CONTAINER_STYLE}>
-        <div style={PLOT_INNER_STYLE}>
-          <Plot data={data} layout={layout} config={PLOT_CONFIG} style={{ width: '100%', height: 420 }} />
+      <div className={PLOT_CONTAINER_CLASS}>
+        <div className={PLOT_INNER_CLASS}>
+          <Plot data={data} layout={layout} config={PLOT_CONFIG} className="plotSizeTall" />
         </div>
       </div>
     </Stack>

@@ -1,7 +1,7 @@
 import { Stack } from '@mantine/core';
 import Plot from 'react-plotly.js';
 import PlotTitle from '../common/PlotTitle.jsx';
-import { makeBaseLayout, PLOT_CONFIG, PLOT_CONTAINER_STYLE, PLOT_INNER_STYLE } from '../../utils/plotly.js';
+import { makeBaseLayout, PLOT_CONFIG, PLOT_CONTAINER_CLASS, PLOT_INNER_CLASS } from '../../utils/plotly.js';
 
 export default function FoldScoreDistribution({ foldScores, metricName, metricNameRaw }) {
   const scores = Array.isArray(foldScores)
@@ -38,8 +38,8 @@ export default function FoldScoreDistribution({ foldScores, metricName, metricNa
         tip={`Distribution of fold evaluation scores for metric "${metricNameRaw}". Each point corresponds to one fold's held-out score.`}
       />
 
-      <div style={PLOT_CONTAINER_STYLE}>
-        <div style={PLOT_INNER_STYLE}>
+      <div className={PLOT_CONTAINER_CLASS}>
+        <div className={PLOT_INNER_CLASS}>
           <Plot
             data={[
               {
@@ -58,7 +58,7 @@ export default function FoldScoreDistribution({ foldScores, metricName, metricNa
             ]}
             layout={layout}
             config={PLOT_CONFIG}
-            style={{ width: '100%', height: 320 }}
+            className="plotSizeCompact"
           />
         </div>
       </div>

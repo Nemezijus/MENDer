@@ -118,14 +118,7 @@ const baseColors = [
         ROC Curve
       </Text>
 
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 520,
-          aspectRatio: '1 / 1',
-          margin: '0 auto',
-        }}
-      >
+      <div className="rocPlotFrame">
         <Plot
           data={traces}
           layout={makeBaseLayout({
@@ -195,7 +188,7 @@ const baseColors = [
             },
           })}
           config={PLOT_CONFIG}
-          style={{ width: '100%', height: '100%' }}
+          className="plotFill"
         />
       </div>
 

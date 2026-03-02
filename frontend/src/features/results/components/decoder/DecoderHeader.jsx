@@ -23,7 +23,7 @@ export default function DecoderHeader({
               maw={380}
               withArrow
             >
-              <Text span fw={600} style={{ cursor: 'help' }}>
+              <Text span fw={600} className="resultsCursorHelp">
                 out-of-fold (OOF)
               </Text>
             </Tooltip>{' '}

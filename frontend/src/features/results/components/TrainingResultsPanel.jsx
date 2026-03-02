@@ -96,7 +96,7 @@ export default function TrainingResultsPanel() {
             <Text fw={500} size="sm" mt="sm">
               Notes
             </Text>
-            <ul style={{ marginTop: 4 }}>
+            <ul className="resultsNotesList">
               {trainResult.notes.map((n, i) => (
                 <li key={i}>
                   <Text size="sm">{n}</Text>

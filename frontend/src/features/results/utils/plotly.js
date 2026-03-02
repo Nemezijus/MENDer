@@ -8,16 +8,9 @@ export const PLOT_CONFIG = {
 
 export const DEFAULT_MARGIN = { l: 70, r: 35, t: 20, b: 70 };
 
-export const PLOT_CONTAINER_STYLE = {
-  width: '100%',
-  display: 'flex',
-  justifyContent: 'center',
-};
-
-export const PLOT_INNER_STYLE = {
-  width: '70%',
-  maxWidth: 860,
-};
+// CSS hooks (see features/results/styles/resultTables.css)
+export const PLOT_CONTAINER_CLASS = 'resultsPlotOuter';
+export const PLOT_INNER_CLASS = 'resultsPlotInner';
 
 export const LEGEND_INSIDE = {
   x: 0.98,

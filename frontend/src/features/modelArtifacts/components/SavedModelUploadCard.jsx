@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { Card, Stack, Text, Button } from '@mantine/core';
 
+import '../styles/artifactPanel.css';
+
 import { useModelArtifactStore } from '../state/useModelArtifactStore.js';
 import { loadModel } from '../api/modelsApi.js';
 import { toErrorText } from '../../../shared/utils/errors.js';
@@ -46,13 +48,13 @@ export default function SavedModelUploadCard() {
         </Text>
 
         {info && (
-          <Text size="xs" c="teal" style={{ whiteSpace: 'pre-wrap' }}>
+          <Text size="xs" c="teal" className="artifactPreWrap">
             {info}
           </Text>
         )}
 
         {err && (
-          <Text size="xs" c="red" style={{ whiteSpace: 'pre-wrap' }}>
+          <Text size="xs" c="red" className="artifactPreWrap">
             {err}
           </Text>
         )}
@@ -63,9 +65,9 @@ export default function SavedModelUploadCard() {
 
         <input
           type="file"
+          hidden
           accept=".mend"
           ref={fileInputRef}
-          style={{ display: 'none' }}
           onChange={onFileChosen}
         />
       </Stack>
