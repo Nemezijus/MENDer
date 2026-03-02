@@ -50,7 +50,7 @@ export default function BaggingRegScoreHistogramSection({ report }) {
             paper_bgcolor: '#ffffff',
           }}
           config={{ displayModeBar: false, responsive: true }}
-          style={{ width: '100%' }}
+          className="ensPlotFullWidth"
         />
       ) : (
         <Text size="sm" c="dimmed" align="center">

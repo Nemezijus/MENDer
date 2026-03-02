@@ -68,7 +68,7 @@ export default function BaggingRegMatricesSection({ report }) {
       />
 
       <Group align="stretch" grow wrap="wrap">
-        <Box style={{ flex: 1, minWidth: 320 }}>
+        <Box className="ensFlexMin320">
           <Text size="md" fw={500} align="center" mb={6}>
             Prediction similarity (corr)
           </Text>
@@ -103,7 +103,7 @@ export default function BaggingRegMatricesSection({ report }) {
                 paper_bgcolor: '#ffffff',
               }}
               config={{ displayModeBar: false, responsive: true }}
-              style={{ width: '100%' }}
+              className="ensPlotFullWidth"
             />
           ) : (
             <Text size="sm" c="dimmed" align="center">
@@ -112,7 +112,7 @@ export default function BaggingRegMatricesSection({ report }) {
           )}
         </Box>
 
-        <Box style={{ flex: 1, minWidth: 320 }}>
+        <Box className="ensFlexMin320">
           <Text size="md" fw={500} align="center" mb={6}>
             Absolute prediction differences (|Δ|)
           </Text>
@@ -147,7 +147,7 @@ export default function BaggingRegMatricesSection({ report }) {
                 paper_bgcolor: '#ffffff',
               }}
               config={{ displayModeBar: false, responsive: true }}
-              style={{ width: '100%' }}
+              className="ensPlotFullWidth"
             />
           ) : (
             <Text size="sm" c="dimmed" align="center">

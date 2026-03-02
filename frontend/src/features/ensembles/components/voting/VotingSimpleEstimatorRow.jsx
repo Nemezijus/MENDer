@@ -14,7 +14,7 @@ export default function VotingSimpleEstimatorRow({
   return (
     <Group align="flex-end" wrap="nowrap">
       <ParamSelect
-        style={{ flex: 1, minWidth: 180, maxWidth: 360 }}
+        className="ensMinW180MaxW360Flex"
         label={`Estimator ${idx + 1}`}
         value={algo || null}
         onChange={(v) => onAlgoChange(v || algo)}

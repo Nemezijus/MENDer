@@ -40,7 +40,7 @@ export default function BaggingConfigPane({
   const dispReplacement = bagging.replacement ?? baggingDefaults?.replacement ?? false;
 
   return (
-    <Stack style={{ width: '100%' }} gap="sm">
+    <Stack className="ensFullWidth" gap="sm">
       <ParamSelect
         label="Base estimator"
         placeholder={algoOptions.length ? 'Select model' : 'Loading…'}

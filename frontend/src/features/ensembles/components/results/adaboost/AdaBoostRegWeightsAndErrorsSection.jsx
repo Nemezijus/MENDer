@@ -36,7 +36,7 @@ export default function AdaBoostRegWeightsAndErrorsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Box style={{ flex: 1, minWidth: 340 }}>
+      <Box className="ensFlexMin340">
         <SectionTitle
           title="Estimator weights"
           tooltip="Distribution of boosting stage weights. If weights concentrate, effective estimator count decreases."
@@ -62,7 +62,7 @@ export default function AdaBoostRegWeightsAndErrorsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">
@@ -71,7 +71,7 @@ export default function AdaBoostRegWeightsAndErrorsSection({ report }) {
         )}
       </Box>
 
-      <Box style={{ flex: 1, minWidth: 340 }} maw={380}>
+      <Box className="ensFlexMin340" maw={380}>
         <SectionTitle
           title="Estimator errors"
           tooltip='Estimator "error" is algorithm-defined; for AdaBoostRegressor this is typically based on loss.'
@@ -97,7 +97,7 @@ export default function AdaBoostRegWeightsAndErrorsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">

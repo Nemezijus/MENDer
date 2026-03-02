@@ -100,7 +100,7 @@ export default function VotingClsVoteHistogramsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Card withBorder={false} radius="md" p="sm" style={{ flex: 1, minWidth: 320 }}>
+      <Card withBorder={false} radius="md" p="sm" className="ensFlexMin320">
         <SectionTitle
           title="Vote margins"
           tooltip="Distribution of vote margins (top votes − runner-up votes). Larger margins mean clearer majorities."
@@ -133,7 +133,7 @@ export default function VotingClsVoteHistogramsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">
@@ -142,7 +142,7 @@ export default function VotingClsVoteHistogramsSection({ report }) {
         )}
       </Card>
 
-      <Card withBorder={false} radius="md" p="sm" style={{ flex: 1, minWidth: 320 }}>
+      <Card withBorder={false} radius="md" p="sm" className="ensFlexMin320">
         <SectionTitle
           title="Vote strength"
           tooltip="Distribution of vote strengths (top votes / total estimators). Values closer to 1 mean stronger consensus."
@@ -177,7 +177,7 @@ export default function VotingClsVoteHistogramsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">

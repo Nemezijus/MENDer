@@ -1,5 +1,69 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/*
+ * Features / Ensembles — shared (non-Mantine) style hooks.
+ *
+ * NOTE: We intentionally keep Mantine props/components intact.
+ * These classes replace only inline React style objects (e.g. style={{ width: '100%' }}).
+ */
+
+@layer components {
+	.ensFullWidth {
+		width: 100%;
+	}
+
+	.ensPlotFullWidth {
+		width: 100%;
+	}
+
+	.ensFlexMin340 {
+		flex: 1 1 0;
+		min-width: 340px;
+	}
+
+	.ensFlexMin320 {
+		flex: 1 1 0;
+		min-width: 320px;
+	}
+
+	.ensFlexMin260 {
+		flex: 1 1 0;
+		min-width: 260px;
+	}
+
+	.ensFlexMin250 {
+		flex: 1 1 0;
+		min-width: 250px;
+	}
+
+	.ensFlex1 {
+		flex: 1 1 0;
+	}
+
+	.ensMinW180MaxW360Flex {
+		flex: 1 1 0;
+		min-width: 180px;
+		max-width: 360px;
+	}
+
+	.ensHeightFull {
+		height: 100%;
+	}
+
+	.ensOverflowXAuto {
+		overflow-x: auto;
+	}
+
+	.ensCenteredMaxW560 {
+		max-width: 560px;
+		margin: 0 auto;
+	}
+
+	.ensHidden {
+		visibility: hidden;
+	}
+
+	.ensMetricPairsCell {
+		width: 25%;
+	}
+}

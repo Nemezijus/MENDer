@@ -40,7 +40,7 @@ export default function BaggingClsVoteHistogramsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Card withBorder={false} radius="md" p="sm" style={{ flex: 1, minWidth: 340 }}>
+      <Card withBorder={false} radius="md" p="sm" className="ensFlexMin340">
         <SectionTitle
           title="Vote margins"
           tooltip="Distribution of vote margins (top votes − runner-up votes)."
@@ -66,7 +66,7 @@ export default function BaggingClsVoteHistogramsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">
@@ -75,7 +75,7 @@ export default function BaggingClsVoteHistogramsSection({ report }) {
         )}
       </Card>
 
-      <Card withBorder={false} radius="md" p="sm" style={{ flex: 1, minWidth: 340 }}>
+      <Card withBorder={false} radius="md" p="sm" className="ensFlexMin340">
         <SectionTitle
           title="Vote strength"
           tooltip="Distribution of vote strength (top votes / total estimators). With N estimators, strengths are typically discrete: k/N."
@@ -101,7 +101,7 @@ export default function BaggingClsVoteHistogramsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">

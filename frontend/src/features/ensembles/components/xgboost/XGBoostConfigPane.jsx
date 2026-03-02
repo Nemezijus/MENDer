@@ -7,7 +7,7 @@ export default function XGBoostConfigPane({ mode, xgb, xgbDefaults, setXGBoost }
   const useEarlyStopping = Boolean(xgb.use_early_stopping ?? xgbDefaults?.use_early_stopping);
 
   return (
-    <Stack style={{ width: '100%' }} gap="sm">
+    <Stack className="ensFullWidth" gap="sm">
       {/* Core */}
       <Group grow align="flex-end" wrap="wrap">
         <ParamNumber

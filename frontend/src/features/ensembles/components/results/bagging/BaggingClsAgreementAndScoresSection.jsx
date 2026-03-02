@@ -67,7 +67,7 @@ export default function BaggingClsAgreementAndScoresSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Box style={{ flex: 1, minWidth: 340 }}>
+      <Box className="ensFlexMin340">
         <SectionTitle
           title="Estimator agreement"
           tooltip="Agreement between bagged estimators (0–1). High agreement means redundancy; lower agreement indicates diversity."
@@ -106,7 +106,7 @@ export default function BaggingClsAgreementAndScoresSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">
@@ -115,7 +115,7 @@ export default function BaggingClsAgreementAndScoresSection({ report }) {
         )}
       </Box>
 
-      <Box style={{ flex: 1, minWidth: 340 }}>
+      <Box className="ensFlexMin340">
         <SectionTitle
           title="Base-estimator score distribution"
           tooltip="Distribution of base-estimator scores (computed per fold on the evaluation split)."
@@ -141,7 +141,7 @@ export default function BaggingClsAgreementAndScoresSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">

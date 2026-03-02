@@ -63,7 +63,7 @@ export default function VotingRegBaseEstimatorsSection({ report }) {
           Base estimator scores unavailable.
         </Text>
       ) : (
-        <Box style={{ maxWidth: 560, margin: '0 auto' }}>
+        <Box className="ensCenteredMaxW560">
           <Plot
             data={[barTrace]}
             layout={{
@@ -89,7 +89,7 @@ export default function VotingRegBaseEstimatorsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         </Box>
       )}

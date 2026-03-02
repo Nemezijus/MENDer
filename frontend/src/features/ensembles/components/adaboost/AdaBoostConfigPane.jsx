@@ -29,7 +29,7 @@ export default function AdaBoostConfigPane({
     effectiveTask === 'regression' ? undefined : adaboost.algorithm ?? adaboostDefaults?.algorithm ?? undefined;
 
   return (
-    <Stack style={{ width: '100%' }} gap="sm">
+    <Stack className="ensFullWidth" gap="sm">
       <ParamSelect
         label="Base estimator"
         placeholder={algoOptions.length ? 'Select model' : 'Loading…'}

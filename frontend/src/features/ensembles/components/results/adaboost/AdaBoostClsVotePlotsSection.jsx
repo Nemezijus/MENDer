@@ -31,7 +31,7 @@ export default function AdaBoostClsVotePlotsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Box style={{ flex: 1, minWidth: 340 }}>
+      <Box className="ensFlexMin340">
         <SectionTitle
           title="Weighted vote margins"
           tooltip="Weighted vote margin distribution. Higher means clearer weighted majorities."
@@ -57,7 +57,7 @@ export default function AdaBoostClsVotePlotsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">
@@ -66,7 +66,7 @@ export default function AdaBoostClsVotePlotsSection({ report }) {
         )}
       </Box>
 
-      <Box style={{ flex: 1, minWidth: 340 }}>
+      <Box className="ensFlexMin340">
         <SectionTitle
           title="Weighted vote strength"
           tooltip="Weighted vote strength distribution: (top weight / total weight)."
@@ -92,7 +92,7 @@ export default function AdaBoostClsVotePlotsSection({ report }) {
               paper_bgcolor: '#ffffff',
             }}
             config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
+            className="ensPlotFullWidth"
           />
         ) : (
           <Text size="sm" c="dimmed" align="center">

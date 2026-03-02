@@ -1,6 +1,14 @@
 // frontend/src/features/ensembles/components/EnsembleTrainingPanel.jsx
 import { Tabs, Stack } from '@mantine/core';
 
+// Feature-level stylesheet imports (no Mantine prop extraction here; this is only for
+// non-Mantine inline styles that were moved into CSS class hooks).
+import '../styles/ensemblePanel.css';
+import '../styles/adaboost.css';
+import '../styles/bagging.css';
+import '../styles/voting.css';
+import '../styles/xgboost.css';
+
 import VotingEnsemblePanel from './VotingEnsemblePanel.jsx';
 import BaggingEnsemblePanel from './BaggingEnsemblePanel.jsx';
 import AdaBoostEnsemblePanel from './AdaBoostEnsemblePanel.jsx';

@@ -15,36 +15,32 @@ export default function MetricPairsTable({ rows, tooltipMaw = 360 }) {
       horizontalSpacing="xs"
       verticalSpacing="xs"
       mt="xs"
+      striped
     >
       <Table.Tbody>
         {safeRows.map((pair, i) => (
-          <Table.Tr
-            key={i}
-            style={{
-              backgroundColor: i % 2 === 1 ? 'var(--mantine-color-gray-0)' : 'white',
-            }}
-          >
-            <Table.Td style={{ width: '25%' }}>
+          <Table.Tr key={i}>
+            <Table.Td className="ensMetricPairsCell">
               <Tooltip label={pair?.[0]?.tooltip} multiline maw={tooltipMaw} withArrow>
                 <Text size="sm" fw={600}>
                   {pair?.[0]?.label}
                 </Text>
               </Tooltip>
             </Table.Td>
-            <Table.Td style={{ width: '25%' }}>
+            <Table.Td className="ensMetricPairsCell">
               <Text size="sm" fw={700}>
                 {pair?.[0]?.value}
               </Text>
             </Table.Td>
 
-            <Table.Td style={{ width: '25%' }}>
+            <Table.Td className="ensMetricPairsCell">
               <Tooltip label={pair?.[1]?.tooltip} multiline maw={tooltipMaw} withArrow>
                 <Text size="sm" fw={600}>
                   {pair?.[1]?.label}
                 </Text>
               </Tooltip>
             </Table.Td>
-            <Table.Td style={{ width: '25%' }}>
+            <Table.Td className="ensMetricPairsCell">
               <Text size="sm" fw={700}>
                 {pair?.[1]?.value}
               </Text>
