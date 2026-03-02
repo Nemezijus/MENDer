@@ -3,21 +3,9 @@
 /*
  * Sidebar navigation helpers.
  *
- * NavLink styling is handled by Mantine.
- * Here we only replace Mantine system style-props (Text size/fw/c/tt/pl and Divider my)
- * with className hooks while preserving the default Mantine look.
+ * Note: SidebarNav reverted back to Mantine system props (size/fw/c/tt/pl/my), so this
+ * file currently remains as a placeholder for any future non-Mantine navigation styling.
  */
 
 @layer components {
-	.sidebarGroupLabel {
-		font-size: var(--mantine-font-size-xs);
-		font-weight: 700;
-		color: var(--mantine-color-dimmed);
-		text-transform: uppercase;
-		padding-left: var(--mantine-spacing-xs);
-	}
-
-	.sidebarGroupDivider {
-		margin-block: var(--mantine-spacing-xs);
-	}
 }

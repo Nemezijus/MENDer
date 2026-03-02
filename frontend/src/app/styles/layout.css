@@ -3,12 +3,9 @@
 /*
  * Layout helpers for src/app/ components.
  *
- * Mantine components remain in place; this file only replaces Mantine
- * system style-props (e.g., Title align=...) with className hooks.
+ * Note: SectionShell reverted back to Mantine system props (align), so this file
+ * currently remains as a placeholder for any future non-Mantine layout styling.
  */
 
 @layer components {
-	.sectionShellTitle {
-		text-align: center;
-	}
 }

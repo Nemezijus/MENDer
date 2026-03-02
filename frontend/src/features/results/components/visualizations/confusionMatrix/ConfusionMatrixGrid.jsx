@@ -61,73 +61,45 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
     };
   };
 
-  const borderColor = 'var(--mantine-color-gray-4)';
-  const innerBorderColor = 'var(--mantine-color-gray-3)';
+  // Keep colors static (no Mantine CSS-variable dependency)
+  const borderColor = '#d1d5db'; // gray-300
+  const innerBorderColor = '#e5e7eb'; // gray-200
 
   return (
-    <Box
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        width: '100%',
-      }}
-      my="lg"
-    >
+    <Box className="cmOuter" my="lg">
       <Box
+        className="cmGrid"
         style={{
-          display: 'grid',
           gridTemplateColumns: `${Y_AXIS_COL_WIDTH}px max-content ${MATRIX_SIZE}px max-content`,
           gridTemplateRows: 'auto auto auto auto',
-          columnGap: 4,
-          rowGap: 6,
-          alignItems: 'center',
         }}
       >
-        <Box
-          style={{
-            gridColumn: '3 / 4',
-            gridRow: 1,
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
+        <Box className="cmPredictedTitle">
           <Text size="md" fw={600}>
             Predicted
           </Text>
         </Box>
 
         <Box
-          style={{
-            gridColumn: 1,
-            gridRow: 3,
-            height: MATRIX_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          className="cmTrueAxis"
+          style={{ height: MATRIX_SIZE }}
         >
           <Text
             size="md"
             fw={600}
-            style={{
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-            }}
+            className="cmTrueAxisLabel"
           >
             True
           </Text>
         </Box>
 
         <Box
+          className="cmColSums cmBorderBox"
           style={{
-            gridColumn: 3,
-            gridRow: 2,
             width: MATRIX_SIZE,
             height: SUM_BAR_THICKNESS,
-            display: 'grid',
             gridTemplateColumns: `repeat(${size}, 1fr)`,
-            border: `1px solid ${borderColor}`,
-            borderRadius: 0,
+            borderColor,
           }}
         >
           {colSums.map((sum, j) => {
@@ -138,13 +110,9 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
                 key={`colsum-${j}`}
                 style={{
                   ...styles,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 13,
-                  fontWeight: 600,
                   borderRight: isLast ? 'none' : `1px solid ${innerBorderColor}`,
                 }}
+                className="cmSumCell"
               >
                 {sum}
               </Box>
@@ -153,24 +121,16 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
         </Box>
 
         <Box
+          className="cmYLabels"
           style={{
-            gridColumn: 2,
-            gridRow: 3,
             height: MATRIX_SIZE,
-            display: 'grid',
             gridTemplateRows: `repeat(${size}, 1fr)`,
-            alignItems: 'center',
-            paddingRight: 4,
           }}
         >
           {labels.map((lbl, i) => (
             <Box
               key={`y-${i}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-              }}
+              className="cmYLabelCell"
             >
               <Text size="xs">{String(lbl)}</Text>
             </Box>
@@ -178,16 +138,13 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
         </Box>
 
         <Box
+          className="cmMatrix cmBorderBox"
           style={{
-            gridColumn: 3,
-            gridRow: 3,
             width: MATRIX_SIZE,
             height: MATRIX_SIZE,
-            display: 'grid',
             gridTemplateColumns: `repeat(${size}, 1fr)`,
             gridTemplateRows: `repeat(${size}, 1fr)`,
-            border: `1px solid ${borderColor}`,
-            borderRadius: 0,
+            borderColor,
           }}
         >
           {matrix.map((row, i) =>
@@ -196,14 +153,8 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
               return (
                 <Box
                   key={`${i}-${j}`}
-                  style={{
-                    ...styles,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
+                  className="cmMatrixCell"
+                  style={styles}
                 >
                   {v ? v : ''}
                 </Box>
@@ -213,15 +164,12 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
         </Box>
 
         <Box
+          className="cmRowSums cmBorderBox"
           style={{
-            gridColumn: 4,
-            gridRow: 3,
             height: MATRIX_SIZE,
             width: SUM_BAR_THICKNESS,
-            display: 'grid',
             gridTemplateRows: `repeat(${size}, 1fr)`,
-            border: `1px solid ${borderColor}`,
-            borderRadius: 0,
+            borderColor,
           }}
         >
           {rowSums.map((sum, i) => {
@@ -232,13 +180,9 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
                 key={`rowsum-${i}`}
                 style={{
                   ...styles,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 13,
-                  fontWeight: 600,
                   borderBottom: isLast ? 'none' : `1px solid ${innerBorderColor}`,
                 }}
+                className="cmSumCell"
               >
                 {sum}
               </Box>
@@ -247,22 +191,16 @@ export default function ConfusionMatrixGrid({ matrix, labels }) {
         </Box>
 
         <Box
+          className="cmXLabels"
           style={{
-            gridColumn: 3,
-            gridRow: 4,
             width: MATRIX_SIZE,
-            display: 'grid',
             gridTemplateColumns: `repeat(${size}, 1fr)`,
           }}
         >
           {labels.map((lbl, j) => (
             <Box
               key={`x-${j}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              className="cmXLabelCell"
             >
               <Text size="xs">{String(lbl)}</Text>
             </Box>

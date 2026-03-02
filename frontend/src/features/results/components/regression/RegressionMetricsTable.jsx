@@ -5,12 +5,6 @@ import { chunk, fmt3, rangeText } from '../../utils/formatNumbers.js';
 export default function RegressionMetricsTable({ summary }) {
   if (!summary || typeof summary !== 'object') return null;
 
-  const headerStyle = {
-    backgroundColor: 'var(--mantine-color-gray-8)',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-  };
-
   const headerTextStyle = 'resultsHeaderTextCompact';
 
   const metricPairs = [
@@ -70,17 +64,23 @@ export default function RegressionMetricsTable({ summary }) {
   const metricRows = chunk(metricPairs, 3);
 
   return (
-    <Table withTableBorder={false} withColumnBorders={false} horizontalSpacing="xs" verticalSpacing="xs">
+    <Table
+      withTableBorder={false}
+      withColumnBorders={false}
+      horizontalSpacing="xs"
+      verticalSpacing="xs"
+      striped
+    >
       <Table.Thead>
-        <Table.Tr style={headerStyle}>
+        <Table.Tr className="resultsDarkHeaderRow">
           {Array.from({ length: 3 }).map((_, i) => (
             <Fragment key={`hdr-${i}`}>
-              <Table.Th style={{ textAlign: 'center' }}>
+              <Table.Th className="tableCellCenterNowrap">
                 <Text size="xs" fw={600} c="white" className={headerTextStyle}>
                   Metric
                 </Text>
               </Table.Th>
-              <Table.Th style={{ textAlign: 'center' }}>
+              <Table.Th className="tableCellCenterNowrap">
                 <Text size="xs" fw={600} c="white" className={headerTextStyle}>
                   Value
                 </Text>
@@ -92,22 +92,17 @@ export default function RegressionMetricsTable({ summary }) {
 
       <Table.Tbody>
         {metricRows.map((row, idx) => (
-          <Table.Tr
-            key={idx}
-            style={{
-              backgroundColor: idx % 2 === 1 ? 'var(--mantine-color-gray-1)' : 'white',
-            }}
-          >
+          <Table.Tr key={idx}>
             {row.map((r) => (
               <Fragment key={r.k}>
-                <Table.Td style={{ textAlign: 'left' }}>
+                <Table.Td className="resultsTdLeft">
                   <Tooltip label={r.tip} multiline maw={320} withArrow>
                     <Text size="sm" fw={500} className="resultsCursorHelp">
                       {r.k}
                     </Text>
                   </Tooltip>
                 </Table.Td>
-                <Table.Td style={{ textAlign: 'center' }}>
+                <Table.Td className="resultsTdCenter">
                   <Text size="sm" fw={700}>
                     {r.isText ? String(r.v ?? '—') : fmt3(r.v)}
                   </Text>

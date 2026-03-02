@@ -81,8 +81,6 @@ export default function DecoderSummary({
 }) {
   if (!summary || typeof summary !== 'object') return null;
 
-  const stickyBg = { backgroundColor: 'var(--mantine-color-gray-8)' };
-
   const calHeaderTip = (label, tip) => (
     <Tooltip label={tip} multiline maw={280} withArrow>
       <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
@@ -140,22 +138,22 @@ export default function DecoderSummary({
             >
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th style={{ ...stickyBg, minWidth: 50 }} className="decoderStickyTh tableStickyTh">
+                  <Table.Th className="decoderStickyTh tableStickyTh decoderStickyHeader decoderCalThBin">
                     {calHeaderTip('Bin', 'Bin index (0..B-1).')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyBg, minWidth: 110 }} className="decoderStickyTh tableStickyTh">
+                  <Table.Th className="decoderStickyTh tableStickyTh decoderStickyHeader decoderCalThRange">
                     {calHeaderTip('Range', 'Confidence range covered by this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyBg, minWidth: 60 }} className="decoderStickyTh tableStickyTh">
+                  <Table.Th className="decoderStickyTh tableStickyTh decoderStickyHeader decoderCalThN">
                     {calHeaderTip('N', 'Number of samples in this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyBg, minWidth: 90 }} className="decoderStickyTh tableStickyTh">
+                  <Table.Th className="decoderStickyTh tableStickyTh decoderStickyHeader decoderCalThConf">
                     {calHeaderTip('Confidence', 'Mean top-1 confidence in this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyBg, minWidth: 90 }} className="decoderStickyTh tableStickyTh">
+                  <Table.Th className="decoderStickyTh tableStickyTh decoderStickyHeader decoderCalThAcc">
                     {calHeaderTip('Accuracy', 'Fraction correct in this bin.')}
                   </Table.Th>
-                  <Table.Th style={{ ...stickyBg, minWidth: 70 }} className="decoderStickyTh tableStickyTh">
+                  <Table.Th className="decoderStickyTh tableStickyTh decoderStickyHeader decoderCalThGap">
                     {calHeaderTip('Gap', '|accuracy − confidence| for this bin.')}
                   </Table.Th>
                 </Table.Tr>

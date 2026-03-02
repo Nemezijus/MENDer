@@ -22,8 +22,6 @@ export default function DecoderPreviewTable({ preview, columns }) {
     return String(value);
   };
 
-  const stickyBg = { backgroundColor: 'var(--mantine-color-gray-8)' };
-
   return (
     <ScrollArea
       h={320}
@@ -47,25 +45,32 @@ export default function DecoderPreviewTable({ preview, columns }) {
               const tip = buildHeaderTooltip(c);
               const label = prettifyHeader(c);
 
-              const minW =
+              const minWClass =
                 c === 'index'
-                  ? 55
+                  ? 'decoderThIndex'
                   : c === 'fold_id'
-                    ? 70
+                    ? 'decoderThFold'
                     : c === 'y_true' || c === 'y_pred'
-                      ? 85
+                      ? 'decoderThY'
                       : c === 'residual' || c === 'abs_error'
-                        ? 95
+                        ? 'decoderThError'
                         : c === 'correct'
-                          ? 80
+                          ? 'decoderThCorrect'
                           : c === 'margin'
-                            ? 80
-                            : undefined;
+                            ? 'decoderThMargin'
+                            : '';
 
-              const thStyle = minW ? { ...stickyBg, minWidth: minW } : stickyBg;
+              const thClassName = [
+                'decoderStickyTh',
+                'tableStickyTh',
+                'decoderStickyHeader',
+                minWClass,
+              ]
+                .filter(Boolean)
+                .join(' ');
 
               return (
-                <Table.Th key={c} style={thStyle} className="decoderStickyTh tableStickyTh">
+                <Table.Th key={c} className={thClassName}>
                   {tip ? (
                     <Tooltip label={tip} multiline maw={260} withArrow>
                       <Text size="xs" fw={600} c="white" className="tableHeaderTextCompact">
@@ -90,26 +95,29 @@ export default function DecoderPreviewTable({ preview, columns }) {
             const isFoldBoundary =
               curFold != null && prevFold != null && String(curFold) !== String(prevFold);
 
-            const rowStyle =
-              isFoldBoundary
-                ? { borderTop: '3px solid var(--mantine-color-gray-4)' }
-                : undefined;
+            const rowClassName = isFoldBoundary ? 'decoderFoldBoundaryRow' : undefined;
 
             return (
               <Table.Tr
                 key={row?.index ?? idx}
-                style={rowStyle}
+                className={rowClassName}
               >
                 {cols.map((c) => {
                   const val = row?.[c];
                   const isCorrectCol = c === 'correct';
                   const isFalse = isCorrectCol && (val === false || val === 'false');
 
+                  const tdClassName = [
+                    'tableCellCenterNowrap',
+                    isFalse ? 'decoderIncorrectCell' : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+
                   return (
                     <Table.Td
                       key={c}
-                      className="tableCellCenterNowrap"
-                      style={isFalse ? { backgroundColor: 'var(--mantine-color-red-1)' } : undefined}
+                      className={tdClassName}
                     >
                       <Text size="sm" className="resultsNoWrap">
                         {renderCell(c, val)}

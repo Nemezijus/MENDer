@@ -3,18 +3,9 @@
 /*
  * App guards
  *
- * We keep Mantine components (Alert/Text) intact, but replace Mantine
- * system style-props (fw/size/...) with className hooks.
- *
- * Use Mantine CSS variables so visual output matches Mantine defaults.
+ * Note: DataGuard reverted back to Mantine system props (fw/size), so this file
+ * currently remains as a placeholder for any future non-Mantine guard styling.
  */
 
 @layer components {
-	.dataGuardTitle {
-		font-weight: 500;
-	}
-
-	.dataGuardBody {
-		font-size: var(--mantine-font-size-sm);
-	}
 }

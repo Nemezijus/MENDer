@@ -10,6 +10,68 @@
 		white-space: nowrap;
 	}
 
+	.decoderStickyHeader {
+		@apply bg-neutral-900;
+	}
+
+	/* Decoder preview header column sizing */
+	.decoderThIndex {
+		min-width: 55px;
+	}
+
+	.decoderThFold {
+		min-width: 70px;
+	}
+
+	.decoderThY {
+		min-width: 85px;
+	}
+
+	.decoderThError {
+		min-width: 95px;
+	}
+
+	.decoderThCorrect {
+		min-width: 80px;
+	}
+
+	.decoderThMargin {
+		min-width: 80px;
+	}
+
+	.decoderFoldBoundaryRow {
+		border-top: 3px solid #d1d5db; /* gray-300 */
+	}
+
+	.decoderIncorrectCell {
+		@apply bg-red-50;
+	}
+
+	/* Calibration bins header sizing */
+	.decoderCalThBin {
+		min-width: 50px;
+	}
+
+	.decoderCalThRange {
+		min-width: 110px;
+	}
+
+	.decoderCalThN {
+		min-width: 60px;
+	}
+
+	.decoderCalThConf {
+		min-width: 90px;
+	}
+
+	.decoderCalThAcc {
+		min-width: 90px;
+	}
+
+	.decoderCalThGap {
+		min-width: 70px;
+	}
+
 	.decoderPreviewViewport {
 		padding-right: 8px;
 		padding-bottom: 6px;

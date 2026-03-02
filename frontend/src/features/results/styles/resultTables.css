@@ -1,6 +1,42 @@
 @reference "tailwindcss";
 
 @layer components {
+	/* Common results tables */
+	.resultsDarkHeaderRow {
+		@apply bg-neutral-900;
+	}
+
+	.resultsRowStriped {
+		@apply bg-gray-50;
+	}
+
+	.resultsTdLeft {
+		@apply text-left;
+	}
+
+	.resultsTdCenter {
+		@apply text-center;
+	}
+
+	.resultsSeparatorRow {
+		height: 4px;
+		border-top: 2px solid #d1d5db; /* gray-300 */
+	}
+
+	.resultsSeparatorCell {
+		padding: 0;
+	}
+
+	.resultsMacroRow {
+		@apply bg-gray-100;
+		border-top: 1px solid #d1d5db;
+	}
+
+	.resultsWeightedRow {
+		@apply bg-gray-200;
+		border-top: 1px solid #d1d5db;
+	}
+
 	.resultsSummaryAccentBorder {
 		border-style: solid;
 		border-width: 1px;
@@ -39,6 +75,103 @@
 		max-width: 520px;
 		aspect-ratio: 1 / 1;
 		margin: 0 auto;
+	}
+
+	/* Confusion matrix visualization */
+	.cmOuter {
+		@apply flex justify-center w-full;
+	}
+
+	.cmGrid {
+		display: grid;
+		column-gap: 4px;
+		row-gap: 6px;
+		align-items: center;
+	}
+
+	.cmPredictedTitle {
+		grid-column: 3 / 4;
+		grid-row: 1;
+		display: flex;
+		justify-content: center;
+	}
+
+	.cmTrueAxis {
+		grid-column: 1;
+		grid-row: 3;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cmTrueAxisLabel {
+		writing-mode: vertical-rl;
+		transform: rotate(180deg);
+	}
+
+	.cmBorderBox {
+		border: 1px solid;
+		border-radius: 0;
+	}
+
+	.cmColSums {
+		grid-column: 3;
+		grid-row: 2;
+		display: grid;
+	}
+
+	.cmYLabels {
+		grid-column: 2;
+		grid-row: 3;
+		display: grid;
+		align-items: center;
+		padding-right: 4px;
+	}
+
+	.cmYLabelCell {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.cmMatrix {
+		grid-column: 3;
+		grid-row: 3;
+		display: grid;
+	}
+
+	.cmMatrixCell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 12px;
+		font-weight: 500;
+	}
+
+	.cmRowSums {
+		grid-column: 4;
+		grid-row: 3;
+		display: grid;
+	}
+
+	.cmSumCell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 13px;
+		font-weight: 600;
+	}
+
+	.cmXLabels {
+		grid-column: 3;
+		grid-row: 4;
+		display: grid;
+	}
+
+	.cmXLabelCell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	/* Note: common results helpers live in src/features/styles/resultsCommon.css */
