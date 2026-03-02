@@ -64,7 +64,7 @@ export default function VotingClsBaseAndChangeSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Box className="ensFlexMin320">
+      <Box className="ensPlotCol">
         <SectionTitle
           title={`Base estimators (${metricName})`}
           tooltip="Per-estimator performance across folds (mean ± std). Helps you spot strong/weak and stable/unstable base models."
@@ -72,7 +72,7 @@ export default function VotingClsBaseAndChangeSection({ report }) {
         />
 
         {/* keep placeholder line to match original vertical spacing */}
-        <Text size="sm" c="dimmed" align="center" mb={6} className="ensHidden">
+        <Text size="sm" c="dimmed" align="center" mb={6} className="votingSpacerHidden">
           placeholder
         </Text>
 
@@ -111,7 +111,7 @@ export default function VotingClsBaseAndChangeSection({ report }) {
         )}
       </Box>
 
-      <Box className="ensFlexMin320">
+      <Box className="ensPlotCol">
         <SectionTitle
           title="Changed vs best estimator"
           tooltip="Counts of samples where the ensemble differs from the best single estimator. “Corrected” = ensemble right / best wrong; “Harmed” = ensemble wrong / best right; “Net” = corrected − harmed."

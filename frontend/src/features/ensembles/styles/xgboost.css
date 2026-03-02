@@ -1,5 +1,14 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/*
+ * XGBoost ensemble — non-Mantine style hooks.
+ *
+ * Keeps only layout-related overrides that were previously inline styles.
+ */
+
+@layer components {
+	.xgbInsightCol {
+		flex: 1 1 0;
+		min-width: 250px;
+	}
+}

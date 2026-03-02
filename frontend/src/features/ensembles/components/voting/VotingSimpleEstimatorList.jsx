@@ -16,7 +16,7 @@ export default function VotingSimpleEstimatorList({
       </Text>
 
       <Group align="flex-start" wrap="nowrap" gap="md">
-        <Stack className="ensFlex1" gap="sm">
+        <Stack className="votingEstimatorListCol" gap="sm">
           {estimators
             .map((s, idx) => ({ s, idx }))
             .filter((x) => x.idx % 2 === 0)
@@ -33,7 +33,7 @@ export default function VotingSimpleEstimatorList({
             ))}
         </Stack>
 
-        <Stack className="ensFlex1" gap="sm">
+        <Stack className="votingEstimatorListCol" gap="sm">
           {estimators
             .map((s, idx) => ({ s, idx }))
             .filter((x) => x.idx % 2 === 1)

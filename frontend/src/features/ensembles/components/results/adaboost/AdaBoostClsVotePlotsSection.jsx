@@ -31,7 +31,7 @@ export default function AdaBoostClsVotePlotsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Box className="ensFlexMin340">
+      <Box className="ensPlotColWide">
         <SectionTitle
           title="Weighted vote margins"
           tooltip="Weighted vote margin distribution. Higher means clearer weighted majorities."
@@ -66,7 +66,7 @@ export default function AdaBoostClsVotePlotsSection({ report }) {
         )}
       </Box>
 
-      <Box className="ensFlexMin340">
+      <Box className="ensPlotColWide">
         <SectionTitle
           title="Weighted vote strength"
           tooltip="Weighted vote strength distribution: (top weight / total weight)."

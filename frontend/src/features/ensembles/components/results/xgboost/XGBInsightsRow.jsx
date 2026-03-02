@@ -5,13 +5,13 @@ import XGBFeatureImportanceSection from './XGBFeatureImportanceSection.jsx';
 
 export default function XGBInsightsRow({ report }) {
   return (
-    <Box className="ensOverflowXAuto">
+    <Box className="ensScrollX">
       <Group align="stretch" wrap="nowrap" gap="md">
-        <Box className="ensFlexMin250">
+        <Box className="xgbInsightCol">
           <XGBLearningCurvesSection report={report} />
         </Box>
 
-        <Box className="ensFlexMin250">
+        <Box className="xgbInsightCol">
           <XGBFeatureImportanceSection report={report} />
         </Box>
       </Group>

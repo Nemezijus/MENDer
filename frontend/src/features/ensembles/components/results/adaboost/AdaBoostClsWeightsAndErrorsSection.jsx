@@ -47,7 +47,7 @@ export default function AdaBoostClsWeightsAndErrorsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Box className="ensFlexMin340">
+      <Box className="ensPlotColWide">
         <SectionTitle
           title="Estimator weights"
           tooltip="Distribution of boosting stage weights. If weights concentrate, effective estimator count decreases."
@@ -82,7 +82,7 @@ export default function AdaBoostClsWeightsAndErrorsSection({ report }) {
         )}
       </Box>
 
-      <Box className="ensFlexMin340">
+      <Box className="ensPlotColWide">
         <SectionTitle
           title="Estimator errors"
           tooltip="Stage errors (if available). Lower is better; a spread indicates varying weak-learner performance."

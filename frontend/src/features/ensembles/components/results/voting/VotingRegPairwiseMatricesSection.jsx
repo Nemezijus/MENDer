@@ -73,7 +73,7 @@ export default function VotingRegPairwiseMatricesSection({ report }) {
       />
 
       <Group align="stretch" grow wrap="wrap">
-        <Box className="ensFlexMin320">
+        <Box className="ensPlotCol">
           <Text size="md" fw={500} align="center" mb={6}>
             Prediction similarity (corr)
           </Text>
@@ -117,7 +117,7 @@ export default function VotingRegPairwiseMatricesSection({ report }) {
           )}
         </Box>
 
-        <Box className="ensFlexMin320">
+        <Box className="ensPlotCol">
           <Text size="md" fw={500} align="center" mb={6}>
             Absolute prediction differences (|Δ|)
           </Text>

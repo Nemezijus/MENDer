@@ -1,5 +1,43 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/*
+ * Voting ensemble — non-Mantine style hooks.
+ *
+ * These classes replace only inline React style objects that existed in the voting
+ * feature area (width/min-width/centering/visibility). Mantine props remain intact.
+ */
+
+@layer components {
+	/* Left/right columns in the config+help row */
+	.votingConfigCol {
+		flex: 1 1 0;
+		min-width: 260px;
+	}
+
+	.votingFillHeight {
+		height: 100%;
+	}
+
+	/* Two-column estimator list layout */
+	.votingEstimatorListCol {
+		flex: 1 1 0;
+	}
+
+	/* Estimator selector width constraints (prevents overly wide selects) */
+	.votingEstimatorSelect {
+		flex: 1 1 0;
+		min-width: 180px;
+		max-width: 360px;
+	}
+
+	/* Keep plots reasonably narrow and centered in regression base-estimator section */
+	.votingPlotNarrow {
+		max-width: 560px;
+		margin: 0 auto;
+	}
+
+	/* Placeholder line used only to preserve vertical spacing */
+	.votingSpacerHidden {
+		visibility: hidden;
+	}
+}

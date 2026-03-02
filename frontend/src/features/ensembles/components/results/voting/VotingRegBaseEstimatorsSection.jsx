@@ -63,7 +63,7 @@ export default function VotingRegBaseEstimatorsSection({ report }) {
           Base estimator scores unavailable.
         </Text>
       ) : (
-        <Box className="ensCenteredMaxW560">
+        <Box className="votingPlotNarrow">
           <Plot
             data={[barTrace]}
             layout={{

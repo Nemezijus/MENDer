@@ -22,7 +22,7 @@ export default function VotingConfigHelpRow({
   return (
     <Group align="stretch" justify="space-between" wrap="wrap" gap="md">
       {/* Left: A and B stacked */}
-      <Stack className="ensFlexMin260" gap="sm">
+	      <Stack className="votingConfigCol" gap="sm">
         <ParamSelect
           label="Voting type"
           value={effectiveVotingType}
@@ -61,8 +61,8 @@ export default function VotingConfigHelpRow({
       </Stack>
 
       {/* Right: C help preview (same height as left stack) */}
-      <Box className="ensFlexMin260">
-        <Stack justify="space-between" className="ensHeightFull" gap="xs">
+	      <Box className="votingConfigCol">
+	        <Stack justify="space-between" className="votingFillHeight" gap="xs">
           <Box>
             <VotingIntroText effectiveTask={effectiveTask} votingType={votingType} />
           </Box>
