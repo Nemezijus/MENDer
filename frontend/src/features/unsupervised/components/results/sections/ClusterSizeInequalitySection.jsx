@@ -4,7 +4,7 @@ import Plot from 'react-plotly.js';
 import PlotHeader from '../../common/PlotHeader.jsx';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { LEGEND_TOP_TIGHT, TILE_STACK_STYLE } from '../common/styles.js';
+import { LEGEND_TOP_TIGHT } from '../common/styles.js';
 
 export default function ClusterSizeInequalitySection({ lorenz }) {
   if (!lorenz) return null;
@@ -12,7 +12,7 @@ export default function ClusterSizeInequalitySection({ lorenz }) {
   const giniText = lorenz.gini == null ? '' : ` (Gini ≈ ${lorenz.gini.toFixed(3)})`;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title={`Cluster size inequality${giniText}`}
         help="Lorenz curve of cluster size distribution. Curves closer to the diagonal indicate more even cluster sizes."
@@ -65,7 +65,7 @@ export default function ClusterSizeInequalitySection({ lorenz }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 300, marginTop: 'auto' }}
+        className="unsupPlotSm"
       />
     </Stack>
   );

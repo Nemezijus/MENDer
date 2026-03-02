@@ -1,6 +1,8 @@
 // src/features/settings/components/SettingsPanel.jsx
 import { Stack, Text } from '@mantine/core';
 
+import '../styles/settingsPanel.css';
+
 import { useSettingsStore } from '../state/useSettingsStore.js';
 import { useGlobalScaleSetting } from '../hooks/useGlobalScaleSetting.js';
 import SettingsTabs from './SettingsTabs.jsx';
@@ -12,8 +14,8 @@ export default function SettingsPanel() {
   const setMetric = useSettingsStore((s) => s.setMetric);
 
   return (
-    <Stack gap="md">
-      <Text fw={600} size="lg">
+    <Stack gap="md" className="settingsPanel">
+      <Text fw={600} size="lg" className="settingsTitle">
         Global modelling settings
       </Text>
 

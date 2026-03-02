@@ -103,7 +103,7 @@ export default function UnsupervisedDiagnosticsCard({ trainResult }) {
                 <Text size="sm" key={k}>
                   {tip ? (
                     <Tooltip label={tip} multiline maw={360} withArrow>
-                      <Text span fw={500} style={{ width: 'fit-content' }}>
+                      <Text span fw={500} className="unsupMetricLabel">
                         {label}:{' '}
                       </Text>
                     </Tooltip>

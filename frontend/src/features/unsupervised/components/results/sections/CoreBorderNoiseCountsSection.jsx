@@ -4,7 +4,7 @@ import Plot from 'react-plotly.js';
 import PlotHeader from '../../common/PlotHeader.jsx';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function CoreBorderNoiseCountsSection({ coreCounts }) {
   if (!coreCounts) return null;
@@ -14,7 +14,7 @@ export default function CoreBorderNoiseCountsSection({ coreCounts }) {
   if (![core, border, noise].every((v) => Number.isFinite(v))) return null;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader title="Core vs border vs noise counts" help="Available for density-based clustering (e.g., DBSCAN)." />
       <Plot
         data={[
@@ -49,7 +49,7 @@ export default function CoreBorderNoiseCountsSection({ coreCounts }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 320, marginTop: 'auto' }}
+        className="unsupPlotMd"
       />
     </Stack>
   );

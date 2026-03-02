@@ -1,0 +1,15 @@
+@reference "tailwindcss";
+
+/*
+ * Settings feature styles.
+ *
+ * Intentionally minimal for now: the Settings feature currently relies on Mantine
+ * component styling. These class hooks exist so we can add non-Mantine layout/
+ * spacing tweaks later without touching JSX.
+ */
+
+@layer components {
+	.settingsPanel { }
+	.settingsTitle { }
+	.settingsTabs { }
+}

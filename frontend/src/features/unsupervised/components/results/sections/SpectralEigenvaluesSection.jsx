@@ -6,7 +6,7 @@ import PlotHeader from '../../common/PlotHeader.jsx';
 import { toFiniteNumbers } from '../../../utils/stats.js';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function SpectralEigenvaluesSection({ spectral }) {
   if (!spectral || !Array.isArray(spectral?.values) || spectral.values.length === 0) return null;
@@ -15,7 +15,7 @@ export default function SpectralEigenvaluesSection({ spectral }) {
   const x = Array.from({ length: y.length }, (_, i) => i + 1);
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title="Spectral eigenvalues"
         help="Eigenvalue spectrum (when available). A large gap may indicate a good cluster count."
@@ -55,7 +55,7 @@ export default function SpectralEigenvaluesSection({ spectral }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 320, marginTop: 'auto' }}
+        className="unsupPlotMd"
       />
     </Stack>
   );

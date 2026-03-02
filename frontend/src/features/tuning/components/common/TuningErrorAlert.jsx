@@ -6,7 +6,7 @@ export default function TuningErrorAlert({ error }) {
   return (
     <Alert color="red" variant="light">
       <Text fw={500}>Error</Text>
-      <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+      <Text size="sm" className="tuningErrorPreWrap">
         {String(error)}
       </Text>
     </Alert>

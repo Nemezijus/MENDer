@@ -1,5 +1,47 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+@layer components {
+	.unsupDiagStickyTh {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		@apply bg-neutral-900 text-center whitespace-nowrap;
+	}
+
+	.unsupDiagHeaderText {
+		@apply whitespace-nowrap leading-tight;
+	}
+
+	.unsupDiagCenterNowrap {
+		@apply text-center whitespace-nowrap;
+	}
+
+	.unsupKvTable {
+		table-layout: fixed;
+	}
+
+	.unsupKvKeyCell {
+		width: 45%;
+		padding-left: 0;
+	}
+
+	.unsupKvValCell {
+		width: 55%;
+		padding-right: 0;
+	}
+
+	.unsupKvKeyText {
+		display: inline-block;
+		width: fit-content;
+	}
+
+	.unsupKvValueText {
+		white-space: normal;
+		word-break: break-word;
+	}
+
+	.unsupMetricLabel {
+		display: inline-block;
+		width: fit-content;
+	}
+}

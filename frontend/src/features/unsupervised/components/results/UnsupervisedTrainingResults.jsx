@@ -86,7 +86,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           <Text fw={700} size="xl" ta="center">
             Unsupervised model results
           </Text>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'stretch' }}>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" className="unsupGridStretch">
             <EmbeddingScatterSection
               embedding={embedding}
               gmmEllipses={gmmEllipses}
@@ -108,7 +108,7 @@ export default function UnsupervisedTrainingResults({ trainResult }) {
           <Text fw={700} size="xl" ta="center">
             Model-specific plots
           </Text>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'stretch' }}>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" className="unsupGridStretch">
             <ElbowCurveSection elbow={elbow} />
             <CompactnessSeparationSection compactSep={compactSep} />
             <KDistanceSection kdist={kdist} />

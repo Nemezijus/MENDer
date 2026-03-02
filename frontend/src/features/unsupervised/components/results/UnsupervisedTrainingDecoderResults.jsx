@@ -94,7 +94,7 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
             }
           }
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 300 }}
+          className="unsupDecoderPlot"
         />
       </Stack>,
     );
@@ -143,7 +143,7 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
             }
           }
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: 300 }}
+          className="unsupDecoderPlot"
         />
       </Stack>,
     );
@@ -209,7 +209,7 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
               }
             }
             config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-            style={{ width: '100%', height: 300 }}
+            className="unsupDecoderPlot"
           />
         </Stack>,
       );
@@ -220,7 +220,7 @@ export default function UnsupervisedTrainingDecoderResults({ trainResult }) {
 
   return (
     <Stack gap="md">
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: 'stretch' }}>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" className="unsupGridStretch">
         {plots}
       </SimpleGrid>
     </Stack>

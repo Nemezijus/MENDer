@@ -7,17 +7,6 @@ export default function DecoderPreviewTable({ rows, columns, height = 360 }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const safeCols = Array.isArray(columns) ? columns : [];
 
-  const stickyThStyle = {
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    backgroundColor: 'var(--mantine-color-gray-8)',
-    textAlign: 'center',
-    whiteSpace: 'nowrap',
-  };
-
-  const headerTextStyle = { whiteSpace: 'nowrap', lineHeight: 1.1 };
-
   return (
     <ScrollArea h={height} type="auto">
       <Table
@@ -25,22 +14,23 @@ export default function DecoderPreviewTable({ rows, columns, height = 360 }) {
         withColumnBorders={false}
         horizontalSpacing="xs"
         verticalSpacing="xs"
+        striped
       >
-        <Table.Thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+        <Table.Thead className="unsupPreviewThead">
           <Table.Tr>
             {safeCols.map((c) => {
               const tip = headerTooltip(c);
               const label = headerLabel(c);
               return (
-                <Table.Th key={c} style={stickyThStyle}>
+                <Table.Th key={c} className="unsupPreviewTh">
                   {tip ? (
                     <Tooltip label={tip} multiline maw={360} withArrow>
-                      <Text size="xs" fw={600} c="white" style={headerTextStyle}>
+                      <Text size="xs" fw={600} c="white" className="unsupPreviewHeaderText">
                         {label}
                       </Text>
                     </Tooltip>
                   ) : (
-                    <Text size="xs" fw={600} c="white">
+                    <Text size="xs" fw={600} c="white" className="unsupPreviewHeaderText">
                       {label}
                     </Text>
                   )}
@@ -51,23 +41,15 @@ export default function DecoderPreviewTable({ rows, columns, height = 360 }) {
         </Table.Thead>
 
         <Table.Tbody>
-          {safeRows.map((r, i) => {
-            const isStriped = i % 2 === 1;
-            return (
-              <Table.Tr
-                key={i}
-                style={{
-                  backgroundColor: isStriped ? 'var(--mantine-color-gray-1)' : 'white',
-                }}
-              >
-                {safeCols.map((c) => (
-                  <Table.Td key={c} style={{ textAlign: 'center' }}>
-                    {fmtCell(r?.[c])}
-                  </Table.Td>
-                ))}
-              </Table.Tr>
-            );
-          })}
+          {safeRows.map((r, i) => (
+            <Table.Tr key={i}>
+              {safeCols.map((c) => (
+                <Table.Td key={c} className="unsupPreviewTd">
+                  {fmtCell(r?.[c])}
+                </Table.Td>
+              ))}
+            </Table.Tr>
+          ))}
         </Table.Tbody>
       </Table>
     </ScrollArea>

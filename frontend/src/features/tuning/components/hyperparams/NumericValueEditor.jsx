@@ -114,14 +114,14 @@ export default function NumericValueEditor({ initialMode = 'range', onValuesChan
 
       {mode === 'range' && (
         <Group align="flex-end">
-          <Box style={{ flex: 1 }}>
+          <Box className="tuningNumericCol">
             <NumberInput
               label="From"
               value={rangeFrom}
               onChange={(v) => updateFromRange(String(v ?? ''), rangeTo, rangeStep)}
             />
           </Box>
-          <Box style={{ flex: 1 }}>
+          <Box className="tuningNumericCol">
             <NumberInput
               label="Step"
               placeholder="auto"
@@ -129,7 +129,7 @@ export default function NumericValueEditor({ initialMode = 'range', onValuesChan
               onChange={(v) => updateFromRange(rangeFrom, rangeTo, String(v ?? ''))}
             />
           </Box>
-          <Box style={{ flex: 1 }}>
+          <Box className="tuningNumericCol">
             <NumberInput
               label="To"
               value={rangeTo}

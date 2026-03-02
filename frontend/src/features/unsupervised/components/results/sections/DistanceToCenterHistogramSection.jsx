@@ -4,7 +4,7 @@ import Plot from 'react-plotly.js';
 import PlotHeader from '../../common/PlotHeader.jsx';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function DistanceToCenterHistogramSection({ distanceHist }) {
   const xs = distanceHist?.x;
@@ -12,7 +12,7 @@ export default function DistanceToCenterHistogramSection({ distanceHist }) {
   if (!Array.isArray(xs) || !Array.isArray(ys) || xs.length === 0 || ys.length === 0) return null;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title="Distance-to-center distribution"
         help="Histogram of per-sample distances to the nearest cluster center (when the estimator supports it, e.g., KMeans)."
@@ -51,7 +51,7 @@ export default function DistanceToCenterHistogramSection({ distanceHist }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 300, marginTop: 'auto' }}
+        className="unsupPlotSm"
       />
     </Stack>
   );

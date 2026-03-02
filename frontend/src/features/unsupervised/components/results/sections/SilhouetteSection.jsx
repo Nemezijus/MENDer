@@ -12,7 +12,7 @@ import {
   PLOT_MARGIN_STD,
 } from '../../../utils/plotly.js';
 
-import { PLOT_HEIGHT, TILE_STACK_STYLE } from '../common/styles.js';
+import { PLOT_HEIGHT } from '../common/styles.js';
 
 export default function SilhouetteSection({ silhouette, clusterLabel }) {
   if (!silhouette) return null;
@@ -119,7 +119,7 @@ export default function SilhouetteSection({ silhouette, clusterLabel }) {
   }
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title="Silhouette scores"
         help="Silhouette coefficients can be negative when some samples are closer to a neighboring cluster than to their assigned cluster."
@@ -153,7 +153,7 @@ export default function SilhouetteSection({ silhouette, clusterLabel }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: PLOT_HEIGHT, marginTop: 'auto' }}
+        className="unsupPlotMd"
       />
     </Stack>
   );

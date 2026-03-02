@@ -1,5 +1,24 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+@layer components {
+	.unsupPreviewThead {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+	}
+
+	.unsupPreviewTh {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		@apply bg-neutral-900 text-center whitespace-nowrap;
+	}
+
+	.unsupPreviewHeaderText {
+		@apply whitespace-nowrap leading-tight;
+	}
+
+	.unsupPreviewTd {
+		@apply text-center;
+	}
+}

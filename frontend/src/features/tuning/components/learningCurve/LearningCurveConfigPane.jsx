@@ -37,7 +37,7 @@ export default function LearningCurveConfigPane({
   onWithinPctChange,
 }) {
   return (
-    <Box w="100%" style={{ margin: '0 auto' }}>
+    <Box w="100%" className="tuningPaneRoot">
       <Stack gap="sm">
         <SplitOptionsCard
           allowedModes={['kfold']}
@@ -88,12 +88,7 @@ export default function LearningCurveConfigPane({
           <Text span fw={500}> 50,100,200 </Text>
         </Text>
         <textarea
-          style={{
-            width: '100%',
-            minHeight: 70,
-            fontFamily: 'inherit',
-            fontSize: '0.9rem',
-          }}
+          className="tuningCsvTextarea"
           placeholder="e.g. 0.1,0.3,0.5,0.7,1.0"
           value={trainSizesCSV}
           onChange={(e) => onTrainSizesCSVChange(e.currentTarget.value)}

@@ -10,7 +10,7 @@ import {
   PLOT_MARGIN_STD,
 } from '../../../utils/plotly.js';
 
-import { PLOT_HEIGHT, TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function SeparationMatrixSection({ sepMatrix, clusterLabel }) {
   if (!sepMatrix) return null;
@@ -19,14 +19,14 @@ export default function SeparationMatrixSection({ sepMatrix, clusterLabel }) {
   if (!Array.isArray(ids) || !Array.isArray(z) || !z.length) return null;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title="Pairwise cluster separation matrix"
         help="Pairwise distances between cluster centroids (in feature space)."
       />
 
-      <div style={{ width: '100%', marginTop: 'auto' }}>
-        <div style={{ width: '100%', aspectRatio: '1 / 1', minHeight: PLOT_HEIGHT }}>
+      <div className="unsupSquareOuter">
+        <div className="unsupSquareInner">
           <Plot
             data={[
               {
@@ -72,7 +72,7 @@ export default function SeparationMatrixSection({ sepMatrix, clusterLabel }) {
               ...PLOT_BG,
             }}
             config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-            style={{ width: '100%', height: '100%' }}
+            className="unsupPlotFill"
           />
         </div>
       </div>

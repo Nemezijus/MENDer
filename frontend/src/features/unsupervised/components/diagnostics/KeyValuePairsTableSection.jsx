@@ -31,7 +31,7 @@ export default function KeyValuePairsTableSection({
         withColumnBorders={false}
         horizontalSpacing="xs"
         verticalSpacing="xs"
-        style={{ tableLayout: 'fixed' }}
+        className="unsupKvTable"
       >
         <Table.Tbody>
           {safePairs.length === 0 ? (
@@ -48,10 +48,10 @@ export default function KeyValuePairsTableSection({
               const tip = tooltipForKey(k);
               return (
                 <Table.Tr key={`${keyPrefix}-${k}`}>
-                  <Table.Td style={{ width: '45%', paddingLeft: 0 }}>
+                  <Table.Td className="unsupKvKeyCell">
                     {tip ? (
                       <Tooltip label={tip} multiline maw={360} withArrow>
-                        <Text size="sm" c="dimmed" style={{ width: 'fit-content' }}>
+                        <Text size="sm" c="dimmed" className="unsupKvKeyText">
                           {label}
                         </Text>
                       </Tooltip>
@@ -61,11 +61,11 @@ export default function KeyValuePairsTableSection({
                       </Text>
                     )}
                   </Table.Td>
-                  <Table.Td style={{ width: '55%', paddingRight: 0 }}>
+                  <Table.Td className="unsupKvValCell">
                     <Text
                       size="sm"
                       fw={700}
-                      style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
+                      className="unsupKvValueText"
                     >
                       {renderValue ? renderValue(val) : String(val)}
                     </Text>

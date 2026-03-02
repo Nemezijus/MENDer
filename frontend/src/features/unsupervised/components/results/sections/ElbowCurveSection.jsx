@@ -4,14 +4,14 @@ import Plot from 'react-plotly.js';
 import PlotHeader from '../../common/PlotHeader.jsx';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function ElbowCurveSection({ elbow }) {
   if (!elbow || !Array.isArray(elbow?.x) || !Array.isArray(elbow?.y)) return null;
   if (!elbow.x.length || !elbow.y.length) return null;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader title="Elbow curve" help="Objective vs number of clusters/components (when computed)." />
       <Plot
         data={[
@@ -48,7 +48,7 @@ export default function ElbowCurveSection({ elbow }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 320, marginTop: 'auto' }}
+        className="unsupPlotMd"
       />
     </Stack>
   );

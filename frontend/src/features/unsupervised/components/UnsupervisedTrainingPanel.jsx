@@ -10,6 +10,8 @@ import { useUnsupervisedStore } from '../state/useUnsupervisedStore.js';
 import ModelSelectionCard from '../../training/components/ModelSelectionCard.jsx';
 import { useUnsupervisedTrainer } from '../hooks/useUnsupervisedTrainer.js';
 
+import '../styles/unsupervisedPanel.css';
+
 export default function UnsupervisedTrainingPanel() {
   const schema = useSchemaDefaults();
 
@@ -103,7 +105,7 @@ export default function UnsupervisedTrainingPanel() {
 
           {error ? (
             <Alert color="red" title="Error">
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              <Text size="sm" className="unsupPreWrapText">
                 {error}
               </Text>
             </Alert>

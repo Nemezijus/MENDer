@@ -26,6 +26,9 @@ import LearningCurveConfigPane from './learningCurve/LearningCurveConfigPane.jsx
 import TuningConfigCard from './common/TuningConfigCard.jsx';
 import TuningErrorAlert from './common/TuningErrorAlert.jsx';
 import { useTuningRunner } from '../hooks/useTuningRunner.js';
+import '../styles/tuningPanel.css';
+import '../styles/analyticsResults.css';
+
 
 export default function LearningCurvePanel() {
   const xPath = useDataStore((s) => s.xPath);

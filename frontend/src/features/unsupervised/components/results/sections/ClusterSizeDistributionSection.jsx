@@ -4,14 +4,14 @@ import Plot from 'react-plotly.js';
 import PlotHeader from '../../common/PlotHeader.jsx';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function ClusterSizeDistributionSection({ sizes }) {
   const rows = Array.isArray(sizes) ? sizes : [];
   if (!rows.length) return null;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader title="Cluster size distribution" help="Bar chart of samples per cluster id." />
       <Plot
         data={[
@@ -47,7 +47,7 @@ export default function ClusterSizeDistributionSection({ sizes }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 300, marginTop: 'auto' }}
+        className="unsupPlotSm"
       />
     </Stack>
   );

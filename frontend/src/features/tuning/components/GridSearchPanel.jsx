@@ -24,6 +24,9 @@ import GridSearchConfigPane from './gridSearch/GridSearchConfigPane.jsx';
 import TuningConfigCard from './common/TuningConfigCard.jsx';
 import TuningErrorAlert from './common/TuningErrorAlert.jsx';
 import { useTuningRunner } from '../hooks/useTuningRunner.js';
+import '../styles/tuningPanel.css';
+import '../styles/analyticsResults.css';
+
 
 const EMPTY_PARAM = { paramName: '', values: [] };
 

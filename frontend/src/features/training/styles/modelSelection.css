@@ -1,5 +1,20 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+/* Model selection (feature-scoped).
+ *
+ * IMPORTANT:
+ * - Keep Mantine components and Mantine style-props as the primary styling mechanism.
+ * - Use this file only for non-Mantine inline-style extraction and safe layout helpers.
+ */
+
+@layer components {
+	.modelSelectionControlsPane {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.modelSelectionHelpPane {
+		flex: 1;
+		min-width: 220px;
+	}
+}

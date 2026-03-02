@@ -33,7 +33,7 @@ export default function ValidationCurveConfigPane({
   onNJobsChangeOverride,
 }) {
   return (
-    <Box style={{ margin: '0 auto', width: '100%' }}>
+    <Box className="tuningPaneRoot">
       <Stack gap="sm">
         <SplitOptionsCard
           allowedModes={['kfold']}
@@ -66,7 +66,7 @@ export default function ValidationCurveConfigPane({
           onChange={onHyperParamChange}
         />
 
-        <Box style={{ maxWidth: 180 }}>
+        <Box className="tuningNarrowInput">
           <NumberOverrideInput
             label="n_jobs"
             min={1}

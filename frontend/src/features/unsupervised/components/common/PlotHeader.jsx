@@ -1,22 +1,15 @@
-import { Tooltip, Text } from '@mantine/core';
+import { Tooltip, Text, Box } from '@mantine/core';
 
 /**
  * Small shared header used above plot tiles.
  */
 export default function PlotHeader({ title, help, minHeight = 34 }) {
   const titleNode = (
-    <div
-      style={{
-        minHeight,
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-      }}
-    >
+    <Box mih={minHeight} className="unsupPlotHeader">
       <Text fw={600} size="md" ta="center">
         {title}
       </Text>
-    </div>
+    </Box>
   );
 
   return help ? (

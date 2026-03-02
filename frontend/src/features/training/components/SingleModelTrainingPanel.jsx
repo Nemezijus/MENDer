@@ -9,6 +9,8 @@ import ModelSelectionCard from './ModelSelectionCard.jsx';
 import ShuffleLabelsCard from './ShuffleLabelsCard.jsx';
 import SplitOptionsCard from '../../../shared/ui/config/SplitOptionsCard.jsx';
 
+import '../styles/trainingPanel.css';
+
 /** ---------- component ---------- **/
 
 export default function SingleModelTrainingPanel() {
@@ -58,7 +60,7 @@ export default function SingleModelTrainingPanel() {
 
       {error && (
         <Alert color="red" title="Error" variant="light">
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{error}</Text>
+          <Text size="sm" className="trainingErrorText">{error}</Text>
         </Alert>
       )}
 
@@ -90,12 +92,7 @@ export default function SingleModelTrainingPanel() {
           )}
 
           {/* Centered configuration stack inside the card */}
-          <Box
-            style={{
-              margin: '0 auto',
-              width: '100%',
-            }}
-          >
+          <Box className="trainingConfigBody">
             <Stack gap="sm">
               <SplitOptionsCard
                 allowedModes={['holdout', 'kfold']}

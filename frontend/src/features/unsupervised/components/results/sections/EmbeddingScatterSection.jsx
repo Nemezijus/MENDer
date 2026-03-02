@@ -13,42 +13,21 @@ import {
   PLOT_MARGIN_STD,
 } from '../../../utils/plotly.js';
 
-import { PLOT_BOX_STYLE, PLOT_HEIGHT, TILE_STACK_STYLE } from '../common/styles.js';
+import { PLOT_HEIGHT } from '../common/styles.js';
 
 function ClusterLegend({ entries }) {
   if (!entries?.length) return null;
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 10,
-        justifyContent: 'center',
-        marginTop: 2,
-        marginBottom: 2,
-      }}
-    >
+    <div className="unsupLegendWrap">
       {entries.map((e) => (
         <div
           key={e.label}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '2px 8px',
-            borderRadius: 999,
-            background: 'rgba(0,0,0,0.03)',
-          }}
+          className="unsupLegendChip"
         >
           <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              background: e.color,
-              display: 'inline-block',
-            }}
+            className="unsupLegendDot"
+            style={{ background: e.color }}
           />
           <Text size="sm" fw={500}>
             {e.label}
@@ -137,14 +116,14 @@ export default function EmbeddingScatterSection({ embedding, gmmEllipses, cluste
   }
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title="2D embedding scatter"
         help="A 2D projection of your (preprocessed) features. Points are colored by cluster label when available."
       />
       {legendEntries.length ? <ClusterLegend entries={legendEntries} /> : null}
 
-      <div style={PLOT_BOX_STYLE}>
+      <div className="unsupPlotBox">
         <Plot
           data={traces}
           layout={{
@@ -178,7 +157,7 @@ export default function EmbeddingScatterSection({ embedding, gmmEllipses, cluste
             ...PLOT_BG,
           }}
           config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-          style={{ width: '100%', height: '100%' }}
+          className="unsupPlotFill"
         />
       </div>
     </Stack>

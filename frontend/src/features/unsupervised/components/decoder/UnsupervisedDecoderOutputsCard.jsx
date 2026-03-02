@@ -110,7 +110,7 @@ export default function UnsupervisedDecoderOutputsCard({ trainResult }) {
 
         {exportErr ? (
           <Alert color="red" title="Export failed">
-            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            <Text size="sm" className="unsupPreWrapText">
               {exportErr}
             </Text>
           </Alert>

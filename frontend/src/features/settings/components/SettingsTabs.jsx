@@ -11,7 +11,7 @@ export default function SettingsTabs({
   onMetricChange,
 }) {
   return (
-    <Tabs defaultValue="scaling" keepMounted={false}>
+    <Tabs defaultValue="scaling" keepMounted={false} className="settingsTabs">
       <Tabs.List grow>
         <Tabs.Tab value="scaling">Scaling</Tabs.Tab>
         <Tabs.Tab value="metric">Metric</Tabs.Tab>

@@ -6,7 +6,7 @@ import PlotHeader from '../../common/PlotHeader.jsx';
 import { toFiniteNumbers } from '../../../utils/stats.js';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function CompactnessSeparationSection({ compactSep }) {
   if (!compactSep || !Array.isArray(compactSep?.cluster_ids)) return null;
@@ -16,7 +16,7 @@ export default function CompactnessSeparationSection({ compactSep }) {
   if (x.length === 0 || y.length === 0 || ids.length !== x.length || ids.length !== y.length) return null;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title="Cluster compactness vs separation"
         help="Each point is a cluster: compactness is within-cluster spread, separation is distance to the nearest other cluster centroid."
@@ -60,7 +60,7 @@ export default function CompactnessSeparationSection({ compactSep }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 320, marginTop: 'auto' }}
+        className="unsupPlotMd"
       />
     </Stack>
   );

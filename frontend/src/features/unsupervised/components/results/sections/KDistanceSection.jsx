@@ -6,7 +6,7 @@ import PlotHeader from '../../common/PlotHeader.jsx';
 import { toFiniteNumbers } from '../../../utils/stats.js';
 import { AXIS_TICK, AXIS_TITLE, PLOT_BG, PLOT_MARGIN_STD } from '../../../utils/plotly.js';
 
-import { TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function KDistanceSection({ kdist }) {
   if (!kdist || !Array.isArray(kdist?.y) || kdist.y.length === 0) return null;
@@ -16,7 +16,7 @@ export default function KDistanceSection({ kdist }) {
   const kText = typeof kdist?.k === 'number' ? ` (k=${kdist.k})` : '';
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader
         title={`k-distance plot${kText}`}
         help="Sorted distance to the k-th nearest neighbor. Often used to guide DBSCAN eps selection."
@@ -56,7 +56,7 @@ export default function KDistanceSection({ kdist }) {
           ...PLOT_BG,
         }}
         config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-        style={{ width: '100%', height: 320, marginTop: 'auto' }}
+        className="unsupPlotMd"
       />
     </Stack>
   );

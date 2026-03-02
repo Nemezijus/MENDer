@@ -10,6 +10,8 @@ import {
 import AlgoSelect from './modelSelection/AlgoSelect.jsx';
 import AlgoParamsSwitch from './modelSelection/AlgoParamsSwitch.jsx';
 
+import '../styles/modelSelection.css';
+
 const LazyModelHelpText = lazy(() =>
   import('../../../shared/content/help/ModelHelpText.jsx')
 );
@@ -188,11 +190,11 @@ export default function ModelSelectionCard({
         </Text>
 
         <Group align="flex-start" gap="xl" grow wrap="nowrap">
-          <Box style={{ flex: 1, minWidth: 0 }}>
+          <Box className="modelSelectionControlsPane">
             <Stack gap="md">{controlsBody}</Stack>
           </Box>
 
-          <Box style={{ flex: 1, minWidth: 220 }}>
+          <Box className="modelSelectionHelpPane">
             <Stack gap="xs">
               <ModelIntroText />
               <Button

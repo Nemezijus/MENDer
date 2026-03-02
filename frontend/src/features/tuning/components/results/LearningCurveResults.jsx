@@ -73,7 +73,7 @@ export default function LearningCurveResults({
         autosize: true,
       }}
       config={{ displaylogo: false, responsive: true }}
-      style={{ width: '100%', height: '460px' }}
+      className="tuningPlotlyChart"
       useResizeHandler
     />
   );

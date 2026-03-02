@@ -10,7 +10,7 @@ import {
   PLOT_MARGIN_STD,
 } from '../../../utils/plotly.js';
 
-import { PLOT_HEIGHT, TILE_STACK_STYLE } from '../common/styles.js';
+
 
 export default function FeatureProfilesSection({ centroids, clusterLabel }) {
   if (!centroids) return null;
@@ -23,11 +23,11 @@ export default function FeatureProfilesSection({ centroids, clusterLabel }) {
   const showFeatureTicks = featureLabels.length <= 25;
 
   return (
-    <Stack gap={4} style={TILE_STACK_STYLE}>
+    <Stack gap={4} className="unsupTileStack">
       <PlotHeader title="Per-cluster feature profiles" help="Mean feature values per cluster (shown for top-variance features)." />
 
-      <div style={{ width: '100%', marginTop: 'auto' }}>
-        <div style={{ width: '100%', aspectRatio: '1 / 1', minHeight: PLOT_HEIGHT }}>
+      <div className="unsupSquareOuter">
+        <div className="unsupSquareInner">
           <Plot
             data={[
               {
@@ -73,7 +73,7 @@ export default function FeatureProfilesSection({ centroids, clusterLabel }) {
               ...PLOT_BG,
             }}
             config={{ displayModeBar: false, responsive: true, useResizeHandler: true }}
-            style={{ width: '100%', height: '100%' }}
+            className="unsupPlotFill"
           />
         </div>
       </div>
