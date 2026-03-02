@@ -161,7 +161,7 @@ export default function ModelArtifactCard() {
   }
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md" style={borderColor ? { borderColor } : undefined}>
+    <Card withBorder radius="md" shadow="sm" padding="md" style={borderColor ? { borderColor } : undefined} className="modelCard">
       <Stack gap="sm">
         <Text fw={600} ta="center">
           Model
