@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Container, Box } from '@mantine/core';
+import { Box, Text } from '@mantine/core';
 
 import './styles/App.css';
 
@@ -56,10 +56,23 @@ export default function App() {
     );
   }
 
+  const activeMeta = SECTION_META_BY_ID[activeSection] ?? null;
+
   return (
-    <Container fluid pt="xl" pb="md" className="appShell">
-      <Box className="appFrame">
-        <Box className="appWorkspace">
+    <Box className="appPage">
+      <Box className="appShell">
+        <Box className="appHeader">
+          <div className="appHeaderTitleWrap">
+            <Text className="appHeaderEyebrow">Machine learning workflow</Text>
+            <Text className="appHeaderTitle">MENDer</Text>
+          </div>
+
+          <Text className="appHeaderMeta">
+            {activeMeta?.title ?? 'Workspace'}
+          </Text>
+        </Box>
+
+        <Box className="appSurface">
           <Box className="appSidebarColumn">
             <SidebarNav active={activeSection} onChange={setActiveSection} />
           </Box>
@@ -73,6 +86,6 @@ export default function App() {
           </Box>
         </Box>
       </Box>
-    </Container>
+    </Box>
   );
 }

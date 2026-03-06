@@ -1,39 +1,94 @@
-@reference "tailwindcss";
+@reference "../../styles/tokens.css";
 
 @layer components {
+	.appPage {
+		@apply min-h-screen w-full px-4 py-6 xl:px-8;
+		
+	}
+
 	.appShell {
-		@apply w-full px-4 py-2 xl:px-6;
+		@apply mx-auto flex w-full flex-col;
 	}
 
-	.appFrame {
-		@apply mx-auto w-full max-w-[1800px];
+	.appHeader {
+		@apply flex min-h-20 items-center justify-between gap-6 border px-5 py-4 xl:px-6;
+		border-color: var(--app-color-border);
+		background-color: var(--app-color-surface);
 	}
 
-	.appWorkspace {
-		@apply grid items-start gap-5;
+	.appHeaderTitleWrap {
+		@apply flex flex-col gap-1;
+	}
+
+	.appHeaderEyebrow {
+		@apply text-[0.7rem] font-medium uppercase tracking-[0.24em];
+		color: var(--app-color-text-muted);
+	}
+
+	.appHeaderTitle {
+		@apply text-2xl font-semibold tracking-tight;
+		color: var(--app-color-text);
+	}
+
+	.appHeaderMeta {
+		@apply text-sm font-medium;
+		color: var(--app-color-text-muted);
+	}
+
+	.appSurface {
+		@apply grid w-full overflow-hidden border border-t-0;
+		border-color: var(--app-color-border);
+		background-color: var(--app-color-surface);
+		min-height: 46rem;
+	}
+
+	.appSidebarColumn,
+	.appMainColumn,
+	.appArtifactColumn {
+		@apply min-w-0;
+		background-color: var(--app-color-surface);
+	}
+
+	.appSidebarColumn,
+	.appMainColumn {
+		border-bottom: 1px solid var(--app-color-border);
 	}
 
 	.appSidebarColumn {
-		@apply min-w-0 self-start;
+		min-height: 22rem;
 	}
 
 	.appMainColumn {
-		@apply min-w-0;
+		@apply px-5 py-5 xl:px-6 xl:py-6;
 	}
 
 	.appArtifactColumn {
-		@apply min-w-0 self-start;
+		min-height: 18rem;
 	}
 }
 
 @media (min-width: 1280px) {
-	.appWorkspace {
-		grid-template-columns: 19rem minmax(0, 1fr) 22rem;
+	.appShell {
+		width: 80vw;
+	}
+
+	.appSurface {
+		grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) minmax(0, 3fr);
 	}
 
 	.appSidebarColumn,
+	.appMainColumn {
+		border-right: 1px solid var(--app-color-border);
+		border-bottom: 0;
+	}
+
 	.appArtifactColumn {
-		position: sticky;
-		top: 1.5rem;
+		border-bottom: 0;
+	}
+}
+
+@media (min-width: 1921px) {
+	.appShell {
+		width: 60vw;
 	}
 }

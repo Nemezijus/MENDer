@@ -1,17 +1,20 @@
-@reference "tailwindcss";
-
 @layer base {
 	html,
 	body,
 	#root {
-		@apply min-h-full;
+		min-height: 100%;
 	}
 
 	body {
-		@apply bg-app-canvas font-sans text-app-text antialiased;
+		margin: 0;
+		background-color: var(--app-color-canvas);
+		color: var(--app-color-text);
+		font-family: var(--app-font-sans);
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
 	}
 
 	#root {
-		@apply w-full;
+		width: 100%;
 	}
 }

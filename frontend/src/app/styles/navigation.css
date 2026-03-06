@@ -1,15 +1,15 @@
-@reference "../../index.css";
+@reference "tailwindcss";
 
 @layer components {
 	.sidebarNav {
-		@apply flex w-full flex-col overflow-hidden border border-app-border bg-app-surface;
-		min-height: 42rem;
-		border-radius: 1.25rem;
-		box-shadow: var(--shadow-app-panel);
+		@apply flex h-full w-full flex-col overflow-hidden;
+		background-color: var(--app-color-surface);
+		min-height: 100%;
 	}
 
 	.sidebarNavHeader {
-		@apply border-b border-app-border px-5 py-4;
+		@apply px-5 py-4;
+		border-bottom: 1px solid var(--app-color-border);
 	}
 
 	.sidebarNavHeaderInner {
@@ -17,7 +17,8 @@
 	}
 
 	.sidebarNavBrand {
-		@apply text-lg font-semibold tracking-tight text-app-text;
+		@apply text-lg font-semibold tracking-tight;
+		color: var(--app-color-text);
 	}
 
 	.sidebarNavLinks {
@@ -29,7 +30,7 @@
 	}
 
 	.sidebarNavItem {
-		border-radius: 0.875rem;
+		border-radius: 0;
 	}
 
 	.sidebarNavChildLinks {
@@ -37,14 +38,16 @@
 	}
 
 	.sidebarNavChildLink {
-		border-radius: 0.75rem;
+		border-radius: 0;
 	}
 
 	.sidebarNavFooter {
-		@apply border-t border-app-border px-5 py-4;
+		@apply px-5 py-4;
+		border-top: 1px solid var(--app-color-border);
 	}
 
 	.sidebarNavFooterText {
-		@apply text-xs text-app-text-muted;
+		@apply text-xs;
+		color: var(--app-color-text-muted);
 	}
 }

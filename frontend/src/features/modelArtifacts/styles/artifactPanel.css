@@ -17,5 +17,5 @@
 }
 
 .modelCard {
-  @apply bg-gray-200 ;
+	@apply h-full bg-transparent;
 }

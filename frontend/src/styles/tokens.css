@@ -1,35 +1,109 @@
 :root {
-  --app-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --app-color-canvas: #f8fafc;
+  /* Global font */
+  --app-font-sans: "Jost", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Project palette placeholders inspired by your previous site */
+  --app-color-c1: #212a31;
+  --app-color-c2: #2e3944;
+  --app-color-c3: #124e66;
+  --app-color-c4: #748d92;
+  --app-color-c5: #d3d9d4;
+
+  --app-color-primary-50: #f1f3f9;
+  --app-color-primary-100: #e3e7f3;
+  --app-color-primary-200: #90a1cf;
+  --app-color-primary-300: #455ea2;
+  --app-color-primary-400: #222e4f;
+  --app-color-primary-500: #182037;
+  --app-color-primary-600: #0d121f;
+  --app-color-primary-700: #030508;
+
+  --app-color-accent-one-100: #f4f8f9;
+  --app-color-accent-one-125: #eaf0f4;
+  --app-color-accent-one-150: #dfe9ee;
+  --app-color-accent-one-200: #d4e2e8;
+  --app-color-accent-one-300: #b4ccd8;
+  --app-color-accent-one-400: #94b6c7;
+  --app-color-accent-one-500: #54869f;
+  --app-color-accent-one-600: #304d5b;
+  --app-color-accent-one-700: #0c1317;
+
+  --app-color-accent-two-100: #fdfbf3;
+  --app-color-accent-two-200: #f6f0cf;
+  --app-color-accent-two-300: #f0e4ab;
+  --app-color-accent-two-400: #e9d985;
+  --app-color-accent-two-500: #d8bb29;
+  --app-color-accent-two-600: #7c6b17;
+  --app-color-accent-two-700: #1f1b06;
+
+  --app-color-accent-three-100: #fbf2f0;
+  --app-color-accent-three-200: #efcdc3;
+  --app-color-accent-three-300: #e3a797;
+  --app-color-accent-three-400: #d7816a;
+  --app-color-accent-three-500: #b24b2f;
+  --app-color-accent-three-600: #662b1b;
+  --app-color-accent-three-700: #190b07;
+
+  --app-color-accent-four-100: #f8eef0;
+  --app-color-accent-four-200: #e5b9c5;
+  --app-color-accent-four-300: #d18599;
+  --app-color-accent-four-400: #bd4f6c;
+  --app-color-accent-four-500: #89344b;
+  --app-color-accent-four-600: #4e1e2b;
+  --app-color-accent-four-700: #14070b;
+
+  --app-color-neutral-100: #dae1e7;
+  --app-color-neutral-200: #c0c8ce;
+  --app-color-neutral-300: #a6aeb5;
+  --app-color-neutral-400: #8c959d;
+  --app-color-neutral-500: #717b84;
+  --app-color-neutral-600: #57626b;
+  --app-color-neutral-700: #3d4852;
+
+  /* App shell semantic tokens
+     Layout CSS should prefer these instead of direct palette shades. */
+  --app-color-canvas: var(--app-color-primary-50);
   --app-color-surface: #ffffff;
-  --app-color-surface-subtle: #f1f5f9;
-  --app-color-border: #e2e8f0;
-  --app-color-border-strong: #cbd5e1;
-  --app-color-text: #0f172a;
-  --app-color-text-muted: #64748b;
-  --app-color-accent-50: #eef2ff;
-  --app-color-accent-100: #e0e7ff;
-  --app-color-accent-500: #6366f1;
-  --app-color-accent-600: #4f46e5;
-  --shadow-app-panel: 0 20px 45px -24px rgba(15, 23, 42, 0.28);
+  --app-color-surface-subtle: var(--app-color-primary-50);
+  --app-color-border: var(--app-color-neutral-200);
+  --app-color-border-strong: var(--app-color-neutral-300);
+  --app-color-text: var(--app-color-primary-500);
+  --app-color-text-muted: var(--app-color-neutral-600);
+
+  /* Active semantic accent family
+     Accent Four is now the active accent exposed through app-accent-* tokens. */
+  --app-color-accent-50: var(--app-color-accent-four-100);
+  --app-color-accent-100: var(--app-color-accent-four-200);
+  --app-color-accent-500: var(--app-color-accent-four-400);
+  --app-color-accent-600: var(--app-color-accent-four-500);
+
+  /* Optional extra shell tokens */
+  --shadow-app-panel: 0 18px 40px -28px rgba(24, 32, 55, 0.28);
 }
 
 [data-mantine-color-scheme='dark'] {
-  --app-color-canvas: #0f172a;
-  --app-color-surface: #111827;
-  --app-color-surface-subtle: #1f2937;
-  --app-color-border: #334155;
-  --app-color-border-strong: #475569;
-  --app-color-text: #e5e7eb;
-  --app-color-text-muted: #94a3b8;
-  --app-color-accent-50: #312e81;
-  --app-color-accent-100: #3730a3;
-  --app-color-accent-500: #818cf8;
-  --app-color-accent-600: #a5b4fc;
+  --app-color-canvas: var(--app-color-primary-600);
+  --app-color-surface: var(--app-color-primary-500);
+  --app-color-surface-subtle: var(--app-color-primary-400);
+  --app-color-border: var(--app-color-neutral-700);
+  --app-color-border-strong: var(--app-color-neutral-600);
+  --app-color-text: var(--app-color-primary-50);
+  --app-color-text-muted: var(--app-color-neutral-200);
+
+  /* Keep Accent Four active in dark mode, but shift to lighter usable values */
+  --app-color-accent-50: var(--app-color-accent-four-600);
+  --app-color-accent-100: var(--app-color-accent-four-500);
+  --app-color-accent-500: var(--app-color-accent-four-300);
+  --app-color-accent-600: var(--app-color-accent-four-200);
 }
 
 @theme inline {
+  /* Global font */
   --font-sans: var(--app-font-sans);
+
+  /* Semantic app tokens for layout classes like:
+     bg-app-canvas, bg-app-surface, border-app-border, text-app-text,
+     bg-app-accent-500, text-app-accent-600 */
   --color-app-canvas: var(--app-color-canvas);
   --color-app-surface: var(--app-color-surface);
   --color-app-surface-subtle: var(--app-color-surface-subtle);
@@ -41,4 +115,70 @@
   --color-app-accent-100: var(--app-color-accent-100);
   --color-app-accent-500: var(--app-color-accent-500);
   --color-app-accent-600: var(--app-color-accent-600);
+
+  /* Reusable palette tokens for direct classes like:
+     bg-primary-500, text-accent-two-400, bg-accent-four-400 */
+  --color-c1: var(--app-color-c1);
+  --color-c2: var(--app-color-c2);
+  --color-c3: var(--app-color-c3);
+  --color-c4: var(--app-color-c4);
+  --color-c5: var(--app-color-c5);
+
+  --color-primary-50: var(--app-color-primary-50);
+  --color-primary-100: var(--app-color-primary-100);
+  --color-primary-200: var(--app-color-primary-200);
+  --color-primary-300: var(--app-color-primary-300);
+  --color-primary-400: var(--app-color-primary-400);
+  --color-primary-500: var(--app-color-primary-500);
+  --color-primary-600: var(--app-color-primary-600);
+  --color-primary-700: var(--app-color-primary-700);
+
+  --color-accent-one-100: var(--app-color-accent-one-100);
+  --color-accent-one-125: var(--app-color-accent-one-125);
+  --color-accent-one-150: var(--app-color-accent-one-150);
+  --color-accent-one-200: var(--app-color-accent-one-200);
+  --color-accent-one-300: var(--app-color-accent-one-300);
+  --color-accent-one-400: var(--app-color-accent-one-400);
+  --color-accent-one-500: var(--app-color-accent-one-500);
+  --color-accent-one-600: var(--app-color-accent-one-600);
+  --color-accent-one-700: var(--app-color-accent-one-700);
+
+  --color-accent-two-100: var(--app-color-accent-two-100);
+  --color-accent-two-200: var(--app-color-accent-two-200);
+  --color-accent-two-300: var(--app-color-accent-two-300);
+  --color-accent-two-400: var(--app-color-accent-two-400);
+  --color-accent-two-500: var(--app-color-accent-two-500);
+  --color-accent-two-600: var(--app-color-accent-two-600);
+  --color-accent-two-700: var(--app-color-accent-two-700);
+
+  --color-accent-three-100: var(--app-color-accent-three-100);
+  --color-accent-three-200: var(--app-color-accent-three-200);
+  --color-accent-three-300: var(--app-color-accent-three-300);
+  --color-accent-three-400: var(--app-color-accent-three-400);
+  --color-accent-three-500: var(--app-color-accent-three-500);
+  --color-accent-three-600: var(--app-color-accent-three-600);
+  --color-accent-three-700: var(--app-color-accent-three-700);
+
+  /* Accent Four is active semantically above, and also exposed directly here */
+  --color-accent-four-100: var(--app-color-accent-four-100);
+  --color-accent-four-200: var(--app-color-accent-four-200);
+  --color-accent-four-300: var(--app-color-accent-four-300);
+  --color-accent-four-400: var(--app-color-accent-four-400);
+  --color-accent-four-500: var(--app-color-accent-four-500);
+  --color-accent-four-600: var(--app-color-accent-four-600);
+  --color-accent-four-700: var(--app-color-accent-four-700);
+
+  --color-neutral-100: var(--app-color-neutral-100);
+  --color-neutral-200: var(--app-color-neutral-200);
+  --color-neutral-300: var(--app-color-neutral-300);
+  --color-neutral-400: var(--app-color-neutral-400);
+  --color-neutral-500: var(--app-color-neutral-500);
+  --color-neutral-600: var(--app-color-neutral-600);
+  --color-neutral-700: var(--app-color-neutral-700);
+
+  /* Responsive breakpoints (Tailwind v4 replacement for screens) */
+  --breakpoint-tablet: 37.5625rem;
+  --breakpoint-laptop: 48.0625rem;
+  --breakpoint-desktop: 80rem;
+  --breakpoint-xldesktop: 120.0625rem;
 }
