@@ -1,22 +1,6 @@
 @import "tailwindcss";
-
-/* restore Vite-like centering */
-html, body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  min-height: 100%;
-  display: flex;
-  justify-content: center; /* horizontal center */
-}
-
-.appPage {
-  width: 100%;
-  max-width: 1280px;       /* or whatever you want */
-  padding: 2rem;
-}
+@import "./styles/tokens.css";
+@import "./styles/globals.css";
+@import "./styles/layout.css";
+@import "./styles/utilities.css";
+@import "./styles/mantine-overrides.css";

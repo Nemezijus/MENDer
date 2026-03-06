@@ -1,11 +1,50 @@
-@reference "tailwindcss";
-
-/*
- * Sidebar navigation helpers.
- *
- * Note: SidebarNav reverted back to Mantine system props (size/fw/c/tt/pl/my), so this
- * file currently remains as a placeholder for any future non-Mantine navigation styling.
- */
+@reference "../../index.css";
 
 @layer components {
+	.sidebarNav {
+		@apply flex w-full flex-col overflow-hidden border border-app-border bg-app-surface;
+		min-height: 42rem;
+		border-radius: 1.25rem;
+		box-shadow: var(--shadow-app-panel);
+	}
+
+	.sidebarNavHeader {
+		@apply border-b border-app-border px-5 py-4;
+	}
+
+	.sidebarNavHeaderInner {
+		min-height: 3.5rem;
+	}
+
+	.sidebarNavBrand {
+		@apply text-lg font-semibold tracking-tight text-app-text;
+	}
+
+	.sidebarNavLinks {
+		@apply flex-1 px-3 py-4;
+	}
+
+	.sidebarNavLinksInner {
+		@apply flex flex-col gap-2;
+	}
+
+	.sidebarNavItem {
+		border-radius: 0.875rem;
+	}
+
+	.sidebarNavChildLinks {
+		@apply mt-1 flex flex-col gap-1 pl-2;
+	}
+
+	.sidebarNavChildLink {
+		border-radius: 0.75rem;
+	}
+
+	.sidebarNavFooter {
+		@apply border-t border-app-border px-5 py-4;
+	}
+
+	.sidebarNavFooterText {
+		@apply text-xs text-app-text-muted;
+	}
 }

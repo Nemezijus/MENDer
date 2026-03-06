@@ -5,13 +5,14 @@ import FeatureCard from '../../../shared/ui/config/FeatureCard.jsx';
 import MetricCard from '../../../shared/ui/config/MetricCard.jsx';
 
 export default function SettingsTabs({
+  initialTab = 'scaling',
   scaleValue,
   onScaleChange,
   metricValue,
   onMetricChange,
 }) {
   return (
-    <Tabs defaultValue="scaling" keepMounted={false} className="settingsTabs">
+    <Tabs defaultValue={initialTab} keepMounted={false} className="settingsTabs">
       <Tabs.List grow>
         <Tabs.Tab value="scaling">Scaling</Tabs.Tab>
         <Tabs.Tab value="metric">Metric</Tabs.Tab>

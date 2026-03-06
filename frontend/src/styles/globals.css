@@ -1,5 +1,17 @@
 @reference "tailwindcss";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+@layer base {
+	html,
+	body,
+	#root {
+		@apply min-h-full;
+	}
+
+	body {
+		@apply bg-app-canvas font-sans text-app-text antialiased;
+	}
+
+	#root {
+		@apply w-full;
+	}
+}

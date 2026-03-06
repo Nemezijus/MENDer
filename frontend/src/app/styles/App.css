@@ -1,22 +1,39 @@
 @reference "tailwindcss";
+
 @layer components {
+	.appShell {
+		@apply w-full px-4 py-2 xl:px-6;
+	}
+
 	.appFrame {
-		@apply mx-auto w-[80vw];
+		@apply mx-auto w-full max-w-[1800px];
 	}
 
-	.appColumns {
-		@apply flex items-start gap-5;
+	.appWorkspace {
+		@apply grid items-start gap-5;
 	}
 
-	.appSidebar {
-		@apply min-w-0 flex-[2];
+	.appSidebarColumn {
+		@apply min-w-0 self-start;
 	}
 
-	.appMain {
-		@apply min-w-0 flex-[5];
+	.appMainColumn {
+		@apply min-w-0;
 	}
 
-	.appArtifact {
-		@apply min-w-0 flex-[3];
+	.appArtifactColumn {
+		@apply min-w-0 self-start;
+	}
+}
+
+@media (min-width: 1280px) {
+	.appWorkspace {
+		grid-template-columns: 19rem minmax(0, 1fr) 22rem;
+	}
+
+	.appSidebarColumn,
+	.appArtifactColumn {
+		position: sticky;
+		top: 1.5rem;
 	}
 }

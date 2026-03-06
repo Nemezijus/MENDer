@@ -1,125 +1,139 @@
+import {
+  IconAdjustments,
+  IconCalendarStats,
+  IconFileAnalytics,
+  IconGauge,
+  IconNotes,
+  IconPresentationAnalytics,
+} from '@tabler/icons-react';
+
 /**
  * Single source of truth for app sections.
  *
- * SidebarNav and App both consume this file to avoid drift between:
- * - section IDs
- * - nav labels / descriptions
- * - section titles
- * - guard requirements
+ * The sidebar consumes NAV_SECTIONS to render top-level items and nested links.
+ * App consumes SECTION_META_BY_ID to resolve the visible panel and its title.
  */
 
 export const DEFAULT_SECTION_ID = 'data';
 
-export const SECTION_GROUPS = [
+export const NAV_SECTIONS = [
   {
-    groupLabel: 'DATA',
+    id: 'data',
+    navLabel: 'Data & Files',
+    title: 'Upload data & files',
+    description: 'Upload and inspect training and production data',
+    icon: IconNotes,
+    requiresTrainingData: false,
+  },
+  {
+    navLabel: 'Settings',
+    description: 'Global modelling defaults',
+    icon: IconAdjustments,
+    initiallyOpened: false,
     items: [
       {
-        id: 'data',
-        navLabel: 'Data & files',
-        title: 'Upload data & models',
-        description: 'Upload and inspect training data, manage files',
+        id: 'settings-scaling',
+        navLabel: 'Scaling',
+        title: 'Settings · Scaling',
         requiresTrainingData: false,
+        panelProps: { initialTab: 'scaling' },
+      },
+      {
+        id: 'settings-metric',
+        navLabel: 'Metric',
+        title: 'Settings · Metric',
+        requiresTrainingData: false,
+        panelProps: { initialTab: 'metric' },
+      },
+      {
+        id: 'settings-features',
+        navLabel: 'Features',
+        title: 'Settings · Features',
+        requiresTrainingData: false,
+        panelProps: { initialTab: 'features' },
       },
     ],
   },
   {
-    groupLabel: 'SETTINGS',
-    items: [
-      {
-        id: 'settings',
-        navLabel: 'Settings',
-        title: 'Specify global settings',
-        description: 'Scaling, features, metric',
-        requiresTrainingData: false,
-      },
-    ],
-  },
-  {
-    groupLabel: 'MODEL TRAINING',
+    navLabel: 'Training',
+    description: 'Single models, clustering, and ensembles',
+    icon: IconPresentationAnalytics,
+    initiallyOpened: true,
     items: [
       {
         id: 'train',
         navLabel: 'Train a model',
         title: 'Model training',
-        description: 'Choose algorithm and fit on current data',
         requiresTrainingData: true,
       },
       {
         id: 'train-unsupervised',
         navLabel: 'Unsupervised learning',
         title: 'Unsupervised learning',
-        description: 'Clustering models (X-only)',
         requiresTrainingData: true,
       },
       {
         id: 'train-ensemble',
         navLabel: 'Train an ensemble',
         title: 'Ensemble training',
-        description: 'Perform ensemble model training',
         requiresTrainingData: true,
       },
     ],
   },
   {
-    groupLabel: 'TUNING',
+    id: 'results',
+    navLabel: 'Results',
+    title: 'View results',
+    description: 'Graphs, tables, and summaries',
+    icon: IconFileAnalytics,
+    requiresTrainingData: true,
+  },
+  {
+    id: 'predictions',
+    navLabel: 'Predictions',
+    title: 'Run predictions',
+    description: 'Apply a saved model to production data',
+    icon: IconGauge,
+    requiresTrainingData: false,
+  },
+  {
+    navLabel: 'Tuning',
+    description: 'Curves and search workflows',
+    icon: IconCalendarStats,
+    initiallyOpened: false,
     items: [
       {
         id: 'learning-curve',
         navLabel: 'Learning curve',
         title: 'Find optimal data split',
-        description: 'Explore sample size vs performance',
         requiresTrainingData: true,
       },
       {
         id: 'validation-curve',
         navLabel: 'Validation curve',
         title: 'Find the best parameter value',
-        description: 'Explore hyperparameter vs performance',
         requiresTrainingData: true,
       },
       {
         id: 'grid-search',
         navLabel: 'Grid search',
         title: 'Grid search',
-        description: 'Exhaustive search over two hyperparameters',
         requiresTrainingData: true,
       },
       {
         id: 'random-search',
         navLabel: 'Randomized search',
         title: 'Randomized search',
-        description: 'Random sampling over two hyperparameters',
         requiresTrainingData: true,
-      },
-    ],
-  },
-  {
-    groupLabel: 'RESULTS',
-    items: [
-      {
-        id: 'results',
-        navLabel: 'Results',
-        title: 'View results',
-        description: 'Graphs, tables, and summaries',
-        requiresTrainingData: true,
-      },
-    ],
-  },
-  {
-    groupLabel: 'PREDICTIONS',
-    items: [
-      {
-        id: 'predictions',
-        navLabel: 'Predictions',
-        title: 'Run predictions',
-        description: 'Apply model to production data',
-        requiresTrainingData: false,
       },
     ],
   },
 ];
 
+function flattenLeafSections(sections) {
+  return sections.flatMap((section) => (Array.isArray(section.items) ? section.items : [section]));
+}
+
 export const SECTION_META_BY_ID = Object.fromEntries(
-  SECTION_GROUPS.flatMap((g) => g.items).map((item) => [item.id, item]),
+  flattenLeafSections(NAV_SECTIONS).map((item) => [item.id, item]),
 );

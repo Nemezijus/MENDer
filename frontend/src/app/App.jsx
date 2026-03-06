@@ -24,7 +24,9 @@ import UnsupervisedTrainingPanel from '../features/unsupervised/components/Unsup
 
 const SECTION_COMPONENTS = {
   data: DataFilesPanel,
-  settings: SettingsPanel,
+  'settings-scaling': SettingsPanel,
+  'settings-metric': SettingsPanel,
+  'settings-features': SettingsPanel,
   train: SingleModelTrainingPanel,
   'train-ensemble': EnsembleTrainingPanel,
   'train-unsupervised': UnsupervisedTrainingPanel,
@@ -45,7 +47,7 @@ export default function App() {
 
     if (!meta || !Panel) return null;
 
-    const content = <Panel />;
+    const content = <Panel key={activeSection} {...(meta.panelProps ?? {})} />;
 
     return (
       <SectionShell title={meta.title}>
@@ -55,21 +57,18 @@ export default function App() {
   }
 
   return (
-    <Container fluid pt="xl" pb="md">
+    <Container fluid pt="xl" pb="md" className="appShell">
       <Box className="appFrame">
-        <Box className="appColumns">
-          {/* Left: sidebar */}
-          <Box className="appSidebar">
+        <Box className="appWorkspace">
+          <Box className="appSidebarColumn">
             <SidebarNav active={activeSection} onChange={setActiveSection} />
           </Box>
 
-          {/* Center: main content */}
-          <Box className="appMain">
+          <Box className="appMainColumn">
             {renderMain()}
           </Box>
 
-          {/* Right: persistent model card */}
-          <Box className="appArtifact">
+          <Box className="appArtifactColumn">
             <ModelArtifactCard />
           </Box>
         </Box>

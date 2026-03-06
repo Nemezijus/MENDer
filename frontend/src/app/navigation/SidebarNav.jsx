@@ -1,31 +1,47 @@
-import { Stack, Text, NavLink, Divider } from '@mantine/core';
+import { Code, ScrollArea, Text, Group } from '@mantine/core';
 
-import { SECTION_GROUPS } from './sections.js';
+import '../styles/navigation.css';
+
+import SidebarNavGroup from './SidebarNavGroup.jsx';
+import { NAV_SECTIONS, SECTION_META_BY_ID } from './sections.js';
 
 export default function SidebarNav({ active, onChange }) {
-  return (
-    <Stack gap="xs">
-      {SECTION_GROUPS.map((group, groupIdx) => (
-        <Stack gap={4} key={group.groupLabel}>
-          <Text size="xs" fw={700} c="dimmed" tt="uppercase" pl="xs">
-            {group.groupLabel}
-          </Text>
+  const activeMeta = SECTION_META_BY_ID[active] ?? null;
 
-          {group.items.map((item) => (
-            <NavLink
-              key={item.id}
-              label={item.navLabel}
-              description={item.description}
-              active={active === item.id}
-              onClick={() => onChange(item.id)}
-              variant="light"
-              radius="sm"
+  return (
+    <nav className="sidebarNav">
+      <div className="sidebarNavHeader">
+        <Group justify="space-between" align="center" className="sidebarNavHeaderInner">
+          <div>
+            <Text fw={700} className="sidebarNavBrand">
+              MENDer
+            </Text>
+            <Text size="xs" c="dimmed">
+              Frontend workflow
+            </Text>
+          </div>
+          <Code fw={700}>UI</Code>
+        </Group>
+      </div>
+
+      <ScrollArea className="sidebarNavLinks" offsetScrollbars>
+        <div className="sidebarNavLinksInner">
+          {NAV_SECTIONS.map((section) => (
+            <SidebarNavGroup
+              key={section.id ?? section.navLabel}
+              section={section}
+              active={active}
+              onChange={onChange}
             />
           ))}
+        </div>
+      </ScrollArea>
 
-          {groupIdx < SECTION_GROUPS.length - 1 && <Divider my="xs" />}
-        </Stack>
-      ))}
-    </Stack>
+      <div className="sidebarNavFooter">
+        <Text className="sidebarNavFooterText">
+          Active panel: {activeMeta?.navLabel ?? 'None'}
+        </Text>
+      </div>
+    </nav>
   );
 }
