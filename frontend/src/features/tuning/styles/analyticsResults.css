@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /* Tuning results/analytics styles (plots, tables, summaries). */
 

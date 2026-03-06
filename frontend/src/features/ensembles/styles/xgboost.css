@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /*
  * XGBoost ensemble — non-Mantine style hooks.

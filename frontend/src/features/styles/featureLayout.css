@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../styles/theme.css";
 
 /* Placeholder stylesheet.
    Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.

@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /* Model artifacts feature styles.
    Keep Mantine component styling in Mantine; use this file only for non-Mantine CSS hooks.

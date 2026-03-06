@@ -1,6 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap");
-@import "tailwindcss";
-@import "./styles/tokens.css";
+@import "./styles/theme.css";
 @import "./styles/globals.css";
 @import "./styles/layout.css";
 @import "./styles/utilities.css";

@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /*
  * Voting ensemble — non-Mantine style hooks.

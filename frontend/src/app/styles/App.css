@@ -1,9 +1,8 @@
-@reference "../../styles/tokens.css";
+@reference "../../styles/theme.css";
 
 @layer components {
 	.appPage {
-		@apply min-h-screen w-full px-4 py-6 xl:px-8;
-		
+		@apply min-h-screen w-full bg-app-canvas px-4 py-6 font-sans text-app-text xl:px-8;
 	}
 
 	.appShell {
@@ -11,9 +10,7 @@
 	}
 
 	.appHeader {
-		@apply flex min-h-20 items-center justify-between gap-6 border px-5 py-4 xl:px-6;
-		border-color: var(--app-color-border);
-		background-color: var(--app-color-surface);
+		@apply flex min-h-20 items-center justify-between gap-6 border border-app-border bg-app-surface px-5 py-4 xl:px-6;
 	}
 
 	.appHeaderTitleWrap {
@@ -21,32 +18,26 @@
 	}
 
 	.appHeaderEyebrow {
-		@apply text-[0.7rem] font-medium uppercase tracking-[0.24em];
-		color: var(--app-color-text-muted);
+		@apply text-app-text-muted text-[0.7rem] font-medium uppercase tracking-[0.24em];
 	}
 
 	.appHeaderTitle {
-		@apply text-2xl font-semibold tracking-tight;
-		color: var(--app-color-text);
+		@apply text-app-text text-2xl font-semibold tracking-tight;
 	}
 
 	.appHeaderMeta {
-		@apply text-sm font-medium;
-		color: var(--app-color-text-muted);
+		@apply text-app-text-muted text-sm font-medium;
 	}
 
 	.appSurface {
-		@apply grid w-full overflow-hidden border border-t-0;
-		border-color: var(--app-color-border);
-		background-color: var(--app-color-surface);
+		@apply grid w-full overflow-hidden border border-app-border border-t-0 bg-app-surface;
 		min-height: 46rem;
 	}
 
 	.appSidebarColumn,
 	.appMainColumn,
 	.appArtifactColumn {
-		@apply min-w-0;
-		background-color: var(--app-color-surface);
+		@apply min-w-0 bg-app-surface;
 	}
 
 	.appSidebarColumn,

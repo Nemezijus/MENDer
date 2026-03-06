@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+  Tailwind v4 foundation file.
+  - Import this once from src/index.css
+  - Reference this from CSS files that use @apply and need both:
+    1) default Tailwind utilities/variants (e.g. xl:px-8)
+    2) custom theme tokens from tokens.css (e.g. bg-accent-four-400)
+*/

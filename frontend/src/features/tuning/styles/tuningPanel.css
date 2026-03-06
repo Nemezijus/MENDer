@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /* Tuning feature styles.
    Keep Mantine component props (fw/size/c/etc.) in JSX.

@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /*
  * DataFiles feature styles extracted from inline `style={{...}}` blocks.

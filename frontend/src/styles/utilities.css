@@ -1,5 +1,16 @@
-@reference "tailwindcss";
+@reference "theme.css";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
+/*
+  Shared Tailwind v4 playground examples.
+  Copy/adapt these patterns in feature CSS files as needed.
+
+  Default + custom token example:
+  .twExampleSurface {
+    @apply rounded-none border border-app-border bg-app-surface px-4 py-3 text-app-text;
+  }
+
+  Direct palette example:
+  .twExampleAccent {
+    @apply bg-accent-four-400 text-white hover:bg-accent-four-500;
+  }
 */

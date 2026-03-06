@@ -1,4 +1,4 @@
-@reference "tailwindcss";
+@reference "../../../styles/theme.css";
 
 /*
  * Features / Ensembles — shared (non-Mantine) style hooks.
