@@ -9,48 +9,53 @@
   --app-color-c4: #748d92;
   --app-color-c5: #d3d9d4;
 
-  --app-color-primary-50: #f1f3f9;
-  --app-color-primary-100: #e3e7f3;
-  --app-color-primary-200: #90a1cf;
-  --app-color-primary-300: #455ea2;
-  --app-color-primary-400: #222e4f;
-  --app-color-primary-500: #182037;
-  --app-color-primary-600: #0d121f;
-  --app-color-primary-700: #030508;
+/* primary = twilight-indigo */
+--app-color-primary-50: #f0f0f5;
+--app-color-primary-100: #e0e1eb;
+--app-color-primary-200: #c2c4d6;
+--app-color-primary-300: #a3a6c2;
+--app-color-primary-400: #8589ad;
+--app-color-primary-500: #666b99;
+--app-color-primary-600: #52567a;
+--app-color-primary-700: #3d405c;
 
-  --app-color-accent-one-100: #f4f8f9;
-  --app-color-accent-one-125: #eaf0f4;
-  --app-color-accent-one-150: #dfe9ee;
-  --app-color-accent-one-200: #d4e2e8;
-  --app-color-accent-one-300: #b4ccd8;
-  --app-color-accent-one-400: #94b6c7;
-  --app-color-accent-one-500: #54869f;
-  --app-color-accent-one-600: #304d5b;
-  --app-color-accent-one-700: #0c1317;
+/* accent-one = muted-teal */
+--app-color-accent-one-100: #eff5f2;
+--app-color-accent-one-125: #dfece6;
+--app-color-accent-one-150: #c0d8cc;
+--app-color-accent-one-200: #c0d8cc;
+--app-color-accent-one-300: #a0c5b3;
+--app-color-accent-one-400: #81b19a;
+--app-color-accent-one-500: #619e81;
+--app-color-accent-one-600: #4e7e67;
+--app-color-accent-one-700: #3a5f4d;
 
-  --app-color-accent-two-100: #fdfbf3;
-  --app-color-accent-two-200: #f6f0cf;
-  --app-color-accent-two-300: #f0e4ab;
-  --app-color-accent-two-400: #e9d985;
-  --app-color-accent-two-500: #d8bb29;
-  --app-color-accent-two-600: #7c6b17;
-  --app-color-accent-two-700: #1f1b06;
+/* accent-two = eggshell */
+--app-color-accent-two-100: #f9f7ec;
+--app-color-accent-two-200: #f2efd9;
+--app-color-accent-two-300: #e6dfb3;
+--app-color-accent-two-400: #d9cf8c;
+--app-color-accent-two-500: #ccbe66;
+--app-color-accent-two-600: #998b33;
+--app-color-accent-two-700: #4d4619;
 
-  --app-color-accent-three-100: #fbf2f0;
-  --app-color-accent-three-200: #efcdc3;
-  --app-color-accent-three-300: #e3a797;
-  --app-color-accent-three-400: #d7816a;
-  --app-color-accent-three-500: #b24b2f;
-  --app-color-accent-three-600: #662b1b;
-  --app-color-accent-three-700: #190b07;
+/* accent-three = burnt-peach */
+--app-color-accent-three-100: #fbedea;
+--app-color-accent-three-200: #f7dcd4;
+--app-color-accent-three-300: #efb8a9;
+--app-color-accent-three-400: #e7957e;
+--app-color-accent-three-500: #de7254;
+--app-color-accent-three-600: #ab3f21;
+--app-color-accent-three-700: #561f10;
 
-  --app-color-accent-four-100: #f8eef0;
-  --app-color-accent-four-200: #e5b9c5;
-  --app-color-accent-four-300: #d18599;
-  --app-color-accent-four-400: #bd4f6c;
-  --app-color-accent-four-500: #89344b;
-  --app-color-accent-four-600: #4e1e2b;
-  --app-color-accent-four-700: #14070b;
+/* accent-four = apricot-cream */
+--app-color-accent-four-100: #fcf5e8;
+--app-color-accent-four-200: #faead1;
+--app-color-accent-four-300: #f4d5a4;
+--app-color-accent-four-400: #efc176;
+--app-color-accent-four-500: #eaac48;
+--app-color-accent-four-600: #b77915;
+--app-color-accent-four-700: #5b3c0b;
 
   --app-color-neutral-100: #dae1e7;
   --app-color-neutral-200: #c0c8ce;
