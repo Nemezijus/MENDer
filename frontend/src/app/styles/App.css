@@ -2,11 +2,13 @@
 
 @layer components {
 	.appPage {
-		@apply min-h-screen w-full bg-app-canvas px-4 py-6 font-sans text-app-text xl:px-8;
+		@apply flex min-h-screen w-full justify-center bg-app-canvas px-4 py-6 font-sans text-app-text xl:px-8;
 	}
 
 	.appShell {
-		@apply mx-auto flex w-full flex-col;
+		@apply flex w-full flex-col px-10;
+		max-width: 1800px;
+		outline: 2px solid red;
 	}
 
 	.appHeader {
@@ -60,7 +62,7 @@
 
 @media (min-width: 1280px) {
 	.appShell {
-		width: 80vw;
+		width: 96%;
 	}
 
 	.appSurface {

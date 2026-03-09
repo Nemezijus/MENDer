@@ -62,7 +62,7 @@
 
   /* App shell semantic tokens
      Layout CSS should prefer these instead of direct palette shades. */
-  --app-color-canvas: var(--app-color-primary-100);
+  --app-color-canvas: var(--app-color-primary-50);
   --app-color-surface: #ffffff;
   --app-color-surface-subtle: var(--app-color-primary-50);
   --app-color-border: var(--app-color-neutral-200);
