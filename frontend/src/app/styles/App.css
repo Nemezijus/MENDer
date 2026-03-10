@@ -8,7 +8,6 @@
 	.appShell {
 		@apply flex w-full flex-col px-10;
 		max-width: 1800px;
-		outline: 2px solid red;
 	}
 
 	.appHeader {

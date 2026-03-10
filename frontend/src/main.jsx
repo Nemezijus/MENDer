@@ -13,8 +13,8 @@ const theme = createTheme({
     Card: Card.extend({
       styles: {
         root: {
-          backgroundColor: 'var(--app-card-bg, var(--app-color-c3))',
-          color: 'var(--app-card-fg, var(--app-color-c1))',
+          backgroundColor: 'var(--app-card-bg, var(--app-color-surface))',
+          color: 'var(--app-card-fg, var(--app-color-text))',
         },
       },
       vars: () => ({

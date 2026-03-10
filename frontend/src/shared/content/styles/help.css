@@ -37,15 +37,15 @@
 }
 
 .helpBody {
-  @apply text-xs leading-snug text-slate-600;
+  @apply text-xs leading-snug ;
 }
 
 .helpLead {
-  @apply text-sm leading-snug text-slate-600;
+  @apply text-sm leading-snug ;
 }
 
 .helpSubsectionText {
-  @apply mt-2 text-xs leading-snug text-slate-600;
+  @apply mt-2 text-xs leading-snug ;
 }
 
 .helpListBase {
@@ -73,15 +73,15 @@
 }
 
 .helpCode {
-  @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.75rem] text-slate-800;
+  @apply rounded bg-primary-500 px-1 py-0.5 font-mono text-[0.75rem] ;
 }
 
 .helpChoiceLabel {
-  @apply font-semibold text-slate-900;
+  @apply font-semibold ;
 }
 
 .helpChoiceLabelSelected {
-  @apply font-bold text-blue-600;
+  @apply font-bold ;
 }
 
 .helpDetails {

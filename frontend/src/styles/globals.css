@@ -16,5 +16,17 @@
 
 	#root {
 		width: 100%;
+		color: inherit;
+	}
+	button,
+	input,
+	textarea,
+	select {
+		color: inherit;
+		font: inherit;
+	}
+
+	a {
+		color: inherit;
 	}
 }

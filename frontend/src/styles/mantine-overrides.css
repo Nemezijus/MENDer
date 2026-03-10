@@ -1,8 +1,7 @@
 @reference "./theme.css";
 
 .specialCard {
-  --app-card-bg: var(--app-color-primary-300);
-  --app-card-fg: var(--app-color-c3);
+  --app-card-bg: var(--app-color-primary-600);
   --app-card-border: var(--app-color-c1);
 }
 
