@@ -2,60 +2,77 @@
   /* Global font */
   --app-font-sans: "Jost", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  /* Project palette placeholders inspired by your previous site */
-  --app-color-c1: #212a31;
-  --app-color-c2: #2e3944;
-  --app-color-c3: #124e66;
-  --app-color-c4: #748d92;
-  --app-color-c5: #d3d9d4;
+  /* Using color pallette  https://coolors.co/f4f1de-e07a5f-3d405b-81b29a-f2cc8f */
+  --app-color-c1: #f4f1de;
+  --app-color-c2: #e07a5f;
+  --app-color-c3: #3d405b;
+  --app-color-c4: #81b29a;
+  --app-color-c5: #f2cc8f;
 
-/* primary = twilight-indigo */
---app-color-primary-50: #f0f0f5;
---app-color-primary-100: #e0e1eb;
---app-color-primary-200: #c2c4d6;
---app-color-primary-300: #a3a6c2;
---app-color-primary-400: #8589ad;
---app-color-primary-500: #666b99;
---app-color-primary-600: #52567a;
---app-color-primary-700: #3d405c;
+   /* primary = twilight-indigo */
+   --app-color-primary-50: #f0f0f5;
+   --app-color-primary-100: #e0e1eb;
+   --app-color-primary-200: #c2c4d6;
+   --app-color-primary-300: #a3a6c2;
+   --app-color-primary-400: #8589ad;
+   --app-color-primary-500: #666b99;
+   --app-color-primary-600: #52567a;
+   --app-color-primary-700: #3d405c;
+   --app-color-primary-800: #292b3d;
+   --app-color-primary-900: #14151f;
+   --app-color-primary-950: #0e0f15;
 
-/* accent-one = muted-teal */
---app-color-accent-one-100: #eff5f2;
---app-color-accent-one-125: #dfece6;
---app-color-accent-one-150: #c0d8cc;
---app-color-accent-one-200: #c0d8cc;
---app-color-accent-one-300: #a0c5b3;
---app-color-accent-one-400: #81b19a;
---app-color-accent-one-500: #619e81;
---app-color-accent-one-600: #4e7e67;
---app-color-accent-one-700: #3a5f4d;
+   /* accent-one = muted-teal */
+   --app-color-accent-one-50: #eff5f2;
+   --app-color-accent-one-100: #dfece6;
+   --app-color-accent-one-200: #c0d8cc;
+   --app-color-accent-one-300: #a0c5b3;
+   --app-color-accent-one-400: #81b19a;
+   --app-color-accent-one-500: #619e81;
+   --app-color-accent-one-600: #4e7e67;
+   --app-color-accent-one-700: #3a5f4d;
+   --app-color-accent-one-800: #273f33;
+   --app-color-accent-one-900: #13201a;
+   --app-color-accent-one-950: #0e1612;
 
-/* accent-two = eggshell */
---app-color-accent-two-100: #f9f7ec;
---app-color-accent-two-200: #f2efd9;
---app-color-accent-two-300: #e6dfb3;
---app-color-accent-two-400: #d9cf8c;
---app-color-accent-two-500: #ccbe66;
---app-color-accent-two-600: #998b33;
---app-color-accent-two-700: #4d4619;
+   /* accent-two = eggshell */
+   --app-color-accent-two-50: #f9f7ec;
+   --app-color-accent-two-100: #f2efd9;
+   --app-color-accent-two-200: #e6dfb3;
+   --app-color-accent-two-300: #d9cf8c;
+   --app-color-accent-two-400: #ccbe66;
+   --app-color-accent-two-500: #bfae40;
+   --app-color-accent-two-600: #998b33;
+   --app-color-accent-two-700: #736926;
+   --app-color-accent-two-800: #4d4619;
+   --app-color-accent-two-900: #26230d;
+   --app-color-accent-two-950: #1b1809;
 
-/* accent-three = burnt-peach */
---app-color-accent-three-100: #fbedea;
---app-color-accent-three-200: #f7dcd4;
---app-color-accent-three-300: #efb8a9;
---app-color-accent-three-400: #e7957e;
---app-color-accent-three-500: #de7254;
---app-color-accent-three-600: #ab3f21;
---app-color-accent-three-700: #561f10;
+   /* accent-three = burnt-peach */
+   --app-color-accent-three-50: #fbedea;
+   --app-color-accent-three-100: #f7dcd4;
+   --app-color-accent-three-200: #efb8a9;
+   --app-color-accent-three-300: #e7957e;
+   --app-color-accent-three-400: #de7254;
+   --app-color-accent-three-500: #d64e29;
+   --app-color-accent-three-600: #ab3f21;
+   --app-color-accent-three-700: #812f18;
+   --app-color-accent-three-800: #561f10;
+   --app-color-accent-three-900: #2b1008;
+   --app-color-accent-three-950: #1e0b06;
 
-/* accent-four = apricot-cream */
---app-color-accent-four-100: #fcf5e8;
---app-color-accent-four-200: #faead1;
---app-color-accent-four-300: #f4d5a4;
---app-color-accent-four-400: #efc176;
---app-color-accent-four-500: #eaac48;
---app-color-accent-four-600: #b77915;
---app-color-accent-four-700: #5b3c0b;
+   /* accent-four = apricot-cream */
+   --app-color-accent-four-50: #fcf5e8;
+   --app-color-accent-four-100: #faead1;
+   --app-color-accent-four-200: #f4d5a4;
+   --app-color-accent-four-300: #efc176;
+   --app-color-accent-four-400: #eaac48;
+   --app-color-accent-four-500: #e4971b;
+   --app-color-accent-four-600: #b77915;
+   --app-color-accent-four-700: #895b10;
+   --app-color-accent-four-800: #5b3c0b;
+   --app-color-accent-four-900: #2e1e05;
+   --app-color-accent-four-950: #201504;
 
   --app-color-neutral-100: #dae1e7;
   --app-color-neutral-200: #c0c8ce;
@@ -67,13 +84,13 @@
 
   /* App shell semantic tokens
      Layout CSS should prefer these instead of direct palette shades. */
-  --app-color-canvas: var(--app-color-primary-50);
-  --app-color-surface: #ffffff;
+  --app-color-canvas: var(--app-color-c3);
+  --app-color-surface: var(--app-color-c3);
   --app-color-surface-subtle: var(--app-color-primary-50);
   --app-color-border: var(--app-color-neutral-200);
   --app-color-border-strong: var(--app-color-neutral-300);
-  --app-color-text: var(--app-color-primary-500);
-  --app-color-text-muted: var(--app-color-neutral-600);
+  --app-color-text: var(--app-color-c1);
+  --app-color-text-muted: var(--app-color-accent-two-700);
 
   /* Active semantic accent family
      Accent Four is now the active accent exposed through app-accent-* tokens. */

@@ -52,7 +52,7 @@ export default function TrainingDataUploadCard() {
 
   return (
     <Stack gap="md">
-      <Card withBorder shadow="sm" radius="md" padding="lg">
+      <Card withBorder shadow="sm" radius="md" padding="lg" className="generalCard">
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Box className="dataFilesHeaderSpacer" />

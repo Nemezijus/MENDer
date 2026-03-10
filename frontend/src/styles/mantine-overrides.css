@@ -1,5 +1,16 @@
 @reference "./theme.css";
 
-/* Placeholder stylesheet.
-   Use Tailwind v4 @apply here; keep this file scoped to its directory's concerns.
-*/
+@layer components {
+	.appMainColumn .generalCard {
+		background-color: var(--app-color-c3);
+		color: var(--app-color-c1);
+		border-color: var(--app-color-c4);
+	}
+
+	.appMainColumn .generalCard .mantine-Text-root,
+	.appMainColumn .generalCard .mantine-Alert-title,
+	.appMainColumn .generalCard .mantine-Select-label,
+	.appMainColumn .generalCard .mantine-Tabs-tab {
+		color: var(--app-color-c1);
+	}
+}
