@@ -1,16 +1,17 @@
 @reference "./theme.css";
 
-/* @layer components {
-	.appMainColumn .generalCard {
-		background-color: var(--app-color-c3);
-		color: var(--app-color-c1);
-		border-color: var(--app-color-c4);
-	}
+.specialCard {
+  --app-card-bg: var(--app-color-primary-300);
+  --app-card-fg: var(--app-color-c3);
+  --app-card-border: var(--app-color-c1);
+}
 
-	.appMainColumn .generalCard .mantine-Text-root,
-	.appMainColumn .generalCard .mantine-Alert-title,
-	.appMainColumn .generalCard .mantine-Select-label,
-	.appMainColumn .generalCard .mantine-Tabs-tab {
-		color: var(--app-color-c1);
-	}
-} */
+.warningCard {
+  --app-card-bg: var(--app-color-accent-three-100);
+  --app-card-fg: var(--app-color-c3);
+  --app-card-border: var(--app-color-accent-three-400);
+}
+
+[data-mantine-color-scheme='light'] {
+  --mantine-color-default-border: var(--app-color-c1);
+}

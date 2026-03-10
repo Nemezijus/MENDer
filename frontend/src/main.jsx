@@ -13,17 +13,18 @@ const theme = createTheme({
     Card: Card.extend({
       styles: {
         root: {
-          backgroundColor: 'var(--app-color-c3)',
-          color: 'var(--app-color-c1)',
+          backgroundColor: 'var(--app-card-bg, var(--app-color-c3))',
+          color: 'var(--app-card-fg, var(--app-color-c1))',
         },
       },
       vars: () => ({
         root: {
-          '--paper-border-color': 'var(--app-color-c4)',
+          '--paper-border-color': 'var(--app-card-border, var(--app-color-c4))',
         },
       }),
     }),
   },
+  defaultRadius: 0,
 });
 
 const rootEl = document.getElementById('root');

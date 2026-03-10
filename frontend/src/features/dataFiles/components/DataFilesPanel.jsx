@@ -8,7 +8,6 @@ import ProductionDataUploadCard from './ProductionDataUploadCard.jsx';
 
 export default function DataFilesPanel() {
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
       <Tabs defaultValue="training" keepMounted={false}>
         <Tabs.List grow>
           <Tabs.Tab value="training">Training data</Tabs.Tab>
@@ -28,6 +27,5 @@ export default function DataFilesPanel() {
           <ProductionDataUploadCard />
         </Tabs.Panel>
       </Tabs>
-    </Card>
   );
 }
