@@ -1,884 +1,1106 @@
-import { Stack, Text, List } from '@mantine/core';
-import '../../../styles/help.css';
-
+import { Stack, Text, List } from "@mantine/core";
+import "../../../styles/help.css";
 export const CLASSIFICATION_PARAM_BLOCKS = {
   logreg: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        Logistic regression parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> Logistic regression parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            C
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            C{" "}
+          </Text>{" "}
           – inverse regularisation strength. Smaller values enforce stronger
-          regularisation and reduce overfitting.
-        </List.Item>
+          regularisation and reduce overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Penalty
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Penalty{" "}
+          </Text>{" "}
           – type of regularisation applied to coefficients (L1, L2, or elastic
-          net).
-        </List.Item>
+          net).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Solver
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Solver{" "}
+          </Text>{" "}
           – optimisation algorithm used to fit the model. Some solvers only
-          support certain penalties.
-        </List.Item>
+          support certain penalties.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max iterations
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max iterations{" "}
+          </Text>{" "}
           – maximum number of optimisation steps before stopping. Increase if
-          the model does not converge.
-        </List.Item>
+          the model does not converge.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
           – adjusts the importance of classes to compensate for imbalance (e.g.
-          balanced).
-        </List.Item>
+          balanced).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            L1 ratio
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            L1 ratio{" "}
+          </Text>{" "}
           – controls the mix between L1 and L2 regularisation when using elastic
-          net (0 = pure L2, 1 = pure L1). Ignored for other penalties.
-        </List.Item>
-      </List>
+          net (0 = pure L2, 1 = pure L1). Ignored for other penalties.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   ridge: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        Ridge classifier parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> Ridge classifier parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Alpha
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Alpha{" "}
+          </Text>{" "}
           – regularisation strength. Larger values shrink coefficients more and
-          can improve generalisation, but may underfit.
-        </List.Item>
+          can improve generalisation, but may underfit.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Fit intercept
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Fit intercept{" "}
+          </Text>{" "}
           – include a bias/intercept term. Disable only if data is already
-          centred.
-        </List.Item>
+          centred.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – balances class importance for imbalanced datasets.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – balances class importance for imbalanced datasets.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Solver
-          </Text>{' '}
-          – method used to fit the model. "auto" chooses a reasonable default.
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Solver{" "}
+          </Text>{" "}
+          – method used to fit the model."auto" chooses a reasonable default.
           Iterative solvers can be faster on large datasets; direct solvers are
-          often more accurate for smaller problems.
-        </List.Item>
+          often more accurate for smaller problems.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max iterations
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max iterations{" "}
+          </Text>{" "}
           – only used by iterative solvers. Increase if you see convergence
-          warnings.
-        </List.Item>
+          warnings.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Tolerance
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Tolerance{" "}
+          </Text>{" "}
           – stopping threshold for iterative solvers. Smaller values can yield a
-          more accurate solution but may take longer.
-        </List.Item>
-      </List>
+          more accurate solution but may take longer.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   sgd: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        SGD classifier parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> SGD classifier parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Loss
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Loss{" "}
+          </Text>{" "}
           – the objective (e.g. hinge for linear SVM, log_loss for
-          logistic-style probabilities).
-        </List.Item>
+          logistic-style probabilities).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Penalty
-          </Text>{' '}
-          – regularisation type (L2/L1/elasticnet). Helps prevent overfitting.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Penalty{" "}
+          </Text>{" "}
+          – regularisation type (L2/L1/elasticnet). Helps prevent
+          overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Alpha
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Alpha{" "}
+          </Text>{" "}
           – regularisation strength. Larger values make the model more
-          conservative.
-        </List.Item>
+          conservative.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            L1 ratio
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            L1 ratio{" "}
+          </Text>{" "}
           – only used for elasticnet penalty. Higher values favour L1 (sparser
-          coefficients); lower values favour L2 (more stable coefficients).
-        </List.Item>
+          coefficients); lower values favour L2 (more stable coefficients).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Fit intercept
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Fit intercept{" "}
+          </Text>{" "}
           – include a bias term. Disable only if your features are already
-          centred.
-        </List.Item>
+          centred.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Learning rate / eta0
-          </Text>{' '}
-          – controls the step size schedule.
-          <Text span className="helpInlineLabel">
-            {' '}
-            Learning rate
-          </Text>{' '}
-          chooses how the step size changes over time;
-          <Text span className="helpInlineLabel">
-            {' '}
-            eta0
-          </Text>{' '}
-          is the initial step size for some schedules. Too high can diverge;
-          too low can train slowly.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Learning rate / eta0{" "}
+          </Text>{" "}
+          – controls the step size schedule.{" "}
+          <Text span className="helpLabel">
+            {" "}
+            Learning rate{" "}
+          </Text>{" "}
+          chooses how the step size changes over time;{" "}
+          <Text span className="helpLabel">
+            {" "}
+            eta0{" "}
+          </Text>{" "}
+          is the initial step size for some schedules. Too high can diverge; too
+          low can train slowly.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Power t
-          </Text>{' '}
-          – used for the "invscaling" learning-rate schedule. Larger values
-          decrease the step size faster.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Power t{" "}
+          </Text>{" "}
+          – used for the"invscaling" learning-rate schedule. Larger values
+          decrease the step size faster.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max iterations / tolerance
-          </Text>{' '}
-          – training stops when improvement stalls.
-          <Text span className="helpInlineLabel">
-            {' '}
-            Max iterations
-          </Text>{' '}
-          is the maximum number of passes;
-          <Text span className="helpInlineLabel">
-            {' '}
-            tolerance
-          </Text>{' '}
-          sets how small the improvement must be before stopping.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max iterations / tolerance{" "}
+          </Text>{" "}
+          – training stops when improvement stalls.{" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max iterations{" "}
+          </Text>{" "}
+          is the maximum number of passes;{" "}
+          <Text span className="helpLabel">
+            {" "}
+            tolerance{" "}
+          </Text>{" "}
+          sets how small the improvement must be before stopping.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Shuffle
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Shuffle{" "}
+          </Text>{" "}
           – shuffles training data each epoch. Usually improves convergence;
-          disable for reproducibility experiments.
-        </List.Item>
+          disable for reproducibility experiments.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Verbose
-          </Text>{' '}
-          – prints training progress. Useful for debugging but can be noisy.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Verbose{" "}
+          </Text>{" "}
+          – prints training progress. Useful for debugging but can be
+          noisy.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Epsilon
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Epsilon{" "}
+          </Text>{" "}
           – only relevant for some loss functions (e.g. Huber /
           epsilon-insensitive). Controls the width of the “no-penalty” region
-          around the margin.
-        </List.Item>
+          around the margin.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Jobs (n_jobs)
-          </Text>{' '}
-          – number of CPU cores used where supported.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Jobs (n_jobs){" "}
+          </Text>{" "}
+          – number of CPU cores used where supported.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Early stopping
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Early stopping{" "}
+          </Text>{" "}
           – uses a validation split to stop automatically if performance stops
-          improving.
-        </List.Item>
+          improving.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Validation fraction
-          </Text>{' '}
-          – fraction of training data held out for early stopping.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Validation fraction{" "}
+          </Text>{" "}
+          – fraction of training data held out for early stopping.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            n_iter_no_change
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            n_iter_no_change{" "}
+          </Text>{" "}
           – how many epochs with no improvement are allowed before stopping
-          (when early stopping is on).
-        </List.Item>
+          (when early stopping is on).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – balances class importance for imbalanced datasets.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – balances class importance for imbalanced datasets.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Warm start
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Warm start{" "}
+          </Text>{" "}
           – continues training from the previous solution when refitting. Useful
           for iterative workflows, but can be confusing if you expect a fresh
-          fit.
-        </List.Item>
+          fit.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Average
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Average{" "}
+          </Text>{" "}
           – averaged SGD weights can reduce variance and improve stability. Can
-          be{' '}
-          <Text span className="helpInlineLabel">
-            true
-          </Text>{' '}
+          be{" "}
+          <Text span className="helpLabel">
+            {" "}
+            true{" "}
+          </Text>{" "}
           (start averaging immediately) or an integer (start averaging after
-          that many updates).
-        </List.Item>
-      </List>
+          that many updates).{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   svm: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        SVM parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> SVM parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Kernel
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Kernel{" "}
+          </Text>{" "}
           – defines the shape of the decision boundary. Linear is fastest; RBF
-          and polynomial capture non-linear patterns.
-        </List.Item>
+          and polynomial capture non-linear patterns.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            C
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            C{" "}
+          </Text>{" "}
           – penalty for misclassification. Larger values fit training data more
-          closely but may overfit.
-        </List.Item>
+          closely but may overfit.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Degree
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Degree{" "}
+          </Text>{" "}
           – degree of the polynomial kernel. Higher values increase model
-          complexity and training time.
-        </List.Item>
+          complexity and training time.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Gamma
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Gamma{" "}
+          </Text>{" "}
           – controls how far the influence of a single sample reaches. Larger
-          values lead to tighter, more complex boundaries.
-        </List.Item>
+          values lead to tighter, more complex boundaries.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Coef0
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Coef0{" "}
+          </Text>{" "}
           – constant term used by polynomial and sigmoid kernels. Affects how
-          strongly higher-order terms contribute.
-        </List.Item>
+          strongly higher-order terms contribute.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Shrinking
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Shrinking{" "}
+          </Text>{" "}
           – enables a heuristic that can speed up optimisation on large
-          datasets.
-        </List.Item>
+          datasets.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Probability
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Probability{" "}
+          </Text>{" "}
           – enables probability estimates via additional calibration, which
-          slows training and prediction.
-        </List.Item>
+          slows training and prediction.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Tolerance
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Tolerance{" "}
+          </Text>{" "}
           – stopping threshold for optimisation. Smaller values increase
-          precision but slow training.
-        </List.Item>
+          precision but slow training.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Cache size
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Cache size{" "}
+          </Text>{" "}
           – memory (in MB) used to cache kernel values. Larger caches can
-          improve speed at the cost of RAM.
-        </List.Item>
+          improve speed at the cost of RAM.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – adjusts class importance to mitigate imbalance.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – adjusts class importance to mitigate imbalance.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max iterations
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max iterations{" "}
+          </Text>{" "}
           – upper limit on optimisation steps. Use higher values if convergence
-          warnings appear.
-        </List.Item>
+          warnings appear.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Decision shape
-          </Text>{' '}
-          – strategy for multi-class problems (e.g. one-vs-rest).
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Decision shape{" "}
+          </Text>{" "}
+          – strategy for multi-class problems (e.g. one-vs-rest).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Break ties
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Break ties{" "}
+          </Text>{" "}
           – refines tie-breaking between classes in multi-class settings, at a
-          small computational cost.
-        </List.Item>
-      </List>
+          small computational cost.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   tree: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        Decision tree parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> Decision tree parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Criterion
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Criterion{" "}
+          </Text>{" "}
           – measure of split quality (e.g. gini or entropy). Affects how class
-          purity is evaluated.
-        </List.Item>
+          purity is evaluated.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Splitter
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Splitter{" "}
+          </Text>{" "}
           – strategy for choosing splits. Random splitting can reduce variance
-          at the cost of interpretability.
-        </List.Item>
+          at the cost of interpretability.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max depth
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max depth{" "}
+          </Text>{" "}
           – maximum tree depth. Larger values increase model complexity and risk
-          overfitting.
-        </List.Item>
+          overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min samples split
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min samples split{" "}
+          </Text>{" "}
           – minimum samples required to split a node. Larger values make the
-          tree more conservative.
-        </List.Item>
+          tree more conservative.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min samples leaf
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min samples leaf{" "}
+          </Text>{" "}
           – minimum samples per leaf. Higher values smooth predictions and
-          reduce overfitting.
-        </List.Item>
+          reduce overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min weight fraction leaf
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min weight fraction leaf{" "}
+          </Text>{" "}
           – minimum weighted fraction of the total sample weight required at a
           leaf. Mostly relevant when using sample weights; larger values make
-          the tree more conservative.
-        </List.Item>
+          the tree more conservative.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max features
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max features{" "}
+          </Text>{" "}
           – number of features considered at each split. Smaller values increase
-          randomness and reduce correlation between splits.
-        </List.Item>
+          randomness and reduce correlation between splits.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max leaf nodes
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max leaf nodes{" "}
+          </Text>{" "}
           – maximum number of terminal nodes. Larger values allow finer decision
-          regions but increase overfitting risk.
-        </List.Item>
+          regions but increase overfitting risk.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min impurity decrease
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min impurity decrease{" "}
+          </Text>{" "}
           – required reduction in impurity to allow a split. Larger values
-          prevent weak, noisy splits.
-        </List.Item>
+          prevent weak, noisy splits.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – balances class importance, useful for imbalanced datasets.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – balances class importance, useful for imbalanced datasets.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            CCP alpha
-          </Text>{' '}
-          – pruning strength. Higher values produce simpler, more robust trees.
-        </List.Item>
-      </List>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            CCP alpha{" "}
+          </Text>{" "}
+          – pruning strength. Higher values produce simpler, more robust
+          trees.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   forest: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        Random forest parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> Random forest parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Trees (n_estimators)
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Trees (n_estimators){" "}
+          </Text>{" "}
           – number of trees in the forest. More trees improve stability but
-          increase training time.
-        </List.Item>
+          increase training time.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Criterion
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Criterion{" "}
+          </Text>{" "}
           – measure used to evaluate split quality (e.g.
-          gini/entropy/log_loss).
-        </List.Item>
+          gini/entropy/log_loss).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max depth
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max depth{" "}
+          </Text>{" "}
           – limits depth of each tree. Smaller values reduce overfitting but may
-          underfit.
-        </List.Item>
+          underfit.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min samples split
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min samples split{" "}
+          </Text>{" "}
           – minimum samples required to split a node. Higher values make the
-          forest more conservative.
-        </List.Item>
+          forest more conservative.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min samples leaf
-          </Text>{' '}
-          – minimum samples per leaf. Helps smooth predictions.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min samples leaf{" "}
+          </Text>{" "}
+          – minimum samples per leaf. Helps smooth predictions.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min weight fraction leaf
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min weight fraction leaf{" "}
+          </Text>{" "}
           – minimum weighted fraction of total sample weight at a leaf (mostly
-          relevant with sample weights).
-        </List.Item>
+          relevant with sample weights).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max features
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max features{" "}
+          </Text>{" "}
           – number of features tried at each split. Smaller values increase tree
-          diversity.
-        </List.Item>
+          diversity.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max leaf nodes
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max leaf nodes{" "}
+          </Text>{" "}
           – caps tree complexity. Larger values allow more detailed trees but
-          increase variance.
-        </List.Item>
+          increase variance.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min impurity decrease
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min impurity decrease{" "}
+          </Text>{" "}
           – minimum impurity improvement required to split. Larger values
-          prevent weak/noisy splits.
-        </List.Item>
+          prevent weak/noisy splits.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Bootstrap
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Bootstrap{" "}
+          </Text>{" "}
           – whether each tree is trained on a random sample with replacement.
-          Improves robustness.
-        </List.Item>
+          Improves robustness.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            OOB score
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            OOB score{" "}
+          </Text>{" "}
           – estimates generalisation error using unused samples during training
-          (requires bootstrap=true).
-        </List.Item>
+          (requires bootstrap=true).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Jobs (n_jobs)
-          </Text>{' '}
-          – number of CPU cores used for training/prediction.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Jobs (n_jobs){" "}
+          </Text>{" "}
+          – number of CPU cores used for training/prediction.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Random state
-          </Text>{' '}
-          – seed for reproducibility.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Random state{" "}
+          </Text>{" "}
+          – seed for reproducibility.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Warm start
-          </Text>{' '}
-          – reuses the existing fitted forest and adds more trees when refitting.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Warm start{" "}
+          </Text>{" "}
+          – reuses the existing fitted forest and adds more trees when
+          refitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – adjusts class importance for imbalanced datasets.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – adjusts class importance for imbalanced datasets.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            CCP alpha
-          </Text>{' '}
-          – pruning strength applied to each tree to control overfitting.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            CCP alpha{" "}
+          </Text>{" "}
+          – pruning strength applied to each tree to control overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max samples
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max samples{" "}
+          </Text>{" "}
           – number or fraction of samples used per tree. Smaller values increase
-          randomness (only used when bootstrap=true).
-        </List.Item>
-      </List>
+          randomness (only used when bootstrap=true).{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   extratrees: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        Extra Trees parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> Extra Trees parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Trees (n_estimators)
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Trees (n_estimators){" "}
+          </Text>{" "}
           – number of trees. More trees improve stability but increase training
-          time.
-        </List.Item>
+          time.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Criterion
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Criterion{" "}
+          </Text>{" "}
           – measure used to evaluate split quality (e.g.
-          gini/entropy/log_loss).
-        </List.Item>
+          gini/entropy/log_loss).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max depth
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max depth{" "}
+          </Text>{" "}
           – limits depth of each tree. Smaller values reduce overfitting but may
-          underfit.
-        </List.Item>
+          underfit.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min samples split / min samples leaf
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min samples split / min samples leaf{" "}
+          </Text>{" "}
           – minimum samples required to split a node / to form a leaf. Larger
-          values make trees more conservative.
-        </List.Item>
+          values make trees more conservative.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min weight fraction leaf
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min weight fraction leaf{" "}
+          </Text>{" "}
           – minimum weighted fraction of total sample weight at a leaf (mostly
-          relevant with sample weights).
-        </List.Item>
+          relevant with sample weights).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max features
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max features{" "}
+          </Text>{" "}
           – number of features tried at each split. Smaller values increase
-          randomness/diversity.
-        </List.Item>
+          randomness/diversity.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max leaf nodes
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max leaf nodes{" "}
+          </Text>{" "}
           – caps tree complexity. Larger values allow finer partitions but
-          increase variance.
-        </List.Item>
+          increase variance.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min impurity decrease
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min impurity decrease{" "}
+          </Text>{" "}
           – minimum impurity improvement required to split. Larger values
-          prevent weak/noisy splits.
-        </List.Item>
+          prevent weak/noisy splits.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Bootstrap
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Bootstrap{" "}
+          </Text>{" "}
           – optional sampling with replacement (default is usually off for Extra
-          Trees).
-        </List.Item>
+          Trees).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            OOB score
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            OOB score{" "}
+          </Text>{" "}
           – out-of-bag score estimate using unused samples (requires
-          bootstrap=true).
-        </List.Item>
+          bootstrap=true).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Jobs (n_jobs)
-          </Text>{' '}
-          – number of CPU cores used for training/prediction.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Jobs (n_jobs){" "}
+          </Text>{" "}
+          – number of CPU cores used for training/prediction.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Random state
-          </Text>{' '}
-          – seed for reproducibility.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Random state{" "}
+          </Text>{" "}
+          – seed for reproducibility.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Warm start
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Warm start{" "}
+          </Text>{" "}
           – reuses the existing fitted ensemble and adds more trees when
-          refitting.
-        </List.Item>
+          refitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – balances class importance for imbalanced datasets.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – balances class importance for imbalanced datasets.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            CCP alpha
-          </Text>{' '}
-          – pruning strength applied to each tree.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            CCP alpha{" "}
+          </Text>{" "}
+          – pruning strength applied to each tree.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max samples
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max samples{" "}
+          </Text>{" "}
           – number or fraction of samples used per tree (only used when
-          bootstrap=true).
-        </List.Item>
-      </List>
+          bootstrap=true).{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   hgb: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        HistGradientBoosting parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> HistGradientBoosting parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Loss
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Loss{" "}
+          </Text>{" "}
           – objective function. For classification this is typically log_loss
-          (cross-entropy).
-        </List.Item>
+          (cross-entropy).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Learning rate
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Learning rate{" "}
+          </Text>{" "}
           – step size of boosting. Smaller values often generalise better but
-          need more iterations.
-        </List.Item>
+          need more iterations.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Iterations (max_iter)
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Iterations (max_iter){" "}
+          </Text>{" "}
           – number of boosting stages. More stages can improve fit but may
-          overfit.
-        </List.Item>
+          overfit.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max leaf nodes / max depth
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max leaf nodes / max depth{" "}
+          </Text>{" "}
           – controls complexity of each tree. Larger values capture interactions
-          but increase overfitting risk.
-        </List.Item>
+          but increase overfitting risk.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Min samples leaf
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Min samples leaf{" "}
+          </Text>{" "}
           – minimum samples per leaf. Larger values smooth the model and reduce
-          overfitting.
-        </List.Item>
+          overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max features (fraction)
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max features (fraction){" "}
+          </Text>{" "}
           – fraction of features used per split (0–1]. Smaller values add
-          randomness.
-        </List.Item>
+          randomness.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Max bins
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Max bins{" "}
+          </Text>{" "}
           – number of discrete bins used when histogram-binning continuous
-          features. More bins can capture finer detail but increase memory/time.
-        </List.Item>
+          features. More bins can capture finer detail but increase
+          memory/time.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Early stopping
-          </Text>{' '}
-          – stops training when the validation score stops improving.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Early stopping{" "}
+          </Text>{" "}
+          – stops training when the validation score stops improving.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Scoring
-          </Text>{' '}
-          – metric used for early stopping / validation monitoring. "loss"
-          means stop when validation loss stops improving.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Scoring{" "}
+          </Text>{" "}
+          – metric used for early stopping / validation monitoring."loss" means
+          stop when validation loss stops improving.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Validation fraction
-          </Text>{' '}
-          – fraction of training data held out for early stopping.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Validation fraction{" "}
+          </Text>{" "}
+          – fraction of training data held out for early stopping.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            No-change rounds
-          </Text>{' '}
-          – how many iterations without improvement are allowed before stopping.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            No-change rounds{" "}
+          </Text>{" "}
+          – how many iterations without improvement are allowed before
+          stopping.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Tolerance
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Tolerance{" "}
+          </Text>{" "}
           – minimum improvement considered “progress” for early stopping.
-          Smaller values make stopping less sensitive.
-        </List.Item>
+          Smaller values make stopping less sensitive.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            L2 regularisation
-          </Text>{' '}
-          – shrinks leaf values to reduce overfitting.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            L2 regularisation{" "}
+          </Text>{" "}
+          – shrinks leaf values to reduce overfitting.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Verbose
-          </Text>{' '}
-          – prints training progress.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Verbose{" "}
+          </Text>{" "}
+          – prints training progress.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Random state
-          </Text>{' '}
-          – seed for reproducibility.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Random state{" "}
+          </Text>{" "}
+          – seed for reproducibility.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Class weight
-          </Text>{' '}
-          – balances class importance for imbalanced datasets.
-        </List.Item>
-      </List>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Class weight{" "}
+          </Text>{" "}
+          – balances class importance for imbalanced datasets.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   knn: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        kNN parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> kNN parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Neighbours
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Neighbours{" "}
+          </Text>{" "}
           – number of nearest samples considered. Small values are sensitive to
-          noise; large values smooth predictions.
-        </List.Item>
+          noise; large values smooth predictions.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Weights
-          </Text>{' '}
-          – how neighbours contribute (uniform or distance-based).
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Weights{" "}
+          </Text>{" "}
+          – how neighbours contribute (uniform or distance-based).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Algorithm
-          </Text>{' '}
-          – strategy used to search for neighbours (auto, ball-tree, kd-tree).
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Algorithm{" "}
+          </Text>{" "}
+          – strategy used to search for neighbours (auto, ball-tree,
+          kd-tree).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Leaf size
-          </Text>{' '}
-          – affects speed and memory usage of tree-based searches.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Leaf size{" "}
+          </Text>{" "}
+          – affects speed and memory usage of tree-based searches.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            p
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            p{" "}
+          </Text>{" "}
           – power parameter of the Minkowski distance (p=2 corresponds to
-          Euclidean distance).
-        </List.Item>
+          Euclidean distance).{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Metric
-          </Text>{' '}
-          – distance function used to compare samples.
-        </List.Item>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Metric{" "}
+          </Text>{" "}
+          – distance function used to compare samples.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Jobs (n_jobs)
-          </Text>{' '}
-          – number of CPU cores used for neighbour searches.
-        </List.Item>
-      </List>
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Jobs (n_jobs){" "}
+          </Text>{" "}
+          – number of CPU cores used for neighbour searches.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
-
   gnb: (
-    <Stack className="helpStack helpStackGap4">
-      <Text className="helpTitle">
-        Gaussian Naive Bayes parameters
-      </Text>
-      <List className="helpList helpListXs helpListTight">
+    <Stack className="helpParamSection">
+      {" "}
+      <Text className="helpTitle"> Gaussian Naive Bayes parameters </Text>{" "}
+      <List className="helpOptionList">
+        {" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Variance smoothing
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Variance smoothing{" "}
+          </Text>{" "}
           – adds a small value to variances for numerical stability. Increase if
-          you see numerical issues.
-        </List.Item>
+          you see numerical issues.{" "}
+        </List.Item>{" "}
         <List.Item>
-          <Text span className="helpInlineLabel">
-            Priors
-          </Text>{' '}
+          {" "}
+          <Text span className="helpLabel">
+            {" "}
+            Priors{" "}
+          </Text>{" "}
           – optional class prior probabilities. Leave empty to estimate from the
-          training data.
-        </List.Item>
-      </List>
+          training data.{" "}
+        </List.Item>{" "}
+      </List>{" "}
     </Stack>
   ),
 };

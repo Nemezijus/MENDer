@@ -1,4 +1,4 @@
-import '../styles/help.css';
+import "../styles/help.css";
 
 // NOTE:
 // This component is intentionally split out from ModelHelpText.jsx so that
@@ -7,10 +7,10 @@ import '../styles/help.css';
 
 export function ModelIntroText() {
   return (
-    <div className="helpStack helpStackXs">
+    <div className="helpSection">
       <div className="helpTitle">What is a model?</div>
 
-      <p className="helpTextBodyXs">
+      <p className="helpBody">
         A model is the algorithm that learns patterns from your training data
         and makes predictions on new data. Different models make different
         assumptions and trade off accuracy, interpretability, robustness, and

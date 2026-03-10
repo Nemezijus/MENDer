@@ -8,99 +8,82 @@
    - Prefer Tailwind @apply here so help content stays consistent across panels
 ------------------------------------------------------------- */
 
-.helpStack {
-	@apply flex flex-col;
+.helpSection {
+  @apply flex flex-col gap-2;
 }
 
-.helpStackTight {
-	@apply gap-1.5;
+.helpSectionPreview {
+  @apply flex flex-col gap-1.5;
 }
 
-.helpStackGap4 {
-	@apply gap-1;
+.helpSectionPanel {
+  @apply flex flex-col gap-3;
 }
 
-.helpStackXs {
-	@apply gap-2;
-}
-
-.helpStackSm {
-	@apply gap-3;
+.helpParamSection {
+  @apply flex flex-col gap-1;
 }
 
 .helpTitle {
-	@apply text-sm font-medium;
+  @apply text-sm font-medium;
 }
 
 .helpTitleStrong {
-	@apply text-sm font-semibold;
+  @apply text-sm font-semibold;
 }
 
-.helpTextXs {
-	@apply text-xs leading-snug;
+.helpSubsectionTitle {
+  @apply mt-2 text-sm font-medium;
 }
 
-.helpTextSm {
-	@apply text-sm leading-snug;
+.helpBody {
+  @apply text-xs leading-snug text-slate-600;
 }
 
-.helpTextDim {
-	@apply text-slate-600;
+.helpLead {
+  @apply text-sm leading-snug text-slate-600;
 }
 
-.helpTextBodyXs {
-	@apply text-xs leading-snug text-slate-600;
+.helpSubsectionText {
+  @apply mt-2 text-xs leading-snug text-slate-600;
 }
 
-.helpTextBodySm {
-	@apply text-sm leading-snug text-slate-600;
+.helpListBase {
+  @apply list-disc pl-5 text-xs leading-snug;
 }
 
-.helpList {
-	@apply list-disc pl-5;
+.helpOptionList {
+  @apply list-disc pl-5 space-y-1 text-xs leading-snug;
 }
 
-.helpListXs {
-	@apply text-xs leading-snug;
+.helpGuideList {
+  @apply list-disc pl-5 space-y-2 text-xs leading-snug;
 }
 
-.helpListTight {
-	@apply space-y-1;
+.helpSubsectionList {
+  @apply mt-2;
 }
 
-.helpListLoose {
-	@apply space-y-2;
+.helpLabel {
+  @apply font-semibold text-slate-900;
 }
 
-.helpListMt {
-	@apply mt-2;
+.helpStrong {
+  @apply font-semibold;
 }
 
-.helpInlineLabel {
-	@apply font-semibold text-slate-900;
+.helpCode {
+  @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.75rem] text-slate-800;
 }
 
-.helpInlineStrong {
-	@apply font-semibold;
+.helpChoiceLabel {
+  @apply font-semibold text-slate-900;
 }
 
-.helpInlineCode {
-	@apply font-mono text-[0.75rem] px-1 py-0.5 rounded bg-slate-100 text-slate-800;
+.helpChoiceLabelSelected {
+  @apply font-bold text-blue-600;
 }
 
-.helpAlgoLabel {
-	@apply font-semibold text-slate-900;
-}
-
-.helpAlgoLabelSelected {
-	@apply font-bold text-blue-600;
-}
-
-.helpDetailBlock {
-	@apply mt-1.5 flex flex-col gap-1;
-}
-
-/* Convenience: make inline <code> inside help blocks look consistent */
-.helpCodeInline {
-	@apply font-mono text-[0.75rem] px-1 py-0.5 rounded bg-slate-100 text-slate-800;
+.helpDetails {
+  @apply mt-1.5 flex flex-col gap-1;
 }
