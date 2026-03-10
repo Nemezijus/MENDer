@@ -1,6 +1,6 @@
 @reference "./theme.css";
 
-@layer components {
+/* @layer components {
 	.appMainColumn .generalCard {
 		background-color: var(--app-color-c3);
 		color: var(--app-color-c1);
@@ -13,4 +13,4 @@
 	.appMainColumn .generalCard .mantine-Tabs-tab {
 		color: var(--app-color-c1);
 	}
-}
+} */
