@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { MantineProvider, createTheme, Card } from '@mantine/core';
+import { MantineProvider, createTheme, Card, Tabs } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@mantine/core/styles.css';
 import './index.css';
@@ -22,6 +22,14 @@ const theme = createTheme({
           '--paper-border-color': 'var(--app-card-border, var(--app-color-c4))',
         },
       }),
+    }),
+
+    Tabs: Tabs.extend({
+      styles: {
+        tab: {
+          color: 'var(--app-color-text)',
+        },
+      },
     }),
   },
   defaultRadius: 0,

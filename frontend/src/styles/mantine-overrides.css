@@ -14,3 +14,40 @@
 [data-mantine-color-scheme='light'] {
   --mantine-color-default-border: var(--app-color-c1);
 }
+
+.mantine-Tabs-tab:hover {
+	color: var(--app-color-your-hover-text);
+	background-color: var(--app-color-primary-600);
+}
+
+.mantine-Tabs-tab[data-active] {
+	color: var(--app-color-primary-900);
+	border-color: var(--app-color-primary-600);
+	border-bottom-width: 2px;
+	font-weight: 700;
+}
+
+.mantine-Tabs-list {
+	border-bottom: 1px solid var(--app-color-primary-600);
+}
+
+/* .dataFilesSubTabs .mantine-Tabs-tab {
+	color: inherit;
+}
+
+.dataFilesSubTabs .mantine-Tabs-tab:hover,
+.dataFilesSubTabs .mantine-Tabs-tab:hover .mantine-Tabs-tabLabel {
+	color: var(--app-color-primary-600);
+	background-color: var(--app-color-primary-700);
+}
+
+.dataFilesSubTabs .mantine-Tabs-tab[data-active] {
+	border-color: var(--app-color-primary-700);
+	border-bottom-width: 2px;
+}
+
+.dataFilesSubTabs .mantine-Tabs-tab[data-active]:hover,
+.dataFilesSubTabs .mantine-Tabs-tab[data-active]:hover .mantine-Tabs-tabLabel {
+	color: var(--app-color-primary-700);
+	background-color: var(--app-color-primary-700);
+} */

@@ -18,7 +18,7 @@ export function TrainingDataIntroText() {
   return (
     <div className="helpSectionPreview">
       {" "}
-      <div className="helpTitleStrong">Training data</div>{" "}
+
       <p className="helpLead">
         {" "}
         Training data is used to fit your model and estimate how well it
@@ -30,7 +30,10 @@ export function TrainingDataIntroText() {
         {" "}
         <b className="helpStrong">Features (X)</b> are the measurements you
         provide to the model (e.g. neuron responses, pixel intensities, sensor
-        readings). <b className="helpStrong">Labels (y)</b> are what you want
+        readings). 
+      </p>
+      <p className="helpLead">
+        <b className="helpStrong">Labels (y)</b> are what you want
         the model to predict (e.g. class IDs for classification or a continuous
         value for regression).{" "}
       </p>{" "}

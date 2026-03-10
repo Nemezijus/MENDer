@@ -40,7 +40,7 @@ export default function SavedModelUploadCard() {
   }
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
+    <Card withBorder shadow="sm" padding="lg" className="specialCard">
       <Stack gap="sm">
         <Text fw={500}>Load a saved model</Text>
         <Text size="sm" c="dimmed">

@@ -192,7 +192,7 @@ export default function DataSummaryCard({
   const npzShown = npzDisplay?.trim() ? npzDisplay.trim() : npzPath ? formatFallbackUploadLabelFromPath(npzPath) : '—';
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
+    <Card withBorder shadow="sm" padding="lg">
       <Stack gap="md">
         {/* Centered title */}
         <Group justify="space-between" align="center">
