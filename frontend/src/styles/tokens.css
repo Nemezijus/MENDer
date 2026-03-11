@@ -154,6 +154,10 @@
   --color-primary-500: var(--app-color-primary-500);
   --color-primary-600: var(--app-color-primary-600);
   --color-primary-700: var(--app-color-primary-700);
+  --color-primary-800: var(--app-color-primary-800);
+  --color-primary-900: var(--app-color-primary-900);
+  --color-primary-950: var(--app-color-primary-950);
+  
 
   --color-accent-one-100: var(--app-color-accent-one-100);
   --color-accent-one-125: var(--app-color-accent-one-125);

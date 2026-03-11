@@ -8,14 +8,18 @@
 	}
 
 	.sidebarNavHeader {
-		@apply px-5 py-4;
-		border-bottom: 1px solid var(--app-color-border);
+		@apply px-5 py-4 bg-primary-600;
+		
 	}
 
 	.sidebarNavHeaderInner {
 		min-height: 3.5rem;
 	}
 
+	.sidebarNavBrandWrap {
+		@apply w-full text-center;
+	}
+	
 	.sidebarNavBrand {
 		@apply text-lg font-semibold tracking-tight;
 		color: var(--app-color-text);
@@ -50,4 +54,9 @@
 		@apply text-xs;
 		color: var(--app-color-text-muted);
 	}
+}
+
+.sidebarNavBrand.mantine-Text-root {
+	@apply text-xl tracking-[0.24em];
+	
 }

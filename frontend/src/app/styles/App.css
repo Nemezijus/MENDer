@@ -72,7 +72,7 @@
 
 	.appSidebarColumn,
 	.appMainColumn {
-		border-right: 1px solid var(--app-color-border);
+		border-right: 2px solid var(--app-color-primary-600);
 		border-bottom: 0;
 	}
 

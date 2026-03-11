@@ -12,15 +12,11 @@ export default function SidebarNav({ active, onChange }) {
     <nav className="sidebarNav">
       <div className="sidebarNavHeader">
         <Group justify="space-between" align="center" className="sidebarNavHeaderInner">
-          <div>
-            <Text fw={700} className="sidebarNavBrand">
-              MENU
-            </Text>
-            <Text size="xs" c="dimmed">
-              Frontend workflow
+          <div className="sidebarNavBrandWrap">
+            <Text className="sidebarNavBrand">
+              NAVIGATION
             </Text>
           </div>
-          <Code fw={700}>UI</Code>
         </Group>
       </div>
 
