@@ -63,13 +63,9 @@ export default function App() {
       <Box className="appShell">
         <Box className="appHeader">
           <div className="appHeaderTitleWrap">
-            <Text className="appHeaderEyebrow">Machine learning workflow</Text>
+            <Text className="appHeaderEyebrow">Machine learning simplified</Text>
             <Text className="appHeaderTitle">MENDer</Text>
           </div>
-
-          <Text className="appHeaderMeta">
-            {activeMeta?.title ?? 'Workspace'}
-          </Text>
         </Box>
 
         <Box className="appSurface">

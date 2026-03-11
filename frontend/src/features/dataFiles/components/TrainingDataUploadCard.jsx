@@ -62,7 +62,7 @@ export default function TrainingDataUploadCard() {
             {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
           </Group>
 
-          <TrainingDataIntroText />
+          
 
           <Tabs defaultValue="individual" keepMounted={false} className="dataFilesSubTabs">
             <Tabs.List grow>
@@ -129,6 +129,8 @@ export default function TrainingDataUploadCard() {
               </Text>
             </Alert>
           )}
+
+          <TrainingDataIntroText />
         </Stack>
       </Card>
 

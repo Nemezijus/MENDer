@@ -11,7 +11,7 @@
 	}
 
 	.appHeader {
-		@apply flex min-h-20 items-center justify-between gap-6 border border-app-border bg-app-surface px-5 py-4 xl:px-6;
+		@apply flex min-h-20 items-center justify-between gap-6 border-b border-app-border bg-app-surface px-5 py-4 xl:px-6;
 	}
 
 	.appHeaderTitleWrap {

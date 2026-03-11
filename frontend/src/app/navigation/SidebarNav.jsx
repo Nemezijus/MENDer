@@ -14,7 +14,7 @@ export default function SidebarNav({ active, onChange }) {
         <Group justify="space-between" align="center" className="sidebarNavHeaderInner">
           <div>
             <Text fw={700} className="sidebarNavBrand">
-              MENDer
+              MENU
             </Text>
             <Text size="xs" c="dimmed">
               Frontend workflow
