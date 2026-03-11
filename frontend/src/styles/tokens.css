@@ -90,7 +90,7 @@
   --app-color-border: var(--app-color-neutral-200);
   --app-color-border-strong: var(--app-color-neutral-300);
   --app-color-text: var(--app-color-c1);
-  --app-color-text-muted: var(--app-color-accent-two-700);
+  --app-color-text-muted: var(--app-color-accent-two-50);
 
   /* Active semantic accent family
      Accent Four is now the active accent exposed through app-accent-* tokens. */
