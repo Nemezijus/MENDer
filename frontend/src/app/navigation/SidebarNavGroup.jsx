@@ -16,9 +16,13 @@ export default function SidebarNavGroup({ section, active, onChange }) {
         leftSection={renderIcon(section.icon)}
         active={active === section.id}
         onClick={() => onChange(section.id)}
-        variant="light"
         className="sidebarNavItem"
-        classNames={{ description: 'sidebarNavItemDescription' }}
+        classNames={{
+          body: 'sidebarNavItemBody',
+          label: 'sidebarNavItemLabel',
+          description: 'sidebarNavItemDescription',
+          section: 'sidebarNavItemSection',
+        }}
       />
     );
   }
@@ -32,10 +36,14 @@ export default function SidebarNavGroup({ section, active, onChange }) {
       leftSection={renderIcon(section.icon)}
       defaultOpened={section.initiallyOpened}
       childrenOffset={8}
-      variant="subtle"
       active={hasActiveChild}
       className="sidebarNavItem"
-      classNames={{ description: 'sidebarNavItemDescription' }}
+      classNames={{
+        body: 'sidebarNavItemBody',
+        label: 'sidebarNavItemLabel',
+        description: 'sidebarNavItemDescription',
+        section: 'sidebarNavItemSection',
+      }}
     >
       <div className="sidebarNavChildLinks">
         {section.items.map((item) => (
@@ -44,8 +52,12 @@ export default function SidebarNavGroup({ section, active, onChange }) {
             label={item.navLabel}
             active={active === item.id}
             onClick={() => onChange(item.id)}
-            variant="light"
             className="sidebarNavChildLink"
+            classNames={{
+              body: 'sidebarNavChildBody',
+              label: 'sidebarNavChildLabel',
+              section: 'sidebarNavChildSection',
+            }}
           />
         ))}
       </div>

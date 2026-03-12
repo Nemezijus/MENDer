@@ -56,25 +56,25 @@ export const NAV_SECTIONS = [
   },
   {
     navLabel: 'Training',
-    description: 'Single models, clustering, and ensembles',
+    description: 'Single models and ensembles',
     icon: IconPresentationAnalytics,
     initiallyOpened: true,
     items: [
       {
         id: 'train',
-        navLabel: 'Train a model',
+        navLabel: 'Supervised model',
         title: 'Model training',
         requiresTrainingData: true,
       },
       {
         id: 'train-unsupervised',
-        navLabel: 'Unsupervised learning',
+        navLabel: 'Unsupervised model',
         title: 'Unsupervised learning',
         requiresTrainingData: true,
       },
       {
         id: 'train-ensemble',
-        navLabel: 'Train an ensemble',
+        navLabel: 'Ensemble',
         title: 'Ensemble training',
         requiresTrainingData: true,
       },
@@ -98,7 +98,7 @@ export const NAV_SECTIONS = [
   },
   {
     navLabel: 'Tuning',
-    description: 'Curves and search workflows',
+    description: 'Optimal parameter search',
     icon: IconCalendarStats,
     initiallyOpened: false,
     items: [

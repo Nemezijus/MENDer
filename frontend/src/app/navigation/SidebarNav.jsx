@@ -20,7 +20,7 @@ export default function SidebarNav({ active, onChange }) {
         </Group>
       </div>
 
-      <ScrollArea className="sidebarNavLinks" offsetScrollbars>
+      <ScrollArea className="sidebarNavLinks">
         <div className="sidebarNavLinksInner">
           {NAV_SECTIONS.map((section) => (
             <SidebarNavGroup
@@ -35,7 +35,7 @@ export default function SidebarNav({ active, onChange }) {
 
       <div className="sidebarNavFooter">
         <Text className="sidebarNavFooterText">
-          Active panel: {activeMeta?.navLabel ?? 'None'}
+          Major version: 2.0
         </Text>
       </div>
     </nav>
