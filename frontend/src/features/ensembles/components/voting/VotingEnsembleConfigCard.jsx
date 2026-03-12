@@ -47,7 +47,7 @@ export default function VotingEnsembleConfigCard({ vm }) {
   } = vm;
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
+    <Card withBorder shadow="sm" padding="lg">
       <Stack gap="md">
         <EnsemblePanelHeader
           title="Voting ensemble"

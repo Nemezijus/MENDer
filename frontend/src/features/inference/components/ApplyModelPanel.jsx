@@ -32,7 +32,7 @@ export default function ApplyModelPanel() {
   const displayYKey = yKey?.trim() || defaultYKey;
 
   return (
-    <Card shadow="sm" padding="md" radius="md" withBorder>
+    <Card shadow="sm" padding="md" withBorder>
       <Stack gap="md">
         <Text fw={600} size="sm">
           Apply model to new data
@@ -56,7 +56,7 @@ export default function ApplyModelPanel() {
         </Stack>
 
         {error && (
-          <Alert color="red" variant="light" radius="md">
+          <Alert color="red" variant="light">
             <Text size="xs">{error}</Text>
           </Alert>
         )}

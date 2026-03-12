@@ -80,7 +80,7 @@ export default function UnsupervisedTrainingPanel() {
     <Stack gap="md">
       <Title order={3}>Train an unsupervised Model</Title>
 
-      <Card withBorder shadow="sm" radius="md" padding="md">
+      <Card withBorder shadow="sm" padding="md">
         <Stack gap="sm">
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Text fw={600}>Configuration</Text>

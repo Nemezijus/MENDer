@@ -91,7 +91,7 @@ export default function RandomSearchResultsPanel({ result }) {
   }, [result]);
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={500}>Randomized search results</Text>
 

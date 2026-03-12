@@ -20,7 +20,7 @@ export default function TrainingResultsPanel() {
 
   if (!trainResult) {
     return (
-      <Card withBorder radius="md" shadow="sm" padding="md">
+      <Card withBorder shadow="sm" padding="md">
         <Text fw={500} mb="xs">
           Results
         </Text>
@@ -39,7 +39,7 @@ export default function TrainingResultsPanel() {
   const isRegression = isRegressionResult(trainResult);
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={500}>Results</Text>
 

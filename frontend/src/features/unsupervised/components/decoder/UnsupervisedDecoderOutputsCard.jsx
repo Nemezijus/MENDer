@@ -36,7 +36,7 @@ export default function UnsupervisedDecoderOutputsCard({ trainResult }) {
   };
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={500} size="xl" ta="center">
           Decoder outputs

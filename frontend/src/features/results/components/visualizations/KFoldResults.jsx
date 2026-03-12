@@ -18,7 +18,7 @@ export default function KFoldResults({
     const fmt = (v) => (isNumber(v) ? v.toFixed(3) : v);
 
     return (
-        <Card withBorder={false} radius="md" padding="sm">
+        <Card withBorder={false} padding="sm">
             <Stack gap="xs">
                 <Text fw={500} size="sm">{title}</Text>
                 <Group align="flex-start" grow wrap="nowrap">

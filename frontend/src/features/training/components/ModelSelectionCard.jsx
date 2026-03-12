@@ -170,7 +170,7 @@ export default function ModelSelectionCard({
 
   if (!showHelp) {
     return (
-      <Card withBorder shadow="sm" radius="md" padding="lg">
+      <Card withBorder shadow="sm" padding="lg">
         <Stack gap="md">
           <Group justify="space-between">
             <Text fw={500}>Model</Text>
@@ -183,7 +183,7 @@ export default function ModelSelectionCard({
   }
 
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
+    <Card withBorder shadow="sm" padding="lg">
       <Stack gap="md">
         <Text fw={700} size="lg" align="center">
           Model

@@ -15,7 +15,6 @@ export default function GeneralSummary({
   return (
     <Card
       withBorder
-      radius="md"
       padding="sm"
       className="resultsSummaryAccentBorder"
     >

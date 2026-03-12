@@ -7,7 +7,7 @@ import { Card, Stack, Group, Text } from '@mantine/core';
  */
 export default function ParamGroup({ title, rightSection, children, ...props }) {
   return (
-    <Card withBorder radius="md" p="md" {...props}>
+    <Card withBorder p="md" {...props}>
       <Stack gap="sm">
         {(title || rightSection) && (
           <Group justify="space-between" align="center">

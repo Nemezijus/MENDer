@@ -15,7 +15,7 @@ export default function VotingAdvancedEstimatorCard({
   enums,
 }) {
   return (
-    <Card withBorder radius="md" p="md">
+    <Card withBorder p="md">
       <Stack gap="sm">
         <Group justify="space-between" align="center">
           <Text fw={600}>Estimator {idx + 1}</Text>

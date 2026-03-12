@@ -65,7 +65,7 @@ export default function RegressionResultsPanel({ trainResult }) {
   const binnedX = hasBinned ? binCenters(errorByBin.edges) : [];
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={600} size="xl" align="center">
           Regression diagnostics

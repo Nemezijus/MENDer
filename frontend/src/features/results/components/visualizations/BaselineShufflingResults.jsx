@@ -18,7 +18,7 @@ export default function BaselineShufflingResults({
     const fmt = (v) => (isNumber(v) ? v.toFixed(digits) : v);
 
     return (
-        <Card withBorder={false} radius="md" padding="sm">
+        <Card withBorder={false} padding="sm">
             <Stack gap="xs">
                 <Text fw={500} size="sm">{title}</Text>
                 <Plot

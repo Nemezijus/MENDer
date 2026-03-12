@@ -222,7 +222,7 @@ export default function ValidationCurveResultsPanel({
   }, [analytics, metricLabel]);
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={500}>Validation Curve Results</Text>
 

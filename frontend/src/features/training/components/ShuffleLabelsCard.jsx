@@ -10,7 +10,7 @@ export default function ShuffleLabelsCard({
   nShufflesDescription,
 }) {
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
+    <Card withBorder shadow="sm" padding="lg">
       <Stack gap="sm">
         <Text fw={500}>{title}</Text>
 

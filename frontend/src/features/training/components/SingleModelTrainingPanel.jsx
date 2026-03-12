@@ -64,7 +64,7 @@ export default function SingleModelTrainingPanel() {
         </Alert>
       )}
 
-      <Card withBorder shadow="sm" radius="md" padding="lg">
+      <Card withBorder shadow="sm" padding="lg">
         <Stack gap="md">
           <Group justify="space-between" wrap="nowrap">
             <Text fw={500}>Configuration</Text>

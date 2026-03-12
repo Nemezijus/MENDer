@@ -52,7 +52,7 @@ export default function UnsupervisedDiagnosticsCard({ trainResult }) {
   }, [clusterSummary]);
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={600} size="xl" ta="center">
           Unsupervised diagnostics

@@ -40,7 +40,7 @@ export default function BaggingClsVoteHistogramsSection({ report }) {
 
   return (
     <Group align="stretch" grow wrap="wrap">
-      <Card withBorder={false} radius="md" p="sm" className="ensPlotColWide">
+      <Card withBorder={false} p="sm" className="ensPlotColWide">
         <SectionTitle
           title="Vote margins"
           tooltip="Distribution of vote margins (top votes − runner-up votes)."
@@ -75,7 +75,7 @@ export default function BaggingClsVoteHistogramsSection({ report }) {
         )}
       </Card>
 
-      <Card withBorder={false} radius="md" p="sm" className="ensPlotColWide">
+      <Card withBorder={false} p="sm" className="ensPlotColWide">
         <SectionTitle
           title="Vote strength"
           tooltip="Distribution of vote strength (top votes / total estimators). With N estimators, strengths are typically discrete: k/N."

@@ -143,7 +143,7 @@ export default function XGBoostEnsemblePanel() {
 
   return (
     <Stack gap="md">
-      <Card withBorder shadow="sm" radius="md" padding="lg">
+      <Card withBorder shadow="sm" padding="lg">
         <Stack gap="md">
           <EnsemblePanelHeader
             title="XGBoost ensemble"

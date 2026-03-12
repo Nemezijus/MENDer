@@ -20,7 +20,7 @@ export default function ResultsPanel() {
 
   // Generic fallback: no results selected
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="xs">
         <Text fw={500}>Results</Text>
         <Text size="sm" c="dimmed">

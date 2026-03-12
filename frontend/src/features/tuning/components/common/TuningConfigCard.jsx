@@ -15,7 +15,7 @@ export default function TuningConfigCard({
   children,
 }) {
   return (
-    <Card withBorder shadow="sm" radius="md" padding="lg">
+    <Card withBorder shadow="sm" padding="lg">
       <Stack gap="md">
         <Group justify="space-between" wrap="nowrap">
           <Text fw={500}>{title}</Text>

@@ -24,7 +24,7 @@ export default function ClassificationResultsPanel({ trainResult }) {
   }
 
   return (
-    <Card withBorder radius="md" shadow="sm" padding="md">
+    <Card withBorder shadow="sm" padding="md">
       <Stack gap="sm">
         <Text fw={600} size="xl" align="center">
           Classification diagnostics
