@@ -46,6 +46,11 @@
 	.appArtifactColumn {
 		min-height: 18rem;
 	}
+
+	.sectionShellTitle {
+		@apply py-2;
+		text-align: center;
+	}
 }
 .appHeaderEyebrow.mantine-Text-root {
 	@apply font-medium uppercase tracking-[0.24em];
