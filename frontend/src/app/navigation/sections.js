@@ -21,7 +21,7 @@ export const NAV_SECTIONS = [
     id: 'data',
     navLabel: 'Data & Files',
     title: 'Upload data & files',
-    description: 'Upload and inspect training and production data',
+    description: 'Upload training and production data',
     icon: IconNotes,
     requiresTrainingData: false,
   },

@@ -17,8 +17,8 @@ export default function SidebarNavGroup({ section, active, onChange }) {
         active={active === section.id}
         onClick={() => onChange(section.id)}
         variant="light"
-        radius="md"
         className="sidebarNavItem"
+        classNames={{ description: 'sidebarNavItemDescription' }}
       />
     );
   }
@@ -33,9 +33,9 @@ export default function SidebarNavGroup({ section, active, onChange }) {
       defaultOpened={section.initiallyOpened}
       childrenOffset={8}
       variant="subtle"
-      radius="md"
       active={hasActiveChild}
       className="sidebarNavItem"
+      classNames={{ description: 'sidebarNavItemDescription' }}
     >
       <div className="sidebarNavChildLinks">
         {section.items.map((item) => (
@@ -45,7 +45,6 @@ export default function SidebarNavGroup({ section, active, onChange }) {
             active={active === item.id}
             onClick={() => onChange(item.id)}
             variant="light"
-            radius="md"
             className="sidebarNavChildLink"
           />
         ))}

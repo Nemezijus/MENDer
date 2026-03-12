@@ -26,7 +26,7 @@
 	}
 
 	.sidebarNavLinks {
-		@apply flex-1 px-3 py-4;
+		@apply flex-1 px-0 py-4;
 	}
 
 	.sidebarNavLinksInner {
@@ -59,4 +59,37 @@
 .sidebarNavBrand.mantine-Text-root {
 	@apply text-xl tracking-[0.24em];
 	
+}
+/* local Mantine NavLink overrides for the sidebar only */
+.sidebarNavItem.mantine-NavLink-root,
+.sidebarNavChildLink.mantine-NavLink-root {
+	color: var(--app-color-text);
+	background-color: transparent;
+}
+
+.sidebarNavItem.mantine-NavLink-root:hover,
+.sidebarNavChildLink.mantine-NavLink-root:hover {
+	color: var(--app-color-your-hover-text);
+	background-color: var(--app-color-primary-600);
+}
+
+.sidebarNavItem.mantine-NavLink-root[data-active],
+.sidebarNavChildLink.mantine-NavLink-root[data-active] {
+	color: var(--app-color-c2);
+	background-color: var(--app-color-primary-600);
+	font-weight: 700;
+}
+
+/*control the description text in navigation items*/
+.sidebarNavItemDescription {
+	@apply text-[0.75rem] leading-[1.3];
+	color: var(--app-color-text);
+}
+
+.sidebarNavItem.mantine-NavLink-root[data-active] .sidebarNavItemDescription {
+	color: var(--app-color-accent-three-100);
+}
+
+.sidebarNavItem.mantine-NavLink-root:hover .sidebarNavItemDescription {
+	color: var(--app-color-accent-three-100);
 }
