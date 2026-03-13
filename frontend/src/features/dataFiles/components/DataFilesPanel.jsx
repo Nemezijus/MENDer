@@ -8,24 +8,25 @@ import ProductionDataUploadCard from './ProductionDataUploadCard.jsx';
 
 export default function DataFilesPanel() {
   return (
-      <Tabs defaultValue="training" keepMounted={false} className="appPanelTabs dataFilesTabs">
+      <Tabs defaultValue="training" keepMounted={false} variant="none" className="appPanelTabs dataFilesTabs">
         <Tabs.List grow>
           <Tabs.Tab value="training">Training data</Tabs.Tab>
+          <Tabs.Tab value="production">Unseen data</Tabs.Tab>
           <Tabs.Tab value="saved-model">Saved model</Tabs.Tab>
-          <Tabs.Tab value="production">Production data</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="training" pt="md">
           <TrainingDataUploadCard />
         </Tabs.Panel>
 
+        <Tabs.Panel value="production" pt="md">
+          <ProductionDataUploadCard />
+        </Tabs.Panel>
+
         <Tabs.Panel value="saved-model" pt="md">
           <SavedModelUploadCard />
         </Tabs.Panel>
 
-        <Tabs.Panel value="production" pt="md">
-          <ProductionDataUploadCard />
-        </Tabs.Panel>
       </Tabs>
   );
 }

@@ -46,14 +46,14 @@ export default function ProductionDataUploadCard() {
           <Group justify="space-between" align="center">
             <Box className="dataFilesHeaderSpacer" />
             <Text fw={700} size="lg" align="center" className="dataFilesHeaderTitle">
-              Production data
+              Unseen data
             </Text>
             {inspectReport ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
           </Group>
 
           <ProductionDataIntroText />
 
-          <Tabs defaultValue="individual" keepMounted={false} className="appPanelTabs dataFilesSubTabs productionDataSubTabs">
+          <Tabs defaultValue="individual" keepMounted={false} variant="none" className="appPanelTabs dataFilesSubTabs productionDataSubTabs">
             <Tabs.List grow>
               <Tabs.Tab value="individual">Individual files</Tabs.Tab>
               <Tabs.Tab value="compound">Compound file</Tabs.Tab>

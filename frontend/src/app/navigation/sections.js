@@ -92,7 +92,7 @@ export const NAV_SECTIONS = [
     id: 'predictions',
     navLabel: 'Predictions',
     title: 'Run predictions',
-    description: 'Apply a saved model to production data',
+    description: 'Apply a saved model to unseen data',
     icon: IconGauge,
     requiresTrainingData: false,
   },

@@ -24,13 +24,7 @@ const theme = createTheme({
       }),
     }),
 
-    Tabs: Tabs.extend({
-      styles: {
-        tab: {
-          color: 'var(--app-color-text)',
-        },
-      },
-    }),
+    Tabs: Tabs.extend({}),
   },
   defaultRadius: 0,
 });

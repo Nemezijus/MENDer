@@ -30,7 +30,7 @@
 /* =========================
    Shared Data & Files tab system
    Scoped to this feature only.
-   Keep outside @layer so it can override Mantine tab defaults.
+   Built on Tabs variant="none"
    ========================= */
 
 .appPanelTabs {
@@ -47,11 +47,21 @@
 	--app-panel-tabs-border-active: var(--app-color-primary-600);
 
 	--app-panel-tabs-radius: 0;
-	--app-panel-tabs-active-weight: 700;
-	--app-panel-tabs-border-width: 2px;
+	--app-panel-tabs-border-width: 4px;
+
+	--app-panel-tabs-font-size: 1rem;
+	--app-panel-tabs-line-height: 1.2;
+
+	--app-panel-tabs-font-weight: 400;
+	--app-panel-tabs-font-weight-hover: 500;
+	--app-panel-tabs-font-weight-active: 700;
+
+	--app-panel-tabs-letter-spacing: 0.01em;
+	--app-panel-tabs-letter-spacing-hover: 0.01em;
+	--app-panel-tabs-letter-spacing-active: 0.02em;
 }
 
-/* shared list baseline */
+/* baseline under the whole tab row */
 .appPanelTabs .mantine-Tabs-list {
 	border-bottom: 1px solid var(--app-panel-tabs-border);
 }
@@ -60,8 +70,15 @@
 .appPanelTabs .mantine-Tabs-tab {
 	color: var(--app-panel-tabs-text);
 	background-color: var(--app-panel-tabs-bg);
+	border: 0;
 	border-radius: var(--app-panel-tabs-radius);
-	border-bottom: var(--app-panel-tabs-border-width) solid transparent;
+	border-bottom: var(--app-panel-tabs-border-width) solid var(--app-panel-tabs-border);
+	margin-bottom: -1px;
+
+	font-size: var(--app-panel-tabs-font-size);
+	line-height: var(--app-panel-tabs-line-height);
+	font-weight: var(--app-panel-tabs-font-weight);
+	letter-spacing: var(--app-panel-tabs-letter-spacing);
 }
 
 /* hover state */
@@ -69,6 +86,9 @@
 	color: var(--app-panel-tabs-text-hover);
 	background-color: var(--app-panel-tabs-bg-hover);
 	border-bottom-color: var(--app-panel-tabs-border-hover);
+
+	font-weight: var(--app-panel-tabs-font-weight-hover);
+	letter-spacing: var(--app-panel-tabs-letter-spacing-hover);
 }
 
 /* active state */
@@ -76,7 +96,9 @@
 	color: var(--app-panel-tabs-text-active);
 	background-color: var(--app-panel-tabs-bg-active);
 	border-bottom-color: var(--app-panel-tabs-border-active);
-	font-weight: var(--app-panel-tabs-active-weight);
+
+	font-weight: var(--app-panel-tabs-font-weight-active);
+	letter-spacing: var(--app-panel-tabs-letter-spacing-active);
 }
 
 /* =========================
@@ -84,15 +106,15 @@
    ========================= */
 
 .dataFilesTabs {
-	--app-panel-tabs-text-hover: var(--app-color-accent-two-300);
+	--app-panel-tabs-text-hover: var(--app-color-accent-two-200);
 	--app-panel-tabs-text-active: var(--app-color-c5);
 
 	--app-panel-tabs-bg-hover: transparent;
-	--app-panel-tabs-bg-active: transparent;
+	--app-panel-tabs-bg-active: var(--app-color-primary-600);
 
-	--app-panel-tabs-border: var(--app-color-accent-three-600);
-	--app-panel-tabs-border-hover: var(--app-color-primary-600);
-	--app-panel-tabs-border-active: var(--app-color-primary-600);
+	--app-panel-tabs-border: var(--app-color-primary-600);
+	--app-panel-tabs-border-hover: var(--app-color-accent-two-200);
+	--app-panel-tabs-border-active: var(--app-color-c5);
 }
 
 /* =========================
@@ -101,30 +123,21 @@
    ========================= */
 
 .dataFilesSubTabs {
-	--app-panel-tabs-text-hover: var(--app-color-accent-four-200);
+	--app-panel-tabs-text-hover: var(--app-color-accent-two-200);
 	--app-panel-tabs-text-active: var(--app-color-c5);
 
-	--app-panel-tabs-border: var(--app-color-primary-600);
-	--app-panel-tabs-border-hover: var(--app-color-primary-500);
-	--app-panel-tabs-border-active: var(--app-color-primary-500);
+	--app-panel-tabs-border: var(--app-color-primary-500);
+	--app-panel-tabs-border-hover: var(--app-color-accent-two-200);
+	--app-panel-tabs-border-active: var(--app-color-c5);
 }
 
 /* =========================
-   Training nested tabs
-   Tweak locally here when needed
+   Training / Production nested tabs
+   Same behavior for both for now
    ========================= */
 
-.trainingDataSubTabs {
-	--app-panel-tabs-bg-hover: var(--app-color-primary-700);
-	--app-panel-tabs-bg-active: var(--app-color-primary-700);
-}
-
-/* =========================
-   Production nested tabs
-   Tweak locally here when needed
-   ========================= */
-
+.trainingDataSubTabs,
 .productionDataSubTabs {
-	--app-panel-tabs-bg-hover: var(--app-color-primary-700);
-	--app-panel-tabs-bg-active: var(--app-color-primary-700);
+	--app-panel-tabs-bg-hover: transparent;
+	--app-panel-tabs-bg-active: var(--app-color-primary-500);
 }

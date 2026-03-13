@@ -42,7 +42,7 @@ export default function SavedModelUploadCard() {
   return (
     <Card withBorder shadow="sm" padding="lg" className="specialCard">
       <Stack gap="sm">
-        <Text fw={500}>Load a saved model</Text>
+        <Text fw={500}>Saved model</Text>
         <Text size="sm" c="dimmed">
           Load a previously saved model (.mend file) to inspect it and use it for results or predictions.
         </Text>
