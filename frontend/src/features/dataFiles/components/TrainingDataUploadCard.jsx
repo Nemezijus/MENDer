@@ -54,12 +54,24 @@ export default function TrainingDataUploadCard() {
     <Stack gap="md">
       <Card  className="specialCard" withBorder shadow="sm" padding="lg">
         <Stack gap="md">
-          <Group justify="space-between" align="center">
+          <Group justify="space-between" align="center" className="dataFilesHeaderRow">
             <Box className="dataFilesHeaderSpacer" />
-            <Text fw={700} size="lg" align="center" className="dataFilesHeaderTitle">
+
+            <Text className="dataFilesHeaderTitle">
               Training data
             </Text>
-            {dataReady ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
+
+            <Box className="dataFilesHeaderStatusSlot">
+              {dataReady ? (
+                <Badge className="dataFilesStatusBadge dataFilesStatusBadge--ready">
+                  Ready
+                </Badge>
+              ) : (
+                <Badge className="dataFilesStatusBadge dataFilesStatusBadge--idle">
+                  Not loaded
+                </Badge>
+              )}
+            </Box>
           </Group>
 
           

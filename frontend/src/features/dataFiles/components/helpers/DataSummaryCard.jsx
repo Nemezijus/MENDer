@@ -195,11 +195,9 @@ export default function DataSummaryCard({
     <Card withBorder shadow="sm" padding="lg">
       <Stack gap="md">
         {/* Centered title */}
-        <Group justify="space-between" align="center">
+        <Group justify="space-between" align="center" className="dataFilesHeaderRow">
           <Box className="dataFilesHeaderSpacer" />
-          <Text fw={700} size="lg" align="center" className="dataFilesHeaderTitle">
-            Summary
-          </Text>
+          <Text className="dataFilesHeaderTitle">Summary</Text>
           <Box className="dataFilesHeaderSpacer" />
         </Group>
 

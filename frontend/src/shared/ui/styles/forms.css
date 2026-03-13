@@ -164,3 +164,28 @@
 .appCheckboxError {
 	color: var(--app-color-accent-two-200);
 }
+
+/* =========================
+   Shared badges
+   Shape / size / typography only
+   Colors can be overridden locally
+   ========================= */
+
+.appBadgeRoot {
+	min-height: 1.75rem;
+	padding-inline: 0.75rem;
+	border: 1px solid transparent;
+	border-radius: 0.375rem;
+}
+
+.appBadgeLabel {
+	font-size: 0.75rem;
+	line-height: 1.1;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.appBadgeSection {
+	color: inherit;
+}

@@ -43,12 +43,24 @@ export default function ProductionDataUploadCard() {
     <Stack gap="md">
       <Card className="specialCard" withBorder shadow="sm" padding="lg">
         <Stack gap="md">
-          <Group justify="space-between" align="center">
+          <Group justify="space-between" align="center" className="dataFilesHeaderRow">
             <Box className="dataFilesHeaderSpacer" />
-            <Text fw={700} size="lg" align="center" className="dataFilesHeaderTitle">
+
+            <Text className="dataFilesHeaderTitle">
               Unseen data
             </Text>
-            {inspectReport ? <Badge color="green">Ready</Badge> : <Badge color="gray">Not loaded</Badge>}
+
+            <Box className="dataFilesHeaderStatusSlot">
+              {inspectReport ? (
+                <Badge className="dataFilesStatusBadge dataFilesStatusBadge--ready">
+                  Ready
+                </Badge>
+              ) : (
+                <Badge className="dataFilesStatusBadge dataFilesStatusBadge--idle">
+                  Not loaded
+                </Badge>
+              )}
+            </Box>
           </Group>
 
           <ProductionDataIntroText />

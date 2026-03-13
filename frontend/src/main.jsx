@@ -13,6 +13,7 @@ import {
   NumberInput,
   Button,
   Checkbox,
+  Badge,
 } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@mantine/core/styles.css';
@@ -91,6 +92,13 @@ const theme = createTheme({
         label: 'appCheckboxLabel',
         description: 'appCheckboxDescription',
         error: 'appCheckboxError',
+      },
+    }),
+    Badge: Badge.extend({
+      classNames: {
+        root: 'appBadgeRoot',
+        label: 'appBadgeLabel',
+        section: 'appBadgeSection',
       },
     }),
   },

@@ -6,14 +6,22 @@
  */
 
 @layer components {
-	.dataFilesHeaderSpacer {
+	.dataFilesHeaderRow {
+		@apply px-2 py-1 mb-6;
+	}
+
+	.dataFilesHeaderSpacer,
+	.dataFilesHeaderStatusSlot {
 		width: 88px;
 		flex: 0 0 88px;
 	}
 
+	.dataFilesHeaderStatusSlot {
+		@apply flex justify-end;
+	}
+
 	.dataFilesHeaderTitle {
 		flex: 1 1 auto;
-		text-align: center;
 	}
 
 	.dataFilesRightValue {
@@ -25,7 +33,30 @@
 		overflow-wrap: anywhere;
 		word-break: break-word;
 	}
+}
 
+.dataFilesHeaderTitle.mantine-Text-root {
+	font-size: 1.5rem;
+	line-height: 1.2;
+	font-weight: 700;
+	text-align: center;
+}
+
+.dataFilesStatusBadge.mantine-Badge-root {
+	min-width: 88px;
+	justify-content: center;
+}
+
+.dataFilesStatusBadge--ready.mantine-Badge-root {
+	background-color: var(--app-color-primary-500);
+	border-color: var(--app-color-c5);
+	color: var(--app-color-c5);
+}
+
+.dataFilesStatusBadge--idle.mantine-Badge-root {
+	background-color: transparent;
+	border-color: var(--app-color-primary-400);
+	color: var(--app-color-text-muted);
 }
 /* =========================
    Shared Data & Files tab system
