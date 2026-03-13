@@ -163,10 +163,6 @@ export default function ModelArtifactCard() {
   return (
     <Card withBorder={false} radius={0} shadow="none" padding="md" style={borderColor ? { borderLeft: `3px solid ${borderColor}` } : undefined} className="modelCard">
       <Stack gap="sm">
-        <Text fw={600} ta="center">
-          Model
-        </Text>
-
         <Text size="xs" c={statusColor} className="artifactPreWrap">
           {statusText}
         </Text>

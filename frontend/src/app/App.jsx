@@ -78,7 +78,15 @@ export default function App() {
           </Box>
 
           <Box className="appArtifactColumn">
-            <ModelArtifactCard />
+            <div className="appArtifactShell">
+              <div className="appArtifactHeader">
+                <Text className="appArtifactTitle">Current Model</Text>
+              </div>
+
+              <div className="appArtifactBody">
+                <ModelArtifactCard />
+              </div>
+            </div>
           </Box>
         </Box>
       </Box>
