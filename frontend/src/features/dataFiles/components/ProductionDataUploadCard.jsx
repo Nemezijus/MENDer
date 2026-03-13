@@ -53,7 +53,7 @@ export default function ProductionDataUploadCard() {
 
           <ProductionDataIntroText />
 
-          <Tabs defaultValue="individual" keepMounted={false}>
+          <Tabs defaultValue="individual" keepMounted={false} className="appPanelTabs dataFilesSubTabs productionDataSubTabs">
             <Tabs.List grow>
               <Tabs.Tab value="individual">Individual files</Tabs.Tab>
               <Tabs.Tab value="compound">Compound file</Tabs.Tab>

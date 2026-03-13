@@ -1,4 +1,4 @@
-import { Card, Tabs } from '@mantine/core';
+import { Tabs } from '@mantine/core';
 
 import '../styles/dataFilesPanel.css';
 
@@ -8,7 +8,7 @@ import ProductionDataUploadCard from './ProductionDataUploadCard.jsx';
 
 export default function DataFilesPanel() {
   return (
-      <Tabs defaultValue="training" keepMounted={false}>
+      <Tabs defaultValue="training" keepMounted={false} className="appPanelTabs dataFilesTabs">
         <Tabs.List grow>
           <Tabs.Tab value="training">Training data</Tabs.Tab>
           <Tabs.Tab value="saved-model">Saved model</Tabs.Tab>

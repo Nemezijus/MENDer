@@ -15,7 +15,7 @@
   --mantine-color-default-border: var(--app-color-c1);
 }
 
-.mantine-Tabs-tab:hover {
+/* .mantine-Tabs-tab:hover {
 	color: var(--app-color-your-hover-text);
 	background-color: var(--app-color-primary-600);
 }
@@ -29,7 +29,7 @@
 
 .mantine-Tabs-list {
 	border-bottom: 1px solid var(--app-color-primary-600);
-}
+} */
 
 /* .dataFilesSubTabs .mantine-Tabs-tab {
 	color: inherit;

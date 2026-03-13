@@ -64,7 +64,7 @@ export default function TrainingDataUploadCard() {
 
           
 
-          <Tabs defaultValue="individual" keepMounted={false} className="dataFilesSubTabs">
+          <Tabs defaultValue="individual" keepMounted={false} className="appPanelTabs dataFilesSubTabs trainingDataSubTabs">
             <Tabs.List grow>
               <Tabs.Tab value="individual">Individual files</Tabs.Tab>
               <Tabs.Tab value="compound">Compound file</Tabs.Tab>
