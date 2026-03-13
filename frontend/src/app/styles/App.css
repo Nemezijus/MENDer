@@ -22,9 +22,8 @@
 	.appSurface {
 		@apply grid w-full overflow-hidden border border-app-border border-t-0 bg-app-surface;
 		min-height: 46rem;
-		--app-column-title-row-min-height: 3.5rem;
-		--app-column-title-px: 1.25rem; /* 20px, same as px-5 */
-		--app-column-title-py: 1rem;    /* 16px, same as py-4 */
+		--app-column-title-row-height: 5.5rem;
+		--app-column-title-px: 1.25rem;
 	}
 
 	.appSidebarColumn,
@@ -43,7 +42,7 @@
 	}
 
 	.appMainColumn {
-		@apply px-0 pt-0 pb-5 xl:px-0 xl:pt-0 xl:pb-6;
+		@apply flex flex-col p-0;
 	}
 
 	.appArtifactColumn {
@@ -51,14 +50,14 @@
 	}
 
 .sectionShell {
-	@apply flex h-full flex-col;
+	@apply flex flex-1 flex-col;
 }
 
 .sectionShellHeader {
 	@apply flex items-center justify-center;
-	min-height: var(--app-column-title-row-min-height);
+	min-height: var(--app-column-title-row-height);
 	padding-inline: var(--app-column-title-px);
-	padding-block: var(--app-column-title-py);
+	box-sizing: border-box;
 }
 
 .sectionShellBody {

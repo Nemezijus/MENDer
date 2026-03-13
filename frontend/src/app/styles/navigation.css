@@ -11,15 +11,18 @@
 		min-height: 100%;
 	}
 
-	/* top header strip with the NAVIGATION title */
+	/* shared title row sizing for the sidebar header */
 	.sidebarNavHeader {
-		@apply bg-app-surface ;
+		@apply flex items-center bg-app-surface;
+		min-height: var(--app-column-title-row-height);
+		padding-inline: var(--app-column-title-px);
+		box-sizing: border-box;
 	}
 
-
-	/* vertical breathing room inside the header */
+	/* keeps the NAVIGATION label centered within the full header width */
 	.sidebarNavHeaderInner {
-		min-height: 3.5rem;
+		@apply w-full;
+		min-height: 0;
 	}
 
 	/* centers the brand/title text without using flex on the text itself */
@@ -76,15 +79,6 @@
 		@apply text-xs;
 		color: var(--app-color-text-muted);
 	}
-}
-
-	.sidebarNavHeader {
-	padding-inline: var(--app-column-title-px);
-	padding-block: var(--app-column-title-py);
-}
-
-.sidebarNavHeaderInner {
-	min-height: var(--app-column-title-row-min-height);
 }
 
 /* Mantine Text root for the top NAVIGATION title */

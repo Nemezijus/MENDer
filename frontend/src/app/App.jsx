@@ -50,7 +50,7 @@ export default function App() {
     const content = <Panel key={activeSection} {...(meta.panelProps ?? {})} />;
 
     return (
-      <SectionShell className="sectionShell" title={meta.title}>
+      <SectionShell title={meta.title}>
         {meta.requiresTrainingData ? <DataGuard>{content}</DataGuard> : content}
       </SectionShell>
     );
