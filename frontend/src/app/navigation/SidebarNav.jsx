@@ -10,7 +10,7 @@ export default function SidebarNav({ active, onChange }) {
 
   return (
     <nav className="sidebarNav">
-      <div className="sidebarNavHeader">
+      <div className="appColumnHeader">
         <Group justify="space-between" align="center" className="sidebarNavHeaderInner">
           <div className="sidebarNavBrandWrap">
             <Text className="sidebarNavBrand">

@@ -79,7 +79,7 @@ export default function App() {
 
           <Box className="appArtifactColumn">
             <div className="appArtifactShell">
-              <div className="appArtifactHeader">
+              <div className="appColumnHeader">
                 <Text className="appArtifactTitle">Current Model</Text>
               </div>
 

@@ -11,14 +11,6 @@
 		min-height: 100%;
 	}
 
-	/* shared title row sizing for the sidebar header */
-	.sidebarNavHeader {
-		@apply flex items-center bg-app-surface;
-		min-height: var(--app-column-title-row-height);
-		padding-inline: var(--app-column-title-px);
-		box-sizing: border-box;
-	}
-
 	/* keeps the NAVIGATION label centered within the full header width */
 	.sidebarNavHeaderInner {
 		@apply w-full;
@@ -42,7 +34,7 @@
 
 	/* nested child links under expandable sections */
 	.sidebarNavChildLinks {
-		@apply mt-0 flex flex-col;
+		@apply flex flex-col;
 	}
 
 	/* =========================
@@ -72,19 +64,13 @@
 
 	.sidebarNavFooter {
 		@apply px-5 py-4;
-		border-top: 0px solid var(--app-color-border);
+		border-top: 0;
 	}
 
 	.sidebarNavFooterText {
 		@apply text-xs;
 		color: var(--app-color-text-muted);
 	}
-}
-
-/* Mantine Text root for the top NAVIGATION title */
-.sidebarNavBrand.mantine-Text-root {
-	@apply text-xl font-semibold tracking-[0.24em];
-	color: var(--app-color-text);
 }
 
 

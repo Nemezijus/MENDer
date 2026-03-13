@@ -18,12 +18,18 @@
 		@apply flex flex-col gap-1;
 	}
 
-
 	.appSurface {
 		@apply grid w-full overflow-hidden border border-app-border border-t-0 bg-app-surface;
 		min-height: 46rem;
 		--app-column-title-row-height: 5.5rem;
 		--app-column-title-px: 1.25rem;
+	}
+
+	.appColumnHeader {
+		@apply flex items-center justify-center mb-4;
+		min-height: var(--app-column-title-row-height);
+		padding-inline: var(--app-column-title-px);
+		box-sizing: border-box;
 	}
 
 	.appSidebarColumn,
@@ -53,13 +59,6 @@
 		@apply flex flex-1 flex-col;
 	}
 
-	.sectionShellHeader {
-		@apply flex items-center justify-center;
-		min-height: var(--app-column-title-row-height);
-		padding-inline: var(--app-column-title-px);
-		box-sizing: border-box;
-	}
-
 	.sectionShellBody {
 		@apply px-5 pb-5 xl:px-6 xl:pb-6;
 	}
@@ -73,13 +72,6 @@
 		@apply flex h-full flex-col;
 	}
 
-	.appArtifactHeader {
-		@apply flex items-center justify-center;
-		min-height: var(--app-column-title-row-height);
-		padding-inline: var(--app-column-title-px);
-		box-sizing: border-box;
-	}
-
 	.appArtifactTitle.mantine-Text-root {
 		@apply font-medium uppercase tracking-[0.15em];
 		color: var(--app-color-text);
@@ -89,21 +81,29 @@
 	.appArtifactBody {
 		@apply flex-1 px-5 pb-5 xl:px-6 xl:pb-6;
 	}
-	}
-	.appHeaderEyebrow.mantine-Text-root {
-		@apply font-medium uppercase tracking-[0.24em];
-		color: var(--app-color-text-muted);
-		font-size: 1rem;
-		line-height: 1.2;
-	}
-
-	.appHeaderTitle.mantine-Text-root {
-		@apply font-semibold tracking-tight;
-		color: var(--app-color-c2);
-		font-size: 2rem;
-		line-height: 1.1;
+}
+.appHeaderEyebrow.mantine-Text-root {
+	@apply font-medium uppercase tracking-[0.24em];
+	color: var(--app-color-text-muted);
+	font-size: 1rem;
+	line-height: 1.2;
 }
 
+.appHeaderTitle.mantine-Text-root {
+	@apply font-semibold tracking-tight;
+	color: var(--app-color-c2);
+	font-size: 2rem;
+	line-height: 1.1;
+}
+.sidebarNavBrand.mantine-Text-root,
+.sectionShellTitle,
+.appArtifactTitle.mantine-Text-root {
+	@apply text-xl font-semibold tracking-[0.24em];
+	font-size: 1.25rem;
+	line-height: 1.2;
+	color: var(--app-color-text);
+	text-align: center;
+}
 @media (min-width: 1280px) {
 	.appShell {
 		width: 96%;
