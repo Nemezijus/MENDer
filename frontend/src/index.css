@@ -3,4 +3,5 @@
 @import "./styles/globals.css";
 @import "./styles/layout.css";
 @import "./styles/utilities.css";
+@import "./shared/ui/styles/forms.css";
 @import "./styles/mantine-overrides.css";

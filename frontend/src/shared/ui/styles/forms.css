@@ -1,11 +1,166 @@
 @reference "../../../styles/theme.css";
 
 /*
-  Shared UI: input styling helpers.
-  Used via Mantine `classNames` on inputs.
+  Shared UI: app-wide form field styling.
+  Used by Mantine theme classNames in main.jsx.
 */
 
-.configSelectInput {
-  @apply border-2;
-  border-color: #5c94ccff;
+/* input body: TextInput, Select trigger, NumberInput, Textarea, etc. */
+.appFieldInput {
+	@apply border;
+	background-color: var(--app-color-primary-700);
+	border-color: var(--app-color-primary-500);
+	color: var(--app-color-text);
+	border-radius: 0;
+}
+
+.appFieldInput::placeholder {
+	color: var(--app-color-text-muted);
+	opacity: 0.85;
+}
+
+.appFieldInput:focus,
+.appFieldInput:focus-within {
+	border-color: var(--app-color-c5);
+	outline: none;
+}
+
+/* right/left section icons, chevrons, clear buttons */
+.appFieldSection {
+	color: var(--app-color-text-muted);
+}
+
+/* label above field */
+.appFieldLabel {
+	color: var(--app-color-text);
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+
+/* helper/description text */
+.appFieldDescription {
+	color: var(--app-color-text-muted);
+}
+
+/* validation/error text */
+.appFieldError {
+	color: var(--app-color-accent-two-200);
+}
+
+/* select dropdown */
+.appFieldDropdown {
+	background-color: var(--app-color-primary-700);
+	border: 1px solid var(--app-color-primary-500);
+	border-radius: 0;
+}
+
+/* dropdown options wrapper */
+.appFieldOptions {
+	background-color: transparent;
+}
+
+/* individual option rows */
+.appFieldOption {
+	color: var(--app-color-text);
+	background-color: transparent;
+}
+
+/* hovered / highlighted option */
+.appFieldOption[data-hovered],
+.appFieldOption:hover {
+	background-color: var(--app-color-primary-600);
+	color: var(--app-color-accent-two-200);
+}
+
+/* selected option */
+.appFieldOption[data-checked] {
+	background-color: var(--app-color-primary-500);
+	color: var(--app-color-c5);
+	font-weight: 700;
+}
+
+/* "nothing found" row */
+.appFieldEmpty {
+	color: var(--app-color-text-muted);
+}
+
+/* grouped selects, if used later */
+.appFieldGroupLabel {
+	color: var(--app-color-text-muted);
+	font-weight: 600;
+}
+
+/* =========================
+   Shared buttons
+   ========================= */
+
+.appButtonRoot {
+	background-color: var(--app-color-primary-600);
+	border: 1px solid var(--app-color-primary-500);
+	color: var(--app-color-text);
+	border-radius: 0;
+}
+
+.appButtonRoot:hover {
+	background-color: var(--app-color-primary-500);
+	border-color: var(--app-color-c5);
+	color: var(--app-color-c5);
+}
+
+.appButtonRoot[data-disabled],
+.appButtonRoot:disabled {
+	background-color: var(--app-color-primary-700);
+	border-color: var(--app-color-primary-600);
+	color: var(--app-color-text-muted);
+	opacity: 0.7;
+}
+
+.appButtonLabel {
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+
+.appButtonSection {
+	color: inherit;
+}
+
+
+/* =========================
+   Shared checkboxes
+   ========================= */
+
+.appCheckboxBody {
+	gap: 0.5rem;
+}
+
+.appCheckboxInput {
+	background-color: var(--app-color-primary-700);
+	border-color: var(--app-color-primary-500);
+	border-radius: 0;
+}
+
+.appCheckboxInput:hover {
+	border-color: var(--app-color-c5);
+}
+
+.appCheckboxInput[data-checked] {
+	background-color: var(--app-color-primary-500);
+	border-color: var(--app-color-c5);
+}
+
+.appCheckboxIcon {
+	color: var(--app-color-c5);
+}
+
+.appCheckboxLabel {
+	color: var(--app-color-text);
+	font-weight: 500;
+}
+
+.appCheckboxDescription {
+	color: var(--app-color-text-muted);
+}
+
+.appCheckboxError {
+	color: var(--app-color-accent-two-200);
 }

@@ -39,9 +39,6 @@ export default function ScalingCard({ value, onChange, title = 'Scaling' }) {
             disabled={optionsUnavailable}
             placeholder={optionsUnavailable ? 'Schema enums unavailable' : undefined}
             description={optionsUnavailable ? 'Schema did not provide scaling options.' : undefined}
-            classNames={{
-              input: 'configSelectInput',
-            }}
           />
         </Stack>
       )}
