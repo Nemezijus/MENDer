@@ -90,7 +90,7 @@
 	--app-panel-tabs-bg-hover: transparent;
 	--app-panel-tabs-bg-active: transparent;
 
-	--app-panel-tabs-border: var(--app-color-primary-600);
+	--app-panel-tabs-border: var(--app-color-accent-three-600);
 	--app-panel-tabs-border-hover: var(--app-color-primary-600);
 	--app-panel-tabs-border-active: var(--app-color-primary-600);
 }
