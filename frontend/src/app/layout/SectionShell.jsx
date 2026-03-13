@@ -2,11 +2,16 @@ import { Stack, Title } from '@mantine/core';
 
 export default function SectionShell({ title, children, className }) {
   return (
-    <Stack gap="md" className={className}>
-      <Title order={3} className="sectionShellTitle">
-        {title}
-      </Title>
-      {children}
-    </Stack>
+    <section className={className ? `sectionShell ${className}` : 'sectionShell'}>
+      <div className="sectionShellHeader">
+        <Title order={3} className="sectionShellTitle">
+          {title}
+        </Title>
+      </div>
+
+      <div className="sectionShellBody">
+        {children}
+      </div>
+    </section>
   );
 }

@@ -13,8 +13,9 @@
 
 	/* top header strip with the NAVIGATION title */
 	.sidebarNavHeader {
-		@apply bg-app-surface px-5 py-4;
+		@apply bg-app-surface ;
 	}
+
 
 	/* vertical breathing room inside the header */
 	.sidebarNavHeaderInner {
@@ -75,6 +76,15 @@
 		@apply text-xs;
 		color: var(--app-color-text-muted);
 	}
+}
+
+	.sidebarNavHeader {
+	padding-inline: var(--app-column-title-px);
+	padding-block: var(--app-column-title-py);
+}
+
+.sidebarNavHeaderInner {
+	min-height: var(--app-column-title-row-min-height);
 }
 
 /* Mantine Text root for the top NAVIGATION title */
